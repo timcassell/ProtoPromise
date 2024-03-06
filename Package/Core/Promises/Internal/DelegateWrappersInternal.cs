@@ -134,97 +134,97 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinueVoidVoid Create(Promise.ContinueAction callback)
+                internal static DelegateContinueVoidVoid Create(Action<Promise.ResultContainer> callback)
                 {
                     return new DelegateContinueVoidVoid(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinueVoidResult<TResult> Create<TResult>(Promise.ContinueFunc<TResult> callback)
+                internal static DelegateContinueVoidResult<TResult> Create<TResult>(Func<Promise.ResultContainer, TResult> callback)
                 {
                     return new DelegateContinueVoidResult<TResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinueArgVoid<TArg> Create<TArg>(Promise<TArg>.ContinueAction callback)
+                internal static DelegateContinueArgVoid<TArg> Create<TArg>(Action<Promise<TArg>.ResultContainer> callback)
                 {
                     return new DelegateContinueArgVoid<TArg>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinueArgResult<TArg, TResult> Create<TArg, TResult>(Promise<TArg>.ContinueFunc<TResult> callback)
+                internal static DelegateContinueArgResult<TArg, TResult> Create<TArg, TResult>(Func<Promise<TArg>.ResultContainer, TResult> callback)
                 {
                     return new DelegateContinueArgResult<TArg, TResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinueCaptureVoidVoid<TCapture> Create<TCapture>(in TCapture capturedValue, Promise.ContinueAction<TCapture> callback)
+                internal static DelegateContinueCaptureVoidVoid<TCapture> Create<TCapture>(in TCapture capturedValue, Action<TCapture, Promise.ResultContainer> callback)
                 {
                     return new DelegateContinueCaptureVoidVoid<TCapture>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinueCaptureVoidResult<TCapture, TResult> Create<TCapture, TResult>(in TCapture capturedValue, Promise.ContinueFunc<TCapture, TResult> callback)
+                internal static DelegateContinueCaptureVoidResult<TCapture, TResult> Create<TCapture, TResult>(in TCapture capturedValue, Func<TCapture, Promise.ResultContainer, TResult> callback)
                 {
                     return new DelegateContinueCaptureVoidResult<TCapture, TResult>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinueCaptureArgVoid<TCapture, TArg> Create<TCapture, TArg>(in TCapture capturedValue, Promise<TArg>.ContinueAction<TCapture> callback)
+                internal static DelegateContinueCaptureArgVoid<TCapture, TArg> Create<TCapture, TArg>(in TCapture capturedValue, Action<TCapture, Promise<TArg>.ResultContainer> callback)
                 {
                     return new DelegateContinueCaptureArgVoid<TCapture, TArg>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinueCaptureArgResult<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(in TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, TResult> callback)
+                internal static DelegateContinueCaptureArgResult<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(in TCapture capturedValue, Func<TCapture, Promise<TArg>.ResultContainer, TResult> callback)
                 {
                     return new DelegateContinueCaptureArgResult<TCapture, TArg, TResult>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinuePromiseVoidVoid Create(Promise.ContinueFunc<Promise> callback)
+                internal static DelegateContinuePromiseVoidVoid Create(Func<Promise.ResultContainer, Promise> callback)
                 {
                     return new DelegateContinuePromiseVoidVoid(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinuePromiseVoidResult<TResult> Create<TResult>(Promise.ContinueFunc<Promise<TResult>> callback)
+                internal static DelegateContinuePromiseVoidResult<TResult> Create<TResult>(Func<Promise.ResultContainer, Promise<TResult>> callback)
                 {
                     return new DelegateContinuePromiseVoidResult<TResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinuePromiseArgVoid<TArg> Create<TArg>(Promise<TArg>.ContinueFunc<Promise> callback)
+                internal static DelegateContinuePromiseArgVoid<TArg> Create<TArg>(Func<Promise<TArg>.ResultContainer, Promise> callback)
                 {
                     return new DelegateContinuePromiseArgVoid<TArg>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinuePromiseArgResult<TArg, TResult> Create<TArg, TResult>(Promise<TArg>.ContinueFunc<Promise<TResult>> callback)
+                internal static DelegateContinuePromiseArgResult<TArg, TResult> Create<TArg, TResult>(Func<Promise<TArg>.ResultContainer, Promise<TResult>> callback)
                 {
                     return new DelegateContinuePromiseArgResult<TArg, TResult>(callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinuePromiseCaptureVoidVoid<TCapture> Create<TCapture>(in TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise> callback)
+                internal static DelegateContinuePromiseCaptureVoidVoid<TCapture> Create<TCapture>(in TCapture capturedValue, Func<TCapture, Promise.ResultContainer, Promise> callback)
                 {
                     return new DelegateContinuePromiseCaptureVoidVoid<TCapture>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinuePromiseCaptureVoidResult<TCapture, TResult> Create<TCapture, TResult>(in TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise<TResult>> callback)
+                internal static DelegateContinuePromiseCaptureVoidResult<TCapture, TResult> Create<TCapture, TResult>(in TCapture capturedValue, Func<TCapture, Promise.ResultContainer, Promise<TResult>> callback)
                 {
                     return new DelegateContinuePromiseCaptureVoidResult<TCapture, TResult>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinuePromiseCaptureArgVoid<TCapture, TArg> Create<TCapture, TArg>(in TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise> callback)
+                internal static DelegateContinuePromiseCaptureArgVoid<TCapture, TArg> Create<TCapture, TArg>(in TCapture capturedValue, Func<TCapture, Promise<TArg>.ResultContainer, Promise> callback)
                 {
                     return new DelegateContinuePromiseCaptureArgVoid<TCapture, TArg>(capturedValue, callback);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelegateContinuePromiseCaptureArgResult<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(in TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise<TResult>> callback)
+                internal static DelegateContinuePromiseCaptureArgResult<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(in TCapture capturedValue, Func<TCapture, Promise<TArg>.ResultContainer, Promise<TResult>> callback)
                 {
                     return new DelegateContinuePromiseCaptureArgResult<TCapture, TArg, TResult>(capturedValue, callback);
                 }
@@ -899,10 +899,10 @@ namespace Proto.Promises
 #endif
             internal struct DelegateContinueVoidVoid : IAction, IDelegateContinue
             {
-                private readonly Promise.ContinueAction _callback;
+                private readonly Action<Promise.ResultContainer> _callback;
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinueVoidVoid(Promise.ContinueAction callback)
+                public DelegateContinueVoidVoid(Action<Promise.ResultContainer> callback)
                 {
                     _callback = callback;
                 }
@@ -934,10 +934,10 @@ namespace Proto.Promises
 #endif
             internal struct DelegateContinueVoidResult<TResult> : IFunc<TResult>, IDelegateContinue
             {
-                private readonly Promise.ContinueFunc<TResult> _callback;
+                private readonly Func<Promise.ResultContainer, TResult> _callback;
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinueVoidResult(Promise.ContinueFunc<TResult> callback)
+                public DelegateContinueVoidResult(Func<Promise.ResultContainer, TResult> callback)
                 {
                     _callback = callback;
                 }
@@ -970,10 +970,10 @@ namespace Proto.Promises
 #endif
             internal struct DelegateContinueArgVoid<TArg> : IAction<TArg>, IDelegateContinue
             {
-                private readonly Promise<TArg>.ContinueAction _callback;
+                private readonly Action<Promise<TArg>.ResultContainer> _callback;
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinueArgVoid(Promise<TArg>.ContinueAction callback)
+                public DelegateContinueArgVoid(Action<Promise<TArg>.ResultContainer> callback)
                 {
                     _callback = callback;
                 }
@@ -1005,10 +1005,10 @@ namespace Proto.Promises
 #endif
             internal struct DelegateContinueArgResult<TArg, TResult> : IFunc<TArg, TResult>, IDelegateContinue
             {
-                private readonly Promise<TArg>.ContinueFunc<TResult> _callback;
+                private readonly Func<Promise<TArg>.ResultContainer, TResult> _callback;
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinueArgResult(Promise<TArg>.ContinueFunc<TResult> callback)
+                public DelegateContinueArgResult(Func<Promise<TArg>.ResultContainer, TResult> callback)
                 {
                     _callback = callback;
                 }
@@ -1041,7 +1041,7 @@ namespace Proto.Promises
 #endif
             internal struct DelegateContinuePromiseVoidVoid : IFunc<Promise>, IDelegateContinuePromise
             {
-                private readonly Promise.ContinueFunc<Promise> _callback;
+                private readonly Func<Promise.ResultContainer, Promise> _callback;
 
                 public bool IsNull
                 {
@@ -1050,7 +1050,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinuePromiseVoidVoid(Promise.ContinueFunc<Promise> callback)
+                public DelegateContinuePromiseVoidVoid(Func<Promise.ResultContainer, Promise> callback)
                 {
                     _callback = callback;
                 }
@@ -1082,7 +1082,7 @@ namespace Proto.Promises
 #endif
             internal struct DelegateContinuePromiseVoidResult<TResult> : IFunc<Promise<TResult>>, IDelegateContinuePromise
             {
-                private readonly Promise.ContinueFunc<Promise<TResult>> _callback;
+                private readonly Func<Promise.ResultContainer, Promise<TResult>> _callback;
 
                 public bool IsNull
                 {
@@ -1091,7 +1091,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinuePromiseVoidResult(Promise.ContinueFunc<Promise<TResult>> callback)
+                public DelegateContinuePromiseVoidResult(Func<Promise.ResultContainer, Promise<TResult>> callback)
                 {
                     _callback = callback;
                 }
@@ -1123,7 +1123,7 @@ namespace Proto.Promises
 #endif
             internal struct DelegateContinuePromiseArgVoid<TArg> : IFunc<TArg, Promise>, IDelegateContinuePromise
             {
-                private readonly Promise<TArg>.ContinueFunc<Promise> _callback;
+                private readonly Func<Promise<TArg>.ResultContainer, Promise> _callback;
 
                 public bool IsNull
                 {
@@ -1132,7 +1132,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinuePromiseArgVoid(Promise<TArg>.ContinueFunc<Promise> callback)
+                public DelegateContinuePromiseArgVoid(Func<Promise<TArg>.ResultContainer, Promise> callback)
                 {
                     _callback = callback;
                 }
@@ -1164,7 +1164,7 @@ namespace Proto.Promises
 #endif
             internal struct DelegateContinuePromiseArgResult<TArg, TResult> : IFunc<TArg, Promise<TResult>>, IDelegateContinuePromise
             {
-                private readonly Promise<TArg>.ContinueFunc<Promise<TResult>> _callback;
+                private readonly Func<Promise<TArg>.ResultContainer, Promise<TResult>> _callback;
 
                 public bool IsNull
                 {
@@ -1173,7 +1173,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinuePromiseArgResult(Promise<TArg>.ContinueFunc<Promise<TResult>> callback)
+                public DelegateContinuePromiseArgResult(Func<Promise<TArg>.ResultContainer, Promise<TResult>> callback)
                 {
                     _callback = callback;
                 }
@@ -1812,11 +1812,11 @@ namespace Proto.Promises
 #endif
             internal struct DelegateContinueCaptureVoidVoid<TCapture> : IAction, IDelegateContinue
             {
-                private readonly Promise.ContinueAction<TCapture> _callback;
+                private readonly Action<TCapture, Promise.ResultContainer> _callback;
                 private readonly TCapture _capturedValue;
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinueCaptureVoidVoid(in TCapture capturedValue, Promise.ContinueAction<TCapture> callback)
+                public DelegateContinueCaptureVoidVoid(in TCapture capturedValue, Action<TCapture, Promise.ResultContainer> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -1849,11 +1849,11 @@ namespace Proto.Promises
 #endif
             internal struct DelegateContinueCaptureVoidResult<TCapture, TResult> : IFunc<TResult>, IDelegateContinue
             {
-                private readonly Promise.ContinueFunc<TCapture, TResult> _callback;
+                private readonly Func<TCapture, Promise.ResultContainer, TResult> _callback;
                 private readonly TCapture _capturedValue;
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinueCaptureVoidResult(in TCapture capturedValue, Promise.ContinueFunc<TCapture, TResult> callback)
+                public DelegateContinueCaptureVoidResult(in TCapture capturedValue, Func<TCapture, Promise.ResultContainer, TResult> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -1887,11 +1887,11 @@ namespace Proto.Promises
 #endif
             internal struct DelegateContinueCaptureArgVoid<TCapture, TArg> : IAction<TArg>, IDelegateContinue
             {
-                private readonly Promise<TArg>.ContinueAction<TCapture> _callback;
+                private readonly Action<TCapture, Promise<TArg>.ResultContainer> _callback;
                 private readonly TCapture _capturedValue;
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinueCaptureArgVoid(in TCapture capturedValue, Promise<TArg>.ContinueAction<TCapture> callback)
+                public DelegateContinueCaptureArgVoid(in TCapture capturedValue, Action<TCapture, Promise<TArg>.ResultContainer> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -1924,11 +1924,11 @@ namespace Proto.Promises
 #endif
             internal struct DelegateContinueCaptureArgResult<TCapture, TArg, TResult> : IFunc<TArg, TResult>, IDelegateContinue
             {
-                private readonly Promise<TArg>.ContinueFunc<TCapture, TResult> _callback;
+                private readonly Func<TCapture, Promise<TArg>.ResultContainer, TResult> _callback;
                 private readonly TCapture _capturedValue;
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinueCaptureArgResult(in TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, TResult> callback)
+                public DelegateContinueCaptureArgResult(in TCapture capturedValue, Func<TCapture, Promise<TArg>.ResultContainer, TResult> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -1962,7 +1962,7 @@ namespace Proto.Promises
 #endif
             internal struct DelegateContinuePromiseCaptureVoidVoid<TCapture> : IFunc<Promise>, IDelegateContinuePromise
             {
-                private readonly Promise.ContinueFunc<TCapture, Promise> _callback;
+                private readonly Func<TCapture, Promise.ResultContainer, Promise> _callback;
                 private readonly TCapture _capturedValue;
 
                 public bool IsNull
@@ -1972,7 +1972,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinuePromiseCaptureVoidVoid(in TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise> callback)
+                public DelegateContinuePromiseCaptureVoidVoid(in TCapture capturedValue, Func<TCapture, Promise.ResultContainer, Promise> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -2005,7 +2005,7 @@ namespace Proto.Promises
 #endif
             internal struct DelegateContinuePromiseCaptureVoidResult<TCapture, TResult> : IFunc<Promise<TResult>>, IDelegateContinuePromise
             {
-                private readonly Promise.ContinueFunc<TCapture, Promise<TResult>> _callback;
+                private readonly Func<TCapture, Promise.ResultContainer, Promise<TResult>> _callback;
                 private readonly TCapture _capturedValue;
 
                 public bool IsNull
@@ -2015,7 +2015,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinuePromiseCaptureVoidResult(in TCapture capturedValue, Promise.ContinueFunc<TCapture, Promise<TResult>> callback)
+                public DelegateContinuePromiseCaptureVoidResult(in TCapture capturedValue, Func<TCapture, Promise.ResultContainer, Promise<TResult>> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -2048,7 +2048,7 @@ namespace Proto.Promises
 #endif
             internal struct DelegateContinuePromiseCaptureArgVoid<TCapture, TArg> : IFunc<TArg, Promise>, IDelegateContinuePromise
             {
-                private readonly Promise<TArg>.ContinueFunc<TCapture, Promise> _callback;
+                private readonly Func<TCapture, Promise<TArg>.ResultContainer, Promise> _callback;
                 private readonly TCapture _capturedValue;
 
                 public bool IsNull
@@ -2058,7 +2058,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinuePromiseCaptureArgVoid(in TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise> callback)
+                public DelegateContinuePromiseCaptureArgVoid(in TCapture capturedValue, Func<TCapture, Promise<TArg>.ResultContainer, Promise> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
@@ -2091,7 +2091,7 @@ namespace Proto.Promises
 #endif
             internal struct DelegateContinuePromiseCaptureArgResult<TCapture, TArg, TResult> : IFunc<TArg, Promise<TResult>>, IDelegateContinuePromise
             {
-                private readonly Promise<TArg>.ContinueFunc<TCapture, Promise<TResult>> _callback;
+                private readonly Func<TCapture, Promise<TArg>.ResultContainer, Promise<TResult>> _callback;
                 private readonly TCapture _capturedValue;
 
                 public bool IsNull
@@ -2101,7 +2101,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public DelegateContinuePromiseCaptureArgResult(in TCapture capturedValue, Promise<TArg>.ContinueFunc<TCapture, Promise<TResult>> callback)
+                public DelegateContinuePromiseCaptureArgResult(in TCapture capturedValue, Func<TCapture, Promise<TArg>.ResultContainer, Promise<TResult>> callback)
                 {
                     _callback = callback;
                     _capturedValue = capturedValue;
