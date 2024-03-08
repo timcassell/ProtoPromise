@@ -46,15 +46,15 @@ namespace Proto.Promises
 
         partial class PromiseRefBase
         {
-            // Inheriting PromiseSingleAwait<AsyncEnumerator<TSource>> instead of PromiseRefBase so we can take advantage of the already implemented methods.
-            // We store the enumerator in the _result field to save space, because this type is only used in `Promise`, not `Promise<T>`, so the result doesn't matter.
+            // Inheriting PromiseSingleAwait<VoidResult> instead of PromiseRefBase so we can take advantage of the already implemented methods.
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class PromiseParallelForEachAsync<TParallelBody, TSource> : PromiseSingleAwait<Linq.AsyncEnumerator<TSource>>, ICancelable, IDelegateContinue
+            internal sealed partial class PromiseParallelForEachAsync<TParallelBody, TSource> : PromiseSingleAwait<VoidResult>, ICancelable
                 where TParallelBody : IParallelBody<TSource>
             {
                 private TParallelBody _body;
+                private Linq.AsyncEnumerator<TSource> _asyncEnumerator;
                 private CancelationRegistration _externalCancelationRegistration;
                 // Use the CancelationRef directly instead of CancelationSource struct to save memory.
                 private CancelationRef _cancelationRef;
@@ -95,7 +95,7 @@ namespace Proto.Promises
                     var cancelRef = CancelationRef.GetOrCreate();
                     promise._cancelationRef = cancelRef;
                     cancelationToken.TryRegister(promise, out promise._externalCancelationRegistration);
-                    promise._result = enumerable.GetAsyncEnumerator(new CancelationToken(cancelRef, cancelRef.TokenId));
+                    promise._asyncEnumerator = enumerable.GetAsyncEnumerator(new CancelationToken(cancelRef, cancelRef.TokenId));
                     if (Promise.Config.AsyncFlowExecutionContextEnabled)
                     {
                         promise._executionContext = ExecutionContext.Capture();
@@ -289,7 +289,7 @@ namespace Proto.Promises
                         return;
                     }
 
-                    var moveNextPromise = _result.MoveNextAsync();
+                    var moveNextPromise = _asyncEnumerator.MoveNextAsync();
                     bool hasValue;
                     if (moveNextPromise._ref == null)
                     {
@@ -317,7 +317,7 @@ namespace Proto.Promises
                     }
 
                 AfterMoveNext:
-                    var element = _result.Current;
+                    var element = _asyncEnumerator.Current;
                     bool launchNext = ExitLockAndGetLaunchNext();
 
                     // If the available workers allows it and we've not yet queued the next worker, do so now.  We wait
@@ -362,7 +362,7 @@ namespace Proto.Promises
 
                     // We hook this up to the MoveNextAsync promise and the parallel body promise,
                     // so we need to check which one completed.
-                    bool isMoveNextAsyncContinuation = handler == _result._target;
+                    bool isMoveNextAsyncContinuation = handler == _asyncEnumerator._target;
 
                     if (state == Promise.State.Resolved)
                     {
@@ -441,7 +441,7 @@ namespace Proto.Promises
                         Promise disposePromise;
                         try
                         {
-                            disposePromise = _result.DisposeAsync();
+                            disposePromise = _asyncEnumerator.DisposeAsync();
                         }
                         catch (Exception e)
                         {
@@ -491,25 +491,23 @@ namespace Proto.Promises
 
                     // We're already hooking this up directly to the MoveNextAsync promise and the loop body promise,
                     // Adding a 3rd direct hookup for DisposeAsync which is only called once would add extra overhead to the others that are called multiple times.
-                    // Instead, we use a more traditional ContinueWith. But we use it directly with IDelegateContinue to avoid creating a delegate.
+                    // Instead, we use a PromisePassThrough.
 
-                    // TODO: We could use a PromisePassThrough instead of PromiseContinue to reduce memory.
-                    var continuePromise = PromiseContinue<VoidResult, IDelegateContinue>.GetOrCreate(this);
-                    AddPending(continuePromise);
-                    disposePromise._ref.HookupNewPromise(disposePromise._id, continuePromise);
-                    continuePromise.Forget(continuePromise.Id);
+                    AddPending(disposePromise._ref);
+                    var passthrough = PromisePassThrough.GetOrCreate(disposePromise._ref, this, 0);
+                    disposePromise._ref.HookupNewWaiter(disposePromise._id, passthrough);
                 }
 
-                void IDelegateContinue.Invoke(PromiseRefBase handler, IRejectContainer rejectContainer, Promise.State state, PromiseRefBase owner)
+                internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
                     RemoveComplete(handler);
+                    handler.SetCompletionState(state);
                     if (state == Promise.State.Rejected)
                     {
-                        RecordRejection(rejectContainer);
+                        RecordRejection(handler._rejectContainer);
                         handler.SuppressRejection = true;
                     }
                     handler.MaybeDispose();
-                    owner.HandleNextInternal(Promise.State.Resolved);
                     // Canceled = 3 and Resolved = 1, this happens to work with | to not overwrite the canceled state if this state is resolved.
                     _completionState |= state;
                     OnComplete();

@@ -210,16 +210,16 @@ namespace Proto.Promises
 
         partial class PromiseRefBase
         {
-            // Inheriting PromiseSingleAwait<TEnumerator> instead of PromiseRefBase so we can take advantage of the already implemented methods.
-            // We store the enumerator in the _result field to save space, because this type is only used in `Promise`, not `Promise<T>`, so the result doesn't matter.
+            // Inheriting PromiseSingleAwait<VoidResult> instead of PromiseRefBase so we can take advantage of the already implemented methods.
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class PromiseParallelForEach<TEnumerator, TParallelBody, TSource> : PromiseSingleAwait<TEnumerator>, ICancelable
+            internal sealed partial class PromiseParallelForEach<TEnumerator, TParallelBody, TSource> : PromiseSingleAwait<VoidResult>, ICancelable
                 where TEnumerator : IParallelEnumerator<TSource>
                 where TParallelBody : IParallelBody<TSource>
             {
                 private TParallelBody _body;
+                private TEnumerator _enumerator;
                 private CancelationRegistration _externalCancelationRegistration;
                 // Use the CancelationRef directly instead of CancelationSource struct to save memory.
                 private CancelationRef _cancelationRef;
@@ -245,7 +245,7 @@ namespace Proto.Promises
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
-                    promise._result = enumerator;
+                    promise._enumerator = enumerator;
                     promise._body = body;
                     promise._synchronizationContext = synchronizationContext ?? BackgroundSynchronizationContextSentinel.s_instance;
                     promise._remainingAvailableWorkers = maxDegreeOfParallelism;
@@ -346,7 +346,7 @@ namespace Proto.Promises
                     while (true)
                     {
                         TSource element;
-                        if (!_result.TryMoveNext(this, _cancelationRef, out element))
+                        if (!_enumerator.TryMoveNext(this, _cancelationRef, out element))
                         {
                             MaybeComplete();
                             return;
@@ -433,7 +433,7 @@ namespace Proto.Promises
 
                         try
                         {
-                            _result.Dispose();
+                            _enumerator.Dispose();
                         }
                         catch (Exception e)
                         {

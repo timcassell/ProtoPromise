@@ -440,7 +440,7 @@ namespace Proto.Promises
                 HookupNewWaiter(promiseId, newPromise);
             }
 
-            private void HookupNewWaiter(short promiseId, HandleablePromiseBase waiter)
+            internal void HookupNewWaiter(short promiseId, HandleablePromiseBase waiter)
             {
                 try
                 {

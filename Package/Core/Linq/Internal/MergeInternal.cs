@@ -49,11 +49,8 @@ namespace Proto.Promises
                 else
                 {
                     // The promise may still be pending, hook this up to continue when it completes.
-
-                    // TODO: We could use a PromisePassThrough instead of ContinueWith to reduce memory.
-                    moveNextPromise
-                        .ContinueWith((this, index), (cv, r) => cv.Item1.HandleFromMoveNextAsync(cv.index, r))
-                        .Forget();
+                    var passthrough = PromisePassThrough.GetOrCreate(moveNextPromise._ref, this, index);
+                    moveNextPromise._ref.HookupNewWaiter(moveNextPromise._id, passthrough);
                     return;
                 }
 
@@ -67,21 +64,21 @@ namespace Proto.Promises
                 }
             }
 
-            private void HandleFromMoveNextAsync(int index, Promise<bool>.ResultContainer resultContainer)
+            internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
             {
-                bool hasValue = resultContainer.Value & resultContainer.State == Promise.State.Resolved;
+                bool hasValue = state == Promise.State.Resolved & handler.GetResult<bool>();
                 if (hasValue)
                 {
                     _readyQueue.Enqueue(index);
                 }
                 else
                 {
-                    if (resultContainer.State != Promise.State.Resolved)
+                    if (state != Promise.State.Resolved)
                     {
                         // The async enumerator was canceled or rejected, notify all enumerators that they don't need to continue executing.
                         _cancelationToken._ref.Cancel();
                     }
-                    DisposeEnumerator(_enumerators[index], resultContainer._rejectContainer);
+                    DisposeEnumerator(_enumerators[index], handler._rejectContainer);
                 }
             }
 
