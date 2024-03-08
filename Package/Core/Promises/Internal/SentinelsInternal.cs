@@ -79,7 +79,6 @@ namespace Proto.Promises
                 internal override PromiseRefBase GetDuplicate(short promiseId) { throw new System.InvalidOperationException(); }
                 internal override bool GetIsCompleted(short promiseId) { throw new System.InvalidOperationException(); }
                 internal override bool GetIsValid(short promiseId) { throw new System.InvalidOperationException(); }
-                internal override PromiseRefBase GetPreserved(short promiseId) { throw new System.InvalidOperationException(); }
                 internal override void MaybeMarkAwaitedAndDispose(short promiseId) { throw new System.InvalidOperationException(); }
             }
 
@@ -121,7 +120,6 @@ namespace Proto.Promises
                 internal override PromiseRefBase GetDuplicate(short promiseId) { throw new System.InvalidOperationException(); }
                 internal override bool GetIsCompleted(short promiseId) { throw new System.InvalidOperationException(); }
                 internal override bool GetIsValid(short promiseId) { throw new System.InvalidOperationException(); }
-                internal override PromiseRefBase GetPreserved(short promiseId) { throw new System.InvalidOperationException(); }
                 internal override void MaybeMarkAwaitedAndDispose(short promiseId) { throw new System.InvalidOperationException(); }
             }
 

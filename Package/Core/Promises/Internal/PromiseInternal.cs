@@ -13,6 +13,7 @@
 #pragma warning disable IDE0251 // Make member 'readonly'
 #pragma warning disable CA1507 // Use nameof to express symbol names
 
+using Proto.Promises.Collections;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -296,18 +297,6 @@ namespace Proto.Promises
 
                 internal abstract PromiseRef<TResult> GetDuplicateT(short promiseId);
 
-                internal sealed override PromiseRefBase GetPreserved(short promiseId)
-                {
-                    return GetPreservedT(promiseId);
-                }
-
-                internal PromiseRef<TResult> GetPreservedT(short promiseId)
-                {
-                    var newPromise = PromiseMultiAwait<TResult>.GetOrCreate();
-                    HookupNewPromise(promiseId, newPromise);
-                    return newPromise;
-                }
-
                 new protected void Dispose()
                 {
                     base.Dispose();
@@ -322,7 +311,6 @@ namespace Proto.Promises
             internal abstract PromiseRefBase GetDuplicate(short promiseId);
             internal abstract PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter);
             internal abstract bool GetIsValid(short promiseId);
-            internal abstract PromiseRefBase GetPreserved(short promiseId);
 
             internal short Id
             {
@@ -731,7 +719,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private static PromiseMultiAwait<TResult> GetOrCreateInstance()
+                private static PromiseMultiAwait<TResult> GetOrCreate()
                 {
                     var obj = ObjectPool.TryTakeOrInvalid<PromiseMultiAwait<TResult>>();
                     return obj == InvalidAwaitSentinel.s_instance
@@ -740,14 +728,17 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseMultiAwait<TResult> GetOrCreate()
+                internal static PromiseMultiAwait<TResult> GetOrCreateAndHookup(PromiseRefBase previous, short id)
                 {
-                    var promise = GetOrCreateInstance();
+                    var promise = GetOrCreate();
                     promise.Reset();
+                    previous.HookupNewPromise(id, promise);
+                    // We create the temp collection after we hook up in case the operation is invalid.
+                    promise._nextBranches = new TempCollectionBuilder<HandleablePromiseBase>(0);
                     return promise;
                 }
 
-                internal void Retain()
+                private void Retain()
                 {
                     InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, 1);
                 }
@@ -766,6 +757,7 @@ namespace Proto.Promises
                             throw new System.InvalidOperationException("PromiseMultiAwait was disposed completely without being forgotten.");
                         }
 #endif
+                        _nextBranches.Dispose();
                         // Rejection maybe wasn't caught.
                         // We handle this directly here because we don't add the PromiseForgetSentinel to this type when it is forgotten.
                         MaybeReportUnhandledRejection(_rejectContainer, State);
@@ -869,19 +861,16 @@ namespace Proto.Promises
                     SetCompletionState(state);
                     handler.MaybeDispose();
 
-                    ValueList<HandleablePromiseBase> branches;
+                    TempCollectionBuilder<HandleablePromiseBase> branches;
                     lock (this)
                     {
                         branches = _nextBranches;
-                        _nextBranches = default(ValueList<HandleablePromiseBase>);
                     }
-                    for (int i = 0, max = branches.Count; i < max; ++i)
+                    for (int i = 0, max = branches._count; i < max; ++i)
                     {
                         Retain(); // Retain since Handle will call MaybeDispose indiscriminately.
                         branches[i].Handle(this, state);
                     }
-                    branches.Clear();
-                    _nextBranches = branches;
                     MaybeDispose();
                 }
             }

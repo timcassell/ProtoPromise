@@ -23,6 +23,7 @@
 #pragma warning disable 0649 // Field is never assigned to, and will always have its default value
 #pragma warning disable 0414 // The private field is assigned but its value is never used
 
+using Proto.Promises.Collections;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -160,8 +161,7 @@ namespace Proto.Promises
 
             partial class PromiseMultiAwait<TResult> : PromiseRef<TResult>
             {
-                // TODO: we can replace ValueList with TempCollectionBuilder.
-                internal ValueList<HandleablePromiseBase> _nextBranches = new ValueList<HandleablePromiseBase>(8);
+                private TempCollectionBuilder<HandleablePromiseBase> _nextBranches;
                 private int _retainCounter;
             }
 

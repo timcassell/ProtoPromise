@@ -136,8 +136,7 @@ namespace Proto.Promises
                     lazyPromise = GetOrCreate(owner);
                     lazyFields._lazyPromise = lazyPromise;
                     // Same thing as Promise.Preserve(), but more direct.
-                    lazyPromise._preservedPromise = preservedPromise = PromiseMultiAwait<T>.GetOrCreate();
-                    lazyPromise.HookupNewPromise(lazyPromise.Id, preservedPromise);
+                    lazyPromise._preservedPromise = preservedPromise = PromiseMultiAwait<T>.GetOrCreateAndHookup(lazyPromise, lazyPromise.Id);
                     // Exit the lock before invoking the factory.
                 }
                 var promise = GetDuplicate(preservedPromise);
@@ -248,8 +247,7 @@ namespace Proto.Promises
                     // Same thing as Progress.NewMultiHandler(), but more direct.
                     lazyPromise._progressHandler = Internal.ProgressMultiHandler.GetOrCreate();
                     // Same thing as Promise.Preserve(), but more direct.
-                    lazyPromise._preservedPromise = preservedPromise = PromiseMultiAwait<T>.GetOrCreate();
-                    lazyPromise.HookupNewPromise(lazyPromise.Id, preservedPromise);
+                    lazyPromise._preservedPromise = preservedPromise = PromiseMultiAwait<T>.GetOrCreateAndHookup(lazyPromise, lazyPromise.Id);
                     // Exit the lock before invoking the factory.
                 }
                 var promise = GetDuplicate(preservedPromise);
