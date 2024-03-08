@@ -59,11 +59,12 @@ namespace ProtoPromiseTests.APIs.Threading
         {
             var rwl = new AsyncReaderWriterLock();
             AsyncReaderWriterLock.UpgradeableReaderKey upgraderkey = default;
+            AsyncReaderWriterLock.UpgradedWriterKey upgradedWriterKey = default;
             AsyncReaderWriterLock.WriterKey writerkey = default;
             if (lockedType == LockType.Upgradeable)
             {
                 upgraderkey = rwl.UpgradeableReaderLock();
-                writerkey = rwl.UpgradeToWriterLock(upgraderkey);
+                upgradedWriterKey = rwl.UpgradeToWriterLock(upgraderkey);
             }
             else
             {
@@ -71,10 +72,14 @@ namespace ProtoPromiseTests.APIs.Threading
             }
             Assert.False(rwl.TryEnterReaderLock(out _));
             Assert.False(rwl.TryEnterReaderLock(out _, CancelationToken.Canceled()));
-            writerkey.Dispose();
             if (lockedType == LockType.Upgradeable)
             {
+                upgradedWriterKey.Dispose();
                 upgraderkey.Dispose();
+            }
+            else
+            {
+                writerkey.Dispose();
             }
         }
 
@@ -140,11 +145,12 @@ namespace ProtoPromiseTests.APIs.Threading
         {
             var rwl = new AsyncReaderWriterLock();
             AsyncReaderWriterLock.UpgradeableReaderKey upgraderkey = default;
+            AsyncReaderWriterLock.UpgradedWriterKey upgradedWriterKey = default;
             AsyncReaderWriterLock.WriterKey writerkey = default;
             if (lockedType == LockType.Upgradeable)
             {
                 upgraderkey = rwl.UpgradeableReaderLock();
-                writerkey = rwl.UpgradeToWriterLock(upgraderkey);
+                upgradedWriterKey = rwl.UpgradeToWriterLock(upgraderkey);
             }
             else
             {
@@ -160,10 +166,14 @@ namespace ProtoPromiseTests.APIs.Threading
             cancelationSource.Cancel();
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
             cancelationSource.Dispose();
-            writerkey.Dispose();
             if (lockedType == LockType.Upgradeable)
             {
+                upgradedWriterKey.Dispose();
                 upgraderkey.Dispose();
+            }
+            else
+            {
+                writerkey.Dispose();
             }
         }
 
@@ -174,11 +184,12 @@ namespace ProtoPromiseTests.APIs.Threading
         {
             var rwl = new AsyncReaderWriterLock();
             AsyncReaderWriterLock.UpgradeableReaderKey upgraderkey = default;
+            AsyncReaderWriterLock.UpgradedWriterKey upgradedWriterKey = default;
             AsyncReaderWriterLock.WriterKey writerkey = default;
             if (lockedType == LockType.Upgradeable)
             {
                 upgraderkey = rwl.UpgradeableReaderLock();
-                writerkey = rwl.UpgradeToWriterLock(upgraderkey);
+                upgradedWriterKey = rwl.UpgradeToWriterLock(upgraderkey);
             }
             else
             {
@@ -192,13 +203,17 @@ namespace ProtoPromiseTests.APIs.Threading
                     Assert.True(tuple.didEnter);
                     tuple.readerKey.Dispose();
                 });
-            writerkey.Dispose();
-            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-            cancelationSource.Dispose();
             if (lockedType == LockType.Upgradeable)
             {
+                upgradedWriterKey.Dispose();
                 upgraderkey.Dispose();
             }
+            else
+            {
+                writerkey.Dispose();
+            }
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
         }
 
         [Test]
@@ -451,11 +466,12 @@ namespace ProtoPromiseTests.APIs.Threading
         {
             var rwl = new AsyncReaderWriterLock();
             AsyncReaderWriterLock.UpgradeableReaderKey upgraderkey = default;
+            AsyncReaderWriterLock.UpgradedWriterKey upgradedWriterKey = default;
             AsyncReaderWriterLock.WriterKey writerkey = default;
             if (lockedType == LockType.Upgradeable)
             {
                 upgraderkey = rwl.UpgradeableReaderLock();
-                writerkey = rwl.UpgradeToWriterLock(upgraderkey);
+                upgradedWriterKey = rwl.UpgradeToWriterLock(upgraderkey);
             }
             else
             {
@@ -471,10 +487,14 @@ namespace ProtoPromiseTests.APIs.Threading
             cancelationSource.Cancel();
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
             cancelationSource.Dispose();
-            writerkey.Dispose();
             if (lockedType == LockType.Upgradeable)
             {
+                upgradedWriterKey.Dispose();
                 upgraderkey.Dispose();
+            }
+            else
+            {
+                writerkey.Dispose();
             }
         }
 
@@ -485,11 +505,12 @@ namespace ProtoPromiseTests.APIs.Threading
         {
             var rwl = new AsyncReaderWriterLock();
             AsyncReaderWriterLock.UpgradeableReaderKey upgraderkey = default;
+            AsyncReaderWriterLock.UpgradedWriterKey upgradedWriterKey = default;
             AsyncReaderWriterLock.WriterKey writerkey = default;
             if (lockedType == LockType.Upgradeable)
             {
                 upgraderkey = rwl.UpgradeableReaderLock();
-                writerkey = rwl.UpgradeToWriterLock(upgraderkey);
+                upgradedWriterKey = rwl.UpgradeToWriterLock(upgraderkey);
             }
             else
             {
@@ -503,10 +524,14 @@ namespace ProtoPromiseTests.APIs.Threading
                     Assert.True(tuple.didEnter);
                     tuple.readerKey.Dispose();
                 });
-            writerkey.Dispose();
             if (lockedType == LockType.Upgradeable)
             {
+                upgradedWriterKey.Dispose();
                 upgraderkey.Dispose();
+            }
+            else
+            {
+                writerkey.Dispose();
             }
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
             cancelationSource.Dispose();
@@ -531,7 +556,7 @@ namespace ProtoPromiseTests.APIs.Threading
             var rwl = new AsyncReaderWriterLock();
             var cancelationSource = CancelationSource.New();
             var upgraderkey = rwl.UpgradeableReaderLock();
-            AsyncReaderWriterLock.WriterKey key;
+            AsyncReaderWriterLock.UpgradedWriterKey key;
             if (cancelationType == CancelationType.NoToken)
             {
                 Assert.IsTrue(rwl.TryUpgradeToWriterLock(upgraderkey, out key));
@@ -556,7 +581,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 .Then(tuple =>
                 {
                     Assert.True(tuple.didEnter);
-                    tuple.writerKey.Dispose();
+                    tuple.upgradedWriterKey.Dispose();
                 })
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
             upgraderkey.Dispose();
@@ -597,7 +622,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 .Then(tuple =>
                 {
                     Assert.True(tuple.didEnter);
-                    tuple.writerKey.Dispose();
+                    tuple.upgradedWriterKey.Dispose();
                 });
             readerKey.Dispose();
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
@@ -2321,7 +2346,7 @@ namespace ProtoPromiseTests.APIs.Threading
             Promise.Run(async () =>
             {
                 AsyncReaderWriterLock.UpgradeableReaderKey upgradeableReaderKey = default;
-                AsyncReaderWriterLock.WriterKey upgradedWriterKey = default;
+                AsyncReaderWriterLock.UpgradedWriterKey upgradedWriterKey = default;
                 try
                 {
                     using (upgradeableReaderKey = await rwl.UpgradeableReaderLockAsync())
@@ -2348,7 +2373,7 @@ namespace ProtoPromiseTests.APIs.Threading
             var rwl = new AsyncReaderWriterLock();
             var deferred = Promise.NewDeferred();
             AsyncReaderWriterLock.UpgradeableReaderKey upgradeableReaderKey = default;
-            Promise<AsyncReaderWriterLock.WriterKey> upgradedWriterPromise = default;
+            Promise<AsyncReaderWriterLock.UpgradedWriterKey> upgradedWriterPromise = default;
             bool didThrow = false;
 
             Promise.Run(async () =>
@@ -2738,7 +2763,7 @@ namespace ProtoPromiseTests.APIs.Threading
             bool enteredUpgradeableReaderLock = false;
             bool enteredUpgradedWriterLock = false;
             var upgradeableReaderKey = default(AsyncReaderWriterLock.UpgradeableReaderKey);
-            var upgradedWriterKey = default(AsyncReaderWriterLock.WriterKey);
+            var upgradedWriterKey = default(AsyncReaderWriterLock.UpgradedWriterKey);
 
             rwl.UpgradeableReaderLockAsync()
                 .Then(readerKey =>
@@ -2809,7 +2834,7 @@ namespace ProtoPromiseTests.APIs.Threading
             bool enteredUpgradeableReaderLock = false;
             bool enteredUpgradedWriterLock = false;
             var upgradeableReaderKey = default(AsyncReaderWriterLock.UpgradeableReaderKey);
-            var upgradedWriterKey = default(AsyncReaderWriterLock.WriterKey);
+            var upgradedWriterKey = default(AsyncReaderWriterLock.UpgradedWriterKey);
 
             rwl.UpgradeableReaderLockAsync()
                 .Then(readerKey =>

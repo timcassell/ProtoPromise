@@ -360,7 +360,7 @@ namespace Proto.Promises.Threading
         /// The result of the promise is the key that will downgrade the lock to an upgradeable reader lock when it is disposed.
         /// </summary>
         /// <param name="readerKey">The key required to upgrade the lock.</param>
-        public Promise<WriterKey> UpgradeToWriterLockAsync(UpgradeableReaderKey readerKey)
+        public Promise<UpgradedWriterKey> UpgradeToWriterLockAsync(UpgradeableReaderKey readerKey)
         {
             return _impl.UpgradeToWriterLockAsync(readerKey);
         }
@@ -372,7 +372,7 @@ namespace Proto.Promises.Threading
         /// </summary>
         /// <param name="readerKey">The key required to upgrade the lock.</param>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the upgrade. If the token is canceled before the lock has been upgraded, the returned <see cref="Promise{T}"/> will be canceled.</param>
-        public Promise<WriterKey> UpgradeToWriterLockAsync(UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
+        public Promise<UpgradedWriterKey> UpgradeToWriterLockAsync(UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
         {
             return _impl.UpgradeToWriterLockAsync(readerKey, cancelationToken);
         }
@@ -382,7 +382,7 @@ namespace Proto.Promises.Threading
         /// Returns the key that will downgrade the lock to an upgradeable reader lock when it is disposed.
         /// </summary>
         /// <param name="readerKey">The key required to upgrade the lock.</param>
-        public WriterKey UpgradeToWriterLock(UpgradeableReaderKey readerKey)
+        public UpgradedWriterKey UpgradeToWriterLock(UpgradeableReaderKey readerKey)
         {
             return _impl.UpgradeToWriterLock(readerKey);
         }
@@ -393,21 +393,21 @@ namespace Proto.Promises.Threading
         /// </summary>
         /// <param name="readerKey">The key required to upgrade the lock.</param>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the upgrade. If the token is canceled before the lock has been upgraded, a <see cref="CanceledException"/> will be thrown.</param>
-        public WriterKey UpgradeToWriterLock(UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
+        public UpgradedWriterKey UpgradeToWriterLock(UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
         {
             return _impl.UpgradeToWriterLock(readerKey, cancelationToken);
         }
 
         /// <summary>
         /// Synchronously try to upgrade the lock from an upgradeable reader lock to a writer lock.
-        /// If successful, <paramref name="writerKey"/> is the key that will downgrade the lock to an upgradeable reader lock when it is disposed.
+        /// If successful, <paramref name="upgradedWriterKey"/> is the key that will downgrade the lock to an upgradeable reader lock when it is disposed.
         /// This method does not wait, and returns immediately.
         /// </summary>
         /// <param name="readerKey">The key required to upgrade the lock.</param>
-        /// <param name="writerKey">If successful, the key that will downgrade the lock to an upgradeable reader lock when it is disposed.</param>
-        public bool TryUpgradeToWriterLock(UpgradeableReaderKey readerKey, out WriterKey writerKey)
+        /// <param name="upgradedWriterKey">If successful, the key that will downgrade the lock to an upgradeable reader lock when it is disposed.</param>
+        public bool TryUpgradeToWriterLock(UpgradeableReaderKey readerKey, out UpgradedWriterKey upgradedWriterKey)
         {
-            return _impl.TryUpgradeToWriterLock(readerKey, out writerKey);
+            return _impl.TryUpgradeToWriterLock(readerKey, out upgradedWriterKey);
         }
 
         /// <summary>
@@ -423,26 +423,26 @@ namespace Proto.Promises.Threading
         /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
         /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
         /// </remarks>
-        public Promise<(bool didEnter, WriterKey writerKey)> TryUpgradeToWriterLockAsync(UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
+        public Promise<(bool didEnter, UpgradedWriterKey upgradedWriterKey)> TryUpgradeToWriterLockAsync(UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
         {
             return _impl.TryUpgradeToWriterLockAsync(readerKey, cancelationToken);
         }
 
         /// <summary>
         /// Synchronously try to upgrade the lock from an upgradeable reader lock to a writer lock, while observing a <see cref="CancelationToken"/>.
-        /// If successful, <paramref name="writerKey"/> is the key that will release the lock when it is disposed.
+        /// If successful, <paramref name="upgradedWriterKey"/> is the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="readerKey">The key required to upgrade the lock.</param>
-        /// <param name="writerKey">If successful, the key that will release the lock when it is disposed.</param>
+        /// <param name="upgradedWriterKey">If successful, the key that will release the lock when it is disposed.</param>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, this will return <see langword="false"/>.</param>
         /// <returns><see langword="true"/> if the reader lock was acquired before the <paramref name="cancelationToken"/> was canceled, <see langword="false"/> otherwise.</returns>
         /// <remarks>
         /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
         /// If the reader lock is available, this will return <see langword="true"/>, even if the <paramref name="cancelationToken"/> is already canceled.
         /// </remarks>
-        public bool TryUpgradeToWriterLock(UpgradeableReaderKey readerKey, out WriterKey writerKey, CancelationToken cancelationToken)
+        public bool TryUpgradeToWriterLock(UpgradeableReaderKey readerKey, out UpgradedWriterKey upgradedWriterKey, CancelationToken cancelationToken)
         {
-            return _impl.TryUpgradeToWriterLock(readerKey, out writerKey, cancelationToken);
+            return _impl.TryUpgradeToWriterLock(readerKey, out upgradedWriterKey, cancelationToken);
         }
 
         /// <summary>
@@ -483,7 +483,7 @@ namespace Proto.Promises.Threading
         public readonly partial struct WriterKey : IDisposable, IEquatable<WriterKey>
         {
             /// <summary>
-            /// Release the writer lock on the associated <see cref="AsyncReaderWriterLock"/>. If the lock was upgraded from an upgradeable reader lock, it will be downgraded back to an upgradeable reader lock.
+            /// Release the writer lock on the associated <see cref="AsyncReaderWriterLock"/>.
             /// </summary>
             public void Dispose() => _impl.ReleaseWriterLock();
 
@@ -530,6 +530,35 @@ namespace Proto.Promises.Threading
 
             /// <summary>Returns a value indicating whether two <see cref="UpgradeableReaderKey"/> values are not equal.</summary>
             public static bool operator !=(UpgradeableReaderKey lhs, UpgradeableReaderKey rhs) => lhs._impl != rhs._impl;
+        }
+
+        /// <summary>
+        /// A disposable object used to release the upgraded writer lock and downgrade back to an upgradeable reader lock on the associated <see cref="AsyncReaderWriterLock"/>.
+        /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        public readonly partial struct UpgradedWriterKey : IDisposable, IEquatable<UpgradedWriterKey>
+        {
+            /// <summary>
+            /// Release the upgraded writer lock and downgrade back to an upgradeable reader lock on the associated <see cref="AsyncReaderWriterLock"/>.
+            /// </summary>
+            public void Dispose() => _impl.ReleaseUpgradedWriterLock();
+
+            /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="WriterKey"/>.</summary>
+            public bool Equals(UpgradedWriterKey other) => this == other;
+
+            /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
+            public override bool Equals(object obj) => obj is UpgradedWriterKey token && Equals(token);
+
+            /// <summary>Returns the hash code for this instance.</summary>
+            public override int GetHashCode() => _impl.GetHashCode();
+
+            /// <summary>Returns a value indicating whether two <see cref="UpgradedWriterKey"/> values are equal.</summary>
+            public static bool operator ==(UpgradedWriterKey lhs, UpgradedWriterKey rhs) => lhs._impl == rhs._impl;
+
+            /// <summary>Returns a value indicating whether two <see cref="UpgradedWriterKey"/> values are not equal.</summary>
+            public static bool operator !=(UpgradedWriterKey lhs, UpgradedWriterKey rhs) => lhs._impl != rhs._impl;
         }
     } // class AsyncReaderWriterLock
 
