@@ -13,7 +13,7 @@ using System.Runtime.CompilerServices;
 namespace Proto.Promises.Threading
 {
     /// <summary>
-    /// An async-compatible manual-reset event.
+    /// An async-compatible Semaphore.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]

@@ -71,6 +71,13 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
+                [MethodImpl(InlineOption)]
+                internal void DisposeImmediate()
+                {
+                    SetCompletionState(Promise.State.Resolved);
+                    MaybeDispose();
+                }
+
                 public override void Resolve(ref long currentKey)
                 {
                     ThrowIfInPool(this);
@@ -144,6 +151,13 @@ namespace Proto.Promises
                     _owner = null;
                     _lock = null;
                     ObjectPool.MaybeRepool(this);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal void DisposeImmediate()
+                {
+                    SetCompletionState(Promise.State.Resolved);
+                    MaybeDispose();
                 }
 
                 public override void Resolve(ref long currentKey)
@@ -268,8 +282,14 @@ namespace Proto.Promises
                     }
 
                     promise = PromiseRefBase.AsyncLockPromise.GetOrCreate(this, CaptureContext());
-                    _queue.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.SetCanceledImmediate();
+                    }
+                    else
+                    {
+                        _queue.Enqueue(promise);
+                    }
                 }
                 return new Promise<AsyncLock.Key>(promise, promise.Id);
             }
@@ -335,8 +355,12 @@ namespace Proto.Promises
                     }
 
                     promise = PromiseRefBase.AsyncLockPromise.GetOrCreate(this, null);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.DisposeImmediate();
+                        throw Promise.CancelException();
+                    }
                     _queue.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
                 resultContainer.RethrowIfRejectedOrCanceled();
@@ -379,8 +403,12 @@ namespace Proto.Promises
                     }
 
                     promise = PromiseRefBase.AsyncLockPromise.GetOrCreate(this, CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.DisposeImmediate();
+                        return Promise.Resolved((false, default(AsyncLock.Key)));
+                    }
                     _queue.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
                 return new Promise<AsyncLock.Key>(promise, promise.Id)
                     .ContinueWith(resultContainer =>
@@ -421,8 +449,13 @@ namespace Proto.Promises
                     }
 
                     promise = PromiseRefBase.AsyncLockPromise.GetOrCreate(this, null);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.DisposeImmediate();
+                        key = default;
+                        return false;
+                    }
                     _queue.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
                 resultContainer.RethrowIfRejected();
@@ -504,8 +537,17 @@ namespace Proto.Promises
                     }
 
                     promise = PromiseRefBase.AsyncLockWaitPromise.GetOrCreate(condVar, key, callerContext);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.DisposeImmediate();
+                        if (condVar._queue.IsEmpty)
+                        {
+                            // Remove this association from the condition variable so that another AsyncLock can use it.
+                            condVar._lock = null;
+                        }
+                        return Promise.Resolved(false);
+                    }
                     condVar._queue.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
                 return new Promise<bool>(promise, promise.Id);
             }

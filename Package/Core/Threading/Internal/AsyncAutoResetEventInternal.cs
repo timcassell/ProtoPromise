@@ -46,6 +46,13 @@ namespace Proto.Promises
                 ObjectPool.MaybeRepool(this);
             }
 
+            [MethodImpl(InlineOption)]
+            internal void DisposeImmediate()
+            {
+                SetCompletionState(Promise.State.Resolved);
+                MaybeDispose();
+            }
+
             public override void Cancel()
             {
                 ThrowIfInPool(this);
@@ -129,7 +136,7 @@ namespace Proto.Promises
                 // Immediately query the cancelation state before entering the lock.
                 bool isCanceled = cancelationToken.IsCancelationRequested;
 
-                AsyncEventPromiseBase promise;
+                AsyncAutoResetEventPromise promise;
                 lock (this)
                 {
                     bool isSet = _isSet;
@@ -140,8 +147,13 @@ namespace Proto.Promises
                     }
 
                     promise = AsyncAutoResetEventPromise.GetOrCreate(this, CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        _isSet = false;
+                        promise.DisposeImmediate();
+                        return Promise.Resolved(isSet);
+                    }
                     _waiterQueue.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
                 return new Promise<bool>(promise, promise.Id);
             }
@@ -182,7 +194,7 @@ namespace Proto.Promises
                     isCanceled = cancelationToken.IsCancelationRequested;
                 }
 
-                AsyncEventPromiseBase promise;
+                AsyncAutoResetEventPromise promise;
                 lock (this)
                 {
                     bool isSet = _isSet;
@@ -191,9 +203,15 @@ namespace Proto.Promises
                         _isSet = false;
                         return isSet;
                     }
+
                     promise = AsyncAutoResetEventPromise.GetOrCreate(this, null);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        _isSet = false;
+                        promise.DisposeImmediate();
+                        return isSet;
+                    }
                     _waiterQueue.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
                 Promise<bool>.ResultContainer resultContainer;
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);

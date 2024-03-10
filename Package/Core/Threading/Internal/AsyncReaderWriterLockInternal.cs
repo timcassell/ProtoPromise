@@ -5,7 +5,6 @@
 #endif
 
 #pragma warning disable IDE0090 // Use 'new(...)'
-#pragma warning disable IDE0180 // Use tuple to swap values
 
 using Proto.Promises.Threading;
 using System;
@@ -48,6 +47,13 @@ namespace Proto.Promises
             {
                 Dispose();
                 ObjectPool.MaybeRepool(this);
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void DisposeImmediate()
+            {
+                SetCompletionState(Promise.State.Resolved);
+                MaybeDispose();
             }
 
             internal void Resolve(long currentKey)
@@ -106,6 +112,13 @@ namespace Proto.Promises
                 ObjectPool.MaybeRepool(this);
             }
 
+            [MethodImpl(InlineOption)]
+            internal void DisposeImmediate()
+            {
+                SetCompletionState(Promise.State.Resolved);
+                MaybeDispose();
+            }
+
             internal void Resolve(long writerKey)
             {
                 ThrowIfInPool(this);
@@ -162,6 +175,13 @@ namespace Proto.Promises
                 ObjectPool.MaybeRepool(this);
             }
 
+            [MethodImpl(InlineOption)]
+            internal void DisposeImmediate()
+            {
+                SetCompletionState(Promise.State.Resolved);
+                MaybeDispose();
+            }
+
             internal void Resolve(long currentKey)
             {
                 ThrowIfInPool(this);
@@ -216,6 +236,13 @@ namespace Proto.Promises
             {
                 Dispose();
                 ObjectPool.MaybeRepool(this);
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void DisposeImmediate()
+            {
+                SetCompletionState(Promise.State.Resolved);
+                MaybeDispose();
             }
 
             internal void Resolve(long writerKey)
@@ -447,8 +474,14 @@ namespace Proto.Promises
                         ++_readerWaitCount;
                     }
                     promise = AsyncReaderLockPromise.GetOrCreate(this, CaptureContext());
-                    _readerQueue.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.SetCanceledImmediate();
+                    }
+                    else
+                    {
+                        _readerQueue.Enqueue(promise);
+                    }
                 }
                 return new Promise<AsyncReaderWriterLock.ReaderKey>(promise, promise.Id);
             }
@@ -540,8 +573,12 @@ namespace Proto.Promises
                         ++_readerWaitCount;
                     }
                     promise = AsyncReaderLockPromise.GetOrCreate(this, null);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.DisposeImmediate();
+                        throw Promise.CancelException();
+                    }
                     _readerQueue.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
                 resultContainer.RethrowIfRejectedOrCanceled();
@@ -610,8 +647,12 @@ namespace Proto.Promises
                         ++_readerWaitCount;
                     }
                     promise = AsyncReaderLockPromise.GetOrCreate(this, null);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.DisposeImmediate();
+                        return Promise.Resolved((false, default(AsyncReaderWriterLock.ReaderKey)));
+                    }
                     _readerQueue.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
                 return new Promise<AsyncReaderWriterLock.ReaderKey>(promise, promise.Id)
                     .ContinueWith(resultContainer =>
@@ -665,8 +706,13 @@ namespace Proto.Promises
                         ++_readerWaitCount;
                     }
                     promise = AsyncReaderLockPromise.GetOrCreate(this, null);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.DisposeImmediate();
+                        readerKey = default;
+                        return false;
+                    }
                     _readerQueue.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
                 resultContainer.RethrowIfRejected();
@@ -726,8 +772,14 @@ namespace Proto.Promises
                     }
 
                     promise = AsyncWriterLockPromise.GetOrCreate(this, CaptureContext());
-                    _writerQueue.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.SetCanceledImmediate();
+                    }
+                    else
+                    {
+                        _writerQueue.Enqueue(promise);
+                    }
                 }
                 return new Promise<AsyncReaderWriterLock.WriterKey>(promise, promise.Id);
             }
@@ -799,8 +851,12 @@ namespace Proto.Promises
                     }
 
                     promise = AsyncWriterLockPromise.GetOrCreate(this, null);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.DisposeImmediate();
+                        throw Promise.CancelException();
+                    }
                     _writerQueue.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
                 resultContainer.RethrowIfRejectedOrCanceled();
@@ -854,8 +910,12 @@ namespace Proto.Promises
 
                     _lockType = lockType | AsyncReaderWriterLockType.Writer;
                     promise = AsyncWriterLockPromise.GetOrCreate(this, CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.DisposeImmediate();
+                        return Promise.Resolved((false, default(AsyncReaderWriterLock.WriterKey)));
+                    }
                     _writerQueue.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
                 return new Promise<AsyncReaderWriterLock.WriterKey>(promise, promise.Id)
                     .ContinueWith(resultContainer =>
@@ -900,8 +960,13 @@ namespace Proto.Promises
 
                     _lockType = lockType | AsyncReaderWriterLockType.Writer;
                     promise = AsyncWriterLockPromise.GetOrCreate(this, CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.DisposeImmediate();
+                        writerKey = default;
+                        return false;
+                    }
                     _writerQueue.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
                 resultContainer.RethrowIfRejected();
@@ -983,8 +1048,14 @@ namespace Proto.Promises
                     }
 
                     promise = AsyncUpgradeableReaderLockPromise.GetOrCreate(this, CaptureContext());
-                    _upgradeQueue.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.SetCanceledImmediate();
+                    }
+                    else
+                    {
+                        _upgradeQueue.Enqueue(promise);
+                    }
                 }
                 return new Promise<AsyncReaderWriterLock.UpgradeableReaderKey>(promise, promise.Id);
             }
@@ -1064,8 +1135,12 @@ namespace Proto.Promises
                     }
 
                     promise = AsyncUpgradeableReaderLockPromise.GetOrCreate(this, null);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.DisposeImmediate();
+                        throw Promise.CancelException();
+                    }
                     _upgradeQueue.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
                 resultContainer.RethrowIfRejectedOrCanceled();
@@ -1126,8 +1201,12 @@ namespace Proto.Promises
                     }
 
                     promise = AsyncUpgradeableReaderLockPromise.GetOrCreate(this, CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.DisposeImmediate();
+                        return Promise.Resolved((false, default(AsyncReaderWriterLock.UpgradeableReaderKey)));
+                    }
                     _upgradeQueue.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
                 return new Promise<AsyncReaderWriterLock.UpgradeableReaderKey>(promise, promise.Id)
                     .ContinueWith(resultContainer =>
@@ -1175,8 +1254,13 @@ namespace Proto.Promises
                     }
 
                     promise = AsyncUpgradeableReaderLockPromise.GetOrCreate(this, CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.DisposeImmediate();
+                        readerKey = default;
+                        return false;
+                    }
                     _upgradeQueue.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
                 resultContainer.RethrowIfRejected();
@@ -1246,8 +1330,14 @@ namespace Proto.Promises
                     }
 
                     promise = AsyncUpgradedWriterLockPromise.GetOrCreate(this, CaptureContext());
-                    _upgradeWaiter = promise;
-                    promise.MaybeHookupCancelation(cancelationToken);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.SetCanceledImmediate();
+                    }
+                    else
+                    {
+                        _upgradeWaiter = promise;
+                    }
                 }
                 return new Promise<AsyncReaderWriterLock.UpgradedWriterKey>(promise, promise.Id);
             }
@@ -1329,8 +1419,12 @@ namespace Proto.Promises
                     }
 
                     promise = AsyncUpgradedWriterLockPromise.GetOrCreate(this, null);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.DisposeImmediate();
+                        throw Promise.CancelException();
+                    }
                     _upgradeWaiter = promise;
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
                 resultContainer.RethrowIfRejectedOrCanceled();
@@ -1395,8 +1489,12 @@ namespace Proto.Promises
                     DecrementReaderLockCount();
                     _lockType |= AsyncReaderWriterLockType.Writer;
                     promise = AsyncUpgradedWriterLockPromise.GetOrCreate(this, CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.DisposeImmediate();
+                        return Promise.Resolved((true, new AsyncReaderWriterLock.UpgradedWriterKey(this, _currentKey, null)));
+                    }
                     _upgradeWaiter = promise;
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
                 return new Promise<AsyncReaderWriterLock.UpgradedWriterKey>(promise, promise.Id)
                     .ContinueWith(resultContainer =>
@@ -1447,8 +1545,13 @@ namespace Proto.Promises
                     DecrementReaderLockCount();
                     _lockType |= AsyncReaderWriterLockType.Writer;
                     promise = AsyncUpgradedWriterLockPromise.GetOrCreate(this, CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.DisposeImmediate();
+                        writerKey = default;
+                        return false;
+                    }
                     _upgradeWaiter = promise;
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
                 resultContainer.RethrowIfRejected();

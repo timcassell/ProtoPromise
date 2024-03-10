@@ -47,6 +47,13 @@ namespace Proto.Promises
                 ObjectPool.MaybeRepool(this);
             }
 
+            [MethodImpl(InlineOption)]
+            internal void DisposeImmediate()
+            {
+                SetCompletionState(Promise.State.Resolved);
+                MaybeDispose();
+            }
+
             public override void Cancel()
             {
                 ThrowIfInPool(this);
@@ -147,8 +154,12 @@ namespace Proto.Promises
                         return Promise.Resolved(true);
                     }
                     promise = AsyncCountdownEventPromise.GetOrCreate(this, CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.DisposeImmediate();
+                        return Promise.Resolved(false);
+                    }
                     _waiters.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
                 return new Promise<bool>(promise, promise.Id);
             }
@@ -212,8 +223,12 @@ namespace Proto.Promises
                         return true;
                     }
                     promise = AsyncCountdownEventPromise.GetOrCreate(this, null);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.DisposeImmediate();
+                        return false;
+                    }
                     _waiters.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
                 Promise<bool>.ResultContainer resultContainer;
                 PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
