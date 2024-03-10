@@ -201,7 +201,7 @@ namespace Proto.Promises.Threading
         /// Asynchronous infrastructure support. This method permits instances of <see cref="AsyncManualResetEvent"/> to be awaited.
         /// </summary>
         [EditorBrowsable(EditorBrowsableState.Never)]
-        public Async.CompilerServices.PromiseAwaiterVoid GetAwaiter()
+        public CompilerServices.PromiseAwaiterVoid GetAwaiter()
         {
             return WaitAsync().GetAwaiter();
         }

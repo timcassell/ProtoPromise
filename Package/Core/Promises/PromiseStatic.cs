@@ -7,7 +7,7 @@
 #pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0270 // Use coalesce expression
 
-using Proto.Promises.Async.CompilerServices;
+using Proto.Promises.CompilerServices;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;

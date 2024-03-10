@@ -8,7 +8,7 @@
 #pragma warning disable IDE0250 // Make struct 'readonly'
 #pragma warning disable IDE0251 // Make member 'readonly'
 
-using Proto.Promises.Async.CompilerServices;
+using Proto.Promises.CompilerServices;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;

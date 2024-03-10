@@ -48,13 +48,13 @@ namespace System.Runtime.CompilerServices
 
 namespace Proto.Promises
 {
-    [AsyncMethodBuilder(typeof(Async.CompilerServices.PromiseMethodBuilder))]
+    [AsyncMethodBuilder(typeof(CompilerServices.PromiseMethodBuilder))]
     partial struct Promise { }
 
-    [AsyncMethodBuilder(typeof(Async.CompilerServices.PromiseMethodBuilder<>))]
+    [AsyncMethodBuilder(typeof(CompilerServices.PromiseMethodBuilder<>))]
     partial struct Promise<T> { }
 
-    namespace Async.CompilerServices
+    namespace CompilerServices
     {
         /// <summary>
         /// Provides a builder for asynchronous methods that return <see cref="Promise"/>.
@@ -368,5 +368,5 @@ namespace Proto.Promises
             }
         }
 #endif // !OPTIMIZED_ASYNC_MODE
-    } // namespace Async.CompilerServices
+    } // namespace CompilerServices
 } // namespace Proto.Promises
