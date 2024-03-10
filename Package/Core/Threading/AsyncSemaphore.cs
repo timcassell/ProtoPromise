@@ -18,11 +18,8 @@ namespace Proto.Promises.Threading
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public sealed class AsyncSemaphore
+    public sealed partial class AsyncSemaphore
     {
-        // We wrap the impl with another class so that we can lock on it safely.
-        private readonly Internal.AsyncSemaphoreInternal _impl;
-
         /// <summary>
         /// Creates an async-compatible Semaphore, specifying
         /// the initial number of requests that can be granted concurrently.
@@ -55,8 +52,12 @@ namespace Proto.Promises.Threading
                     : new ArgumentOutOfRangeException("initialCount", "initialCount must be >= 0 and <= maxCount", Internal.GetFormattedStacktrace(1));
             }
 
-            _impl = new Internal.AsyncSemaphoreInternal(initialCount, maxCount);
+            _currentCount = initialCount;
+            _maxCount = maxCount;
+            SetCreatedStacktrace();
         }
+
+        partial void SetCreatedStacktrace();
 
         /// <summary>
         /// Get the number of times remaining that this <see cref="AsyncSemaphore"/> can be entered concurrently.
@@ -68,7 +69,7 @@ namespace Proto.Promises.Threading
         public int CurrentCount
         {
             [MethodImpl(Internal.InlineOption)]
-            get { return _impl._currentCount; }
+            get => _currentCount;
         }
 
         /// <summary>
@@ -76,9 +77,7 @@ namespace Proto.Promises.Threading
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public Promise WaitAsync()
-        {
-            return _impl.WaitAsync();
-        }
+            => WaitAsyncImpl();
 
         /// <summary>
         /// Asynchronously wait to enter this <see cref="AsyncSemaphore"/>, or for the <paramref name="cancelationToken"/> to be canceled.
@@ -90,18 +89,14 @@ namespace Proto.Promises.Threading
         /// </remarks>
         [MethodImpl(Internal.InlineOption)]
         public Promise<bool> TryWaitAsync(CancelationToken cancelationToken)
-        {
-            return _impl.TryWaitAsync(cancelationToken);
-        }
+            => TryWaitAsyncImpl(cancelationToken);
 
         /// <summary>
         /// Synchronously wait to enter this <see cref="AsyncSemaphore"/>.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public void Wait()
-        {
-            _impl.WaitSync();
-        }
+            => WaitSyncImpl();
 
         /// <summary>
         /// Synchronously wait to enter this <see cref="AsyncSemaphore"/>, or for the <paramref name="cancelationToken"/> to be canceled.
@@ -113,18 +108,14 @@ namespace Proto.Promises.Threading
         /// </remarks>
         [MethodImpl(Internal.InlineOption)]
         public bool TryWait(CancelationToken cancelationToken)
-        {
-            return _impl.TryWait(cancelationToken);
-        }
+            => TryWaitImpl(cancelationToken);
 
         /// <summary>
         /// Exit this <see cref="AsyncSemaphore"/> once.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public void Release()
-        {
-            _impl.Release();
-        }
+            => ReleaseImpl();
 
         /// <summary>
         /// Exit this <see cref="AsyncSemaphore"/> a specified number of times.
@@ -137,7 +128,7 @@ namespace Proto.Promises.Threading
                 throw new ArgumentOutOfRangeException("releaseCount", "releaseCount cannot be less than 1", Internal.GetFormattedStacktrace(1));
             }
 
-            _impl.Release(releaseCount);
+            ReleaseImpl(releaseCount);
         }
 
 #if UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP

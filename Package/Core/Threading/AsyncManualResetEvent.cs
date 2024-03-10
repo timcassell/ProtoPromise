@@ -16,19 +16,19 @@ namespace Proto.Promises.Threading
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public sealed class AsyncManualResetEvent
+    public sealed partial class AsyncManualResetEvent
     {
-        // We wrap the impl with another class so that we can lock on it safely.
-        private readonly Internal.AsyncManualResetEventInternal _impl;
-
         /// <summary>
         /// Creates an async-compatible manual-reset event.
         /// </summary>
         /// <param name="initialState">Whether the manual-reset event is initially set or unset.</param>
         public AsyncManualResetEvent(bool initialState)
         {
-            _impl = new Internal.AsyncManualResetEventInternal(initialState);
+            _isSet = initialState;
+            SetCreatedStacktrace();
         }
+
+        partial void SetCreatedStacktrace();
 
         /// <summary>
         /// Creates an async-compatible manual-reset event that is initially unset.
@@ -43,7 +43,7 @@ namespace Proto.Promises.Threading
         public bool IsSet
         {
             [MethodImpl(Internal.InlineOption)]
-            get { return _impl._isSet; }
+            get => _isSet;
         }
 
         /// <summary>
@@ -51,9 +51,7 @@ namespace Proto.Promises.Threading
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public Promise WaitAsync()
-        {
-            return _impl.WaitAsync();
-        }
+            => WaitAsyncImpl();
 
         /// <summary>
         /// Asynchronously wait for this event to be set, or for the <paramref name="cancelationToken"/> to be canceled.
@@ -65,18 +63,14 @@ namespace Proto.Promises.Threading
         /// </remarks>
         [MethodImpl(Internal.InlineOption)]
         public Promise<bool> TryWaitAsync(CancelationToken cancelationToken)
-        {
-            return _impl.TryWaitAsync(cancelationToken);
-        }
+            => TryWaitAsyncImpl(cancelationToken);
 
         /// <summary>
         /// Synchronously wait for this event to be set.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public void Wait()
-        {
-            _impl.Wait();
-        }
+            => WaitImpl();
 
         /// <summary>
         /// Synchronously wait for this event to be set, or for the <paramref name="cancelationToken"/> to be canceled.
@@ -88,9 +82,7 @@ namespace Proto.Promises.Threading
         /// </remarks>
         [MethodImpl(Internal.InlineOption)]
         public bool TryWait(CancelationToken cancelationToken)
-        {
-            return _impl.TryWait(cancelationToken);
-        }
+            => TryWaitImpl(cancelationToken);
 
         /// <summary>
         /// Sets this event, completing every wait.
@@ -100,9 +92,7 @@ namespace Proto.Promises.Threading
         /// </remarks>
         [MethodImpl(Internal.InlineOption)]
         public void Set()
-        {
-            _impl.Set();
-        }
+            => SetImpl();
 
         /// <summary>
         /// Resets this event.
@@ -112,9 +102,7 @@ namespace Proto.Promises.Threading
         /// </remarks>
         [MethodImpl(Internal.InlineOption)]
         public void Reset()
-        {
-            _impl.Reset();
-        }
+            => _isSet = false;
 
         /// <summary>
         /// Asynchronous infrastructure support. This method permits instances of <see cref="AsyncManualResetEvent"/> to be awaited.

@@ -26,7 +26,7 @@ namespace Proto.Promises.Threading
     {
         // These must not be readonly.
         internal Internal.ValueLinkedQueue<Internal.IAsyncLockPromise> _queue = new Internal.ValueLinkedQueue<Internal.IAsyncLockPromise>();
-        volatile internal Internal.AsyncLockInternal _lock;
+        volatile internal AsyncLock _lock;
 
         /// <summary>
         /// Creates a new async-compatible condition variable.

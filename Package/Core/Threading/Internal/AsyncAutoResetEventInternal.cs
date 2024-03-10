@@ -19,7 +19,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class AsyncAutoResetEventPromise : AsyncEventPromise<AsyncAutoResetEventInternal>
+        internal sealed class AsyncAutoResetEventPromise : AsyncEventPromise<Threading.AsyncAutoResetEvent>
         {
             [MethodImpl(InlineOption)]
             private static AsyncAutoResetEventPromise GetOrCreate()
@@ -31,7 +31,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static AsyncAutoResetEventPromise GetOrCreate(AsyncAutoResetEventInternal owner, SynchronizationContext callerContext)
+            internal static AsyncAutoResetEventPromise GetOrCreate(Threading.AsyncAutoResetEvent owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
                 promise.Reset(callerContext);
@@ -71,38 +71,35 @@ namespace Proto.Promises
                 Continue();
             }
         }
+    } // class Internal
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal sealed class AsyncAutoResetEventInternal : ITraceable
+    namespace Threading
+    {
+        partial class AsyncAutoResetEvent : Internal.ITraceable
         {
-            // This must not be readonly.
-            private ValueLinkedQueue<AsyncEventPromiseBase> _waiterQueue = new ValueLinkedQueue<AsyncEventPromiseBase>();
-            volatile internal bool _isSet;
-
-            internal AsyncAutoResetEventInternal(bool initialState)
-            {
-                _isSet = initialState;
-                SetCreatedStacktrace(this, 2);
-            }
+            // These must not be readonly.
+            private Internal.ValueLinkedQueue<Internal.AsyncEventPromiseBase> _waiterQueue = new Internal.ValueLinkedQueue<Internal.AsyncEventPromiseBase>();
+            private Internal.SpinLocker _locker = new Internal.SpinLocker();
+            volatile private bool _isSet;
 
 #if PROMISE_DEBUG
-            CausalityTrace ITraceable.Trace { get; set; }
+            partial void SetCreatedStacktrace() => Internal.SetCreatedStacktraceImpl(this, 2);
 
-            ~AsyncAutoResetEventInternal()
+            Internal.CausalityTrace Internal.ITraceable.Trace { get; set; }
+
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+            ~AsyncAutoResetEvent()
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
             {
-                ValueLinkedStack<AsyncEventPromiseBase> waiters;
-                lock (this)
-                {
-                    waiters = _waiterQueue.MoveElementsToStack();
-                }
+                _locker.Enter();
+                var waiters = _waiterQueue.MoveElementsToStack();
+                _locker.Exit();
                 if (waiters.IsEmpty)
                 {
                     return;
                 }
 
-                var rejectContainer = CreateRejectContainer(new Threading.AbandonedResetEventException("An AsyncAutoResetEvent was collected with waiters still pending."), int.MinValue, null, this);
+                var rejectContainer = Internal.CreateRejectContainer(new AbandonedResetEventException("An AsyncAutoResetEvent was collected with waiters still pending."), int.MinValue, null, this);
                 do
                 {
                     waiters.Pop().Reject(rejectContainer);
@@ -111,54 +108,59 @@ namespace Proto.Promises
             }
 #endif // PROMISE_DEBUG
 
-            internal Promise WaitAsync()
+            private Promise WaitAsyncImpl()
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
-                AsyncEventPromiseBase promise;
-                lock (this)
+                Internal.AsyncAutoResetEventPromise promise;
+                _locker.Enter();
                 {
                     if (_isSet)
                     {
                         _isSet = false;
+                        _locker.Exit();
                         return Promise.Resolved();
                     }
 
-                    promise = AsyncAutoResetEventPromise.GetOrCreate(this, CaptureContext());
+                    promise = Internal.AsyncAutoResetEventPromise.GetOrCreate(this, Internal.CaptureContext());
                     _waiterQueue.Enqueue(promise);
                 }
+                _locker.Exit();
                 return new Promise(promise, promise.Id);
             }
 
-            internal Promise<bool> TryWaitAsync(CancelationToken cancelationToken)
+            private Promise<bool> TryWaitAsyncImpl(CancelationToken cancelationToken)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
 
                 // Immediately query the cancelation state before entering the lock.
                 bool isCanceled = cancelationToken.IsCancelationRequested;
 
-                AsyncAutoResetEventPromise promise;
-                lock (this)
+                Internal.AsyncAutoResetEventPromise promise;
+                _locker.Enter();
                 {
                     bool isSet = _isSet;
                     if (isSet | isCanceled)
                     {
                         _isSet = false;
+                        _locker.Exit();
                         return Promise.Resolved(isSet);
                     }
 
-                    promise = AsyncAutoResetEventPromise.GetOrCreate(this, CaptureContext());
+                    promise = Internal.AsyncAutoResetEventPromise.GetOrCreate(this, Internal.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _isSet = false;
+                        _locker.Exit();
                         promise.DisposeImmediate();
                         return Promise.Resolved(isSet);
                     }
                     _waiterQueue.Enqueue(promise);
                 }
+                _locker.Exit();
                 return new Promise<bool>(promise, promise.Id);
             }
 
-            internal void Wait()
+            private void WaitImpl()
             {
                 // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
@@ -167,23 +169,25 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                AsyncEventPromiseBase promise;
-                lock (this)
+                Internal.AsyncAutoResetEventPromise promise;
+                _locker.Enter();
                 {
                     if (_isSet)
                     {
                         _isSet = false;
+                        _locker.Exit();
                         return;
                     }
-                    promise = AsyncAutoResetEventPromise.GetOrCreate(this, null);
+                    promise = Internal.AsyncAutoResetEventPromise.GetOrCreate(this, null);
                     _waiterQueue.Enqueue(promise);
                 }
+                _locker.Exit();
                 Promise.ResultContainer resultContainer;
-                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
                 resultContainer.RethrowIfRejected();
             }
 
-            internal bool TryWait(CancelationToken cancelationToken)
+            private bool TryWaitImpl(CancelationToken cancelationToken)
             {
                 // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
@@ -194,59 +198,64 @@ namespace Proto.Promises
                     isCanceled = cancelationToken.IsCancelationRequested;
                 }
 
-                AsyncAutoResetEventPromise promise;
-                lock (this)
+                Internal.AsyncAutoResetEventPromise promise;
+                _locker.Enter();
                 {
                     bool isSet = _isSet;
                     if (isSet | isCanceled)
                     {
                         _isSet = false;
+                        _locker.Exit();
                         return isSet;
                     }
 
-                    promise = AsyncAutoResetEventPromise.GetOrCreate(this, null);
+                    promise = Internal.AsyncAutoResetEventPromise.GetOrCreate(this, null);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _isSet = false;
+                        _locker.Exit();
                         promise.DisposeImmediate();
                         return isSet;
                     }
                     _waiterQueue.Enqueue(promise);
                 }
+                _locker.Exit();
                 Promise<bool>.ResultContainer resultContainer;
-                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
                 resultContainer.RethrowIfRejected();
                 return resultContainer.Value;
             }
 
-            internal void Set()
+            private void SetImpl()
             {
-                AsyncEventPromiseBase waiter;
-                lock (this)
+                Internal.AsyncEventPromiseBase waiter;
+                _locker.Enter();
                 {
                     if (_waiterQueue.IsEmpty)
                     {
                         _isSet = true;
+                        _locker.Exit();
                         return;
                     }
                     waiter = _waiterQueue.Dequeue();
                 }
+                _locker.Exit();
                 waiter.Resolve();
             }
 
-            [MethodImpl(InlineOption)]
-            internal void Reset()
+            [MethodImpl(Internal.InlineOption)]
+            private void ResetImpl()
             {
                 _isSet = false;
             }
 
-            internal bool TryRemoveWaiter(AsyncEventPromiseBase waiter)
+            internal bool TryRemoveWaiter(Internal.AsyncEventPromiseBase waiter)
             {
-                lock (this)
-                {
-                    return _waiterQueue.TryRemove(waiter);
-                }
+                _locker.Enter();
+                var removed = _waiterQueue.TryRemove(waiter);
+                _locker.Exit();
+                return removed;
             }
-        } // class AsyncAutoResetEventInternal
-    } // class Internal
+        } // class AsyncAutoResetEvent
+    } // namespace Threading
 } // namespace Proto.Promises

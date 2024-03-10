@@ -24,7 +24,7 @@ namespace Proto.Promises
         internal sealed class AsyncReaderLockPromise : PromiseRefBase.AsyncSynchronizationPromiseBase<AsyncReaderWriterLock.ReaderKey>, ICancelable, ILinked<AsyncReaderLockPromise>
         {
             AsyncReaderLockPromise ILinked<AsyncReaderLockPromise>.Next { get; set; }
-            private AsyncReaderWriterLockInternal Owner => _result._impl._owner;
+            private AsyncReaderWriterLock Owner => _result._impl._owner;
 
             [MethodImpl(InlineOption)]
             private static AsyncReaderLockPromise GetOrCreate()
@@ -35,7 +35,7 @@ namespace Proto.Promises
                     : obj.UnsafeAs<AsyncReaderLockPromise>();
             }
 
-            internal static AsyncReaderLockPromise GetOrCreate(AsyncReaderWriterLockInternal owner, SynchronizationContext callerContext)
+            internal static AsyncReaderLockPromise GetOrCreate(AsyncReaderWriterLock owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
                 promise.Reset(callerContext);
@@ -87,7 +87,7 @@ namespace Proto.Promises
         internal sealed class AsyncWriterLockPromise : PromiseRefBase.AsyncSynchronizationPromiseBase<AsyncReaderWriterLock.WriterKey>, ICancelable, ILinked<AsyncWriterLockPromise>
         {
             AsyncWriterLockPromise ILinked<AsyncWriterLockPromise>.Next { get; set; }
-            private AsyncReaderWriterLockInternal Owner => _result._impl._owner;
+            private AsyncReaderWriterLock Owner => _result._impl._owner;
 
             [MethodImpl(InlineOption)]
             private static AsyncWriterLockPromise GetOrCreate()
@@ -98,7 +98,7 @@ namespace Proto.Promises
                     : obj.UnsafeAs<AsyncWriterLockPromise>();
             }
 
-            internal static AsyncWriterLockPromise GetOrCreate(AsyncReaderWriterLockInternal owner, SynchronizationContext callerContext)
+            internal static AsyncWriterLockPromise GetOrCreate(AsyncReaderWriterLock owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
                 promise.Reset(callerContext);
@@ -150,7 +150,7 @@ namespace Proto.Promises
         internal sealed class AsyncUpgradeableReaderLockPromise : PromiseRefBase.AsyncSynchronizationPromiseBase<AsyncReaderWriterLock.UpgradeableReaderKey>, ICancelable, ILinked<AsyncUpgradeableReaderLockPromise>
         {
             AsyncUpgradeableReaderLockPromise ILinked<AsyncUpgradeableReaderLockPromise>.Next { get; set; }
-            private AsyncReaderWriterLockInternal Owner => _result._impl._owner;
+            private AsyncReaderWriterLock Owner => _result._impl._owner;
 
             [MethodImpl(InlineOption)]
             private static AsyncUpgradeableReaderLockPromise GetOrCreate()
@@ -161,7 +161,7 @@ namespace Proto.Promises
                     : obj.UnsafeAs<AsyncUpgradeableReaderLockPromise>();
             }
 
-            internal static AsyncUpgradeableReaderLockPromise GetOrCreate(AsyncReaderWriterLockInternal owner, SynchronizationContext callerContext)
+            internal static AsyncUpgradeableReaderLockPromise GetOrCreate(AsyncReaderWriterLock owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
                 promise.Reset(callerContext);
@@ -213,7 +213,7 @@ namespace Proto.Promises
         internal sealed class AsyncUpgradedWriterLockPromise : PromiseRefBase.AsyncSynchronizationPromiseBase<AsyncReaderWriterLock.UpgradedWriterKey>, ICancelable, ILinked<AsyncUpgradedWriterLockPromise>
         {
             AsyncUpgradedWriterLockPromise ILinked<AsyncUpgradedWriterLockPromise>.Next { get; set; }
-            private AsyncReaderWriterLockInternal Owner => _result._impl._owner;
+            private AsyncReaderWriterLock Owner => _result._impl._owner;
 
             [MethodImpl(InlineOption)]
             private static AsyncUpgradedWriterLockPromise GetOrCreate()
@@ -224,7 +224,7 @@ namespace Proto.Promises
                     : obj.UnsafeAs<AsyncUpgradedWriterLockPromise>();
             }
 
-            internal static AsyncUpgradedWriterLockPromise GetOrCreate(AsyncReaderWriterLockInternal owner, SynchronizationContext callerContext)
+            internal static AsyncUpgradedWriterLockPromise GetOrCreate(AsyncReaderWriterLock owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
                 promise.Reset(callerContext);
@@ -270,1720 +270,6 @@ namespace Proto.Promises
             }
         }
 
-        [Flags]
-        internal enum AsyncReaderWriterLockType : byte
-        {
-            None = 0,
-            Reader = 1 << 0,
-            Writer = 1 << 1,
-            Upgradeable = 1 << 2
-        }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal sealed partial class AsyncReaderWriterLockInternal
-        {
-            // If there is contention on the lock, we alternate between writers and readers, so one type of lock won't starve out the other.
-            // We also alternate between upgraded writers and regular writers to prevent writer starvation.
-
-            // These must not be readonly.
-            private ValueLinkedQueue<AsyncReaderLockPromise> _readerQueue = new ValueLinkedQueue<AsyncReaderLockPromise>();
-            private ValueLinkedQueue<AsyncWriterLockPromise> _writerQueue = new ValueLinkedQueue<AsyncWriterLockPromise>();
-            private ValueLinkedQueue<AsyncUpgradeableReaderLockPromise> _upgradeQueue = new ValueLinkedQueue<AsyncUpgradeableReaderLockPromise>();
-            private AsyncUpgradedWriterLockPromise _upgradeWaiter;
-            private long _currentKey;
-            // This stores the previous reader key from an upgraded writer.
-            // We store it here instead of in the WriterKey struct to prevent bloating other types that store the struct (like async state machines).
-            private long _previousReaderKey;
-            private uint _readerLockCount;
-            private uint _readerWaitCount;
-            volatile private AsyncReaderWriterLockType _lockType;
-            private AsyncReaderWriterLockType _writerType;
-            private readonly AsyncReaderWriterLock.ContentionStrategy _contentionStrategy;
-
-            private bool PrioritizeWriters
-            {
-                [MethodImpl(InlineOption)]
-                get { return _contentionStrategy == AsyncReaderWriterLock.ContentionStrategy.PrioritizeWriters; }
-            }
-
-            private bool PrioritizeReaders
-            {
-                [MethodImpl(InlineOption)]
-                get { return _contentionStrategy == AsyncReaderWriterLock.ContentionStrategy.PrioritizeReaders; }
-            }
-
-            private bool PrioritizeUpgradeableReaders
-            {
-                [MethodImpl(InlineOption)]
-                get { return _contentionStrategy == AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders; }
-            }
-
-            private bool PrioritizeReadersOrUpgradeableReaders
-            {
-                [MethodImpl(InlineOption)]
-                get { return _contentionStrategy >= AsyncReaderWriterLock.ContentionStrategy.PrioritizeReaders; }
-            }
-
-            internal AsyncReaderWriterLockInternal(AsyncReaderWriterLock.ContentionStrategy contentionStrategy)
-            {
-                _contentionStrategy = contentionStrategy;
-            }
-
-            [MethodImpl(InlineOption)]
-            private void SetNextKey()
-            {
-                _currentKey = KeyGenerator<AsyncReaderWriterLockInternal>.Next();
-            }
-
-            [MethodImpl(InlineOption)]
-            private void SetNextAndPreviousKeys()
-            {
-                _previousReaderKey = _currentKey;
-                SetNextKey();
-            }
-
-            [MethodImpl(InlineOption)]
-            private void RestorePreviousKey()
-            {
-                _currentKey = _previousReaderKey;
-            }
-
-            [MethodImpl(InlineOption)]
-            private void IncrementReaderLockCount()
-            {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                checked
-#else
-                unchecked
-#endif
-                {
-                    ++_readerLockCount;
-                }
-            }
-
-            [MethodImpl(InlineOption)]
-            private void DecrementReaderLockCount()
-            {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                checked
-#else
-                unchecked
-#endif
-                {
-                    --_readerLockCount;
-                }
-            }
-
-            private void ValidateReaderCounts()
-            {
-                // Check to make sure the reader count doesn't overflow. Subtract 1 to leave room for an upgradeable reader lock.
-                // We could queue up reader locks that extend beyond the maximum value, but that would cost extra overhead that I don't think is worth it.
-                // If the count overflows, the user is probably doing something wrong, anyway.
-                const uint maxReaders = uint.MaxValue - 1u;
-                if ((_readerLockCount + _readerWaitCount) == maxReaders)
-                {
-                    throw new OverflowException("AsyncReaderWriterLock does not support more than " + maxReaders + " simultaneous reader locks.");
-                }
-            }
-
-            [MethodImpl(InlineOption)]
-            private bool CanEnterReaderLock(AsyncReaderWriterLockType currentLockType)
-            {
-                // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
-                // If a writer lock is taken or waiting to be taken, and the contention strategy is not reader prioritized,
-                // we wait for it to be released, to prevent starvation.
-                bool noWriters = (currentLockType & AsyncReaderWriterLockType.Writer) == 0;
-                bool noUpgradeWriter = (currentLockType & (AsyncReaderWriterLockType.Writer | AsyncReaderWriterLockType.Upgradeable)) == 0;
-                bool writerDoesNotOwnLock = _writerType == AsyncReaderWriterLockType.None;
-                bool prioritizedEntrance = writerDoesNotOwnLock & (PrioritizeReaders | (PrioritizeUpgradeableReaders & noUpgradeWriter));
-                return noWriters | prioritizedEntrance;
-            }
-
-            internal Promise<AsyncReaderWriterLock.ReaderKey> ReaderLockAsync()
-            {
-                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
-
-                AsyncReaderLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-                    ValidateReaderCounts();
-
-                    // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                    var lockType = _lockType;
-
-                    if (CanEnterReaderLock(lockType))
-                    {
-                        IncrementReaderLockCount();
-                        if (lockType == AsyncReaderWriterLockType.None)
-                        {
-                            SetNextKey();
-                        }
-                        _lockType = lockType | AsyncReaderWriterLockType.Reader;
-                        return Promise.Resolved(new AsyncReaderWriterLock.ReaderKey(this, _currentKey, null));
-                    }
-
-                    // Unchecked context since we're manually checking overflow.
-                    unchecked
-                    {
-                        ++_readerWaitCount;
-                    }
-                    promise = AsyncReaderLockPromise.GetOrCreate(this, CaptureContext());
-                    _readerQueue.Enqueue(promise);
-                }
-                return new Promise<AsyncReaderWriterLock.ReaderKey>(promise, promise.Id);
-            }
-
-            internal Promise<AsyncReaderWriterLock.ReaderKey> ReaderLockAsync(CancelationToken cancelationToken)
-            {
-                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
-
-                // Quick check to see if the token is already canceled before entering.
-                if (cancelationToken.IsCancelationRequested)
-                {
-                    ValidateNotAbandoned();
-
-                    return Promise<AsyncReaderWriterLock.ReaderKey>.Canceled();
-                }
-
-                AsyncReaderLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-                    ValidateReaderCounts();
-
-                    // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                    var lockType = _lockType;
-
-                    if (CanEnterReaderLock(lockType))
-                    {
-                        IncrementReaderLockCount();
-                        if (lockType == AsyncReaderWriterLockType.None)
-                        {
-                            SetNextKey();
-                        }
-                        _lockType = lockType | AsyncReaderWriterLockType.Reader;
-                        return Promise.Resolved(new AsyncReaderWriterLock.ReaderKey(this, _currentKey, null));
-                    }
-
-                    // Unchecked context since we're manually checking overflow.
-                    unchecked
-                    {
-                        ++_readerWaitCount;
-                    }
-                    promise = AsyncReaderLockPromise.GetOrCreate(this, CaptureContext());
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        promise.SetCanceledImmediate();
-                    }
-                    else
-                    {
-                        _readerQueue.Enqueue(promise);
-                    }
-                }
-                return new Promise<AsyncReaderWriterLock.ReaderKey>(promise, promise.Id);
-            }
-
-            internal AsyncReaderWriterLock.ReaderKey ReaderLock()
-            {
-                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
-                while (!CanEnterReaderLock(_lockType) & !spinner.NextSpinWillYield)
-                {
-                    spinner.SpinOnce();
-                }
-
-                AsyncReaderLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-                    ValidateReaderCounts();
-
-                    // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                    var lockType = _lockType;
-
-                    if (CanEnterReaderLock(lockType))
-                    {
-                        IncrementReaderLockCount();
-                        if (lockType == AsyncReaderWriterLockType.None)
-                        {
-                            SetNextKey();
-                        }
-                        _lockType = lockType | AsyncReaderWriterLockType.Reader;
-                        return new AsyncReaderWriterLock.ReaderKey(this, _currentKey, null);
-                    }
-
-                    // Unchecked context since we're manually checking overflow.
-                    unchecked
-                    {
-                        ++_readerWaitCount;
-                    }
-                    promise = AsyncReaderLockPromise.GetOrCreate(this, null);
-                    _readerQueue.Enqueue(promise);
-                }
-                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
-                resultContainer.RethrowIfRejected();
-                return resultContainer.Value;
-            }
-
-            internal AsyncReaderWriterLock.ReaderKey ReaderLock(CancelationToken cancelationToken)
-            {
-                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
-                bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (!CanEnterReaderLock(_lockType) & !isCanceled & !spinner.NextSpinWillYield)
-                {
-                    spinner.SpinOnce();
-                    isCanceled = cancelationToken.IsCancelationRequested;
-                }
-
-                // Quick check to see if the token is already canceled before entering.
-                if (isCanceled)
-                {
-                    ValidateNotAbandoned();
-
-                    throw Promise.CancelException();
-                }
-
-                AsyncReaderLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-                    ValidateReaderCounts();
-
-                    // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                    var lockType = _lockType;
-
-                    if (CanEnterReaderLock(lockType))
-                    {
-                        IncrementReaderLockCount();
-                        if (lockType == AsyncReaderWriterLockType.None)
-                        {
-                            SetNextKey();
-                        }
-                        _lockType = lockType | AsyncReaderWriterLockType.Reader;
-                        return new AsyncReaderWriterLock.ReaderKey(this, _currentKey, null);
-                    }
-
-                    // Unchecked context since we're manually checking overflow.
-                    unchecked
-                    {
-                        ++_readerWaitCount;
-                    }
-                    promise = AsyncReaderLockPromise.GetOrCreate(this, null);
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        promise.DisposeImmediate();
-                        throw Promise.CancelException();
-                    }
-                    _readerQueue.Enqueue(promise);
-                }
-                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
-                resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Value;
-            }
-
-            internal bool TryEnterReaderLock(out AsyncReaderWriterLock.ReaderKey readerKey)
-            {
-                // We don't spinwait here because we want to return immediately without waiting.
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-                    ValidateReaderCounts();
-
-                    // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                    var lockType = _lockType;
-
-                    if (CanEnterReaderLock(lockType))
-                    {
-                        IncrementReaderLockCount();
-                        if (lockType == AsyncReaderWriterLockType.None)
-                        {
-                            SetNextKey();
-                        }
-                        _lockType = lockType | AsyncReaderWriterLockType.Reader;
-                        readerKey = new AsyncReaderWriterLock.ReaderKey(this, _currentKey, null);
-                        return true;
-                    }
-                }
-                readerKey = default;
-                return false;
-            }
-
-            internal Promise<(bool didEnter, AsyncReaderWriterLock.ReaderKey readerKey)> TryEnterReaderLockAsync(CancelationToken cancelationToken)
-            {
-                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
-
-                AsyncReaderLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-                    ValidateReaderCounts();
-
-                    // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                    var lockType = _lockType;
-
-                    if (CanEnterReaderLock(lockType))
-                    {
-                        IncrementReaderLockCount();
-                        if (lockType == AsyncReaderWriterLockType.None)
-                        {
-                            SetNextKey();
-                        }
-                        _lockType = lockType | AsyncReaderWriterLockType.Reader;
-                        return Promise.Resolved((true, new AsyncReaderWriterLock.ReaderKey(this, _currentKey, null)));
-                    }
-                    // Quick check to see if the token is already canceled before waiting.
-                    if (cancelationToken.IsCancelationRequested)
-                    {
-                        return Promise.Resolved((false, default(AsyncReaderWriterLock.ReaderKey)));
-                    }
-
-                    // Unchecked context since we're manually checking overflow.
-                    unchecked
-                    {
-                        ++_readerWaitCount;
-                    }
-                    promise = AsyncReaderLockPromise.GetOrCreate(this, null);
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        promise.DisposeImmediate();
-                        return Promise.Resolved((false, default(AsyncReaderWriterLock.ReaderKey)));
-                    }
-                    _readerQueue.Enqueue(promise);
-                }
-                return new Promise<AsyncReaderWriterLock.ReaderKey>(promise, promise.Id)
-                    .ContinueWith(resultContainer =>
-                    {
-                        resultContainer.RethrowIfRejected();
-                        return (resultContainer.State == Promise.State.Resolved, resultContainer.Value);
-                    });
-            }
-
-            internal bool TryEnterReaderLock(out AsyncReaderWriterLock.ReaderKey readerKey, CancelationToken cancelationToken)
-            {
-                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
-                bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (!CanEnterReaderLock(_lockType) & !isCanceled & !spinner.NextSpinWillYield)
-                {
-                    spinner.SpinOnce();
-                    isCanceled = cancelationToken.IsCancelationRequested;
-                }
-
-                AsyncReaderLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-                    ValidateReaderCounts();
-
-                    // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                    var lockType = _lockType;
-
-                    if (CanEnterReaderLock(lockType))
-                    {
-                        IncrementReaderLockCount();
-                        if (lockType == AsyncReaderWriterLockType.None)
-                        {
-                            SetNextKey();
-                        }
-                        _lockType = lockType | AsyncReaderWriterLockType.Reader;
-                        readerKey = new AsyncReaderWriterLock.ReaderKey(this, _currentKey, null);
-                        return true;
-                    }
-                    // Quick check to see if the token is already canceled before waiting.
-                    if (isCanceled)
-                    {
-                        readerKey = default;
-                        return false;
-                    }
-
-                    // Unchecked context since we're manually checking overflow.
-                    unchecked
-                    {
-                        ++_readerWaitCount;
-                    }
-                    promise = AsyncReaderLockPromise.GetOrCreate(this, null);
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        promise.DisposeImmediate();
-                        readerKey = default;
-                        return false;
-                    }
-                    _readerQueue.Enqueue(promise);
-                }
-                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
-                resultContainer.RethrowIfRejected();
-                readerKey = resultContainer.Value;
-                return resultContainer.State == Promise.State.Resolved;
-            }
-
-            internal Promise<AsyncReaderWriterLock.WriterKey> WriterLockAsync()
-            {
-                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
-                AsyncWriterLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    // Writer locks are mutually exclusive.
-                    var lockType = _lockType;
-                    _lockType = lockType | AsyncReaderWriterLockType.Writer;
-                    if (lockType == AsyncReaderWriterLockType.None)
-                    {
-                        _writerType = AsyncReaderWriterLockType.Writer;
-                        SetNextKey();
-                        return Promise.Resolved(new AsyncReaderWriterLock.WriterKey(this, _currentKey, null));
-                    }
-
-                    promise = AsyncWriterLockPromise.GetOrCreate(this, CaptureContext());
-                    _writerQueue.Enqueue(promise);
-                }
-                return new Promise<AsyncReaderWriterLock.WriterKey>(promise, promise.Id);
-            }
-
-            internal Promise<AsyncReaderWriterLock.WriterKey> WriterLockAsync(CancelationToken cancelationToken)
-            {
-                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
-                
-                // Quick check to see if the token is already canceled before entering.
-                if (cancelationToken.IsCancelationRequested)
-                {
-                    ValidateNotAbandoned();
-
-                    return Promise<AsyncReaderWriterLock.WriterKey>.Canceled();
-                }
-
-                AsyncWriterLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    // Writer locks are mutually exclusive.
-                    var lockType = _lockType;
-                    _lockType = lockType | AsyncReaderWriterLockType.Writer;
-                    if (lockType == AsyncReaderWriterLockType.None)
-                    {
-                        _writerType = AsyncReaderWriterLockType.Writer;
-                        SetNextKey();
-                        return Promise.Resolved(new AsyncReaderWriterLock.WriterKey(this, _currentKey, null));
-                    }
-
-                    promise = AsyncWriterLockPromise.GetOrCreate(this, CaptureContext());
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        promise.SetCanceledImmediate();
-                    }
-                    else
-                    {
-                        _writerQueue.Enqueue(promise);
-                    }
-                }
-                return new Promise<AsyncReaderWriterLock.WriterKey>(promise, promise.Id);
-            }
-
-            internal AsyncReaderWriterLock.WriterKey WriterLock()
-            {
-                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
-                while (_lockType != AsyncReaderWriterLockType.None & !spinner.NextSpinWillYield)
-                {
-                    spinner.SpinOnce();
-                }
-
-                AsyncWriterLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    // Writer locks are mutually exclusive.
-                    var lockType = _lockType;
-                    _lockType = lockType | AsyncReaderWriterLockType.Writer;
-                    if (lockType == AsyncReaderWriterLockType.None)
-                    {
-                        _writerType = AsyncReaderWriterLockType.Writer;
-                        SetNextKey();
-                        return new AsyncReaderWriterLock.WriterKey(this, _currentKey, null);
-                    }
-
-                    promise = AsyncWriterLockPromise.GetOrCreate(this, null);
-                    _writerQueue.Enqueue(promise);
-                }
-                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
-                resultContainer.RethrowIfRejected();
-                return resultContainer.Value;
-            }
-
-            internal AsyncReaderWriterLock.WriterKey WriterLock(CancelationToken cancelationToken)
-            {
-                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
-                bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (_lockType != AsyncReaderWriterLockType.None & !isCanceled & !spinner.NextSpinWillYield)
-                {
-                    spinner.SpinOnce();
-                    isCanceled = cancelationToken.IsCancelationRequested;
-                }
-
-                // Quick check to see if the token is already canceled before entering.
-                if (isCanceled)
-                {
-                    ValidateNotAbandoned();
-
-                    throw Promise.CancelException();
-                }
-
-                AsyncWriterLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    // Writer locks are mutually exclusive.
-                    var lockType = _lockType;
-                    _lockType = lockType | AsyncReaderWriterLockType.Writer;
-                    if (lockType == AsyncReaderWriterLockType.None)
-                    {
-                        _writerType = AsyncReaderWriterLockType.Writer;
-                        SetNextKey();
-                        return new AsyncReaderWriterLock.WriterKey(this, _currentKey, null);
-                    }
-
-                    promise = AsyncWriterLockPromise.GetOrCreate(this, null);
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        promise.DisposeImmediate();
-                        throw Promise.CancelException();
-                    }
-                    _writerQueue.Enqueue(promise);
-                }
-                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
-                resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Value;
-            }
-
-            internal bool TryEnterWriterLock(out AsyncReaderWriterLock.WriterKey writerKey)
-            {
-                // We don't spinwait here because we want to return immediately without waiting.
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    // Writer locks are mutually exclusive.
-                    var lockType = _lockType;
-                    if (lockType == AsyncReaderWriterLockType.None)
-                    {
-                        _lockType = lockType | AsyncReaderWriterLockType.Writer;
-                        _writerType = AsyncReaderWriterLockType.Writer;
-                        SetNextKey();
-                        writerKey = new AsyncReaderWriterLock.WriterKey(this, _currentKey, null);
-                        return true;
-                    }
-                }
-                writerKey = default;
-                return false;
-            }
-
-            internal Promise<(bool didEnter, AsyncReaderWriterLock.WriterKey writerKey)> TryEnterWriterLockAsync(CancelationToken cancelationToken)
-            {
-                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
-                AsyncWriterLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    // Writer locks are mutually exclusive.
-                    var lockType = _lockType;
-                    if (lockType == AsyncReaderWriterLockType.None)
-                    {
-                        _lockType = lockType | AsyncReaderWriterLockType.Writer;
-                        _writerType = AsyncReaderWriterLockType.Writer;
-                        SetNextKey();
-                        return Promise.Resolved((true, new AsyncReaderWriterLock.WriterKey(this, _currentKey, null)));
-                    }
-                    // Quick check to see if the token is already canceled before waiting.
-                    if (cancelationToken.IsCancelationRequested)
-                    {
-                        return Promise.Resolved((false, default(AsyncReaderWriterLock.WriterKey)));
-                    }
-
-                    _lockType = lockType | AsyncReaderWriterLockType.Writer;
-                    promise = AsyncWriterLockPromise.GetOrCreate(this, CaptureContext());
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        promise.DisposeImmediate();
-                        return Promise.Resolved((false, default(AsyncReaderWriterLock.WriterKey)));
-                    }
-                    _writerQueue.Enqueue(promise);
-                }
-                return new Promise<AsyncReaderWriterLock.WriterKey>(promise, promise.Id)
-                    .ContinueWith(resultContainer =>
-                    {
-                        resultContainer.RethrowIfRejected();
-                        return (resultContainer.State == Promise.State.Resolved, resultContainer.Value);
-                    });
-            }
-
-            internal bool TryEnterWriterLock(out AsyncReaderWriterLock.WriterKey writerKey, CancelationToken cancelationToken)
-            {
-                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
-                bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (_lockType != AsyncReaderWriterLockType.None & !isCanceled & !spinner.NextSpinWillYield)
-                {
-                    spinner.SpinOnce();
-                    isCanceled = cancelationToken.IsCancelationRequested;
-                }
-
-                AsyncWriterLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    // Writer locks are mutually exclusive.
-                    var lockType = _lockType;
-                    if (lockType == AsyncReaderWriterLockType.None)
-                    {
-                        _lockType = lockType | AsyncReaderWriterLockType.Writer;
-                        _writerType = AsyncReaderWriterLockType.Writer;
-                        SetNextKey();
-                        writerKey = new AsyncReaderWriterLock.WriterKey(this, _currentKey, null);
-                        return true;
-                    }
-                    // Quick check to see if the token is already canceled before waiting.
-                    if (isCanceled)
-                    {
-                        writerKey = default;
-                        return false;
-                    }
-
-                    _lockType = lockType | AsyncReaderWriterLockType.Writer;
-                    promise = AsyncWriterLockPromise.GetOrCreate(this, CaptureContext());
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        promise.DisposeImmediate();
-                        writerKey = default;
-                        return false;
-                    }
-                    _writerQueue.Enqueue(promise);
-                }
-                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
-                resultContainer.RethrowIfRejected();
-                writerKey = resultContainer.Value;
-                return resultContainer.State == Promise.State.Resolved;
-            }
-
-            [MethodImpl(InlineOption)]
-            private bool CanEnterUpgradeableReaderLock(AsyncReaderWriterLockType currentLockType)
-            {
-                // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
-                // Only 1 upgradeable reader lock is allowed at a time.
-                // If a writer lock is taken or waiting to be taken, and the contention strategy is not reader prioritized,
-                // we wait for it to be released, to prevent starvation.
-                bool noWritersOrUpgradeableReaders = currentLockType <= AsyncReaderWriterLockType.Reader;
-                bool writerDoesNotOwnLock = _writerType == AsyncReaderWriterLockType.None;
-                bool noUpgradeableReaders = _upgradeQueue.IsEmpty & (currentLockType & AsyncReaderWriterLockType.Upgradeable) == 0;
-                bool prioritizedEntrance = writerDoesNotOwnLock & noUpgradeableReaders & PrioritizeReadersOrUpgradeableReaders;
-                return noWritersOrUpgradeableReaders | prioritizedEntrance;
-            }
-
-            internal Promise<AsyncReaderWriterLock.UpgradeableReaderKey> UpgradeableReaderLockAsync()
-            {
-                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
-                AsyncUpgradeableReaderLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                    var lockType = _lockType;
-
-                    if (CanEnterUpgradeableReaderLock(lockType))
-                    {
-                        IncrementReaderLockCount();
-                        if (lockType == AsyncReaderWriterLockType.None)
-                        {
-                            SetNextKey();
-                        }
-                        _lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
-                        return Promise.Resolved(new AsyncReaderWriterLock.UpgradeableReaderKey(this, _currentKey, null));
-                    }
-
-                    promise = AsyncUpgradeableReaderLockPromise.GetOrCreate(this, CaptureContext());
-                    _upgradeQueue.Enqueue(promise);
-                }
-                return new Promise<AsyncReaderWriterLock.UpgradeableReaderKey>(promise, promise.Id);
-            }
-
-            internal Promise<AsyncReaderWriterLock.UpgradeableReaderKey> UpgradeableReaderLockAsync(CancelationToken cancelationToken)
-            {
-                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
-                
-                // Quick check to see if the token is already canceled before entering.
-                if (cancelationToken.IsCancelationRequested)
-                {
-                    ValidateNotAbandoned();
-
-                    return Promise<AsyncReaderWriterLock.UpgradeableReaderKey>.Canceled();
-                }
-
-                AsyncUpgradeableReaderLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                    var lockType = _lockType;
-
-                    if (CanEnterUpgradeableReaderLock(lockType))
-                    {
-                        IncrementReaderLockCount();
-                        if (lockType == AsyncReaderWriterLockType.None)
-                        {
-                            SetNextKey();
-                        }
-                        _lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
-                        return Promise.Resolved(new AsyncReaderWriterLock.UpgradeableReaderKey(this, _currentKey, null));
-                    }
-
-                    promise = AsyncUpgradeableReaderLockPromise.GetOrCreate(this, CaptureContext());
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        promise.SetCanceledImmediate();
-                    }
-                    else
-                    {
-                        _upgradeQueue.Enqueue(promise);
-                    }
-                }
-                return new Promise<AsyncReaderWriterLock.UpgradeableReaderKey>(promise, promise.Id);
-            }
-
-            internal AsyncReaderWriterLock.UpgradeableReaderKey UpgradeableReaderLock()
-            {
-                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
-                while (!CanEnterUpgradeableReaderLock(_lockType) & !spinner.NextSpinWillYield)
-                {
-                    spinner.SpinOnce();
-                }
-
-                AsyncUpgradeableReaderLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                    var lockType = _lockType;
-
-                    if (CanEnterUpgradeableReaderLock(lockType))
-                    {
-                        IncrementReaderLockCount();
-                        if (lockType == AsyncReaderWriterLockType.None)
-                        {
-                            SetNextKey();
-                        }
-                        _lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
-                        return new AsyncReaderWriterLock.UpgradeableReaderKey(this, _currentKey, null);
-                    }
-
-                    promise = AsyncUpgradeableReaderLockPromise.GetOrCreate(this, null);
-                    _upgradeQueue.Enqueue(promise);
-                }
-                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
-                resultContainer.RethrowIfRejected();
-                return resultContainer.Value;
-            }
-
-            internal AsyncReaderWriterLock.UpgradeableReaderKey UpgradeableReaderLock(CancelationToken cancelationToken)
-            {
-                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
-                bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (!CanEnterUpgradeableReaderLock(_lockType) & !isCanceled & !spinner.NextSpinWillYield)
-                {
-                    spinner.SpinOnce();
-                    isCanceled = cancelationToken.IsCancelationRequested;
-                }
-
-                // Quick check to see if the token is already canceled before entering.
-                if (isCanceled)
-                {
-                    ValidateNotAbandoned();
-
-                    throw Promise.CancelException();
-                }
-
-                AsyncUpgradeableReaderLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                    var lockType = _lockType;
-
-                    if (CanEnterUpgradeableReaderLock(lockType))
-                    {
-                        IncrementReaderLockCount();
-                        if (lockType == AsyncReaderWriterLockType.None)
-                        {
-                            SetNextKey();
-                        }
-                        _lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
-                        return new AsyncReaderWriterLock.UpgradeableReaderKey(this, _currentKey, null);
-                    }
-
-                    promise = AsyncUpgradeableReaderLockPromise.GetOrCreate(this, null);
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        promise.DisposeImmediate();
-                        throw Promise.CancelException();
-                    }
-                    _upgradeQueue.Enqueue(promise);
-                }
-                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
-                resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Value;
-            }
-
-            internal bool TryEnterUpgradeableReaderLock(out AsyncReaderWriterLock.UpgradeableReaderKey readerKey)
-            {
-                // We don't spinwait here because we want to return immediately without waiting.
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                    var lockType = _lockType;
-
-                    if (CanEnterUpgradeableReaderLock(lockType))
-                    {
-                        IncrementReaderLockCount();
-                        if (lockType == AsyncReaderWriterLockType.None)
-                        {
-                            SetNextKey();
-                        }
-                        _lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
-                        readerKey = new AsyncReaderWriterLock.UpgradeableReaderKey(this, _currentKey, null);
-                        return true;
-                    }
-                }
-                readerKey = default;
-                return false;
-            }
-
-            internal Promise<(bool didEnter, AsyncReaderWriterLock.UpgradeableReaderKey readerKey)> TryEnterUpgradeableReaderLockAsync(CancelationToken cancelationToken)
-            {
-                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
-                AsyncUpgradeableReaderLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                    var lockType = _lockType;
-
-                    if (CanEnterUpgradeableReaderLock(lockType))
-                    {
-                        IncrementReaderLockCount();
-                        if (lockType == AsyncReaderWriterLockType.None)
-                        {
-                            SetNextKey();
-                        }
-                        _lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
-                        return Promise.Resolved((true, new AsyncReaderWriterLock.UpgradeableReaderKey(this, _currentKey, null)));
-                    }
-                    // Quick check to see if the token is already canceled before waiting.
-                    if (cancelationToken.IsCancelationRequested)
-                    {
-                        return Promise.Resolved((false, default(AsyncReaderWriterLock.UpgradeableReaderKey)));
-                    }
-
-                    promise = AsyncUpgradeableReaderLockPromise.GetOrCreate(this, CaptureContext());
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        promise.DisposeImmediate();
-                        return Promise.Resolved((false, default(AsyncReaderWriterLock.UpgradeableReaderKey)));
-                    }
-                    _upgradeQueue.Enqueue(promise);
-                }
-                return new Promise<AsyncReaderWriterLock.UpgradeableReaderKey>(promise, promise.Id)
-                    .ContinueWith(resultContainer =>
-                    {
-                        resultContainer.RethrowIfRejected();
-                        return (resultContainer.State == Promise.State.Resolved, resultContainer.Value);
-                    });
-            }
-
-            internal bool TryEnterUpgradeableReaderLock(out AsyncReaderWriterLock.UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
-            {
-                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
-                bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (!CanEnterUpgradeableReaderLock(_lockType) & !isCanceled & !spinner.NextSpinWillYield)
-                {
-                    spinner.SpinOnce();
-                    isCanceled = cancelationToken.IsCancelationRequested;
-                }
-
-                AsyncUpgradeableReaderLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    // Read the _lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                    var lockType = _lockType;
-
-                    if (CanEnterUpgradeableReaderLock(lockType))
-                    {
-                        IncrementReaderLockCount();
-                        if (lockType == AsyncReaderWriterLockType.None)
-                        {
-                            SetNextKey();
-                        }
-                        _lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
-                        readerKey = new AsyncReaderWriterLock.UpgradeableReaderKey(this, _currentKey, null);
-                        return true;
-                    }
-                    // Quick check to see if the token is already canceled before waiting.
-                    if (isCanceled)
-                    {
-                        readerKey = default;
-                        return false;
-                    }
-
-                    promise = AsyncUpgradeableReaderLockPromise.GetOrCreate(this, CaptureContext());
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        promise.DisposeImmediate();
-                        readerKey = default;
-                        return false;
-                    }
-                    _upgradeQueue.Enqueue(promise);
-                }
-                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
-                resultContainer.RethrowIfRejected();
-                readerKey = resultContainer.Value;
-                return resultContainer.State == Promise.State.Resolved;
-            }
-
-            internal Promise<AsyncReaderWriterLock.UpgradedWriterKey> UpgradeToWriterLockAsync(AsyncReaderWriterLock.UpgradeableReaderKey readerKey)
-            {
-                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
-                AsyncUpgradedWriterLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
-                    {
-                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
-                    }
-
-                    DecrementReaderLockCount();
-                    _lockType |= AsyncReaderWriterLockType.Writer;
-                    if (_readerLockCount == 0)
-                    {
-                        _writerType = AsyncReaderWriterLockType.Upgradeable;
-                        // We cache the previous key for when the lock gets downgraded.
-                        SetNextAndPreviousKeys();
-                        return Promise.Resolved(new AsyncReaderWriterLock.UpgradedWriterKey(this, _currentKey, null));
-                    }
-
-                    promise = AsyncUpgradedWriterLockPromise.GetOrCreate(this, CaptureContext());
-                    _upgradeWaiter = promise;
-                }
-                return new Promise<AsyncReaderWriterLock.UpgradedWriterKey>(promise, promise.Id);
-            }
-
-            internal Promise<AsyncReaderWriterLock.UpgradedWriterKey> UpgradeToWriterLockAsync(AsyncReaderWriterLock.UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
-            {
-                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
-                
-                // Quick check to see if the token is already canceled before entering.
-                if (cancelationToken.IsCancelationRequested)
-                {
-                    ValidateNotAbandoned();
-
-                    return Promise<AsyncReaderWriterLock.UpgradedWriterKey>.Canceled();
-                }
-
-                AsyncUpgradedWriterLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
-                    {
-                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
-                    }
-
-                    DecrementReaderLockCount();
-                    _lockType |= AsyncReaderWriterLockType.Writer;
-                    if (_readerLockCount == 0)
-                    {
-                        _writerType = AsyncReaderWriterLockType.Upgradeable;
-                        // We cache the previous key for when the lock gets downgraded.
-                        SetNextAndPreviousKeys();
-                        return Promise.Resolved(new AsyncReaderWriterLock.UpgradedWriterKey(this, _currentKey, null));
-                    }
-
-                    promise = AsyncUpgradedWriterLockPromise.GetOrCreate(this, CaptureContext());
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        promise.SetCanceledImmediate();
-                    }
-                    else
-                    {
-                        _upgradeWaiter = promise;
-                    }
-                }
-                return new Promise<AsyncReaderWriterLock.UpgradedWriterKey>(promise, promise.Id);
-            }
-
-            internal AsyncReaderWriterLock.UpgradedWriterKey UpgradeToWriterLock(AsyncReaderWriterLock.UpgradeableReaderKey readerKey)
-            {
-                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
-                while (_readerLockCount != 1 & !spinner.NextSpinWillYield)
-                {
-                    spinner.SpinOnce();
-                }
-
-                AsyncUpgradedWriterLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
-                    {
-                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
-                    }
-
-                    DecrementReaderLockCount();
-                    _lockType |= AsyncReaderWriterLockType.Writer;
-                    if (_readerLockCount == 0)
-                    {
-                        _writerType = AsyncReaderWriterLockType.Upgradeable;
-                        // We cache the previous key for when the lock gets downgraded.
-                        SetNextAndPreviousKeys();
-                        return new AsyncReaderWriterLock.UpgradedWriterKey(this, _currentKey, null);
-                    }
-
-                    promise = AsyncUpgradedWriterLockPromise.GetOrCreate(this, null);
-                    _upgradeWaiter = promise;
-                }
-                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
-                resultContainer.RethrowIfRejected();
-                return resultContainer.Value;
-            }
-
-            internal AsyncReaderWriterLock.UpgradedWriterKey UpgradeToWriterLock(AsyncReaderWriterLock.UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
-            {
-                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
-                bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (_readerLockCount != 1 & !isCanceled & !spinner.NextSpinWillYield)
-                {
-                    spinner.SpinOnce();
-                    isCanceled = cancelationToken.IsCancelationRequested;
-                }
-
-                // Quick check to see if the token is already canceled before entering.
-                if (isCanceled)
-                {
-                    ValidateNotAbandoned();
-
-                    throw Promise.CancelException();
-                }
-
-                AsyncUpgradedWriterLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
-                    {
-                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
-                    }
-
-                    DecrementReaderLockCount();
-                    _lockType |= AsyncReaderWriterLockType.Writer;
-                    if (_readerLockCount == 0)
-                    {
-                        _writerType = AsyncReaderWriterLockType.Upgradeable;
-                        // We cache the previous key for when the lock gets downgraded.
-                        SetNextAndPreviousKeys();
-                        return new AsyncReaderWriterLock.UpgradedWriterKey(this, _currentKey, null);
-                    }
-
-                    promise = AsyncUpgradedWriterLockPromise.GetOrCreate(this, null);
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        promise.DisposeImmediate();
-                        throw Promise.CancelException();
-                    }
-                    _upgradeWaiter = promise;
-                }
-                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
-                resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Value;
-            }
-
-            internal bool TryUpgradeToWriterLock(AsyncReaderWriterLock.UpgradeableReaderKey readerKey, out AsyncReaderWriterLock.UpgradedWriterKey writerKey)
-            {
-                // We don't spinwait here because we want to return immediately without waiting.
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
-                    {
-                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
-                    }
-
-                    if (_readerLockCount == 1)
-                    {
-                        DecrementReaderLockCount();
-                        _lockType |= AsyncReaderWriterLockType.Writer;
-                        _writerType = AsyncReaderWriterLockType.Upgradeable;
-                        // We cache the previous key for when the lock gets downgraded.
-                        SetNextAndPreviousKeys();
-                        writerKey = new AsyncReaderWriterLock.UpgradedWriterKey(this, _currentKey, null);
-                        return true;
-                    }
-                }
-                writerKey = default;
-                return false;
-            }
-
-            internal Promise<(bool didEnter, AsyncReaderWriterLock.UpgradedWriterKey writerKey)> TryUpgradeToWriterLockAsync(AsyncReaderWriterLock.UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
-            {
-                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
-                AsyncUpgradedWriterLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
-                    {
-                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
-                    }
-
-                    if (_readerLockCount == 1)
-                    {
-                        DecrementReaderLockCount();
-                        _lockType |= AsyncReaderWriterLockType.Writer;
-                        _writerType = AsyncReaderWriterLockType.Upgradeable;
-                        // We cache the previous key for when the lock gets downgraded.
-                        SetNextAndPreviousKeys();
-                        return Promise.Resolved((true, new AsyncReaderWriterLock.UpgradedWriterKey(this, _currentKey, null)));
-                    }
-                    // Quick check to see if the token is already canceled before waiting.
-                    if (cancelationToken.IsCancelationRequested)
-                    {
-                        return Promise.Resolved((false, default(AsyncReaderWriterLock.UpgradedWriterKey)));
-                    }
-
-                    DecrementReaderLockCount();
-                    _lockType |= AsyncReaderWriterLockType.Writer;
-                    promise = AsyncUpgradedWriterLockPromise.GetOrCreate(this, CaptureContext());
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        promise.DisposeImmediate();
-                        return Promise.Resolved((true, new AsyncReaderWriterLock.UpgradedWriterKey(this, _currentKey, null)));
-                    }
-                    _upgradeWaiter = promise;
-                }
-                return new Promise<AsyncReaderWriterLock.UpgradedWriterKey>(promise, promise.Id)
-                    .ContinueWith(resultContainer =>
-                    {
-                        resultContainer.RethrowIfRejected();
-                        return (resultContainer.State == Promise.State.Resolved, resultContainer.Value);
-                    });
-            }
-
-            internal bool TryUpgradeToWriterLock(AsyncReaderWriterLock.UpgradeableReaderKey readerKey, out AsyncReaderWriterLock.UpgradedWriterKey writerKey, CancelationToken cancelationToken)
-            {
-                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
-                var spinner = new SpinWait();
-                bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (_readerLockCount != 1 & !isCanceled & !spinner.NextSpinWillYield)
-                {
-                    spinner.SpinOnce();
-                    isCanceled = cancelationToken.IsCancelationRequested;
-                }
-
-                AsyncUpgradedWriterLockPromise promise;
-                lock (this)
-                {
-                    ValidateNotAbandoned();
-
-                    if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
-                    {
-                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
-                    }
-
-                    if (_readerLockCount == 1)
-                    {
-                        DecrementReaderLockCount();
-                        _lockType |= AsyncReaderWriterLockType.Writer;
-                        _writerType = AsyncReaderWriterLockType.Upgradeable;
-                        // We cache the previous key for when the lock gets downgraded.
-                        SetNextAndPreviousKeys();
-                        writerKey = new AsyncReaderWriterLock.UpgradedWriterKey(this, _currentKey, null);
-                        return true;
-                    }
-                    // Quick check to see if the token is already canceled before waiting.
-                    if (isCanceled)
-                    {
-                        writerKey = default;
-                        return false;
-                    }
-
-                    DecrementReaderLockCount();
-                    _lockType |= AsyncReaderWriterLockType.Writer;
-                    promise = AsyncUpgradedWriterLockPromise.GetOrCreate(this, CaptureContext());
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        promise.DisposeImmediate();
-                        writerKey = default;
-                        return false;
-                    }
-                    _upgradeWaiter = promise;
-                }
-                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
-                resultContainer.RethrowIfRejected();
-                writerKey = resultContainer.Value;
-                return resultContainer.State == Promise.State.Resolved;
-            }
-
-            internal void ReleaseReaderLock(long key)
-            {
-                AsyncWriterLockPromise writerPromise;
-                AsyncUpgradedWriterLockPromise upgradedWriterPromise;
-                lock (this)
-                {
-                    if (_currentKey != key)
-                    {
-                        ThrowInvalidKey(AsyncReaderWriterLockType.Reader, 2);
-                    }
-
-                    // We check for underflow, because multiple readers share the same key.
-                    checked
-                    {
-                        if (--_readerLockCount != 0)
-                        {
-                            return;
-                        }
-                    }
-                    // Check upgrade waiter before regular writer queue.
-                    if (_upgradeWaiter != null)
-                    {
-                        _lockType = AsyncReaderWriterLockType.Writer | AsyncReaderWriterLockType.Upgradeable;
-                        _writerType = AsyncReaderWriterLockType.Upgradeable;
-                        // We cache the previous key for when the lock gets downgraded.
-                        SetNextAndPreviousKeys();
-                        upgradedWriterPromise = _upgradeWaiter;
-                        _upgradeWaiter = null;
-                    }
-                    else if (_writerQueue.IsNotEmpty)
-                    {
-                        _lockType = AsyncReaderWriterLockType.Writer | (_lockType & AsyncReaderWriterLockType.Upgradeable);
-                        _writerType = AsyncReaderWriterLockType.Writer;
-                        // We cache the previous key for when the lock gets downgraded.
-                        SetNextAndPreviousKeys();
-                        writerPromise = _writerQueue.Dequeue();
-                        goto ResolveNormalWriter;
-                    }
-                    else
-                    {
-                        // The lock is exited completely.
-                        _lockType = AsyncReaderWriterLockType.None;
-                        _writerType = AsyncReaderWriterLockType.None;
-                        _currentKey = 0L;
-                        return;
-                    }
-                } // lock
-
-                upgradedWriterPromise.Resolve(_currentKey);
-                return;
-
-            ResolveNormalWriter:
-                writerPromise.Resolve(_currentKey);
-            }
-
-            internal void ReleaseNormalWriterLock(long key)
-            {
-                ValueLinkedStack<AsyncReaderLockPromise> readers;
-                AsyncUpgradeableReaderLockPromise upgradeablePromise;
-                AsyncWriterLockPromise writerPromise;
-                lock (this)
-                {
-                    if (_currentKey != key)
-                    {
-                        ThrowInvalidKey(AsyncReaderWriterLockType.Writer, 2);
-                    }
-
-                    // If there are any normal readers waiting, we resolve them, even if there are more writer waiters.
-                    // This prevents writers from starving readers.
-                    // Unless there is a waiting writer, and the contention strategy is writer prioritized.
-                    bool hasWaitingWriter = _writerQueue.IsNotEmpty;
-                    bool prioritizedWriter = hasWaitingWriter & PrioritizeWriters;
-                    if (_readerWaitCount != 0 & !prioritizedWriter)
-                    {
-                        SetNextKey();
-                        var lockType = hasWaitingWriter
-                            ? AsyncReaderWriterLockType.Reader | AsyncReaderWriterLockType.Writer
-                            : AsyncReaderWriterLockType.Reader;
-                        _writerType = AsyncReaderWriterLockType.None;
-                        _readerLockCount = _readerWaitCount;
-                        _readerWaitCount = 0;
-                        readers = _readerQueue.MoveElementsToStack();
-                        if (_upgradeQueue.IsEmpty)
-                        {
-                            _lockType = lockType;
-                            goto ResolveReaders;
-                        }
-                        IncrementReaderLockCount();
-                        _lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
-                        upgradeablePromise = _upgradeQueue.Dequeue();
-                        goto ResolveReadersAndUpgradeableReader;
-                    }
-
-                    // Check upgrade queue before writer queue, to prevent writers from starving upgradeable readers.
-                    // Unless there is a waiting writer, and the contention strategy is writer prioritized.
-                    if (_upgradeQueue.IsNotEmpty & !prioritizedWriter)
-                    {
-                        _lockType = hasWaitingWriter
-                            ? _lockType | AsyncReaderWriterLockType.Upgradeable
-                            : AsyncReaderWriterLockType.Upgradeable;
-                        _writerType = AsyncReaderWriterLockType.None;
-                        IncrementReaderLockCount();
-                        upgradeablePromise = _upgradeQueue.Dequeue();
-                        goto ResolveUpgradeableReader;
-                    }
-                    else if (hasWaitingWriter)
-                    {
-                        SetNextKey();
-                        writerPromise = _writerQueue.Dequeue();
-                    }
-                    else
-                    {
-                        // The lock is exited completely.
-                        _lockType = AsyncReaderWriterLockType.None;
-                        _writerType = AsyncReaderWriterLockType.None;
-                        _currentKey = 0;
-                        return;
-                    }
-                } // lock
-
-                writerPromise.Resolve(_currentKey);
-                return;
-
-            ResolveReadersAndUpgradeableReader:
-                upgradeablePromise.Resolve(_currentKey);
-
-            ResolveReaders:
-                while (readers.IsNotEmpty)
-                {
-                    readers.Pop().Resolve(_currentKey);
-                }
-                return;
-
-            ResolveUpgradeableReader:
-                upgradeablePromise.Resolve(_currentKey);
-            }
-
-            internal void ReleaseUpgradedWriterLock(long key)
-            {
-                ValueLinkedStack<AsyncReaderLockPromise> readers;
-                lock (this)
-                {
-                    if (_currentKey != key)
-                    {
-                        ThrowInvalidKey(AsyncReaderWriterLockType.Writer | AsyncReaderWriterLockType.Upgradeable, 2);
-                    }
-
-                    // This reverts the key to the previous reader key so that releasing the UpgradeableReaderKey will work.
-                    RestorePreviousKey();
-
-                    // If there are any normal readers waiting, we resolve them, even if there are more writer waiters.
-                    // This prevents writers from starving readers.
-                    // Unless there is a waiting writer, and the contention strategy is writer prioritized.
-                    bool hasWaitingWriter = _writerQueue.IsNotEmpty;
-                    bool prioritizedWriter = hasWaitingWriter & PrioritizeWriters;
-                    if (_readerQueue.IsEmpty | prioritizedWriter)
-                    {
-                        // We set reader count to 1 since it was removed when the lock was upgraded.
-                        _readerLockCount = 1;
-                        _lockType = hasWaitingWriter
-                            ? AsyncReaderWriterLockType.Upgradeable | AsyncReaderWriterLockType.Writer
-                            : AsyncReaderWriterLockType.Upgradeable;
-                        _writerType = AsyncReaderWriterLockType.None;
-                        return;
-                    }
-
-                    // We add 1 more reader count since it was removed when the lock was upgraded.
-                    // Unchecked context since we already checked for overflow when the reader lock was acquired.
-                    unchecked
-                    {
-                        _readerLockCount = _readerWaitCount + 1;
-                    }
-                    _readerWaitCount = 0;
-                    _lockType = hasWaitingWriter
-                        ? AsyncReaderWriterLockType.Reader | AsyncReaderWriterLockType.Upgradeable | AsyncReaderWriterLockType.Writer
-                        : AsyncReaderWriterLockType.Reader | AsyncReaderWriterLockType.Upgradeable;
-                    _writerType = AsyncReaderWriterLockType.None;
-                    readers = _readerQueue.MoveElementsToStack();
-                } // lock
-
-                do
-                {
-                    readers.Pop().Resolve(_currentKey);
-                } while (readers.IsNotEmpty);
-            }
-
-            internal void ReleaseUpgradeableReaderLock(long key)
-            {
-                AsyncUpgradeableReaderLockPromise upgradeablePromise;
-                AsyncWriterLockPromise writerPromise;
-                lock (this)
-                {
-                    if (_currentKey != key | _upgradeWaiter != null)
-                    {
-                        ThrowInvalidUpgradeableKeyReleased(key, 2);
-                    }
-
-                    // We check for underflow, because multiple readers share the same key.
-                    checked
-                    {
-                        --_readerLockCount;
-                    }
-                    if (_readerLockCount != 0)
-                    {
-                        // If there's a regular writer waiting, do nothing, to prevent starvation.
-                        // Unless the contention strategy is (upgradeable)reader prioritized.
-                        // Otherwise, if there's an upgradeable reader waiting, resolve it.
-                        if (_upgradeQueue.IsEmpty | (_writerQueue.IsNotEmpty & !PrioritizeReadersOrUpgradeableReaders))
-                        {
-                            _lockType &= ~AsyncReaderWriterLockType.Upgradeable;
-                            return;
-                        }
-                        IncrementReaderLockCount();
-                        upgradeablePromise = _upgradeQueue.Dequeue();
-                        goto ResolveUpgradeableReader;
-                    }
-
-                    // Check writer queue before checking upgrade queue, to prevent starvation.
-                    // Unless there is a waiting upgradeable reader, and the contention strategy is (upgradeable)reader prioritized.
-                    bool hasUpgradeable = _upgradeQueue.IsNotEmpty;
-                    bool prioritizedUpgradeable = hasUpgradeable & PrioritizeReadersOrUpgradeableReaders;
-                    if (_writerQueue.IsNotEmpty & !prioritizedUpgradeable)
-                    {
-                        writerPromise = _writerQueue.Dequeue();
-                        _lockType &= ~AsyncReaderWriterLockType.Upgradeable;
-                        _writerType = AsyncReaderWriterLockType.Writer;
-                        SetNextKey();
-                    }
-                    else if (hasUpgradeable)
-                    {
-                        IncrementReaderLockCount();
-                        upgradeablePromise = _upgradeQueue.Dequeue();
-                        goto ResolveUpgradeableReader;
-                    }
-                    else
-                    {
-                        // The lock is exited completely.
-                        _lockType = AsyncReaderWriterLockType.None;
-                        _writerType = AsyncReaderWriterLockType.None;
-                        _currentKey = 0;
-                        return;
-                    }
-                } // lock
-
-                writerPromise.Resolve(_currentKey);
-                return;
-
-            ResolveUpgradeableReader:
-                upgradeablePromise.Resolve(_currentKey);
-            }
-
-            internal bool TryUnregister(AsyncReaderLockPromise promise)
-            {
-                lock (this)
-                {
-                    if (_readerQueue.TryRemove(promise))
-                    {
-                        --_readerWaitCount;
-                        return true;
-                    }
-                    return false;
-                }
-            }
-
-            internal bool TryUnregister(AsyncWriterLockPromise promise)
-            {
-                ValueLinkedStack<AsyncReaderLockPromise> readers;
-                AsyncUpgradeableReaderLockPromise upgradeablePromise;
-                lock (this)
-                {
-                    if (!_writerQueue.TryRemove(promise))
-                    {
-                        return false;
-                    }
-
-                    bool hasNoWriter = _writerQueue.IsEmpty & _upgradeWaiter == null & _writerType == AsyncReaderWriterLockType.None;
-                    if (!hasNoWriter)
-                    {
-                        return true;
-                    }
-
-                    _lockType &= ~AsyncReaderWriterLockType.Writer;
-                    _readerLockCount += _readerWaitCount;
-                    _readerWaitCount = 0;
-                    readers = _readerQueue.MoveElementsToStack();
-
-                    if ((_lockType & AsyncReaderWriterLockType.Upgradeable) != 0 | _upgradeQueue.IsEmpty)
-                    {
-                        goto ResolveReaders;
-                    }
-
-                    IncrementReaderLockCount();
-                    upgradeablePromise = _upgradeQueue.Dequeue();
-                }
-
-                upgradeablePromise.Resolve(_currentKey);
-
-            ResolveReaders:
-                while (readers.IsNotEmpty)
-                {
-                    readers.Pop().Resolve(_currentKey);
-                }
-                return true;
-            }
-
-            internal bool TryUnregister(AsyncUpgradeableReaderLockPromise promise)
-            {
-                lock (this)
-                {
-                    return _upgradeQueue.TryRemove(promise);
-                }
-            }
-
-            internal bool TryUnregister(AsyncUpgradedWriterLockPromise promise)
-            {
-                ValueLinkedStack<AsyncReaderLockPromise> readers;
-                lock (this)
-                {
-                    if (_upgradeWaiter != promise)
-                    {
-                        return false;
-                    }
-
-                    // Re-add the count that was subtracted when it was upgraded.
-                    IncrementReaderLockCount();
-                    _upgradeWaiter = null;
-
-                    bool hasNoWriter = _writerQueue.IsEmpty & _writerType == AsyncReaderWriterLockType.None;
-                    if (!hasNoWriter)
-                    {
-                        return true;
-                    }
-
-                    _lockType = AsyncReaderWriterLockType.Reader | AsyncReaderWriterLockType.Upgradeable;
-                    _readerLockCount += _readerWaitCount;
-                    _readerWaitCount = 0;
-                    readers = _readerQueue.MoveElementsToStack();
-                }
-
-                while (readers.IsNotEmpty)
-                {
-                    readers.Pop().Resolve(_currentKey);
-                }
-                return true;
-            }
-
-            [MethodImpl(MethodImplOptions.NoInlining)]
-            internal static void ThrowInvalidKey(AsyncReaderWriterLockType keyType, int skipFrames)
-            {
-                throw new InvalidOperationException($"The {GetKeyTypeString(keyType)} is invalid for this operation.", GetFormattedStacktrace(skipFrames + 1));
-            }
-
-            [MethodImpl(MethodImplOptions.NoInlining)]
-            internal void ThrowInvalidUpgradeableKeyReleased(long key, int skipFrames)
-            {
-                string message = _currentKey != key
-                    ? "The AsyncReaderWriterLock.UpgradeableReaderKey is invalid for this operation. Did you dispose it before the upgraded writer key?"
-                    : "The AsyncReaderWriterLock.UpgradeableReaderKey cannot be released before the UpgradeToWriterLockAsync promise is complete.";
-                throw new InvalidOperationException(message, GetFormattedStacktrace(skipFrames + 1));
-            }
-
-            internal static string GetKeyTypeString(AsyncReaderWriterLockType keyType)
-            {
-                return $"{nameof(AsyncReaderWriterLock)}." +
-                    (keyType == AsyncReaderWriterLockType.Reader ? nameof(AsyncReaderWriterLock.ReaderKey)
-                    : keyType == AsyncReaderWriterLockType.Writer ? nameof(AsyncReaderWriterLock.WriterKey)
-                    : keyType == AsyncReaderWriterLockType.Upgradeable ? nameof(AsyncReaderWriterLock.UpgradeableReaderKey)
-                    : nameof(AsyncReaderWriterLock.UpgradedWriterKey));
-            }
-
-            partial void ValidateNotAbandoned();
-#if PROMISE_DEBUG
-            volatile private string _abandonedMessage;
-
-            partial void ValidateNotAbandoned()
-            {
-                if (_abandonedMessage != null)
-                {
-                    throw new AbandonedLockException(_abandonedMessage);
-                }
-            }
-
-            internal void NotifyAbandoned(string abandonedMessage, ITraceable traceable)
-            {
-                ValueLinkedStack<AsyncReaderLockPromise> readers;
-                ValueLinkedStack<AsyncWriterLockPromise> writers;
-                ValueLinkedStack<AsyncUpgradeableReaderLockPromise> upgradeables;
-                AsyncUpgradedWriterLockPromise upgradeWaiter;
-                lock (this)
-                {
-                    if (_abandonedMessage != null)
-                    {
-                        // Additional abandoned keys could be caused by the first abandoned key, so do nothing.
-                        return;
-                    }
-                    _abandonedMessage = abandonedMessage;
-
-                    readers = _readerQueue.MoveElementsToStack();
-                    writers = _writerQueue.MoveElementsToStack();
-                    upgradeables = _upgradeQueue.MoveElementsToStack();
-                    upgradeWaiter = _upgradeWaiter;
-                    _upgradeWaiter = null;
-                }
-
-                var rejectContainer = CreateRejectContainer(new AbandonedLockException(abandonedMessage), int.MinValue, null, traceable);
-
-                while (readers.IsNotEmpty)
-                {
-                    readers.Pop().Reject(rejectContainer);
-                }
-                while (writers.IsNotEmpty)
-                {
-                    writers.Pop().Reject(rejectContainer);
-                }
-                while (upgradeables.IsNotEmpty)
-                {
-                    upgradeables.Pop().Reject(rejectContainer);
-                }
-                upgradeWaiter?.Reject(rejectContainer);
-
-                rejectContainer.ReportUnhandled();
-            }
-#endif // PROMISE_DEBUG
-        } // class AsyncReaderWriterLockInternal
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
@@ -2017,11 +303,11 @@ namespace Proto.Promises
             {
                 public CausalityTrace Trace { get; set; }
 
-                internal readonly AsyncReaderWriterLockInternal _owner;
+                internal readonly AsyncReaderWriterLock _owner;
                 private int _isDisposedFlag;
                 private readonly AsyncReaderWriterLockType _keyType;
 
-                internal DisposedChecker(AsyncReaderWriterLockInternal owner, AsyncReaderWriterLockType keyType, ITraceable traceable)
+                internal DisposedChecker(AsyncReaderWriterLock owner, AsyncReaderWriterLockType keyType, ITraceable traceable)
                 {
                     _owner = owner;
                     _keyType = keyType;
@@ -2037,14 +323,14 @@ namespace Proto.Promises
 
                 ~DisposedChecker()
                 {
-                    _owner.NotifyAbandoned("An " + AsyncReaderWriterLockInternal.GetKeyTypeString(_keyType) + " was never disposed.", this);
+                    _owner.NotifyAbandoned("An " + AsyncReaderWriterLock.GetKeyTypeString(_keyType) + " was never disposed.", this);
                 }
 
                 internal void ValidateNotDisposed()
                 {
                     if (_isDisposedFlag != 0)
                     {
-                        throw new ObjectDisposedException(AsyncReaderWriterLockInternal.GetKeyTypeString(_keyType));
+                        throw new ObjectDisposedException(AsyncReaderWriterLock.GetKeyTypeString(_keyType));
                     }
                 }
 
@@ -2055,18 +341,18 @@ namespace Proto.Promises
                 }
             }
 
-            internal readonly AsyncReaderWriterLockInternal _owner;
+            internal readonly AsyncReaderWriterLock _owner;
             internal readonly long _key;
             private readonly DisposedChecker _disposedChecker;
 
-            internal AsyncReaderWriterLockKey(AsyncReaderWriterLockInternal owner, long key, AsyncReaderWriterLockType lockType, ITraceable traceable)
+            internal AsyncReaderWriterLockKey(AsyncReaderWriterLock owner, long key, AsyncReaderWriterLockType lockType, ITraceable traceable)
             {
                 _owner = owner;
                 _key = key;
                 _disposedChecker = new DisposedChecker(owner, lockType, traceable);
             }
 
-            internal AsyncReaderWriterLockKey(AsyncReaderWriterLockInternal owner)
+            internal AsyncReaderWriterLockKey(AsyncReaderWriterLock owner)
             {
                 _owner = owner;
                 _key = 0;
@@ -2079,7 +365,7 @@ namespace Proto.Promises
                 var disposedChecker = _disposedChecker;
                 if ((owner == null | disposedChecker == null) || owner != disposedChecker._owner)
                 {
-                    AsyncReaderWriterLockInternal.ThrowInvalidKey(AsyncReaderWriterLockType.Reader, 2);
+                    AsyncReaderWriterLock.ThrowInvalidKey(AsyncReaderWriterLockType.Reader, 2);
                 }
                 lock (disposedChecker)
                 {
@@ -2095,7 +381,7 @@ namespace Proto.Promises
                 var disposedChecker = _disposedChecker;
                 if ((owner == null | disposedChecker == null) || owner != disposedChecker._owner)
                 {
-                    AsyncReaderWriterLockInternal.ThrowInvalidKey(AsyncReaderWriterLockType.Writer, 2);
+                    AsyncReaderWriterLock.ThrowInvalidKey(AsyncReaderWriterLockType.Writer, 2);
                 }
                 lock (disposedChecker)
                 {
@@ -2111,7 +397,7 @@ namespace Proto.Promises
                 var disposedChecker = _disposedChecker;
                 if ((owner == null | disposedChecker == null) || owner != disposedChecker._owner)
                 {
-                    AsyncReaderWriterLockInternal.ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
+                    AsyncReaderWriterLock.ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
                 }
                 lock (disposedChecker)
                 {
@@ -2127,7 +413,7 @@ namespace Proto.Promises
                 var disposedChecker = _disposedChecker;
                 if ((owner == null | disposedChecker == null) || owner != disposedChecker._owner)
                 {
-                    AsyncReaderWriterLockInternal.ThrowInvalidKey(AsyncReaderWriterLockType.Writer, 2);
+                    AsyncReaderWriterLock.ThrowInvalidKey(AsyncReaderWriterLockType.Writer, 2);
                 }
                 lock (disposedChecker)
                 {
@@ -2145,12 +431,12 @@ namespace Proto.Promises
 #else // PROMISE_DEBUG
         partial struct AsyncReaderWriterLockKey
         {
-            internal readonly AsyncReaderWriterLockInternal _owner;
+            internal readonly AsyncReaderWriterLock _owner;
             internal readonly long _key;
 
             [MethodImpl(InlineOption)]
 #pragma warning disable IDE0060 // Remove unused parameter
-            internal AsyncReaderWriterLockKey(AsyncReaderWriterLockInternal owner, long key, AsyncReaderWriterLockType lockType, ITraceable traceable)
+            internal AsyncReaderWriterLockKey(AsyncReaderWriterLock owner, long key, AsyncReaderWriterLockType lockType, ITraceable traceable)
 #pragma warning restore IDE0060 // Remove unused parameter
             {
                 _owner = owner;
@@ -2158,7 +444,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal AsyncReaderWriterLockKey(AsyncReaderWriterLockInternal owner)
+            internal AsyncReaderWriterLockKey(AsyncReaderWriterLock owner)
             {
                 _owner = owner;
                 _key = 0;
@@ -2167,37 +453,37 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void ReleaseReaderLock()
             {
-                ValidateAndGetOwner(Internal.AsyncReaderWriterLockType.Reader).ReleaseReaderLock(_key);
+                ValidateAndGetOwner(AsyncReaderWriterLockType.Reader).ReleaseReaderLock(_key);
 
             }
 
             [MethodImpl(InlineOption)]
             internal void ReleaseWriterLock()
             {
-                ValidateAndGetOwner(Internal.AsyncReaderWriterLockType.Writer).ReleaseNormalWriterLock(_key);
+                ValidateAndGetOwner(AsyncReaderWriterLockType.Writer).ReleaseNormalWriterLock(_key);
 
             }
 
             [MethodImpl(InlineOption)]
             internal void ReleaseUpgradeableReaderLock()
             {
-                ValidateAndGetOwner(Internal.AsyncReaderWriterLockType.Upgradeable).ReleaseUpgradeableReaderLock(_key);
+                ValidateAndGetOwner(AsyncReaderWriterLockType.Upgradeable).ReleaseUpgradeableReaderLock(_key);
 
             }
 
             [MethodImpl(InlineOption)]
             internal void ReleaseUpgradedWriterLock()
             {
-                ValidateAndGetOwner(Internal.AsyncReaderWriterLockType.Writer).ReleaseUpgradedWriterLock(_key);
+                ValidateAndGetOwner(AsyncReaderWriterLockType.Writer).ReleaseUpgradedWriterLock(_key);
 
             }
 
-            private Internal.AsyncReaderWriterLockInternal ValidateAndGetOwner(AsyncReaderWriterLockType lockType)
+            private AsyncReaderWriterLock ValidateAndGetOwner(AsyncReaderWriterLockType lockType)
             {
                 var owner = _owner;
                 if (owner == null)
                 {
-                    AsyncReaderWriterLockInternal.ThrowInvalidKey(lockType, 3);
+                    AsyncReaderWriterLock.ThrowInvalidKey(lockType, 3);
                 }
                 return owner;
             }
@@ -2215,20 +501,1876 @@ namespace Proto.Promises
     namespace Threading
     {
 #if UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        [Flags]
+        internal enum AsyncReaderWriterLockType : byte
+        {
+            None = 0,
+            Reader = 1 << 0,
+            Writer = 1 << 1,
+            Upgradeable = 1 << 2
+        }
+
         partial class AsyncReaderWriterLock
         {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
+            // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
+            private struct SmallFields
+            {
+                internal Internal.SpinLocker _locker;
+                volatile internal AsyncReaderWriterLockType _lockType;
+                internal AsyncReaderWriterLockType _writerType;
+                internal readonly ContentionStrategy _contentionStrategy;
+
+                internal SmallFields(ContentionStrategy contentionStrategy)
+                {
+                    _locker = new Internal.SpinLocker();
+                    _lockType = AsyncReaderWriterLockType.None;
+                    _writerType = AsyncReaderWriterLockType.None;
+                    _contentionStrategy = contentionStrategy;
+                }
+            }
+
+            // If there is contention on the lock, we alternate between writers and readers, so one type of lock won't starve out the other.
+            // We also alternate between upgraded writers and regular writers to prevent writer starvation.
+
+            // These must not be readonly.
+            private Internal.ValueLinkedQueue<Internal.AsyncReaderLockPromise> _readerQueue = new Internal.ValueLinkedQueue<Internal.AsyncReaderLockPromise>();
+            private Internal.ValueLinkedQueue<Internal.AsyncWriterLockPromise> _writerQueue = new Internal.ValueLinkedQueue<Internal.AsyncWriterLockPromise>();
+            private Internal.ValueLinkedQueue<Internal.AsyncUpgradeableReaderLockPromise> _upgradeQueue = new Internal.ValueLinkedQueue<Internal.AsyncUpgradeableReaderLockPromise>();
+            private Internal.AsyncUpgradedWriterLockPromise _upgradeWaiter;
+            private long _currentKey;
+            // This stores the previous reader key from an upgraded writer.
+            // We store it here instead of in the WriterKey struct to prevent bloating other types that store the struct (like async state machines).
+            private long _previousReaderKey;
+            private uint _readerLockCount;
+            private uint _readerWaitCount;
+            // This must not be readonly.
+            private SmallFields _smallFields;
+
+            private bool PrioritizeWriters
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get => _smallFields._contentionStrategy == ContentionStrategy.PrioritizeWriters;
+            }
+
+            private bool PrioritizeReaders
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get => _smallFields._contentionStrategy == ContentionStrategy.PrioritizeReaders;
+            }
+
+            private bool PrioritizeUpgradeableReaders
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get => _smallFields._contentionStrategy == ContentionStrategy.PrioritizeUpgradeableReaders;
+            }
+
+            private bool PrioritizeReadersOrUpgradeableReaders
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get => _smallFields._contentionStrategy >= ContentionStrategy.PrioritizeReaders;
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            private void SetNextKey()
+            {
+                _currentKey = Internal.KeyGenerator<AsyncReaderWriterLock>.Next();
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            private void SetNextAndPreviousKeys()
+            {
+                _previousReaderKey = _currentKey;
+                SetNextKey();
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            private void RestorePreviousKey()
+            {
+                _currentKey = _previousReaderKey;
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            private void IncrementReaderLockCount()
+            {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                checked
+#else
+                unchecked
+#endif
+                {
+                    ++_readerLockCount;
+                }
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            private void DecrementReaderLockCount()
+            {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                checked
+#else
+                unchecked
+#endif
+                {
+                    --_readerLockCount;
+                }
+            }
+
+            private void ValidateReaderCounts()
+            {
+                // Check to make sure the reader count doesn't overflow. Subtract 1 to leave room for an upgradeable reader lock.
+                // We could queue up reader locks that extend beyond the maximum value, but that would cost extra overhead that I don't think is worth it.
+                // If the count overflows, the user is probably doing something wrong, anyway.
+                const uint maxReaders = uint.MaxValue - 1u;
+                if ((_readerLockCount + _readerWaitCount) == maxReaders)
+                {
+                    _smallFields._locker.Exit();
+                    throw new OverflowException("AsyncReaderWriterLock does not support more than " + maxReaders + " simultaneous reader locks.");
+                }
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            private bool CanEnterReaderLock(AsyncReaderWriterLockType currentLockType)
+            {
+                // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
+                // If a writer lock is taken or waiting to be taken, and the contention strategy is not reader prioritized,
+                // we wait for it to be released, to prevent starvation.
+                bool noWriters = (currentLockType & AsyncReaderWriterLockType.Writer) == 0;
+                bool noUpgradeWriter = (currentLockType & (AsyncReaderWriterLockType.Writer | AsyncReaderWriterLockType.Upgradeable)) == 0;
+                bool writerDoesNotOwnLock = _smallFields._writerType == AsyncReaderWriterLockType.None;
+                bool prioritizedEntrance = writerDoesNotOwnLock & (PrioritizeReaders | (PrioritizeUpgradeableReaders & noUpgradeWriter));
+                return noWriters | prioritizedEntrance;
+            }
+
+            private Promise<ReaderKey> ReaderLockAsyncImpl()
+            {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
+
+                Internal.AsyncReaderLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+                    ValidateReaderCounts();
+
+                    // Read the _smallFields._lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    var lockType = _smallFields._lockType;
+
+                    if (CanEnterReaderLock(lockType))
+                    {
+                        IncrementReaderLockCount();
+                        if (lockType == AsyncReaderWriterLockType.None)
+                        {
+                            SetNextKey();
+                        }
+                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Reader;
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        return Promise.Resolved(new ReaderKey(this, key, null));
+                    }
+
+                    // Unchecked context since we're manually checking overflow.
+                    unchecked
+                    {
+                        ++_readerWaitCount;
+                    }
+                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    _readerQueue.Enqueue(promise);
+                }
+                _smallFields._locker.Exit();
+                return new Promise<ReaderKey>(promise, promise.Id);
+            }
+
+            private Promise<ReaderKey> ReaderLockAsyncImpl(CancelationToken cancelationToken)
+            {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
+
+                // Quick check to see if the token is already canceled before entering.
+                if (cancelationToken.IsCancelationRequested)
+                {
+                    ValidateNotAbandoned();
+
+                    return Promise<ReaderKey>.Canceled();
+                }
+
+                Internal.AsyncReaderLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+                    ValidateReaderCounts();
+
+                    // Read the _smallFields._lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    var lockType = _smallFields._lockType;
+
+                    if (CanEnterReaderLock(lockType))
+                    {
+                        IncrementReaderLockCount();
+                        if (lockType == AsyncReaderWriterLockType.None)
+                        {
+                            SetNextKey();
+                        }
+                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Reader;
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        return Promise.Resolved(new ReaderKey(this, key, null));
+                    }
+
+                    // Unchecked context since we're manually checking overflow.
+                    unchecked
+                    {
+                        ++_readerWaitCount;
+                    }
+                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.SetCanceledImmediate();
+                    }
+                    else
+                    {
+                        _readerQueue.Enqueue(promise);
+                    }
+                }
+                _smallFields._locker.Exit();
+                return new Promise<ReaderKey>(promise, promise.Id);
+            }
+
+            private ReaderKey ReaderLockImpl()
+            {
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
+                var spinner = new SpinWait();
+                while (!CanEnterReaderLock(_smallFields._lockType) & !spinner.NextSpinWillYield)
+                {
+                    spinner.SpinOnce();
+                }
+
+                Internal.AsyncReaderLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+                    ValidateReaderCounts();
+
+                    // Read the _smallFields._lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    var lockType = _smallFields._lockType;
+
+                    if (CanEnterReaderLock(lockType))
+                    {
+                        IncrementReaderLockCount();
+                        if (lockType == AsyncReaderWriterLockType.None)
+                        {
+                            SetNextKey();
+                        }
+                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Reader;
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        return new ReaderKey(this, key, null);
+                    }
+
+                    // Unchecked context since we're manually checking overflow.
+                    unchecked
+                    {
+                        ++_readerWaitCount;
+                    }
+                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, null);
+                    _readerQueue.Enqueue(promise);
+                }
+                _smallFields._locker.Exit();
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
+                resultContainer.RethrowIfRejected();
+                return resultContainer.Value;
+            }
+
+            private ReaderKey ReaderLockImpl(CancelationToken cancelationToken)
+            {
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
+                var spinner = new SpinWait();
+                bool isCanceled = cancelationToken.IsCancelationRequested;
+                while (!CanEnterReaderLock(_smallFields._lockType) & !isCanceled & !spinner.NextSpinWillYield)
+                {
+                    spinner.SpinOnce();
+                    isCanceled = cancelationToken.IsCancelationRequested;
+                }
+
+                // Quick check to see if the token is already canceled before entering.
+                if (isCanceled)
+                {
+                    ValidateNotAbandoned();
+
+                    throw Promise.CancelException();
+                }
+
+                Internal.AsyncReaderLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+                    ValidateReaderCounts();
+
+                    // Read the _smallFields._lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    var lockType = _smallFields._lockType;
+
+                    if (CanEnterReaderLock(lockType))
+                    {
+                        IncrementReaderLockCount();
+                        if (lockType == AsyncReaderWriterLockType.None)
+                        {
+                            SetNextKey();
+                        }
+                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Reader;
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        return new ReaderKey(this, key, null);
+                    }
+
+                    // Unchecked context since we're manually checking overflow.
+                    unchecked
+                    {
+                        ++_readerWaitCount;
+                    }
+                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, null);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        _smallFields._locker.Exit();
+                        promise.DisposeImmediate();
+                        throw Promise.CancelException();
+                    }
+                    _readerQueue.Enqueue(promise);
+                }
+                _smallFields._locker.Exit();
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
+                resultContainer.RethrowIfRejectedOrCanceled();
+                return resultContainer.Value;
+            }
+
+            private bool TryEnterReaderLockImpl(out ReaderKey readerKey)
+            {
+                // We don't spinwait here because we want to return immediately without waiting.
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+                    ValidateReaderCounts();
+
+                    // Read the _smallFields._lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    var lockType = _smallFields._lockType;
+
+                    if (CanEnterReaderLock(lockType))
+                    {
+                        IncrementReaderLockCount();
+                        if (lockType == AsyncReaderWriterLockType.None)
+                        {
+                            SetNextKey();
+                        }
+                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Reader;
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        readerKey = new ReaderKey(this, key, null);
+                        return true;
+                    }
+                }
+                _smallFields._locker.Exit();
+                readerKey = default;
+                return false;
+            }
+
+            private Promise<(bool didEnter, ReaderKey readerKey)> TryEnterReaderLockAsyncImpl(CancelationToken cancelationToken)
+            {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
+
+                Internal.AsyncReaderLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+                    ValidateReaderCounts();
+
+                    // Read the _smallFields._lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    var lockType = _smallFields._lockType;
+
+                    if (CanEnterReaderLock(lockType))
+                    {
+                        IncrementReaderLockCount();
+                        if (lockType == AsyncReaderWriterLockType.None)
+                        {
+                            SetNextKey();
+                        }
+                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Reader;
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        return Promise.Resolved((true, new ReaderKey(this, key, null)));
+                    }
+                    // Quick check to see if the token is already canceled before waiting.
+                    if (cancelationToken.IsCancelationRequested)
+                    {
+                        _smallFields._locker.Exit();
+                        return Promise.Resolved((false, default(ReaderKey)));
+                    }
+
+                    // Unchecked context since we're manually checking overflow.
+                    unchecked
+                    {
+                        ++_readerWaitCount;
+                    }
+                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, null);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        _smallFields._locker.Exit();
+                        promise.DisposeImmediate();
+                        return Promise.Resolved((false, default(ReaderKey)));
+                    }
+                    _readerQueue.Enqueue(promise);
+                }
+                _smallFields._locker.Exit();
+                return new Promise<ReaderKey>(promise, promise.Id)
+                    .ContinueWith(resultContainer =>
+                    {
+                        resultContainer.RethrowIfRejected();
+                        return (resultContainer.State == Promise.State.Resolved, resultContainer.Value);
+                    });
+            }
+
+            private bool TryEnterReaderLockImpl(out ReaderKey readerKey, CancelationToken cancelationToken)
+            {
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
+                var spinner = new SpinWait();
+                bool isCanceled = cancelationToken.IsCancelationRequested;
+                while (!CanEnterReaderLock(_smallFields._lockType) & !isCanceled & !spinner.NextSpinWillYield)
+                {
+                    spinner.SpinOnce();
+                    isCanceled = cancelationToken.IsCancelationRequested;
+                }
+
+                Internal.AsyncReaderLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+                    ValidateReaderCounts();
+
+                    // Read the _smallFields._lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    var lockType = _smallFields._lockType;
+
+                    if (CanEnterReaderLock(lockType))
+                    {
+                        IncrementReaderLockCount();
+                        if (lockType == AsyncReaderWriterLockType.None)
+                        {
+                            SetNextKey();
+                        }
+                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Reader;
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        readerKey = new ReaderKey(this, key, null);
+                        return true;
+                    }
+                    // Quick check to see if the token is already canceled before waiting.
+                    if (isCanceled)
+                    {
+                        _smallFields._locker.Exit();
+                        readerKey = default;
+                        return false;
+                    }
+
+                    // Unchecked context since we're manually checking overflow.
+                    unchecked
+                    {
+                        ++_readerWaitCount;
+                    }
+                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, null);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        _smallFields._locker.Exit();
+                        promise.DisposeImmediate();
+                        readerKey = default;
+                        return false;
+                    }
+                    _readerQueue.Enqueue(promise);
+                }
+                _smallFields._locker.Exit();
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
+                resultContainer.RethrowIfRejected();
+                readerKey = resultContainer.Value;
+                return resultContainer.State == Promise.State.Resolved;
+            }
+
+            private Promise<WriterKey> WriterLockAsyncImpl()
+            {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
+                Internal.AsyncWriterLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+
+                    // Writer locks are mutually exclusive.
+                    var lockType = _smallFields._lockType;
+                    _smallFields._lockType = lockType | AsyncReaderWriterLockType.Writer;
+                    if (lockType == AsyncReaderWriterLockType.None)
+                    {
+                        _smallFields._writerType = AsyncReaderWriterLockType.Writer;
+                        SetNextKey();
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        return Promise.Resolved(new WriterKey(this, key, null));
+                    }
+
+                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    _writerQueue.Enqueue(promise);
+                }
+                _smallFields._locker.Exit();
+                return new Promise<WriterKey>(promise, promise.Id);
+            }
+
+            private Promise<WriterKey> WriterLockAsyncImpl(CancelationToken cancelationToken)
+            {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
+
+                // Quick check to see if the token is already canceled before entering.
+                if (cancelationToken.IsCancelationRequested)
+                {
+                    ValidateNotAbandoned();
+
+                    return Promise<WriterKey>.Canceled();
+                }
+
+                Internal.AsyncWriterLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+
+                    // Writer locks are mutually exclusive.
+                    var lockType = _smallFields._lockType;
+                    _smallFields._lockType = lockType | AsyncReaderWriterLockType.Writer;
+                    if (lockType == AsyncReaderWriterLockType.None)
+                    {
+                        _smallFields._writerType = AsyncReaderWriterLockType.Writer;
+                        SetNextKey();
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        return Promise.Resolved(new WriterKey(this, key, null));
+                    }
+
+                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.SetCanceledImmediate();
+                    }
+                    else
+                    {
+                        _writerQueue.Enqueue(promise);
+                    }
+                }
+                _smallFields._locker.Exit();
+                return new Promise<WriterKey>(promise, promise.Id);
+            }
+
+            private WriterKey WriterLockImpl()
+            {
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
+                var spinner = new SpinWait();
+                while (_smallFields._lockType != AsyncReaderWriterLockType.None & !spinner.NextSpinWillYield)
+                {
+                    spinner.SpinOnce();
+                }
+
+                Internal.AsyncWriterLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+
+                    // Writer locks are mutually exclusive.
+                    var lockType = _smallFields._lockType;
+                    _smallFields._lockType = lockType | AsyncReaderWriterLockType.Writer;
+                    if (lockType == AsyncReaderWriterLockType.None)
+                    {
+                        _smallFields._writerType = AsyncReaderWriterLockType.Writer;
+                        SetNextKey();
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        return new WriterKey(this, key, null);
+                    }
+
+                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, null);
+                    _writerQueue.Enqueue(promise);
+                }
+                _smallFields._locker.Exit();
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
+                resultContainer.RethrowIfRejected();
+                return resultContainer.Value;
+            }
+
+            private WriterKey WriterLockImpl(CancelationToken cancelationToken)
+            {
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
+                var spinner = new SpinWait();
+                bool isCanceled = cancelationToken.IsCancelationRequested;
+                while (_smallFields._lockType != AsyncReaderWriterLockType.None & !isCanceled & !spinner.NextSpinWillYield)
+                {
+                    spinner.SpinOnce();
+                    isCanceled = cancelationToken.IsCancelationRequested;
+                }
+
+                // Quick check to see if the token is already canceled before entering.
+                if (isCanceled)
+                {
+                    ValidateNotAbandoned();
+
+                    throw Promise.CancelException();
+                }
+
+                Internal.AsyncWriterLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+
+                    // Writer locks are mutually exclusive.
+                    var lockType = _smallFields._lockType;
+                    _smallFields._lockType = lockType | AsyncReaderWriterLockType.Writer;
+                    if (lockType == AsyncReaderWriterLockType.None)
+                    {
+                        _smallFields._writerType = AsyncReaderWriterLockType.Writer;
+                        SetNextKey();
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        return new WriterKey(this, key, null);
+                    }
+
+                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, null);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        _smallFields._locker.Exit();
+                        promise.DisposeImmediate();
+                        throw Promise.CancelException();
+                    }
+                    _writerQueue.Enqueue(promise);
+                }
+                _smallFields._locker.Exit();
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
+                resultContainer.RethrowIfRejectedOrCanceled();
+                return resultContainer.Value;
+            }
+
+            private bool TryEnterWriterLockImpl(out WriterKey writerKey)
+            {
+                // We don't spinwait here because we want to return immediately without waiting.
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+
+                    // Writer locks are mutually exclusive.
+                    var lockType = _smallFields._lockType;
+                    if (lockType == AsyncReaderWriterLockType.None)
+                    {
+                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Writer;
+                        _smallFields._writerType = AsyncReaderWriterLockType.Writer;
+                        SetNextKey();
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        writerKey = new WriterKey(this, key, null);
+                        return true;
+                    }
+                }
+                _smallFields._locker.Exit();
+                writerKey = default;
+                return false;
+            }
+
+            private Promise<(bool didEnter, WriterKey writerKey)> TryEnterWriterLockAsyncImpl(CancelationToken cancelationToken)
+            {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
+                Internal.AsyncWriterLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+
+                    // Writer locks are mutually exclusive.
+                    var lockType = _smallFields._lockType;
+                    if (lockType == AsyncReaderWriterLockType.None)
+                    {
+                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Writer;
+                        _smallFields._writerType = AsyncReaderWriterLockType.Writer;
+                        SetNextKey();
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        return Promise.Resolved((true, new WriterKey(this, key, null)));
+                    }
+                    // Quick check to see if the token is already canceled before waiting.
+                    if (cancelationToken.IsCancelationRequested)
+                    {
+                        _smallFields._locker.Exit();
+                        return Promise.Resolved((false, default(WriterKey)));
+                    }
+
+                    _smallFields._lockType = lockType | AsyncReaderWriterLockType.Writer;
+                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        _smallFields._locker.Exit();
+                        promise.DisposeImmediate();
+                        return Promise.Resolved((false, default(WriterKey)));
+                    }
+                    _writerQueue.Enqueue(promise);
+                }
+                _smallFields._locker.Exit();
+                return new Promise<WriterKey>(promise, promise.Id)
+                    .ContinueWith(resultContainer =>
+                    {
+                        resultContainer.RethrowIfRejected();
+                        return (resultContainer.State == Promise.State.Resolved, resultContainer.Value);
+                    });
+            }
+
+            private bool TryEnterWriterLockImpl(out WriterKey writerKey, CancelationToken cancelationToken)
+            {
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
+                var spinner = new SpinWait();
+                bool isCanceled = cancelationToken.IsCancelationRequested;
+                while (_smallFields._lockType != AsyncReaderWriterLockType.None & !isCanceled & !spinner.NextSpinWillYield)
+                {
+                    spinner.SpinOnce();
+                    isCanceled = cancelationToken.IsCancelationRequested;
+                }
+
+                Internal.AsyncWriterLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+
+                    // Writer locks are mutually exclusive.
+                    var lockType = _smallFields._lockType;
+                    if (lockType == AsyncReaderWriterLockType.None)
+                    {
+                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Writer;
+                        _smallFields._writerType = AsyncReaderWriterLockType.Writer;
+                        SetNextKey();
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        writerKey = new WriterKey(this, key, null);
+                        return true;
+                    }
+                    // Quick check to see if the token is already canceled before waiting.
+                    if (isCanceled)
+                    {
+                        _smallFields._locker.Exit();
+                        writerKey = default;
+                        return false;
+                    }
+
+                    _smallFields._lockType = lockType | AsyncReaderWriterLockType.Writer;
+                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        _smallFields._locker.Exit();
+                        promise.DisposeImmediate();
+                        writerKey = default;
+                        return false;
+                    }
+                    _writerQueue.Enqueue(promise);
+                }
+                _smallFields._locker.Exit();
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
+                resultContainer.RethrowIfRejected();
+                writerKey = resultContainer.Value;
+                return resultContainer.State == Promise.State.Resolved;
+            }
+
+            [MethodImpl(Internal.InlineOption)]
+            private bool CanEnterUpgradeableReaderLock(AsyncReaderWriterLockType currentLockType)
+            {
+                // Normal reader locks can be taken simultaneously along with an upgradeable reader lock.
+                // Only 1 upgradeable reader lock is allowed at a time.
+                // If a writer lock is taken or waiting to be taken, and the contention strategy is not reader prioritized,
+                // we wait for it to be released, to prevent starvation.
+                bool noWritersOrUpgradeableReaders = currentLockType <= AsyncReaderWriterLockType.Reader;
+                bool writerDoesNotOwnLock = _smallFields._writerType == AsyncReaderWriterLockType.None;
+                bool noUpgradeableReaders = _upgradeQueue.IsEmpty & (currentLockType & AsyncReaderWriterLockType.Upgradeable) == 0;
+                bool prioritizedEntrance = writerDoesNotOwnLock & noUpgradeableReaders & PrioritizeReadersOrUpgradeableReaders;
+                return noWritersOrUpgradeableReaders | prioritizedEntrance;
+            }
+
+            private Promise<UpgradeableReaderKey> UpgradeableReaderLockAsyncImpl()
+            {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
+                Internal.AsyncUpgradeableReaderLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+
+                    // Read the _smallFields._lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    var lockType = _smallFields._lockType;
+
+                    if (CanEnterUpgradeableReaderLock(lockType))
+                    {
+                        IncrementReaderLockCount();
+                        if (lockType == AsyncReaderWriterLockType.None)
+                        {
+                            SetNextKey();
+                        }
+                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        return Promise.Resolved(new UpgradeableReaderKey(this, key, null));
+                    }
+
+                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    _upgradeQueue.Enqueue(promise);
+                }
+                _smallFields._locker.Exit();
+                return new Promise<UpgradeableReaderKey>(promise, promise.Id);
+            }
+
+            private Promise<UpgradeableReaderKey> UpgradeableReaderLockAsyncImpl(CancelationToken cancelationToken)
+            {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
+
+                // Quick check to see if the token is already canceled before entering.
+                if (cancelationToken.IsCancelationRequested)
+                {
+                    ValidateNotAbandoned();
+
+                    return Promise<UpgradeableReaderKey>.Canceled();
+                }
+
+                Internal.AsyncUpgradeableReaderLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+
+                    // Read the _smallFields._lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    var lockType = _smallFields._lockType;
+
+                    if (CanEnterUpgradeableReaderLock(lockType))
+                    {
+                        IncrementReaderLockCount();
+                        if (lockType == AsyncReaderWriterLockType.None)
+                        {
+                            SetNextKey();
+                        }
+                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        return Promise.Resolved(new UpgradeableReaderKey(this, key, null));
+                    }
+
+                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.SetCanceledImmediate();
+                    }
+                    else
+                    {
+                        _upgradeQueue.Enqueue(promise);
+                    }
+                }
+                _smallFields._locker.Exit();
+                return new Promise<UpgradeableReaderKey>(promise, promise.Id);
+            }
+
+            private UpgradeableReaderKey UpgradeableReaderLockImpl()
+            {
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
+                var spinner = new SpinWait();
+                while (!CanEnterUpgradeableReaderLock(_smallFields._lockType) & !spinner.NextSpinWillYield)
+                {
+                    spinner.SpinOnce();
+                }
+
+                Internal.AsyncUpgradeableReaderLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+
+                    // Read the _smallFields._lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    var lockType = _smallFields._lockType;
+
+                    if (CanEnterUpgradeableReaderLock(lockType))
+                    {
+                        IncrementReaderLockCount();
+                        if (lockType == AsyncReaderWriterLockType.None)
+                        {
+                            SetNextKey();
+                        }
+                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        return new UpgradeableReaderKey(this, key, null);
+                    }
+
+                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, null);
+                    _upgradeQueue.Enqueue(promise);
+                }
+                _smallFields._locker.Exit();
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
+                resultContainer.RethrowIfRejected();
+                return resultContainer.Value;
+            }
+
+            private UpgradeableReaderKey UpgradeableReaderLockImpl(CancelationToken cancelationToken)
+            {
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
+                var spinner = new SpinWait();
+                bool isCanceled = cancelationToken.IsCancelationRequested;
+                while (!CanEnterUpgradeableReaderLock(_smallFields._lockType) & !isCanceled & !spinner.NextSpinWillYield)
+                {
+                    spinner.SpinOnce();
+                    isCanceled = cancelationToken.IsCancelationRequested;
+                }
+
+                // Quick check to see if the token is already canceled before entering.
+                if (isCanceled)
+                {
+                    ValidateNotAbandoned();
+
+                    throw Promise.CancelException();
+                }
+
+                Internal.AsyncUpgradeableReaderLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+
+                    // Read the _smallFields._lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    var lockType = _smallFields._lockType;
+
+                    if (CanEnterUpgradeableReaderLock(lockType))
+                    {
+                        IncrementReaderLockCount();
+                        if (lockType == AsyncReaderWriterLockType.None)
+                        {
+                            SetNextKey();
+                        }
+                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        return new UpgradeableReaderKey(this, key, null);
+                    }
+
+                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, null);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        _smallFields._locker.Exit();
+                        promise.DisposeImmediate();
+                        throw Promise.CancelException();
+                    }
+                    _upgradeQueue.Enqueue(promise);
+                }
+                _smallFields._locker.Exit();
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
+                resultContainer.RethrowIfRejectedOrCanceled();
+                return resultContainer.Value;
+            }
+
+            private bool TryEnterUpgradeableReaderLockImpl(out UpgradeableReaderKey readerKey)
+            {
+                // We don't spinwait here because we want to return immediately without waiting.
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+
+                    // Read the _smallFields._lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    var lockType = _smallFields._lockType;
+
+                    if (CanEnterUpgradeableReaderLock(lockType))
+                    {
+                        IncrementReaderLockCount();
+                        if (lockType == AsyncReaderWriterLockType.None)
+                        {
+                            SetNextKey();
+                        }
+                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        readerKey = new UpgradeableReaderKey(this, key, null);
+                        return true;
+                    }
+                }
+                _smallFields._locker.Exit();
+                readerKey = default;
+                return false;
+            }
+
+            private Promise<(bool didEnter, UpgradeableReaderKey readerKey)> TryEnterUpgradeableReaderLockAsyncImpl(CancelationToken cancelationToken)
+            {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
+                Internal.AsyncUpgradeableReaderLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+
+                    // Read the _smallFields._lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    var lockType = _smallFields._lockType;
+
+                    if (CanEnterUpgradeableReaderLock(lockType))
+                    {
+                        IncrementReaderLockCount();
+                        if (lockType == AsyncReaderWriterLockType.None)
+                        {
+                            SetNextKey();
+                        }
+                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        return Promise.Resolved((true, new UpgradeableReaderKey(this, key, null)));
+                    }
+                    // Quick check to see if the token is already canceled before waiting.
+                    if (cancelationToken.IsCancelationRequested)
+                    {
+                        _smallFields._locker.Exit();
+                        return Promise.Resolved((false, default(UpgradeableReaderKey)));
+                    }
+
+                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        _smallFields._locker.Exit();
+                        promise.DisposeImmediate();
+                        return Promise.Resolved((false, default(UpgradeableReaderKey)));
+                    }
+                    _upgradeQueue.Enqueue(promise);
+                }
+                _smallFields._locker.Exit();
+                return new Promise<UpgradeableReaderKey>(promise, promise.Id)
+                    .ContinueWith(resultContainer =>
+                    {
+                        resultContainer.RethrowIfRejected();
+                        return (resultContainer.State == Promise.State.Resolved, resultContainer.Value);
+                    });
+            }
+
+            private bool TryEnterUpgradeableReaderLockImpl(out UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
+            {
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
+                var spinner = new SpinWait();
+                bool isCanceled = cancelationToken.IsCancelationRequested;
+                while (!CanEnterUpgradeableReaderLock(_smallFields._lockType) & !isCanceled & !spinner.NextSpinWillYield)
+                {
+                    spinner.SpinOnce();
+                    isCanceled = cancelationToken.IsCancelationRequested;
+                }
+
+                Internal.AsyncUpgradeableReaderLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+
+                    // Read the _smallFields._lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
+                    var lockType = _smallFields._lockType;
+
+                    if (CanEnterUpgradeableReaderLock(lockType))
+                    {
+                        IncrementReaderLockCount();
+                        if (lockType == AsyncReaderWriterLockType.None)
+                        {
+                            SetNextKey();
+                        }
+                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        readerKey = new UpgradeableReaderKey(this, key, null);
+                        return true;
+                    }
+                    // Quick check to see if the token is already canceled before waiting.
+                    if (isCanceled)
+                    {
+                        _smallFields._locker.Exit();
+                        readerKey = default;
+                        return false;
+                    }
+
+                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        _smallFields._locker.Exit();
+                        promise.DisposeImmediate();
+                        readerKey = default;
+                        return false;
+                    }
+                    _upgradeQueue.Enqueue(promise);
+                }
+                _smallFields._locker.Exit();
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
+                resultContainer.RethrowIfRejected();
+                readerKey = resultContainer.Value;
+                return resultContainer.State == Promise.State.Resolved;
+            }
+
+            private Promise<UpgradedWriterKey> UpgradeToWriterLockAsyncImpl(UpgradeableReaderKey readerKey)
+            {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
+                Internal.AsyncUpgradedWriterLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+
+                    if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
+                    {
+                        _smallFields._locker.Exit();
+                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
+                    }
+
+                    DecrementReaderLockCount();
+                    _smallFields._lockType |= AsyncReaderWriterLockType.Writer;
+                    if (_readerLockCount == 0)
+                    {
+                        _smallFields._writerType = AsyncReaderWriterLockType.Upgradeable;
+                        // We cache the previous key for when the lock gets downgraded.
+                        SetNextAndPreviousKeys();
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        return Promise.Resolved(new UpgradedWriterKey(this, key, null));
+                    }
+
+                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    _upgradeWaiter = promise;
+                }
+                _smallFields._locker.Exit();
+                return new Promise<UpgradedWriterKey>(promise, promise.Id);
+            }
+
+            private Promise<UpgradedWriterKey> UpgradeToWriterLockAsyncImpl(UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
+            {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
+
+                // Quick check to see if the token is already canceled before entering.
+                if (cancelationToken.IsCancelationRequested)
+                {
+                    ValidateNotAbandoned();
+
+                    return Promise<UpgradedWriterKey>.Canceled();
+                }
+
+                Internal.AsyncUpgradedWriterLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+
+                    if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
+                    {
+                        _smallFields._locker.Exit();
+                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
+                    }
+
+                    DecrementReaderLockCount();
+                    _smallFields._lockType |= AsyncReaderWriterLockType.Writer;
+                    if (_readerLockCount == 0)
+                    {
+                        _smallFields._writerType = AsyncReaderWriterLockType.Upgradeable;
+                        // We cache the previous key for when the lock gets downgraded.
+                        SetNextAndPreviousKeys();
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        return Promise.Resolved(new UpgradedWriterKey(this, key, null));
+                    }
+
+                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.SetCanceledImmediate();
+                    }
+                    else
+                    {
+                        _upgradeWaiter = promise;
+                    }
+                }
+                _smallFields._locker.Exit();
+                return new Promise<UpgradedWriterKey>(promise, promise.Id);
+            }
+
+            private UpgradedWriterKey UpgradeToWriterLockImpl(UpgradeableReaderKey readerKey)
+            {
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
+                var spinner = new SpinWait();
+                while (_readerLockCount != 1 & !spinner.NextSpinWillYield)
+                {
+                    spinner.SpinOnce();
+                }
+
+                Internal.AsyncUpgradedWriterLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+
+                    if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
+                    {
+                        _smallFields._locker.Exit();
+                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
+                    }
+
+                    DecrementReaderLockCount();
+                    _smallFields._lockType |= AsyncReaderWriterLockType.Writer;
+                    if (_readerLockCount == 0)
+                    {
+                        _smallFields._writerType = AsyncReaderWriterLockType.Upgradeable;
+                        // We cache the previous key for when the lock gets downgraded.
+                        SetNextAndPreviousKeys();
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        return new UpgradedWriterKey(this, key, null);
+                    }
+
+                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, null);
+                    _upgradeWaiter = promise;
+                }
+                _smallFields._locker.Exit();
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
+                resultContainer.RethrowIfRejected();
+                return resultContainer.Value;
+            }
+
+            private UpgradedWriterKey UpgradeToWriterLockImpl(UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
+            {
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
+                var spinner = new SpinWait();
+                bool isCanceled = cancelationToken.IsCancelationRequested;
+                while (_readerLockCount != 1 & !isCanceled & !spinner.NextSpinWillYield)
+                {
+                    spinner.SpinOnce();
+                    isCanceled = cancelationToken.IsCancelationRequested;
+                }
+
+                // Quick check to see if the token is already canceled before entering.
+                if (isCanceled)
+                {
+                    ValidateNotAbandoned();
+
+                    throw Promise.CancelException();
+                }
+
+                Internal.AsyncUpgradedWriterLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+
+                    if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
+                    {
+                        _smallFields._locker.Exit();
+                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
+                    }
+
+                    DecrementReaderLockCount();
+                    _smallFields._lockType |= AsyncReaderWriterLockType.Writer;
+                    if (_readerLockCount == 0)
+                    {
+                        _smallFields._writerType = AsyncReaderWriterLockType.Upgradeable;
+                        // We cache the previous key for when the lock gets downgraded.
+                        SetNextAndPreviousKeys();
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        return new UpgradedWriterKey(this, key, null);
+                    }
+
+                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, null);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        _smallFields._locker.Exit();
+                        promise.DisposeImmediate();
+                        throw Promise.CancelException();
+                    }
+                    _upgradeWaiter = promise;
+                }
+                _smallFields._locker.Exit();
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
+                resultContainer.RethrowIfRejectedOrCanceled();
+                return resultContainer.Value;
+            }
+
+            private bool TryUpgradeToWriterLockImpl(UpgradeableReaderKey readerKey, out UpgradedWriterKey writerKey)
+            {
+                // We don't spinwait here because we want to return immediately without waiting.
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+
+                    if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
+                    {
+                        _smallFields._locker.Exit();
+                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
+                    }
+
+                    if (_readerLockCount == 1)
+                    {
+                        DecrementReaderLockCount();
+                        _smallFields._lockType |= AsyncReaderWriterLockType.Writer;
+                        _smallFields._writerType = AsyncReaderWriterLockType.Upgradeable;
+                        // We cache the previous key for when the lock gets downgraded.
+                        SetNextAndPreviousKeys();
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        writerKey = new UpgradedWriterKey(this, key, null);
+                        return true;
+                    }
+                }
+                _smallFields._locker.Exit();
+                writerKey = default;
+                return false;
+            }
+
+            private Promise<(bool didEnter, UpgradedWriterKey writerKey)> TryUpgradeToWriterLockAsyncImpl(UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
+            {
+                // We don't spinwait here because it's async; we want to return to caller as fast as possible.
+                Internal.AsyncUpgradedWriterLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+
+                    if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
+                    {
+                        _smallFields._locker.Exit();
+                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
+                    }
+
+                    if (_readerLockCount == 1)
+                    {
+                        DecrementReaderLockCount();
+                        _smallFields._lockType |= AsyncReaderWriterLockType.Writer;
+                        _smallFields._writerType = AsyncReaderWriterLockType.Upgradeable;
+                        // We cache the previous key for when the lock gets downgraded.
+                        SetNextAndPreviousKeys();
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        return Promise.Resolved((true, new UpgradedWriterKey(this, key, null)));
+                    }
+                    // Quick check to see if the token is already canceled before waiting.
+                    if (cancelationToken.IsCancelationRequested)
+                    {
+                        _smallFields._locker.Exit();
+                        return Promise.Resolved((false, default(UpgradedWriterKey)));
+                    }
+
+                    DecrementReaderLockCount();
+                    _smallFields._lockType |= AsyncReaderWriterLockType.Writer;
+                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        _smallFields._locker.Exit();
+                        promise.DisposeImmediate();
+                        return Promise.Resolved((true, new UpgradedWriterKey(this, _currentKey, null)));
+                    }
+                    _upgradeWaiter = promise;
+                }
+                _smallFields._locker.Exit();
+                return new Promise<UpgradedWriterKey>(promise, promise.Id)
+                    .ContinueWith(resultContainer =>
+                    {
+                        resultContainer.RethrowIfRejected();
+                        return (resultContainer.State == Promise.State.Resolved, resultContainer.Value);
+                    });
+            }
+
+            private bool TryUpgradeToWriterLockImpl(UpgradeableReaderKey readerKey, out UpgradedWriterKey writerKey, CancelationToken cancelationToken)
+            {
+                // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
+                var spinner = new SpinWait();
+                bool isCanceled = cancelationToken.IsCancelationRequested;
+                while (_readerLockCount != 1 & !isCanceled & !spinner.NextSpinWillYield)
+                {
+                    spinner.SpinOnce();
+                    isCanceled = cancelationToken.IsCancelationRequested;
+                }
+
+                Internal.AsyncUpgradedWriterLockPromise promise;
+                _smallFields._locker.Enter();
+                {
+                    ValidateNotAbandoned();
+
+                    if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
+                    {
+                        _smallFields._locker.Exit();
+                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
+                    }
+
+                    if (_readerLockCount == 1)
+                    {
+                        DecrementReaderLockCount();
+                        _smallFields._lockType |= AsyncReaderWriterLockType.Writer;
+                        _smallFields._writerType = AsyncReaderWriterLockType.Upgradeable;
+                        // We cache the previous key for when the lock gets downgraded.
+                        SetNextAndPreviousKeys();
+                        var key = _currentKey;
+                        _smallFields._locker.Exit();
+                        writerKey = new UpgradedWriterKey(this, key, null);
+                        return true;
+                    }
+                    // Quick check to see if the token is already canceled before waiting.
+                    if (isCanceled)
+                    {
+                        _smallFields._locker.Exit();
+                        writerKey = default;
+                        return false;
+                    }
+
+                    DecrementReaderLockCount();
+                    _smallFields._lockType |= AsyncReaderWriterLockType.Writer;
+                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        _smallFields._locker.Exit();
+                        promise.DisposeImmediate();
+                        writerKey = default;
+                        return false;
+                    }
+                    _upgradeWaiter = promise;
+                }
+                _smallFields._locker.Exit();
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
+                resultContainer.RethrowIfRejected();
+                writerKey = resultContainer.Value;
+                return resultContainer.State == Promise.State.Resolved;
+            }
+
+            internal void ReleaseReaderLock(long key)
+            {
+                Internal.AsyncWriterLockPromise writerPromise;
+                Internal.AsyncUpgradedWriterLockPromise upgradedWriterPromise;
+                _smallFields._locker.Enter();
+                if (_currentKey != key)
+                {
+                    _smallFields._locker.Exit();
+                    ThrowInvalidKey(AsyncReaderWriterLockType.Reader, 2);
+                }
+
+                // We check for underflow, because multiple readers share the same key.
+                checked
+                {
+                    if (--_readerLockCount != 0)
+                    {
+                        _smallFields._locker.Exit();
+                        return;
+                    }
+                }
+                // Check upgrade waiter before regular writer queue.
+                if (_upgradeWaiter != null)
+                {
+                    _smallFields._lockType = AsyncReaderWriterLockType.Writer | AsyncReaderWriterLockType.Upgradeable;
+                    _smallFields._writerType = AsyncReaderWriterLockType.Upgradeable;
+                    // We cache the previous key for when the lock gets downgraded.
+                    SetNextAndPreviousKeys();
+                    upgradedWriterPromise = _upgradeWaiter;
+                    _upgradeWaiter = null;
+                    _smallFields._locker.Exit();
+                    upgradedWriterPromise.Resolve(_currentKey);
+                    return;
+                }
+                if (_writerQueue.IsNotEmpty)
+                {
+                    _smallFields._lockType = AsyncReaderWriterLockType.Writer | (_smallFields._lockType & AsyncReaderWriterLockType.Upgradeable);
+                    _smallFields._writerType = AsyncReaderWriterLockType.Writer;
+                    // We cache the previous key for when the lock gets downgraded.
+                    SetNextAndPreviousKeys();
+                    writerPromise = _writerQueue.Dequeue();
+                    _smallFields._locker.Exit();
+                    writerPromise.Resolve(_currentKey);
+                    return;
+                }
+                // The lock is exited completely.
+                _smallFields._lockType = AsyncReaderWriterLockType.None;
+                _smallFields._writerType = AsyncReaderWriterLockType.None;
+                _currentKey = 0L;
+                _smallFields._locker.Exit();
+            }
+
+            internal void ReleaseNormalWriterLock(long key)
+            {
+                Internal.ValueLinkedStack<Internal.AsyncReaderLockPromise> readers;
+                Internal.AsyncUpgradeableReaderLockPromise upgradeablePromise;
+                Internal.AsyncWriterLockPromise writerPromise;
+                _smallFields._locker.Enter();
+                {
+                    if (_currentKey != key)
+                    {
+                        _smallFields._locker.Exit();
+                        ThrowInvalidKey(AsyncReaderWriterLockType.Writer, 2);
+                    }
+
+                    // If there are any normal readers waiting, we resolve them, even if there are more writer waiters.
+                    // This prevents writers from starving readers.
+                    // Unless there is a waiting writer, and the contention strategy is writer prioritized.
+                    bool hasWaitingWriter = _writerQueue.IsNotEmpty;
+                    bool prioritizedWriter = hasWaitingWriter & PrioritizeWriters;
+                    if (_readerWaitCount != 0 & !prioritizedWriter)
+                    {
+                        SetNextKey();
+                        var lockType = hasWaitingWriter
+                            ? AsyncReaderWriterLockType.Reader | AsyncReaderWriterLockType.Writer
+                            : AsyncReaderWriterLockType.Reader;
+                        _smallFields._writerType = AsyncReaderWriterLockType.None;
+                        _readerLockCount = _readerWaitCount;
+                        _readerWaitCount = 0;
+                        readers = _readerQueue.MoveElementsToStack();
+                        if (_upgradeQueue.IsEmpty)
+                        {
+                            _smallFields._lockType = lockType;
+                            _smallFields._locker.Exit();
+                            goto ResolveReaders;
+                        }
+                        IncrementReaderLockCount();
+                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
+                        upgradeablePromise = _upgradeQueue.Dequeue();
+                        _smallFields._locker.Exit();
+                        goto ResolveReadersAndUpgradeableReader;
+                    }
+
+                    // Check upgrade queue before writer queue, to prevent writers from starving upgradeable readers.
+                    // Unless there is a waiting writer, and the contention strategy is writer prioritized.
+                    if (_upgradeQueue.IsNotEmpty & !prioritizedWriter)
+                    {
+                        _smallFields._lockType = hasWaitingWriter
+                            ? _smallFields._lockType | AsyncReaderWriterLockType.Upgradeable
+                            : AsyncReaderWriterLockType.Upgradeable;
+                        _smallFields._writerType = AsyncReaderWriterLockType.None;
+                        IncrementReaderLockCount();
+                        upgradeablePromise = _upgradeQueue.Dequeue();
+                        _smallFields._locker.Exit();
+                        goto ResolveUpgradeableReader;
+                    }
+                    else if (hasWaitingWriter)
+                    {
+                        SetNextKey();
+                        writerPromise = _writerQueue.Dequeue();
+                    }
+                    else
+                    {
+                        // The lock is exited completely.
+                        _smallFields._lockType = AsyncReaderWriterLockType.None;
+                        _smallFields._writerType = AsyncReaderWriterLockType.None;
+                        _currentKey = 0;
+                        _smallFields._locker.Exit();
+                        return;
+                    }
+                }
+                _smallFields._locker.Exit();
+
+                writerPromise.Resolve(_currentKey);
+                return;
+
+            ResolveReadersAndUpgradeableReader:
+                upgradeablePromise.Resolve(_currentKey);
+
+            ResolveReaders:
+                while (readers.IsNotEmpty)
+                {
+                    readers.Pop().Resolve(_currentKey);
+                }
+                return;
+
+            ResolveUpgradeableReader:
+                upgradeablePromise.Resolve(_currentKey);
+            }
+
+            internal void ReleaseUpgradedWriterLock(long key)
+            {
+                Internal.ValueLinkedStack<Internal.AsyncReaderLockPromise> readers;
+                _smallFields._locker.Enter();
+                {
+                    if (_currentKey != key)
+                    {
+                        _smallFields._locker.Exit();
+                        ThrowInvalidKey(AsyncReaderWriterLockType.Writer | AsyncReaderWriterLockType.Upgradeable, 2);
+                    }
+
+                    // This reverts the key to the previous reader key so that releasing the UpgradeableReaderKey will work.
+                    RestorePreviousKey();
+
+                    // If there are any normal readers waiting, we resolve them, even if there are more writer waiters.
+                    // This prevents writers from starving readers.
+                    // Unless there is a waiting writer, and the contention strategy is writer prioritized.
+                    bool hasWaitingWriter = _writerQueue.IsNotEmpty;
+                    bool prioritizedWriter = hasWaitingWriter & PrioritizeWriters;
+                    if (_readerQueue.IsEmpty | prioritizedWriter)
+                    {
+                        // We set reader count to 1 since it was removed when the lock was upgraded.
+                        _readerLockCount = 1;
+                        _smallFields._lockType = hasWaitingWriter
+                            ? AsyncReaderWriterLockType.Upgradeable | AsyncReaderWriterLockType.Writer
+                            : AsyncReaderWriterLockType.Upgradeable;
+                        _smallFields._writerType = AsyncReaderWriterLockType.None;
+                        _smallFields._locker.Exit();
+                        return;
+                    }
+
+                    // We add 1 more reader count since it was removed when the lock was upgraded.
+                    // Unchecked context since we already checked for overflow when the reader lock was acquired.
+                    unchecked
+                    {
+                        _readerLockCount = _readerWaitCount + 1;
+                    }
+                    _readerWaitCount = 0;
+                    _smallFields._lockType = hasWaitingWriter
+                        ? AsyncReaderWriterLockType.Reader | AsyncReaderWriterLockType.Upgradeable | AsyncReaderWriterLockType.Writer
+                        : AsyncReaderWriterLockType.Reader | AsyncReaderWriterLockType.Upgradeable;
+                    _smallFields._writerType = AsyncReaderWriterLockType.None;
+                    readers = _readerQueue.MoveElementsToStack();
+                }
+                _smallFields._locker.Exit();
+
+                do
+                {
+                    readers.Pop().Resolve(_currentKey);
+                } while (readers.IsNotEmpty);
+            }
+
+            internal void ReleaseUpgradeableReaderLock(long key)
+            {
+                Internal.AsyncUpgradeableReaderLockPromise upgradeablePromise;
+                Internal.AsyncWriterLockPromise writerPromise;
+                _smallFields._locker.Enter();
+                {
+                    if (_currentKey != key | _upgradeWaiter != null)
+                    {
+                        ThrowInvalidUpgradeableKeyReleased(key, 2);
+                    }
+
+                    // We check for underflow, because multiple readers share the same key.
+                    checked
+                    {
+                        --_readerLockCount;
+                    }
+                    if (_readerLockCount != 0)
+                    {
+                        // If there's a regular writer waiting, do nothing, to prevent starvation.
+                        // Unless the contention strategy is (upgradeable)reader prioritized.
+                        // Otherwise, if there's an upgradeable reader waiting, resolve it.
+                        if (_upgradeQueue.IsEmpty | (_writerQueue.IsNotEmpty & !PrioritizeReadersOrUpgradeableReaders))
+                        {
+                            _smallFields._lockType &= ~AsyncReaderWriterLockType.Upgradeable;
+                            _smallFields._locker.Exit();
+                            return;
+                        }
+                        IncrementReaderLockCount();
+                        upgradeablePromise = _upgradeQueue.Dequeue();
+                        _smallFields._locker.Exit();
+                        goto ResolveUpgradeableReader;
+                    }
+
+                    // Check writer queue before checking upgrade queue, to prevent starvation.
+                    // Unless there is a waiting upgradeable reader, and the contention strategy is (upgradeable)reader prioritized.
+                    bool hasUpgradeable = _upgradeQueue.IsNotEmpty;
+                    bool prioritizedUpgradeable = hasUpgradeable & PrioritizeReadersOrUpgradeableReaders;
+                    if (_writerQueue.IsNotEmpty & !prioritizedUpgradeable)
+                    {
+                        writerPromise = _writerQueue.Dequeue();
+                        _smallFields._lockType &= ~AsyncReaderWriterLockType.Upgradeable;
+                        _smallFields._writerType = AsyncReaderWriterLockType.Writer;
+                        SetNextKey();
+                    }
+                    else if (hasUpgradeable)
+                    {
+                        IncrementReaderLockCount();
+                        upgradeablePromise = _upgradeQueue.Dequeue();
+                        _smallFields._locker.Exit();
+                        goto ResolveUpgradeableReader;
+                    }
+                    else
+                    {
+                        // The lock is exited completely.
+                        _smallFields._lockType = AsyncReaderWriterLockType.None;
+                        _smallFields._writerType = AsyncReaderWriterLockType.None;
+                        _currentKey = 0;
+                        _smallFields._locker.Exit();
+                        return;
+                    }
+                }
+                _smallFields._locker.Exit();
+
+                writerPromise.Resolve(_currentKey);
+                return;
+
+            ResolveUpgradeableReader:
+                upgradeablePromise.Resolve(_currentKey);
+            }
+
+            internal bool TryUnregister(Internal.AsyncReaderLockPromise promise)
+            {
+                _smallFields._locker.Enter();
+                if (_readerQueue.TryRemove(promise))
+                {
+                    --_readerWaitCount;
+                    _smallFields._locker.Exit();
+                    return true;
+                }
+                _smallFields._locker.Exit();
+                return false;
+            }
+
+            internal bool TryUnregister(Internal.AsyncWriterLockPromise promise)
+            {
+                Internal.ValueLinkedStack<Internal.AsyncReaderLockPromise> readers;
+                Internal.AsyncUpgradeableReaderLockPromise upgradeablePromise;
+                _smallFields._locker.Enter();
+                {
+                    if (!_writerQueue.TryRemove(promise))
+                    {
+                        _smallFields._locker.Exit();
+                        return false;
+                    }
+
+                    bool hasNoWriter = _writerQueue.IsEmpty & _upgradeWaiter == null & _smallFields._writerType == AsyncReaderWriterLockType.None;
+                    if (!hasNoWriter)
+                    {
+                        _smallFields._locker.Exit();
+                        return true;
+                    }
+
+                    _smallFields._lockType &= ~AsyncReaderWriterLockType.Writer;
+                    _readerLockCount += _readerWaitCount;
+                    _readerWaitCount = 0;
+                    readers = _readerQueue.MoveElementsToStack();
+
+                    if ((_smallFields._lockType & AsyncReaderWriterLockType.Upgradeable) != 0 | _upgradeQueue.IsEmpty)
+                    {
+                        _smallFields._locker.Exit();
+                        goto ResolveReaders;
+                    }
+
+                    IncrementReaderLockCount();
+                    upgradeablePromise = _upgradeQueue.Dequeue();
+                }
+                _smallFields._locker.Exit();
+
+                upgradeablePromise.Resolve(_currentKey);
+
+            ResolveReaders:
+                while (readers.IsNotEmpty)
+                {
+                    readers.Pop().Resolve(_currentKey);
+                }
+                return true;
+            }
+
+            internal bool TryUnregister(Internal.AsyncUpgradeableReaderLockPromise promise)
+            {
+                _smallFields._locker.Enter();
+                var removed = _upgradeQueue.TryRemove(promise);
+                _smallFields._locker.Exit();
+                return removed;
+            }
+
+            internal bool TryUnregister(Internal.AsyncUpgradedWriterLockPromise promise)
+            {
+                Internal.ValueLinkedStack<Internal.AsyncReaderLockPromise> readers;
+                _smallFields._locker.Enter();
+                {
+                    if (_upgradeWaiter != promise)
+                    {
+                        _smallFields._locker.Exit();
+                        return false;
+                    }
+
+                    // Re-add the count that was subtracted when it was upgraded.
+                    IncrementReaderLockCount();
+                    _upgradeWaiter = null;
+
+                    bool hasNoWriter = _writerQueue.IsEmpty & _smallFields._writerType == AsyncReaderWriterLockType.None;
+                    if (!hasNoWriter)
+                    {
+                        _smallFields._locker.Exit();
+                        return true;
+                    }
+
+                    _smallFields._lockType = AsyncReaderWriterLockType.Reader | AsyncReaderWriterLockType.Upgradeable;
+                    _readerLockCount += _readerWaitCount;
+                    _readerWaitCount = 0;
+                    readers = _readerQueue.MoveElementsToStack();
+                }
+                _smallFields._locker.Exit();
+
+                while (readers.IsNotEmpty)
+                {
+                    readers.Pop().Resolve(_currentKey);
+                }
+                return true;
+            }
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            internal static void ThrowInvalidKey(AsyncReaderWriterLockType keyType, int skipFrames)
+            {
+                throw new InvalidOperationException($"The {GetKeyTypeString(keyType)} is invalid for this operation.", Internal.GetFormattedStacktrace(skipFrames + 1));
+            }
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private void ThrowInvalidUpgradeableKeyReleased(long key, int skipFrames)
+            {
+                string message = _currentKey != key
+                    ? "The AsyncReaderWriterLock.UpgradeableReaderKey is invalid for this operation. Did you dispose it before the upgraded writer key?"
+                    : "The AsyncReaderWriterLock.UpgradeableReaderKey cannot be released before the UpgradeToWriterLockAsync promise is complete.";
+                _smallFields._locker.Exit();
+                throw new InvalidOperationException(message, Internal.GetFormattedStacktrace(skipFrames + 1));
+            }
+
+            private static string GetKeyTypeString(AsyncReaderWriterLockType keyType)
+            {
+                return $"{nameof(AsyncReaderWriterLock)}." +
+                    (keyType == AsyncReaderWriterLockType.Reader ? nameof(ReaderKey)
+                    : keyType == AsyncReaderWriterLockType.Writer ? nameof(WriterKey)
+                    : keyType == AsyncReaderWriterLockType.Upgradeable ? nameof(UpgradeableReaderKey)
+                    : nameof(UpgradedWriterKey));
+            }
+
+            partial void ValidateNotAbandoned();
+#if PROMISE_DEBUG
+            volatile private string _abandonedMessage;
+
+            partial void ValidateNotAbandoned()
+            {
+                if (_abandonedMessage != null)
+                {
+                    _smallFields._locker.Exit();
+                    throw new AbandonedLockException(_abandonedMessage);
+                }
+            }
+
+            internal void NotifyAbandoned(string abandonedMessage, Internal.ITraceable traceable)
+            {
+                Internal.ValueLinkedStack<Internal.AsyncReaderLockPromise> readers;
+                Internal.ValueLinkedStack<Internal.AsyncWriterLockPromise> writers;
+                Internal.ValueLinkedStack<Internal.AsyncUpgradeableReaderLockPromise> upgradeables;
+                Internal.AsyncUpgradedWriterLockPromise upgradeWaiter;
+                _smallFields._locker.Enter();
+                {
+                    if (_abandonedMessage != null)
+                    {
+                        // Additional abandoned keys could be caused by the first abandoned key, so do nothing.
+                        _smallFields._locker.Exit();
+                        return;
+                    }
+                    _abandonedMessage = abandonedMessage;
+
+                    readers = _readerQueue.MoveElementsToStack();
+                    writers = _writerQueue.MoveElementsToStack();
+                    upgradeables = _upgradeQueue.MoveElementsToStack();
+                    upgradeWaiter = _upgradeWaiter;
+                    _upgradeWaiter = null;
+                }
+                _smallFields._locker.Exit();
+
+                var rejectContainer = Internal.CreateRejectContainer(new AbandonedLockException(abandonedMessage), int.MinValue, null, traceable);
+
+                while (readers.IsNotEmpty)
+                {
+                    readers.Pop().Reject(rejectContainer);
+                }
+                while (writers.IsNotEmpty)
+                {
+                    writers.Pop().Reject(rejectContainer);
+                }
+                while (upgradeables.IsNotEmpty)
+                {
+                    upgradeables.Pop().Reject(rejectContainer);
+                }
+                upgradeWaiter?.Reject(rejectContainer);
+
+                rejectContainer.ReportUnhandled();
+            }
+#endif // PROMISE_DEBUG
+
             partial struct ReaderKey
             {
                 internal readonly Internal.AsyncReaderWriterLockKey _impl;
 
                 [MethodImpl(Internal.InlineOption)]
-                internal ReaderKey(Internal.AsyncReaderWriterLockInternal owner, long key, Internal.ITraceable traceable)
+                internal ReaderKey(AsyncReaderWriterLock owner, long key, Internal.ITraceable traceable)
                 {
-                    _impl = new Internal.AsyncReaderWriterLockKey(owner, key, Internal.AsyncReaderWriterLockType.Reader, traceable);
+                    _impl = new Internal.AsyncReaderWriterLockKey(owner, key, AsyncReaderWriterLockType.Reader, traceable);
                 }
 
                 [MethodImpl(Internal.InlineOption)]
-                internal ReaderKey(Internal.AsyncReaderWriterLockInternal owner)
+                internal ReaderKey(AsyncReaderWriterLock owner)
                 {
                     _impl = new Internal.AsyncReaderWriterLockKey(owner);
                 }
@@ -2239,13 +2381,13 @@ namespace Proto.Promises
                 internal readonly Internal.AsyncReaderWriterLockKey _impl;
 
                 [MethodImpl(Internal.InlineOption)]
-                internal WriterKey(Internal.AsyncReaderWriterLockInternal owner, long key, Internal.ITraceable traceable)
+                internal WriterKey(AsyncReaderWriterLock owner, long key, Internal.ITraceable traceable)
                 {
-                    _impl = new Internal.AsyncReaderWriterLockKey(owner, key, Internal.AsyncReaderWriterLockType.Writer, traceable);
+                    _impl = new Internal.AsyncReaderWriterLockKey(owner, key, AsyncReaderWriterLockType.Writer, traceable);
                 }
 
                 [MethodImpl(Internal.InlineOption)]
-                internal WriterKey(Internal.AsyncReaderWriterLockInternal owner)
+                internal WriterKey(AsyncReaderWriterLock owner)
                 {
                     _impl = new Internal.AsyncReaderWriterLockKey(owner);
                 }
@@ -2256,13 +2398,13 @@ namespace Proto.Promises
                 internal readonly Internal.AsyncReaderWriterLockKey _impl;
 
                 [MethodImpl(Internal.InlineOption)]
-                internal UpgradeableReaderKey(Internal.AsyncReaderWriterLockInternal owner, long key, Internal.ITraceable traceable)
+                internal UpgradeableReaderKey(AsyncReaderWriterLock owner, long key, Internal.ITraceable traceable)
                 {
-                    _impl = new Internal.AsyncReaderWriterLockKey(owner, key, Internal.AsyncReaderWriterLockType.Upgradeable, traceable);
+                    _impl = new Internal.AsyncReaderWriterLockKey(owner, key, AsyncReaderWriterLockType.Upgradeable, traceable);
                 }
 
                 [MethodImpl(Internal.InlineOption)]
-                internal UpgradeableReaderKey(Internal.AsyncReaderWriterLockInternal owner)
+                internal UpgradeableReaderKey(AsyncReaderWriterLock owner)
                 {
                     _impl = new Internal.AsyncReaderWriterLockKey(owner);
                 }
@@ -2273,13 +2415,13 @@ namespace Proto.Promises
                 internal readonly Internal.AsyncReaderWriterLockKey _impl;
 
                 [MethodImpl(Internal.InlineOption)]
-                internal UpgradedWriterKey(Internal.AsyncReaderWriterLockInternal owner, long key, Internal.ITraceable traceable)
+                internal UpgradedWriterKey(AsyncReaderWriterLock owner, long key, Internal.ITraceable traceable)
                 {
-                    _impl = new Internal.AsyncReaderWriterLockKey(owner, key, Internal.AsyncReaderWriterLockType.Writer, traceable);
+                    _impl = new Internal.AsyncReaderWriterLockKey(owner, key, AsyncReaderWriterLockType.Writer, traceable);
                 }
 
                 [MethodImpl(Internal.InlineOption)]
-                internal UpgradedWriterKey(Internal.AsyncReaderWriterLockInternal owner)
+                internal UpgradedWriterKey(AsyncReaderWriterLock owner)
                 {
                     _impl = new Internal.AsyncReaderWriterLockKey(owner);
                 }
