@@ -8,7 +8,7 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using Proto.Promises.Async.CompilerServices;
+using Proto.Promises.CompilerServices;
 
 namespace Proto.Promises
 {
@@ -58,7 +58,7 @@ namespace Proto.Promises
         }
     }
 
-    namespace Async.CompilerServices
+    namespace CompilerServices
     {
 #if !NETCOREAPP
         partial struct PromiseAwaiterVoid
@@ -502,5 +502,5 @@ namespace Proto.Promises
             }
 #endif
         } // struct PromiseNoThrowAwaiter<T>
-    } // namespace Async.CompilerServices
+    } // namespace CompilerServices
 }

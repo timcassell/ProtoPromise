@@ -405,7 +405,7 @@ namespace Proto.Promises
         } // PromiseRefBase
     } // Internal
 
-    namespace Async.CompilerServices
+    namespace CompilerServices
     {
         partial struct PromiseMethodBuilder
         {

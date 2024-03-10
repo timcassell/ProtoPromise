@@ -9,7 +9,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-namespace Proto.Promises.Async.CompilerServices
+namespace Proto.Promises.CompilerServices
 {
     /// <summary>
     /// Provides an awaiter for switching to a context.
@@ -93,4 +93,4 @@ namespace Proto.Promises.Async.CompilerServices
         }
 #endif
     } // struct PromiseSwitchToContextAwaiter
-} // namespace Proto.Promises.Async.CompilerServices
+} // namespace Proto.Promises.CompilerServices

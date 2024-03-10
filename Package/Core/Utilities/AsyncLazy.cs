@@ -81,7 +81,7 @@ namespace Proto.Promises
         /// Asynchronous infrastructure support. This method permits instances of <see cref="AsyncLazy{T}"/> to be awaited.
         /// </summary>
         [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
-        public Async.CompilerServices.PromiseAwaiter<T> GetAwaiter()
+        public CompilerServices.PromiseAwaiter<T> GetAwaiter()
         {
             return Promise.GetAwaiter();
         }
