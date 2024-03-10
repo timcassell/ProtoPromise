@@ -1967,90 +1967,77 @@ namespace Proto.Promises
 
             internal void ReleaseNormalWriterLock(long key)
             {
-                Internal.ValueLinkedStack<Internal.AsyncReaderLockPromise> readers;
-                Internal.AsyncUpgradeableReaderLockPromise upgradeablePromise;
-                Internal.AsyncWriterLockPromise writerPromise;
                 _smallFields._locker.Enter();
+                if (_currentKey != key)
                 {
-                    if (_currentKey != key)
-                    {
-                        _smallFields._locker.Exit();
-                        ThrowInvalidKey(AsyncReaderWriterLockType.Writer, 2);
-                    }
+                    _smallFields._locker.Exit();
+                    ThrowInvalidKey(AsyncReaderWriterLockType.Writer, 2);
+                }
 
-                    // If there are any normal readers waiting, we resolve them, even if there are more writer waiters.
-                    // This prevents writers from starving readers.
-                    // Unless there is a waiting writer, and the contention strategy is writer prioritized.
-                    bool hasWaitingWriter = _writerQueue.IsNotEmpty;
-                    bool prioritizedWriter = hasWaitingWriter & PrioritizeWriters;
-                    if (_readerWaitCount != 0 & !prioritizedWriter)
+                // If there are any normal readers waiting, we resolve them, even if there are more writer waiters.
+                // This prevents writers from starving readers.
+                // Unless there is a waiting writer, and the contention strategy is writer prioritized.
+                bool hasWaitingWriter = _writerQueue.IsNotEmpty;
+                bool prioritizedWriter = hasWaitingWriter & PrioritizeWriters;
+                if (_readerWaitCount != 0 & !prioritizedWriter)
+                {
+                    SetNextKey();
+                    var lockType = hasWaitingWriter
+                        ? AsyncReaderWriterLockType.Reader | AsyncReaderWriterLockType.Writer
+                        : AsyncReaderWriterLockType.Reader;
+                    _smallFields._writerType = AsyncReaderWriterLockType.None;
+                    _readerLockCount = _readerWaitCount;
+                    _readerWaitCount = 0;
+                    var readers = _readerQueue.MoveElementsToStack();
+                    if (_upgradeQueue.IsEmpty)
                     {
-                        SetNextKey();
-                        var lockType = hasWaitingWriter
-                            ? AsyncReaderWriterLockType.Reader | AsyncReaderWriterLockType.Writer
-                            : AsyncReaderWriterLockType.Reader;
-                        _smallFields._writerType = AsyncReaderWriterLockType.None;
-                        _readerLockCount = _readerWaitCount;
-                        _readerWaitCount = 0;
-                        readers = _readerQueue.MoveElementsToStack();
-                        if (_upgradeQueue.IsEmpty)
-                        {
-                            _smallFields._lockType = lockType;
-                            _smallFields._locker.Exit();
-                            goto ResolveReaders;
-                        }
-                        IncrementReaderLockCount();
-                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
-                        upgradeablePromise = _upgradeQueue.Dequeue();
+                        _smallFields._lockType = lockType;
                         _smallFields._locker.Exit();
-                        goto ResolveReadersAndUpgradeableReader;
-                    }
-
-                    // Check upgrade queue before writer queue, to prevent writers from starving upgradeable readers.
-                    // Unless there is a waiting writer, and the contention strategy is writer prioritized.
-                    if (_upgradeQueue.IsNotEmpty & !prioritizedWriter)
-                    {
-                        _smallFields._lockType = hasWaitingWriter
-                            ? _smallFields._lockType | AsyncReaderWriterLockType.Upgradeable
-                            : AsyncReaderWriterLockType.Upgradeable;
-                        _smallFields._writerType = AsyncReaderWriterLockType.None;
-                        IncrementReaderLockCount();
-                        upgradeablePromise = _upgradeQueue.Dequeue();
-                        _smallFields._locker.Exit();
-                        goto ResolveUpgradeableReader;
-                    }
-                    else if (hasWaitingWriter)
-                    {
-                        SetNextKey();
-                        writerPromise = _writerQueue.Dequeue();
                     }
                     else
                     {
-                        // The lock is exited completely.
-                        _smallFields._lockType = AsyncReaderWriterLockType.None;
-                        _smallFields._writerType = AsyncReaderWriterLockType.None;
-                        _currentKey = 0;
+                        IncrementReaderLockCount();
+                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
+                        var upgradeablePromise = _upgradeQueue.Dequeue();
                         _smallFields._locker.Exit();
-                        return;
+                        upgradeablePromise.Resolve(_currentKey);
                     }
+                    while (readers.IsNotEmpty)
+                    {
+                        readers.Pop().Resolve(_currentKey);
+                    }
+                    return;
                 }
-                _smallFields._locker.Exit();
 
-                writerPromise.Resolve(_currentKey);
-                return;
-
-            ResolveReadersAndUpgradeableReader:
-                upgradeablePromise.Resolve(_currentKey);
-
-            ResolveReaders:
-                while (readers.IsNotEmpty)
+                // Check upgrade queue before writer queue, to prevent writers from starving upgradeable readers.
+                // Unless there is a waiting writer, and the contention strategy is writer prioritized.
+                if (_upgradeQueue.IsNotEmpty & !prioritizedWriter)
                 {
-                    readers.Pop().Resolve(_currentKey);
+                    _smallFields._lockType = hasWaitingWriter
+                        ? _smallFields._lockType | AsyncReaderWriterLockType.Upgradeable
+                        : AsyncReaderWriterLockType.Upgradeable;
+                    _smallFields._writerType = AsyncReaderWriterLockType.None;
+                    IncrementReaderLockCount();
+                    var upgradeablePromise = _upgradeQueue.Dequeue();
+                    _smallFields._locker.Exit();
+                    upgradeablePromise.Resolve(_currentKey);
+                    return;
                 }
-                return;
 
-            ResolveUpgradeableReader:
-                upgradeablePromise.Resolve(_currentKey);
+                if (hasWaitingWriter)
+                {
+                    SetNextKey();
+                    var writerPromise = _writerQueue.Dequeue();
+                    _smallFields._locker.Exit();
+                    writerPromise.Resolve(_currentKey);
+                    return;
+                }
+
+                // The lock is exited completely.
+                _smallFields._lockType = AsyncReaderWriterLockType.None;
+                _smallFields._writerType = AsyncReaderWriterLockType.None;
+                _currentKey = 0;
+                _smallFields._locker.Exit();
             }
 
             internal void ReleaseUpgradedWriterLock(long key)
@@ -2107,72 +2094,64 @@ namespace Proto.Promises
 
             internal void ReleaseUpgradeableReaderLock(long key)
             {
-                Internal.AsyncUpgradeableReaderLockPromise upgradeablePromise;
-                Internal.AsyncWriterLockPromise writerPromise;
                 _smallFields._locker.Enter();
+                if (_currentKey != key | _upgradeWaiter != null)
                 {
-                    if (_currentKey != key | _upgradeWaiter != null)
-                    {
-                        ThrowInvalidUpgradeableKeyReleased(key, 2);
-                    }
+                    ThrowInvalidUpgradeableKeyReleased(key, 2);
+                }
 
-                    // We check for underflow, because multiple readers share the same key.
-                    checked
+                // We check for underflow, because multiple readers share the same key.
+                checked
+                {
+                    --_readerLockCount;
+                }
+                if (_readerLockCount != 0)
+                {
+                    // If there's a regular writer waiting, do nothing, to prevent starvation.
+                    // Unless the contention strategy is (upgradeable)reader prioritized.
+                    // Otherwise, if there's an upgradeable reader waiting, resolve it.
+                    if (_upgradeQueue.IsEmpty | (_writerQueue.IsNotEmpty & !PrioritizeReadersOrUpgradeableReaders))
                     {
-                        --_readerLockCount;
-                    }
-                    if (_readerLockCount != 0)
-                    {
-                        // If there's a regular writer waiting, do nothing, to prevent starvation.
-                        // Unless the contention strategy is (upgradeable)reader prioritized.
-                        // Otherwise, if there's an upgradeable reader waiting, resolve it.
-                        if (_upgradeQueue.IsEmpty | (_writerQueue.IsNotEmpty & !PrioritizeReadersOrUpgradeableReaders))
-                        {
-                            _smallFields._lockType &= ~AsyncReaderWriterLockType.Upgradeable;
-                            _smallFields._locker.Exit();
-                            return;
-                        }
-                        IncrementReaderLockCount();
-                        upgradeablePromise = _upgradeQueue.Dequeue();
-                        _smallFields._locker.Exit();
-                        goto ResolveUpgradeableReader;
-                    }
-
-                    // Check writer queue before checking upgrade queue, to prevent starvation.
-                    // Unless there is a waiting upgradeable reader, and the contention strategy is (upgradeable)reader prioritized.
-                    bool hasUpgradeable = _upgradeQueue.IsNotEmpty;
-                    bool prioritizedUpgradeable = hasUpgradeable & PrioritizeReadersOrUpgradeableReaders;
-                    if (_writerQueue.IsNotEmpty & !prioritizedUpgradeable)
-                    {
-                        writerPromise = _writerQueue.Dequeue();
                         _smallFields._lockType &= ~AsyncReaderWriterLockType.Upgradeable;
-                        _smallFields._writerType = AsyncReaderWriterLockType.Writer;
-                        SetNextKey();
-                    }
-                    else if (hasUpgradeable)
-                    {
-                        IncrementReaderLockCount();
-                        upgradeablePromise = _upgradeQueue.Dequeue();
-                        _smallFields._locker.Exit();
-                        goto ResolveUpgradeableReader;
-                    }
-                    else
-                    {
-                        // The lock is exited completely.
-                        _smallFields._lockType = AsyncReaderWriterLockType.None;
-                        _smallFields._writerType = AsyncReaderWriterLockType.None;
-                        _currentKey = 0;
                         _smallFields._locker.Exit();
                         return;
                     }
+                    IncrementReaderLockCount();
+                    var upgradeablePromise = _upgradeQueue.Dequeue();
+                    _smallFields._locker.Exit();
+                    upgradeablePromise.Resolve(_currentKey);
+                    return;
                 }
+
+                // Check writer queue before checking upgrade queue, to prevent starvation.
+                // Unless there is a waiting upgradeable reader, and the contention strategy is (upgradeable)reader prioritized.
+                bool hasUpgradeable = _upgradeQueue.IsNotEmpty;
+                bool prioritizedUpgradeable = hasUpgradeable & PrioritizeReadersOrUpgradeableReaders;
+                if (_writerQueue.IsNotEmpty & !prioritizedUpgradeable)
+                {
+                    var writerPromise = _writerQueue.Dequeue();
+                    _smallFields._lockType &= ~AsyncReaderWriterLockType.Upgradeable;
+                    _smallFields._writerType = AsyncReaderWriterLockType.Writer;
+                    SetNextKey();
+                    _smallFields._locker.Exit();
+                    writerPromise.Resolve(_currentKey);
+                    return;
+                }
+
+                if (hasUpgradeable)
+                {
+                    IncrementReaderLockCount();
+                    var upgradeablePromise = _upgradeQueue.Dequeue();
+                    _smallFields._locker.Exit();
+                    upgradeablePromise.Resolve(_currentKey);
+                    return;
+                }
+
+                // The lock is exited completely.
+                _smallFields._lockType = AsyncReaderWriterLockType.None;
+                _smallFields._writerType = AsyncReaderWriterLockType.None;
+                _currentKey = 0;
                 _smallFields._locker.Exit();
-
-                writerPromise.Resolve(_currentKey);
-                return;
-
-            ResolveUpgradeableReader:
-                upgradeablePromise.Resolve(_currentKey);
             }
 
             internal bool TryUnregister(Internal.AsyncReaderLockPromise promise)
@@ -2190,42 +2169,36 @@ namespace Proto.Promises
 
             internal bool TryUnregister(Internal.AsyncWriterLockPromise promise)
             {
-                Internal.ValueLinkedStack<Internal.AsyncReaderLockPromise> readers;
-                Internal.AsyncUpgradeableReaderLockPromise upgradeablePromise;
                 _smallFields._locker.Enter();
+                if (!_writerQueue.TryRemove(promise))
                 {
-                    if (!_writerQueue.TryRemove(promise))
-                    {
-                        _smallFields._locker.Exit();
-                        return false;
-                    }
-
-                    bool hasNoWriter = _writerQueue.IsEmpty & _upgradeWaiter == null & _smallFields._writerType == AsyncReaderWriterLockType.None;
-                    if (!hasNoWriter)
-                    {
-                        _smallFields._locker.Exit();
-                        return true;
-                    }
-
-                    _smallFields._lockType &= ~AsyncReaderWriterLockType.Writer;
-                    _readerLockCount += _readerWaitCount;
-                    _readerWaitCount = 0;
-                    readers = _readerQueue.MoveElementsToStack();
-
-                    if ((_smallFields._lockType & AsyncReaderWriterLockType.Upgradeable) != 0 | _upgradeQueue.IsEmpty)
-                    {
-                        _smallFields._locker.Exit();
-                        goto ResolveReaders;
-                    }
-
-                    IncrementReaderLockCount();
-                    upgradeablePromise = _upgradeQueue.Dequeue();
+                    _smallFields._locker.Exit();
+                    return false;
                 }
-                _smallFields._locker.Exit();
 
-                upgradeablePromise.Resolve(_currentKey);
+                bool hasNoWriter = _writerQueue.IsEmpty & _upgradeWaiter == null & _smallFields._writerType == AsyncReaderWriterLockType.None;
+                if (!hasNoWriter)
+                {
+                    _smallFields._locker.Exit();
+                    return true;
+                }
 
-            ResolveReaders:
+                _smallFields._lockType &= ~AsyncReaderWriterLockType.Writer;
+                _readerLockCount += _readerWaitCount;
+                _readerWaitCount = 0;
+                var readers = _readerQueue.MoveElementsToStack();
+
+                if ((_smallFields._lockType & AsyncReaderWriterLockType.Upgradeable) != 0 | _upgradeQueue.IsEmpty)
+                {
+                    _smallFields._locker.Exit();
+                }
+                else
+                {
+                    IncrementReaderLockCount();
+                    var upgradeablePromise = _upgradeQueue.Dequeue();
+                    _smallFields._locker.Exit();
+                    upgradeablePromise.Resolve(_currentKey);
+                }
                 while (readers.IsNotEmpty)
                 {
                     readers.Pop().Resolve(_currentKey);
@@ -2293,7 +2266,7 @@ namespace Proto.Promises
                 throw new InvalidOperationException(message, Internal.GetFormattedStacktrace(skipFrames + 1));
             }
 
-            private static string GetKeyTypeString(AsyncReaderWriterLockType keyType)
+            internal static string GetKeyTypeString(AsyncReaderWriterLockType keyType)
             {
                 return $"{nameof(AsyncReaderWriterLock)}." +
                     (keyType == AsyncReaderWriterLockType.Reader ? nameof(ReaderKey)
