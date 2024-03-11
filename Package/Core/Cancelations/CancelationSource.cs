@@ -81,6 +81,26 @@ namespace Proto.Promises
             return newCancelationSource;
         }
 
+        // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
+        // so we only include this in the nuget package and netstandard2.1+.
+#if !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+        /// <summary>
+        /// Create a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when any of the given tokens are canceled, whichever is first.
+        /// <para/>Note: the new <see cref="CancelationSource"/> still must be disposed when you are finished with it.
+        /// </summary>
+        /// <param name="tokens">A <see cref="ReadOnlySpan{T}"/> that contains the cancelation token instances to observe.</param>
+        /// <returns>A new <see cref="CancelationSource"/> that is linked to the source token.</returns>
+        public static CancelationSource New(ReadOnlySpan<CancelationToken> tokens)
+        {
+            CancelationSource newCancelationSource = New();
+            for (int i = 0, max = tokens.Length; i < max; ++i)
+            {
+                newCancelationSource._ref.MaybeLinkToken(tokens[i]);
+            }
+            return newCancelationSource;
+        }
+#endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+
         /// <summary>
         /// Get the <see cref="CancelationToken"/> associated with this <see cref="CancelationSource"/>.
         /// </summary>
