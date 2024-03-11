@@ -479,6 +479,173 @@ namespace ProtoPromiseTests.APIs
                 cancelationSource3.Dispose();
             }
 
+            // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
+            // so we only include this in the nuget package and netstandard2.1+.
+#if !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+            [Test]
+            public void CancelationSource3WithTokensCancelationRequestedAfterToken1Canceled_Span_2()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token }.AsSpan());
+                cancelationSource1.Cancel();
+                Assert.IsTrue(cancelationSource3.IsCancelationRequested);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+            }
+
+            [Test]
+            public void CancelationSource3WithTokensCancelationRequestedAfterToken1Canceled_Span_3()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                cancelationSource1.Cancel();
+                CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token }.AsSpan());
+                Assert.IsTrue(cancelationSource3.IsCancelationRequested);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+            }
+
+            [Test]
+            public void CancelationSource3WithTokensCancelationRequestedAfterToken2Canceled_Span_2()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token }.AsSpan());
+                cancelationSource2.Cancel();
+                Assert.IsTrue(cancelationSource3.IsCancelationRequested);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+            }
+
+            [Test]
+            public void CancelationSource3WithTokensCancelationRequestedAfterToken2Canceled_Span_3()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                cancelationSource2.Cancel();
+                CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token }.AsSpan());
+                Assert.IsTrue(cancelationSource3.IsCancelationRequested);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+            }
+
+            [Test]
+            public void CancelationSource1WithTokensNotCancelationRequestedAfterToken2Canceled_Span_1()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token }.AsSpan());
+                cancelationSource2.Cancel();
+                Assert.IsFalse(cancelationSource1.IsCancelationRequested);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+            }
+
+            [Test]
+            public void CancelationSource1And2WithTokensNotCancelationRequestedAfterToken3Canceled_Span_1()
+            {
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token }.AsSpan());
+                cancelationSource3.Cancel();
+                Assert.IsFalse(cancelationSource1.IsCancelationRequested);
+                Assert.IsFalse(cancelationSource2.IsCancelationRequested);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+            }
+
+            [Test]
+            public void CancelationSource3IsCanceledWhenToken1IsCanceled_Span_2()
+            {
+                bool invoked = false;
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token }.AsSpan());
+                cancelationSource3.Token.Register(() =>
+                {
+                    invoked = true;
+                });
+                cancelationSource1.Cancel();
+                Assert.IsTrue(invoked);
+                invoked = false;
+                cancelationSource2.Cancel();
+                Assert.IsFalse(invoked);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+            }
+
+            [Test]
+            public void CancelationSource3IsCanceledWhenToken1IsCanceled_Span_3()
+            {
+                bool invoked = false;
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                cancelationSource1.Cancel();
+                CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token }.AsSpan());
+                cancelationSource3.Token.Register(() =>
+                {
+                    invoked = true;
+                });
+                Assert.IsTrue(invoked);
+                invoked = false;
+                cancelationSource2.Cancel();
+                Assert.IsFalse(invoked);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+            }
+
+            [Test]
+            public void CancelationSource3IsCanceledWhenToken2IsCanceled_Span_2()
+            {
+                bool invoked = false;
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token }.AsSpan());
+                cancelationSource3.Token.Register(() =>
+                {
+                    invoked = true;
+                });
+                cancelationSource2.Cancel();
+                Assert.IsTrue(invoked);
+                invoked = false;
+                cancelationSource1.Cancel();
+                Assert.IsFalse(invoked);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+            }
+
+            [Test]
+            public void CancelationSource3IsCanceledWhenToken2IsCanceled_Span_3()
+            {
+                bool invoked = false;
+                CancelationSource cancelationSource1 = CancelationSource.New();
+                CancelationSource cancelationSource2 = CancelationSource.New();
+                cancelationSource2.Cancel();
+                CancelationSource cancelationSource3 = CancelationSource.New(new CancelationToken[] { cancelationSource1.Token, cancelationSource2.Token }.AsSpan());
+                cancelationSource3.Token.Register(() =>
+                {
+                    invoked = true;
+                });
+                Assert.IsTrue(invoked);
+                invoked = false;
+                cancelationSource1.Cancel();
+                Assert.IsFalse(invoked);
+                cancelationSource1.Dispose();
+                cancelationSource2.Dispose();
+                cancelationSource3.Dispose();
+            }
+#endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+
             [Test]
             public void CancelationSourceLinkedToToken1TwiceIsCanceledWhenToken1Iscanceled()
             {

@@ -60,6 +60,17 @@ namespace Proto.Promises
             return All(promises.GetGenericEnumerator());
         }
 
+        // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
+        // so we only include this in the nuget package and netstandard2.1+.
+#if !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+        /// <summary>
+        /// Returns a <see cref="Promise"/> that will resolve when all <paramref name="promises"/> have resolved.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
+        /// </summary>
+        public static Promise All(ReadOnlySpan<Promise> promises)
+            => All(promises.GetPersistedEnumerator());
+#endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when all <paramref name="promises"/> have resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
@@ -158,6 +169,17 @@ namespace Proto.Promises
         {
             return Promise<T>.All(promises);
         }
+
+        // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
+        // so we only include this in the nuget package and netstandard2.1+.
+#if !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve with a list of values in the same order as <paramref name="promises"/> when they have all resolved.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
+        /// </summary>
+        public static Promise All<T>(ReadOnlySpan<Promise<T>> promises)
+            => Promise<T>.All(promises.GetPersistedEnumerator());
+#endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of values in the same order as <paramref name="promises"/>s when they have all resolved.

@@ -58,6 +58,17 @@ namespace Proto.Promises
             return Race(promises.GetGenericEnumerator());
         }
 
+        // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
+        // so we only include this in the nuget package and netstandard2.1+.
+#if !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+        /// <summary>
+        /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
+        /// </summary>
+        public static Promise Race(ReadOnlySpan<Promise> promises)
+            => Race(promises.GetPersistedEnumerator());
+#endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
@@ -166,6 +177,17 @@ namespace Proto.Promises
             return RaceWithIndex(promises.GetGenericEnumerator());
         }
 
+        // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
+        // so we only include this in the nuget package and netstandard2.1+.
+#if !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
+        /// </summary>
+        public static Promise<int> RaceWithIndex(ReadOnlySpan<Promise> promises)
+            => RaceWithIndex(promises.GetPersistedEnumerator());
+#endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
@@ -269,6 +291,17 @@ namespace Proto.Promises
             return Promise<T>.Race(promises);
         }
 
+        // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
+        // so we only include this in the nuget package and netstandard2.1+.
+#if !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
+        /// </summary>
+        public static Promise<T> Race<T>(ReadOnlySpan<Promise<T>> promises)
+            => Promise<T>.Race(promises.GetPersistedEnumerator());
+#endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
@@ -331,6 +364,17 @@ namespace Proto.Promises
         {
             return First(promises.GetGenericEnumerator());
         }
+
+        // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
+        // so we only include this in the nuget package and netstandard2.1+.
+#if !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+        /// <summary>
+        /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// </summary>
+        public static Promise First(ReadOnlySpan<Promise> promises)
+            => First(promises.GetPersistedEnumerator());
+#endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
@@ -443,6 +487,17 @@ namespace Proto.Promises
             return FirstWithIndex(promises.GetGenericEnumerator());
         }
 
+        // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
+        // so we only include this in the nuget package and netstandard2.1+.
+#if !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
+        /// </summary>
+        public static Promise<int> FirstWithIndex(ReadOnlySpan<Promise> promises)
+            => FirstWithIndex(promises.GetPersistedEnumerator());
+#endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
@@ -550,6 +605,17 @@ namespace Proto.Promises
             return Promise<T>.First(promises);
         }
 
+        // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
+        // so we only include this in the nuget package and netstandard2.1+.
+#if !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// </summary>
+        public static Promise<T> First<T>(ReadOnlySpan<Promise<T>> promises)
+            => Promise<T>.First(promises.GetPersistedEnumerator());
+#endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
@@ -612,6 +678,17 @@ namespace Proto.Promises
         {
             return RaceWithIndex<T, Internal.ArrayEnumerator<Promise<T>>>(promises.GetGenericEnumerator());
         }
+
+        // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
+        // so we only include this in the nuget package and netstandard2.1+.
+#if !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
+        /// </summary>
+        public static Promise<(int winIndex, T result)> RaceWithIndex<T>(ReadOnlySpan<Promise<T>> promises)
+            => RaceWithIndex<T, Internal.PersistedSpanEnumerator<Promise<T>>>(promises.GetPersistedEnumerator());
+#endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
@@ -728,6 +805,17 @@ namespace Proto.Promises
         {
             return FirstWithIndex<T, Internal.ArrayEnumerator<Promise<T>>>(promises.GetGenericEnumerator());
         }
+
+        // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
+        // so we only include this in the nuget package and netstandard2.1+.
+#if !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// </summary>
+        public static Promise<(int winIndex, T result)> FirstWithIndex<T>(ReadOnlySpan<Promise<T>> promises)
+            => FirstWithIndex<T, Internal.PersistedSpanEnumerator<Promise<T>>>(promises.GetPersistedEnumerator());
+#endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.

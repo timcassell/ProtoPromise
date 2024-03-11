@@ -85,6 +85,16 @@ namespace Proto.Promises
             return AllSettled(promises, new ResultContainer[promises.Length]);
         }
 
+        // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
+        // so we only include this in the nuget package and netstandard2.1+.
+#if !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
+        /// </summary>
+        public static Promise<IList<ResultContainer>> AllSettled(ReadOnlySpan<Promise> promises)
+            => AllSettled(promises.GetPersistedEnumerator());
+#endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
         /// </summary>
@@ -238,6 +248,16 @@ namespace Proto.Promises
         {
             return Promise<T>.AllSettled(promises);
         }
+
+        // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
+        // so we only include this in the nuget package and netstandard2.1+.
+#if !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="Promise{T}.ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
+        /// </summary>
+        public static Promise<IList<Promise<T>.ResultContainer>> AllSettled<T>(ReadOnlySpan<Promise<T>> promises)
+            => Promise<T>.AllSettled(promises.GetPersistedEnumerator());
+#endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="Promise{T}.ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
