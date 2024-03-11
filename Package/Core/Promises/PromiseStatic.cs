@@ -21,6 +21,9 @@ namespace Proto.Promises
         /// Runs <paramref name="promiseFuncs"/> in sequence, returning a <see cref="Promise"/> that will resolve when all promises have resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// This function is not recommended. Instead, you should prefer async/await or .Then API.
+        /// </remarks>
         public static Promise Sequence(params Func<Promise>[] promiseFuncs)
         {
             return Sequence(default(CancelationToken), promiseFuncs.GetGenericEnumerator());
@@ -33,6 +36,9 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled before all of the <paramref name="promiseFuncs"/> have been invoked,
         /// the <paramref name="promiseFuncs"/> will stop being invoked, and the returned <see cref="Promise"/> will be canceled.
         /// </summary>
+        /// <remarks>
+        /// This function is not recommended. Instead, you should prefer async/await or .Then API.
+        /// </remarks>
         public static Promise Sequence(CancelationToken cancelationToken, params Func<Promise>[] promiseFuncs)
         {
             return Sequence(cancelationToken, promiseFuncs.GetGenericEnumerator());
@@ -42,6 +48,9 @@ namespace Proto.Promises
         /// Runs <paramref name="promiseFuncs"/> in sequence, returning a <see cref="Promise"/> that will resolve when all promises have resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// This function is not recommended. Instead, you should prefer async/await or .Then API.
+        /// </remarks>
         public static Promise Sequence(IEnumerable<Func<Promise>> promiseFuncs)
         {
             return Sequence(default(CancelationToken), promiseFuncs.GetEnumerator());
@@ -54,6 +63,9 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled before all of the <paramref name="promiseFuncs"/> have been invoked,
         /// the <paramref name="promiseFuncs"/> will stop being invoked, and the returned <see cref="Promise"/> will be canceled.
         /// </summary>
+        /// <remarks>
+        /// This function is not recommended. Instead, you should prefer async/await or .Then API.
+        /// </remarks>
         public static Promise Sequence(CancelationToken cancelationToken, IEnumerable<Func<Promise>> promiseFuncs)
         {
             return Sequence(cancelationToken, promiseFuncs.GetEnumerator());
@@ -63,6 +75,9 @@ namespace Proto.Promises
         /// Runs <paramref name="promiseFuncs"/> in sequence, returning a <see cref="Promise"/> that will resolve when all promises have resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// This function is not recommended. Instead, you should prefer async/await or .Then API.
+        /// </remarks>
         public static Promise Sequence<TEnumerator>(TEnumerator promiseFuncs) where TEnumerator : IEnumerator<Func<Promise>>
         {
             return Sequence(default(CancelationToken), promiseFuncs);
@@ -75,6 +90,9 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled before all of the <paramref name="promiseFuncs"/> have been invoked,
         /// the <paramref name="promiseFuncs"/> will stop being invoked, and the returned <see cref="Promise"/> will be canceled.
         /// </summary>
+        /// <remarks>
+        /// This function is not recommended. Instead, you should prefer async/await or .Then API.
+        /// </remarks>
         public static Promise Sequence<TEnumerator>(CancelationToken cancelationToken, TEnumerator promiseFuncs) where TEnumerator : IEnumerator<Func<Promise>>
         {
             ValidateArgument(promiseFuncs, "promiseFuncs", 2);
