@@ -62,10 +62,7 @@ namespace Proto.Promises.Threading
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<Key> LockAsync()
-        {
-            return _impl.LockAsync();
-        }
+        public Promise<Key> LockAsync() => LockAsyncImpl();
 
         /// <summary>
         /// Asynchronously acquire the lock, while observing a <see cref="CancelationToken"/>.
@@ -74,19 +71,13 @@ namespace Proto.Promises.Threading
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<Key> LockAsync(CancelationToken cancelationToken)
-        {
-            return _impl.LockAsync(cancelationToken);
-        }
+        public Promise<Key> LockAsync(CancelationToken cancelationToken) => LockAsyncImpl(cancelationToken);
 
         /// <summary>
         /// Synchronously acquire the lock. Returns the key that will release the lock when it is disposed.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Key Lock()
-        {
-            return _impl.Lock();
-        }
+        public Key Lock() => LockImpl();
 
         /// <summary>
         /// Synchronously acquire the lock, while observing a <see cref="CancelationToken"/>.
@@ -94,10 +85,7 @@ namespace Proto.Promises.Threading
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, a <see cref="CanceledException"/> will be thrown.</param>
         [MethodImpl(Internal.InlineOption)]
-        public Key Lock(CancelationToken cancelationToken)
-        {
-            return _impl.Lock(cancelationToken);
-        }
+        public Key Lock(CancelationToken cancelationToken) => LockImpl(cancelationToken);
 
         /// <summary>
         /// A disposable object used to release the associated <see cref="AsyncLock"/>.

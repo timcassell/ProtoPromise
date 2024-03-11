@@ -325,6 +325,30 @@ namespace Proto.Promises
                 return success;
             }
 
+            [MethodImpl(InlineOption)]
+            internal static bool TryRegister<TCancelable>(CancelationRef _this, int tokenId, in TCancelable cancelable, out CancelationRegistration registration, out bool alreadyCanceled)
+                where TCancelable : ICancelable
+            {
+                if (_this == null)
+                {
+                    registration = default(CancelationRegistration);
+                    alreadyCanceled = false;
+                    return false;
+                }
+                return _this.TryRegister(cancelable, tokenId, out registration, out alreadyCanceled);
+            }
+
+            [MethodImpl(InlineOption)]
+            private bool TryRegister<TCancelable>(in TCancelable cancelable, int tokenId, out CancelationRegistration registration, out bool alreadyCanceled)
+                where TCancelable : ICancelable
+            {
+                var nodeCreator = new UserNodeCreatorNoInvoke<TCancelable>(cancelable);
+                bool success = TryRegister(ref nodeCreator, tokenId);
+                registration = nodeCreator._registration;
+                alreadyCanceled = nodeCreator._isCanceled;
+                return success;
+            }
+
             private bool TryRegister<TNodeCreator>(ref TNodeCreator nodeCreator, int tokenId)
                 where TNodeCreator : INodeCreator
             {
@@ -902,6 +926,36 @@ namespace Proto.Promises
                 public void Invoke()
                 {
                     _cancelable.Cancel();
+                }
+            }
+
+            private struct UserNodeCreatorNoInvoke<TCancelable> : INodeCreator
+                where TCancelable : ICancelable
+            {
+                internal CancelationRegistration _registration;
+                private readonly TCancelable _cancelable;
+                internal bool _isCanceled;
+
+                [MethodImpl(InlineOption)]
+                public UserNodeCreatorNoInvoke(in TCancelable cancelable)
+                {
+                    _registration = default(CancelationRegistration);
+                    _cancelable = cancelable;
+                    _isCanceled = false;
+                }
+
+                [MethodImpl(InlineOption)]
+                public CancelationCallbackNodeBase CreateNode(CancelationRef parent, int tokenId)
+                {
+                    var node = CallbackNodeImpl<TCancelable>.GetOrCreate(_cancelable, parent);
+                    _registration = new CancelationRegistration(parent, node, node.NodeId, tokenId);
+                    return node;
+                }
+
+                [MethodImpl(InlineOption)]
+                public void Invoke()
+                {
+                    _isCanceled = true;
                 }
             }
 

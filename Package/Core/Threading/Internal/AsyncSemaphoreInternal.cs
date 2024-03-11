@@ -19,7 +19,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class AsyncSemaphorePromise : AsyncEventPromise<AsyncSemaphoreInternal>
+        internal sealed class AsyncSemaphorePromise : AsyncEventPromise<Threading.AsyncSemaphore>
         {
             [MethodImpl(InlineOption)]
             private static AsyncSemaphorePromise GetOrCreate()
@@ -31,7 +31,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static AsyncSemaphorePromise GetOrCreate(AsyncSemaphoreInternal owner, SynchronizationContext callerContext)
+            internal static AsyncSemaphorePromise GetOrCreate(Threading.AsyncSemaphore owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
                 promise.Reset(callerContext);
@@ -44,6 +44,13 @@ namespace Proto.Promises
                 Dispose();
                 _owner = null;
                 ObjectPool.MaybeRepool(this);
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void DisposeImmediate()
+            {
+                SetCompletionState(Promise.State.Resolved);
+                MaybeDispose();
             }
 
             public override void Cancel()
@@ -64,40 +71,36 @@ namespace Proto.Promises
                 Continue();
             }
         }
+    } // class Internal
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal sealed class AsyncSemaphoreInternal : ITraceable
+    namespace Threading
+    {
+        partial class AsyncSemaphore : Internal.ITraceable
         {
-            // This must not be readonly.
-            private ValueLinkedQueue<AsyncEventPromiseBase> _waiters = new ValueLinkedQueue<AsyncEventPromiseBase>();
-            volatile internal int _currentCount;
+            // These must not be readonly.
+            private Internal.ValueLinkedQueue<Internal.AsyncEventPromiseBase> _waiters = new Internal.ValueLinkedQueue<Internal.AsyncEventPromiseBase>();
+            private Internal.SpinLocker _locker = new Internal.SpinLocker();
+            volatile private int _currentCount;
             private readonly int _maxCount;
 
-            internal AsyncSemaphoreInternal(int initialCount, int maxCount)
-            {
-                _currentCount = initialCount;
-                _maxCount = maxCount;
-                SetCreatedStacktrace(this, 2);
-            }
-
 #if PROMISE_DEBUG
-            CausalityTrace ITraceable.Trace { get; set; }
+            partial void SetCreatedStacktrace() => Internal.SetCreatedStacktraceImpl(this, 2);
 
-            ~AsyncSemaphoreInternal()
+            Internal.CausalityTrace Internal.ITraceable.Trace { get; set; }
+
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+            ~AsyncSemaphore()
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
             {
-                ValueLinkedStack<AsyncEventPromiseBase> waiters;
-                lock (this)
-                {
-                    waiters = _waiters.MoveElementsToStack();
-                }
+                _locker.Enter();
+                var waiters = _waiters.MoveElementsToStack();
+                _locker.Exit();
                 if (waiters.IsEmpty)
                 {
                     return;
                 }
 
-                var rejectContainer = CreateRejectContainer(new Threading.AbandonedSemaphoreException("An AsyncSemaphore was collected with waiters still pending."), int.MinValue, null, this);
+                var rejectContainer = Internal.CreateRejectContainer(new AbandonedSemaphoreException("An AsyncSemaphore was collected with waiters still pending."), int.MinValue, null, this);
                 do
                 {
                     waiters.Pop().Reject(rejectContainer);
@@ -106,54 +109,64 @@ namespace Proto.Promises
             }
 #endif // PROMISE_DEBUG
 
-            internal Promise WaitAsync()
+            private Promise WaitAsyncImpl()
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
-                AsyncSemaphorePromise promise;
-                lock (this)
+                Internal.AsyncSemaphorePromise promise;
+                _locker.Enter();
                 {
                     // Read the _currentCount into a local variable to avoid extra unnecessary volatile accesses inside the lock.
                     int current = _currentCount;
                     if (current != 0)
                     {
                         _currentCount = current - 1;
+                        _locker.Exit();
                         return Promise.Resolved();
                     }
-                    promise = AsyncSemaphorePromise.GetOrCreate(this, CaptureContext());
+                    promise = Internal.AsyncSemaphorePromise.GetOrCreate(this, Internal.CaptureContext());
                     _waiters.Enqueue(promise);
                 }
+                _locker.Exit();
                 return new Promise(promise, promise.Id);
             }
 
-            internal Promise<bool> TryWaitAsync(CancelationToken cancelationToken)
+            private Promise<bool> TryWaitAsyncImpl(CancelationToken cancelationToken)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
 
                 // Immediately query the cancelation state before entering the lock.
                 bool isCanceled = cancelationToken.IsCancelationRequested;
 
-                AsyncSemaphorePromise promise;
-                lock (this)
+                Internal.AsyncSemaphorePromise promise;
+                _locker.Enter();
                 {
                     // Read the _currentCount into a local variable to avoid extra unnecessary volatile accesses inside the lock.
                     int current = _currentCount;
                     if (current != 0)
                     {
                         _currentCount = current - 1;
+                        _locker.Exit();
                         return Promise.Resolved(true);
                     }
                     if (isCanceled)
                     {
+                        _locker.Exit();
                         return Promise.Resolved(false);
                     }
-                    promise = AsyncSemaphorePromise.GetOrCreate(this, CaptureContext());
+                    promise = Internal.AsyncSemaphorePromise.GetOrCreate(this, Internal.CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        _locker.Exit();
+                        promise.DisposeImmediate();
+                        return Promise.Resolved(false);
+                    }
                     _waiters.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
+                _locker.Exit();
                 return new Promise<bool>(promise, promise.Id);
             }
 
-            internal void WaitSync()
+            private void WaitSyncImpl()
             {
                 // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
@@ -162,25 +175,27 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                AsyncSemaphorePromise promise;
-                lock (this)
+                Internal.AsyncSemaphorePromise promise;
+                _locker.Enter();
                 {
                     // Read the _currentCount into a local variable to avoid extra unnecessary volatile accesses inside the lock.
                     int current = _currentCount;
                     if (current != 0)
                     {
                         _currentCount = current - 1;
+                        _locker.Exit();
                         return;
                     }
-                    promise = AsyncSemaphorePromise.GetOrCreate(this, null);
+                    promise = Internal.AsyncSemaphorePromise.GetOrCreate(this, null);
                     _waiters.Enqueue(promise);
                 }
+                _locker.Exit();
                 Promise.ResultContainer resultContainer;
-                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
                 resultContainer.RethrowIfRejected();
             }
 
-            internal bool TryWait(CancelationToken cancelationToken)
+            private bool TryWaitImpl(CancelationToken cancelationToken)
             {
                 // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
@@ -191,82 +206,95 @@ namespace Proto.Promises
                     isCanceled = cancelationToken.IsCancelationRequested;
                 }
 
-                AsyncSemaphorePromise promise;
-                lock (this)
+                Internal.AsyncSemaphorePromise promise;
+                _locker.Enter();
                 {
                     // Read the _currentCount into a local variable to avoid extra unnecessary volatile accesses inside the lock.
                     int current = _currentCount;
                     if (current != 0)
                     {
                         _currentCount = current - 1;
+                        _locker.Exit();
                         return true;
                     }
                     if (isCanceled)
                     {
+                        _locker.Exit();
                         return false;
                     }
-                    promise = AsyncSemaphorePromise.GetOrCreate(this, null);
+                    promise = Internal.AsyncSemaphorePromise.GetOrCreate(this, null);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        _locker.Exit();
+                        promise.DisposeImmediate();
+                        return false;
+                    }
                     _waiters.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
+                _locker.Exit();
                 Promise<bool>.ResultContainer resultContainer;
-                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
                 resultContainer.RethrowIfRejected();
                 return resultContainer.Value;
             }
 
-            internal void Release()
+            private void ReleaseImpl()
             {
                 // Special implementation for Release(1) to remove unnecessary branches.
-                AsyncEventPromiseBase waiter;
-                lock (this)
+                Internal.AsyncEventPromiseBase waiter;
+                _locker.Enter();
                 {
                     // Read the _currentCount into a local variable to avoid extra unnecessary volatile accesses inside the lock.
                     int current = _currentCount;
                     if (_maxCount == current)
                     {
-                        throw new Threading.SemaphoreFullException(GetFormattedStacktrace(2));
+                        _locker.Exit();
+                        throw new SemaphoreFullException(Internal.GetFormattedStacktrace(2));
                     }
 
                     if (_waiters.IsEmpty)
                     {
                         _currentCount = current + 1;
+                        _locker.Exit();
                         return;
                     }
                     waiter = _waiters.Dequeue();
                 }
+                _locker.Exit();
                 waiter.Resolve();
             }
 
-            internal void Release(int releaseCount)
+            private void ReleaseImpl(int releaseCount)
             {
-                ValueLinkedStack<AsyncEventPromiseBase> waiters;
-                lock (this)
+                Internal.ValueLinkedStack<Internal.AsyncEventPromiseBase> waiters;
+                _locker.Enter();
                 {
                     // Read the _currentCount into a local variable to avoid extra unnecessary volatile accesses inside the lock.
                     int current = _currentCount;
                     if (releaseCount > _maxCount - current)
                     {
-                        throw new Threading.SemaphoreFullException(GetFormattedStacktrace(2));
+                        _locker.Exit();
+                        throw new SemaphoreFullException(Internal.GetFormattedStacktrace(2));
                     }
 
                     int waiterCount;
                     waiters = _waiters.MoveElementsToStack(releaseCount, out waiterCount);
                     _currentCount = current + releaseCount - waiterCount;
                 }
+                _locker.Exit();
                 while (waiters.IsNotEmpty)
                 {
                     waiters.Pop().Resolve();
                 }
             }
 
-            internal bool TryRemoveWaiter(AsyncSemaphorePromise waiter)
+            internal bool TryRemoveWaiter(Internal.AsyncSemaphorePromise waiter)
             {
-                lock (this)
-                {
-                    return _waiters.TryRemove(waiter);
-                }
+                _locker.Enter();
+                var removed = _waiters.TryRemove(waiter);
+                _locker.Exit();
+                return removed;
             }
-        } // class AsyncSemaphoreInternal
-    } // class Internal
+        } // class AsyncSemaphore
+    } // namespace Threading
 } // namespace Proto.Promises

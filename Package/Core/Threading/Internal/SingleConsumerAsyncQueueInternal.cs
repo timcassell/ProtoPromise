@@ -34,24 +34,20 @@ namespace Proto.Promises
 
             internal Promise<(bool hasValue, T value)> TryDequeueAsync()
             {
-                bool hasValue;
-                T value = default;
                 PromiseRefBase.DeferredPromise<(bool, T)> promise;
 
                 _smallValues._locker.Enter();
                 {
                     if (_smallValues._producerCount == 0)
                     {
-                        hasValue = false;
                         _smallValues._locker.Exit();
-                        return Promise.Resolved((hasValue, value));
+                        return Promise.Resolved((false, default(T)));
                     }
                     if (_queue.Count > 0)
                     {
-                        hasValue = true;
-                        value = _queue.Dequeue();
+                        var value = _queue.Dequeue();
                         _smallValues._locker.Exit();
-                        return Promise.Resolved((hasValue, value));
+                        return Promise.Resolved((true, value));
                     }
                     _waiter = promise = PromiseRefBase.DeferredPromise<(bool, T)>.GetOrCreate();
                 }

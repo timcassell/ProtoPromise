@@ -20,7 +20,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class AsyncCountdownEventPromise : AsyncEventPromise<AsyncCountdownEventInternal>
+        internal sealed class AsyncCountdownEventPromise : AsyncEventPromise<Threading.AsyncCountdownEvent>
         {
             [MethodImpl(InlineOption)]
             private static AsyncCountdownEventPromise GetOrCreate()
@@ -32,7 +32,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static AsyncCountdownEventPromise GetOrCreate(AsyncCountdownEventInternal owner, SynchronizationContext callerContext)
+            internal static AsyncCountdownEventPromise GetOrCreate(Threading.AsyncCountdownEvent owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
                 promise.Reset(callerContext);
@@ -45,6 +45,13 @@ namespace Proto.Promises
                 Dispose();
                 _owner = null;
                 ObjectPool.MaybeRepool(this);
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void DisposeImmediate()
+            {
+                SetCompletionState(Promise.State.Resolved);
+                MaybeDispose();
             }
 
             public override void Cancel()
@@ -65,40 +72,36 @@ namespace Proto.Promises
                 Continue();
             }
         }
+    } // class Internal
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal sealed class AsyncCountdownEventInternal : ITraceable
+    namespace Threading
+    {
+        partial class AsyncCountdownEvent : Internal.ITraceable
         {
-            // This must not be readonly.
-            private ValueLinkedQueue<AsyncEventPromiseBase> _waiters = new ValueLinkedQueue<AsyncEventPromiseBase>();
-            internal int _initialCount;
-            volatile internal int _currentCount;
-
-            internal AsyncCountdownEventInternal(int initialCount)
-            {
-                _initialCount = initialCount;
-                _currentCount = initialCount;
-                SetCreatedStacktrace(this, 2);
-            }
+            // These must not be readonly.
+            private Internal.ValueLinkedQueue<Internal.AsyncEventPromiseBase> _waiters = new Internal.ValueLinkedQueue<Internal.AsyncEventPromiseBase>();
+            private Internal.SpinLocker _locker = new Internal.SpinLocker();
+            private int _initialCount;
+            volatile private int _currentCount;
 
 #if PROMISE_DEBUG
-            CausalityTrace ITraceable.Trace { get; set; }
+            partial void SetCreatedStacktrace() => Internal.SetCreatedStacktraceImpl(this, 2);
 
-            ~AsyncCountdownEventInternal()
+            Internal.CausalityTrace Internal.ITraceable.Trace { get; set; }
+
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+            ~AsyncCountdownEvent()
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
             {
-                ValueLinkedStack<AsyncEventPromiseBase> waiters;
-                lock (this)
-                {
-                    waiters = _waiters.MoveElementsToStack();
-                }
+                _locker.Enter();
+                var waiters = _waiters.MoveElementsToStack();
+                _locker.Exit();
                 if (waiters.IsEmpty)
                 {
                     return;
                 }
 
-                var rejectContainer = CreateRejectContainer(new Threading.AbandonedResetEventException("An AsyncCountdownEvent was collected with waiters still pending."), int.MinValue, null, this);
+                var rejectContainer = Internal.CreateRejectContainer(new AbandonedResetEventException("An AsyncCountdownEvent was collected with waiters still pending."), int.MinValue, null, this);
                 do
                 {
                     waiters.Pop().Reject(rejectContainer);
@@ -107,7 +110,7 @@ namespace Proto.Promises
             }
 #endif // PROMISE_DEBUG
 
-            internal Promise WaitAsync()
+            private Promise WaitAsyncImpl()
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 if (_currentCount == 0)
@@ -115,21 +118,23 @@ namespace Proto.Promises
                     return Promise.Resolved();
                 }
 
-                AsyncCountdownEventPromise promise;
-                lock (this)
+                Internal.AsyncCountdownEventPromise promise;
+                _locker.Enter();
                 {
                     // Check the count again inside the lock to resolve race condition with Signal().
                     if (_currentCount == 0)
                     {
+                        _locker.Exit();
                         return Promise.Resolved();
                     }
-                    promise = AsyncCountdownEventPromise.GetOrCreate(this, CaptureContext());
+                    promise = Internal.AsyncCountdownEventPromise.GetOrCreate(this, Internal.CaptureContext());
                     _waiters.Enqueue(promise);
                 }
+                _locker.Exit();
                 return new Promise(promise, promise.Id);
             }
 
-            internal Promise<bool> TryWaitAsync(CancelationToken cancelationToken)
+            private Promise<bool> TryWaitAsyncImpl(CancelationToken cancelationToken)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 bool isSet = _currentCount == 0;
@@ -138,22 +143,29 @@ namespace Proto.Promises
                     return Promise.Resolved(isSet);
                 }
 
-                AsyncCountdownEventPromise promise;
-                lock (this)
+                Internal.AsyncCountdownEventPromise promise;
+                _locker.Enter();
                 {
                     // Check the count again inside the lock to resolve race condition with Signal().
                     if (_currentCount == 0)
                     {
+                        _locker.Exit();
                         return Promise.Resolved(true);
                     }
-                    promise = AsyncCountdownEventPromise.GetOrCreate(this, CaptureContext());
+                    promise = Internal.AsyncCountdownEventPromise.GetOrCreate(this, Internal.CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        promise.DisposeImmediate();
+                        _locker.Exit();
+                        return Promise.Resolved(false);
+                    }
                     _waiters.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
+                _locker.Exit();
                 return new Promise<bool>(promise, promise.Id);
             }
 
-            internal void Wait()
+            private void WaitImpl()
             {
                 // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
@@ -169,23 +181,25 @@ namespace Proto.Promises
                     return;
                 }
 
-                AsyncCountdownEventPromise promise;
-                lock (this)
+                Internal.AsyncCountdownEventPromise promise;
+                _locker.Enter();
                 {
                     // Check the count again inside the lock to resolve race condition with Signal().
                     if (_currentCount == 0)
                     {
+                        _locker.Exit();
                         return;
                     }
-                    promise = AsyncCountdownEventPromise.GetOrCreate(this, null);
+                    promise = Internal.AsyncCountdownEventPromise.GetOrCreate(this, null);
                     _waiters.Enqueue(promise);
                 }
+                _locker.Exit();
                 Promise.ResultContainer resultContainer;
-                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
                 resultContainer.RethrowIfRejected();
             }
 
-            internal bool TryWait(CancelationToken cancelationToken)
+            private bool TryWaitImpl(CancelationToken cancelationToken)
             {
                 // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
@@ -203,51 +217,61 @@ namespace Proto.Promises
                     return isSet;
                 }
 
-                AsyncCountdownEventPromise promise;
-                lock (this)
+                Internal.AsyncCountdownEventPromise promise;
+                _locker.Enter();
                 {
                     // Check the count again inside the lock to resolve race condition with Signal().
                     if (_currentCount == 0)
                     {
+                        _locker.Exit();
                         return true;
                     }
-                    promise = AsyncCountdownEventPromise.GetOrCreate(this, null);
+                    promise = Internal.AsyncCountdownEventPromise.GetOrCreate(this, null);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        _locker.Exit();
+                        promise.DisposeImmediate();
+                        return false;
+                    }
                     _waiters.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
+                _locker.Exit();
                 Promise<bool>.ResultContainer resultContainer;
-                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
                 resultContainer.RethrowIfRejected();
                 return resultContainer.Value;
             }
 
-            internal bool Signal(int signalCount)
+            private bool SignalImpl(int signalCount)
             {
-                ValueLinkedStack<AsyncEventPromiseBase> waiters;
-                lock (this)
+                Internal.ValueLinkedStack<Internal.AsyncEventPromiseBase> waiters;
+                _locker.Enter();
                 {
                     // Read the _currentCount into a local variable to avoid extra unnecessary volatile accesses inside the lock.
                     int current = _currentCount;
                     if (signalCount < 1 | current == 0 | signalCount > current)
                     {
+                        _locker.Exit();
                         if (signalCount < 1)
                         {
-                            throw new ArgumentOutOfRangeException("signalCount", "AsyncCountdownEvent.Signal: signalCount must be greater than or equal to 1.", GetFormattedStacktrace(2));
+                            throw new ArgumentOutOfRangeException("signalCount", "AsyncCountdownEvent.Signal: signalCount must be greater than or equal to 1.", Internal.GetFormattedStacktrace(2));
                         }
                         throw new InvalidOperationException(current == 0
                             ? "AsyncCountdownEvent.Signal: The AsyncCountdownEvent is already set."
-                            : "AsyncCountdownEvent.Signal: signalCount cannot be greater than CurrentCount.", GetFormattedStacktrace(2));
+                            : "AsyncCountdownEvent.Signal: signalCount cannot be greater than CurrentCount.", Internal.GetFormattedStacktrace(2));
                     }
 
                     current -= signalCount;
                     _currentCount = current;
                     if (current != 0)
                     {
+                        _locker.Exit();
                         return false;
                     }
 
                     waiters = _waiters.MoveElementsToStack();
                 }
+                _locker.Exit();
                 while (waiters.IsNotEmpty)
                 {
                     waiters.Pop().Resolve();
@@ -255,71 +279,75 @@ namespace Proto.Promises
                 return true;
             }
 
-            internal void Reset()
+            private void ResetImpl()
             {
-                lock (this)
-                {
-                    _currentCount = _initialCount;
-                }
+                _locker.Enter();
+                _currentCount = _initialCount;
+                _locker.Exit();
             }
 
-            internal void Reset(int count)
+            private void ResetImpl(int count)
             {
                 if (count < 0)
                 {
-                    throw new ArgumentOutOfRangeException("count", "AsyncCountdownEvent.Reset: count must be greater than or equal to 0.", GetFormattedStacktrace(2));
+                    throw new ArgumentOutOfRangeException("count", "AsyncCountdownEvent.Reset: count must be greater than or equal to 0.", Internal.GetFormattedStacktrace(2));
                 }
 
-                ValueLinkedStack<AsyncEventPromiseBase> waiters;
-                lock (this)
+                Internal.ValueLinkedStack<Internal.AsyncEventPromiseBase> waiters;
+                _locker.Enter();
                 {
                     _initialCount = count;
                     _currentCount = count;
-                    
+
                     if (count != 0)
                     {
+                        _locker.Exit();
                         return;
                     }
 
                     waiters = _waiters.MoveElementsToStack();
                 }
+                _locker.Exit();
                 while (waiters.IsNotEmpty)
                 {
                     waiters.Pop().Resolve();
                 }
             }
 
-            internal bool TryAddCount(int signalCount)
+            private bool TryAddCountImpl(int signalCount)
             {
-                lock (this)
+                _locker.Enter();
                 {
                     // Read the _currentCount into a local variable to avoid extra unnecessary volatile accesses inside the lock.
                     int current = _currentCount;
                     if (signalCount < 1 | signalCount > int.MaxValue - current)
                     {
+                        _locker.Exit();
                         if (signalCount < 1)
                         {
-                            throw new ArgumentOutOfRangeException("signalCount", "AsyncCountdownEvent.TryAddCount: signalCount must be greater than or equal to 1.", GetFormattedStacktrace(2));
+                            throw new ArgumentOutOfRangeException("signalCount", "AsyncCountdownEvent.TryAddCount: signalCount must be greater than or equal to 1.", Internal.GetFormattedStacktrace(2));
                         }
-                        throw new InvalidOperationException("AsyncCountdownEvent.TryAddCount: signalCount + CurrentCount exceeded int.MaxValue.", GetFormattedStacktrace(2));
+                        throw new InvalidOperationException("AsyncCountdownEvent.TryAddCount: signalCount + CurrentCount exceeded int.MaxValue.", Internal.GetFormattedStacktrace(2));
                     }
 
                     if (current == 0)
                     {
+                        _locker.Exit();
                         return false;
                     }
                     _currentCount = current + signalCount;
-                    return true;
                 }
+                _locker.Exit();
+                return true;
             }
 
-            internal bool TryRemoveWaiter(AsyncCountdownEventPromise waiter)
+            internal bool TryRemoveWaiter(Internal.AsyncCountdownEventPromise waiter)
             {
-                lock (this)
-                {
-                    return _waiters.TryRemove(waiter);
-                }
+                _locker.Enter();
+                var removed = _waiters.TryRemove(waiter);
+                _locker.Exit();
+                return removed;
             }
-        } // class AsyncCountdownEventInternal
-    } // class Internal
+        } // class AsyncCountdownEvent
+    } // namespace Threading
 } // namespace Proto.Promises

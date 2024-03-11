@@ -126,6 +126,20 @@ namespace Proto.Promises
         }
 
         /// <summary>
+        /// Try to register a cancelable that will be canceled when this <see cref="CancelationToken"/> is canceled.
+        /// If this is already canceled, the <paramref name="cancelable"/> will not be invoked and <paramref name="alreadyCanceled"/> will be set to <see langword="true"/>.
+        /// </summary>
+        /// <param name="cancelable">The cancelable to be canceled when the <see cref="CancelationToken"/> is canceled.</param>
+        /// <param name="cancelationRegistration">The <see cref="CancelationRegistration"/> instance that can be used to unregister the callback.</param>
+        /// <param name="alreadyCanceled">If true, this was already canceled and the <paramref name="cancelable"/> will not be invoked.</param>
+        /// <returns>true if <paramref name="cancelable"/> was registered successfully or this was already canceled, false otherwise.</returns>
+        public bool TryRegisterWithoutImmediateInvoke<TCancelable>(TCancelable cancelable, out CancelationRegistration cancelationRegistration, out bool alreadyCanceled) where TCancelable : ICancelable
+        {
+            ValidateArgument(cancelable, "cancelable", 1);
+            return Internal.CancelationRef.TryRegister(_ref, _id, cancelable, out cancelationRegistration, out alreadyCanceled);
+        }
+
+        /// <summary>
         /// Register a delegate that will be invoked when this <see cref="CancelationToken"/> is canceled.
         /// If this is already canceled, the callback will be invoked immediately.
         /// </summary>

@@ -65,10 +65,20 @@ namespace Proto.Promises
                     HandleNextInternal(_tempState);
                 }
 
-                internal void MaybeHookupCancelation(CancelationToken cancelationToken)
+                [MethodImpl(InlineOption)]
+                internal bool HookupAndGetIsCanceled(CancelationToken cancelationToken)
                 {
                     ThrowIfInPool(this);
-                    cancelationToken.TryRegister(this, out _cancelationRegistration);
+                    // We register without immediate invoke because we hold a spin lock here, and we don't want to cause a deadlock from it trying to re-enter from the invoke.
+                    cancelationToken.TryRegisterWithoutImmediateInvoke<ICancelable>(this, out _cancelationRegistration, out var alreadyCanceled);
+                    return alreadyCanceled;
+                }
+
+                [MethodImpl(InlineOption)]
+                internal void SetCanceledImmediate()
+                {
+                    SetCompletionState(Promise.State.Canceled);
+                    _next = PromiseCompletionSentinel.s_instance;
                 }
 
                 public abstract void Cancel();

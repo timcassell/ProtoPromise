@@ -105,6 +105,9 @@ namespace Proto.Promises
         static partial void ClearCurrentInvoker();
 #if PROMISE_DEBUG
         static partial void SetCreatedStacktrace(ITraceable traceable, int skipFrames)
+            => SetCreatedStacktraceImpl(traceable, skipFrames);
+
+        internal static void SetCreatedStacktraceImpl(ITraceable traceable, int skipFrames)
         {
             StackTrace stackTrace = Promise.Config.DebugCausalityTracer == Promise.TraceLevel.All
                 ? GetStackTrace(skipFrames + 1)
