@@ -4,9 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable CA1507 // Use nameof to express symbol names
-#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
 
 using System;
 using System.Collections.Generic;
@@ -235,31 +233,55 @@ namespace Proto.Promises
             }
         }
 
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
+        /// </summary>
         public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2)
         {
             return Promise<T>.Race(promise1, promise2);
         }
 
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
+        /// </summary>
         public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
             return Promise<T>.Race(promise1, promise2, promise3);
         }
 
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
+        /// </summary>
         public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
             return Promise<T>.Race(promise1, promise2, promise3, promise4);
         }
 
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
+        /// </summary>
         public static Promise<T> Race<T>(params Promise<T>[] promises)
         {
             return Promise<T>.Race(promises);
         }
 
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
+        /// </summary>
         public static Promise<T> Race<T>(IEnumerable<Promise<T>> promises)
         {
             return Promise<T>.Race(promises);
         }
 
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
+        /// </summary>
         public static Promise<T> Race<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
             return Promise<T>.Race(promises);
@@ -492,31 +514,55 @@ namespace Proto.Promises
             }
         }
 
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// </summary>
         public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2)
         {
             return Promise<T>.First(promise1, promise2);
         }
 
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// </summary>
         public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
             return Promise<T>.First(promise1, promise2, promise3);
         }
 
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// </summary>
         public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
             return Promise<T>.First(promise1, promise2, promise3, promise4);
         }
 
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// </summary>
         public static Promise<T> First<T>(params Promise<T>[] promises)
         {
             return Promise<T>.First(promises);
         }
 
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// </summary>
         public static Promise<T> First<T>(IEnumerable<Promise<T>> promises)
         {
             return Promise<T>.First(promises);
         }
 
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
+        /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
+        /// </summary>
         public static Promise<T> First<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
             return Promise<T>.First(promises);
