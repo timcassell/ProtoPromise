@@ -38,7 +38,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Create a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when the given token is canceled (with the same value), whichever is first.
+        /// Create a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when the given token is canceled, whichever is first.
         /// <para/>Note: the new <see cref="CancelationSource"/> still must be disposed when you are finished with it.
         /// </summary>
         /// <param name="token">The cancelation token to observe.</param>
@@ -51,7 +51,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Create a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when any of the given tokens are canceled (with the same value), whichever is first.
+        /// Create a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when any of the given tokens are canceled, whichever is first.
         /// <para/>Note: the new <see cref="CancelationSource"/> still must be disposed when you are finished with it.
         /// </summary>
         /// <param name="token1">The first cancelation token to observe.</param>
@@ -66,7 +66,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Create a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when any of the given tokens are canceled (with the same value), whichever is first.
+        /// Create a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when any of the given tokens are canceled, whichever is first.
         /// <para/>Note: the new <see cref="CancelationSource"/> still must be disposed when you are finished with it.
         /// </summary>
         /// <param name="tokens">An array that contains the cancelation token instances to observe.</param>
