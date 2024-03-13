@@ -48,6 +48,5 @@ jobs:
         with:
           projectPath: ProtoPromise_Unity
           targetPlatform: WebGL
-          buildMethod: UnityBuilderAction.BuildScript.Build
           allowDirtyBuild: true
         timeout-minutes: 90
