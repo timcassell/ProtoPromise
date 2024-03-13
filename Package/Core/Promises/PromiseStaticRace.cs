@@ -4,8 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable CA1507 // Use nameof to express symbol names
-
 using System;
 using System.Collections.Generic;
 
@@ -19,8 +17,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race(Promise promise1, Promise promise2)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
             return Race(Internal.GetEnumerator(promise1, promise2));
         }
 
@@ -30,9 +28,9 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race(Promise promise1, Promise promise2, Promise promise3)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
             return Race(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
@@ -42,10 +40,10 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
             return Race(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
@@ -54,9 +52,7 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise Race(params Promise[] promises)
-        {
-            return Race(promises.GetGenericEnumerator());
-        }
+            => Race(promises.GetGenericEnumerator());
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -74,9 +70,7 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise Race(IEnumerable<Promise> promises)
-        {
-            return Race(promises.GetEnumerator());
-        }
+            => Race(promises.GetEnumerator());
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
@@ -84,13 +78,13 @@ namespace Proto.Promises
         /// </summary>
         public static Promise Race<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
-            ValidateArgument(promises, "promises", 1);
+            ValidateArgument(promises, nameof(promises), 1);
 
             using (promises)
             {
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
+                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
                 }
 
                 bool isResolved;
@@ -138,8 +132,8 @@ namespace Proto.Promises
         public static Promise<int> RaceWithIndex(Promise promise1, Promise promise2)
         {
 
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
             return RaceWithIndex(Internal.GetEnumerator(promise1, promise2));
         }
 
@@ -149,9 +143,9 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<int> RaceWithIndex(Promise promise1, Promise promise2, Promise promise3)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
             return RaceWithIndex(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
@@ -161,10 +155,10 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<int> RaceWithIndex(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
             return RaceWithIndex(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
@@ -173,9 +167,7 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<int> RaceWithIndex(params Promise[] promises)
-        {
-            return RaceWithIndex(promises.GetGenericEnumerator());
-        }
+            => RaceWithIndex(promises.GetGenericEnumerator());
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -193,9 +185,7 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<int> RaceWithIndex(IEnumerable<Promise> promises)
-        {
-            return RaceWithIndex(promises.GetEnumerator());
-        }
+            => RaceWithIndex(promises.GetEnumerator());
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
@@ -203,13 +193,13 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<int> RaceWithIndex<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
-            ValidateArgument(promises, "promises", 1);
+            ValidateArgument(promises, nameof(promises), 1);
 
             using (promises)
             {
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
+                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
                 }
 
                 int index = 0;
@@ -260,36 +250,28 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2)
-        {
-            return Promise<T>.Race(promise1, promise2);
-        }
+            => Promise<T>.Race(promise1, promise2);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
-        {
-            return Promise<T>.Race(promise1, promise2, promise3);
-        }
+            => Promise<T>.Race(promise1, promise2, promise3);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
-        {
-            return Promise<T>.Race(promise1, promise2, promise3, promise4);
-        }
+            => Promise<T>.Race(promise1, promise2, promise3, promise4);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<T> Race<T>(params Promise<T>[] promises)
-        {
-            return Promise<T>.Race(promises);
-        }
+            => Promise<T>.Race(promises);
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -307,18 +289,14 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<T> Race<T>(IEnumerable<Promise<T>> promises)
-        {
-            return Promise<T>.Race(promises);
-        }
+            => Promise<T>.Race(promises);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<T> Race<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
-        {
-            return Promise<T>.Race(promises);
-        }
+            => Promise<T>.Race(promises);
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
@@ -326,8 +304,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First(Promise promise1, Promise promise2)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
             return First(Internal.GetEnumerator(promise1, promise2));
         }
 
@@ -337,9 +315,9 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First(Promise promise1, Promise promise2, Promise promise3)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
             return First(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
@@ -349,10 +327,10 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
             return First(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
@@ -361,9 +339,7 @@ namespace Proto.Promises
         /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
         public static Promise First(params Promise[] promises)
-        {
-            return First(promises.GetGenericEnumerator());
-        }
+            => First(promises.GetGenericEnumerator());
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -381,9 +357,7 @@ namespace Proto.Promises
         /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
         public static Promise First(IEnumerable<Promise> promises)
-        {
-            return First(promises.GetEnumerator());
-        }
+            => First(promises.GetEnumerator());
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
@@ -391,13 +365,13 @@ namespace Proto.Promises
         /// </summary>
         public static Promise First<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
-            ValidateArgument(promises, "promises", 1);
+            ValidateArgument(promises, nameof(promises), 1);
 
             using (promises)
             {
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
+                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
                 }
 
                 bool isResolved;
@@ -448,8 +422,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<int> FirstWithIndex(Promise promise1, Promise promise2)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
             return FirstWithIndex(Internal.GetEnumerator(promise1, promise2));
         }
 
@@ -459,9 +433,9 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<int> FirstWithIndex(Promise promise1, Promise promise2, Promise promise3)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
             return FirstWithIndex(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
@@ -471,10 +445,10 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<int> FirstWithIndex(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
             return FirstWithIndex(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
@@ -483,9 +457,7 @@ namespace Proto.Promises
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
         public static Promise<int> FirstWithIndex(params Promise[] promises)
-        {
-            return FirstWithIndex(promises.GetGenericEnumerator());
-        }
+            => FirstWithIndex(promises.GetGenericEnumerator());
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -503,9 +475,7 @@ namespace Proto.Promises
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
         public static Promise<int> FirstWithIndex(IEnumerable<Promise> promises)
-        {
-            return FirstWithIndex(promises.GetEnumerator());
-        }
+            => FirstWithIndex(promises.GetEnumerator());
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
@@ -513,13 +483,13 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<int> FirstWithIndex<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
-            ValidateArgument(promises, "promises", 1);
+            ValidateArgument(promises, nameof(promises), 1);
 
             using (promises)
             {
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
+                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
                 }
 
                 int index = 0;
@@ -574,36 +544,28 @@ namespace Proto.Promises
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
         public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2)
-        {
-            return Promise<T>.First(promise1, promise2);
-        }
+            => Promise<T>.First(promise1, promise2);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
         public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
-        {
-            return Promise<T>.First(promise1, promise2, promise3);
-        }
+            => Promise<T>.First(promise1, promise2, promise3);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
         public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
-        {
-            return Promise<T>.First(promise1, promise2, promise3, promise4);
-        }
+            => Promise<T>.First(promise1, promise2, promise3, promise4);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
         public static Promise<T> First<T>(params Promise<T>[] promises)
-        {
-            return Promise<T>.First(promises);
-        }
+            => Promise<T>.First(promises);
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -621,18 +583,14 @@ namespace Proto.Promises
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
         public static Promise<T> First<T>(IEnumerable<Promise<T>> promises)
-        {
-            return Promise<T>.First(promises);
-        }
+            => Promise<T>.First(promises);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
         public static Promise<T> First<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
-        {
-            return Promise<T>.First(promises);
-        }
+            => Promise<T>.First(promises);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
@@ -640,8 +598,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(Promise<T> promise1, Promise<T> promise2)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
             return RaceWithIndex<T, Internal.Enumerator<Promise<T>, Internal.TwoItems<Promise<T>>>>(Internal.GetEnumerator(promise1, promise2));
         }
 
@@ -651,9 +609,9 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
             return RaceWithIndex<T, Internal.Enumerator<Promise<T>, Internal.ThreeItems<Promise<T>>>>(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
@@ -663,10 +621,10 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
             return RaceWithIndex<T, Internal.Enumerator<Promise<T>, Internal.FourItems<Promise<T>>>>(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
@@ -675,9 +633,7 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(params Promise<T>[] promises)
-        {
-            return RaceWithIndex<T, Internal.ArrayEnumerator<Promise<T>>>(promises.GetGenericEnumerator());
-        }
+            => RaceWithIndex<T, Internal.ArrayEnumerator<Promise<T>>>(promises.GetGenericEnumerator());
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -695,9 +651,7 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(IEnumerable<Promise<T>> promises)
-        {
-            return RaceWithIndex<T, IEnumerator<Promise<T>>>(promises.GetEnumerator());
-        }
+            => RaceWithIndex<T, IEnumerator<Promise<T>>>(promises.GetEnumerator());
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
@@ -705,13 +659,13 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<(int, T)> RaceWithIndex<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
-            ValidateArgument(promises, "promises", 1);
+            ValidateArgument(promises, nameof(promises), 1);
 
             using (promises)
             {
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
+                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
                 }
 
                 int index = 0;
@@ -767,8 +721,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(Promise<T> promise1, Promise<T> promise2)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
             return FirstWithIndex<T, Internal.Enumerator<Promise<T>, Internal.TwoItems<Promise<T>>>>(Internal.GetEnumerator(promise1, promise2));
         }
 
@@ -778,9 +732,9 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
             return FirstWithIndex<T, Internal.Enumerator<Promise<T>, Internal.ThreeItems<Promise<T>>>>(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
@@ -790,10 +744,10 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
             return FirstWithIndex<T, Internal.Enumerator<Promise<T>, Internal.FourItems<Promise<T>>>>(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
@@ -802,9 +756,7 @@ namespace Proto.Promises
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(params Promise<T>[] promises)
-        {
-            return FirstWithIndex<T, Internal.ArrayEnumerator<Promise<T>>>(promises.GetGenericEnumerator());
-        }
+            => FirstWithIndex<T, Internal.ArrayEnumerator<Promise<T>>>(promises.GetGenericEnumerator());
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -822,9 +774,7 @@ namespace Proto.Promises
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(IEnumerable<Promise<T>> promises)
-        {
-            return FirstWithIndex<T, IEnumerator<Promise<T>>>(promises.GetEnumerator());
-        }
+            => FirstWithIndex<T, IEnumerator<Promise<T>>>(promises.GetEnumerator());
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
@@ -832,13 +782,13 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<(int, T)> FirstWithIndex<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
-            ValidateArgument(promises, "promises", 1);
+            ValidateArgument(promises, nameof(promises), 1);
 
             using (promises)
             {
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
+                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
                 }
 
                 int index = 0;

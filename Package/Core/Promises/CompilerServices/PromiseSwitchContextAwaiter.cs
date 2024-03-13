@@ -35,28 +35,21 @@ namespace Proto.Promises.CompilerServices
         /// <returns>this</returns>
         [MethodImpl(Internal.InlineOption)]
         public PromiseSwitchToContextAwaiter GetAwaiter()
-        {
-            return this;
-        }
+            => this;
 
         /// <summary>Gets whether the <see cref="Promise"/> being awaited is completed.</summary>
         /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
         public bool IsCompleted
         {
             [MethodImpl(Internal.InlineOption)]
-            get
-            {
-                return !_forceAsync & _context == Promise.Manager.ThreadStaticSynchronizationContext;
-            }
+            get => !_forceAsync & _context == Promise.Manager.ThreadStaticSynchronizationContext;
         }
 
         /// <summary>Ends the await on the context.</summary>
         /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
         [MethodImpl(Internal.InlineOption)]
-        public void GetResult()
-        {
-            // Do nothing.
-        }
+        // Do nothing.
+        public void GetResult() { }
 
         /// <summary>Schedules the continuation onto the context.</summary>
         /// <param name="continuation">The action to invoke when the await operation completes.</param>
@@ -64,7 +57,7 @@ namespace Proto.Promises.CompilerServices
         [MethodImpl(Internal.InlineOption)]
         public void OnCompleted(Action continuation)
         {
-            ValidateArgument(continuation, "continuation", 1);
+            ValidateArgument(continuation, nameof(continuation), 1);
             var context = _context;
             if (context == null)
             {
@@ -81,16 +74,12 @@ namespace Proto.Promises.CompilerServices
         /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
         [MethodImpl(Internal.InlineOption)]
         public void UnsafeOnCompleted(Action continuation)
-        {
-            OnCompleted(continuation);
-        }
+            => OnCompleted(continuation);
 
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
 #if PROMISE_DEBUG
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-        {
-            Internal.ValidateArgument(arg, argName, skipFrames + 1);
-        }
+            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
 #endif
     } // struct PromiseSwitchToContextAwaiter
 } // namespace Proto.Promises.CompilerServices

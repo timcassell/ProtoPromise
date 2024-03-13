@@ -11,9 +11,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-#pragma warning disable IDE0066 // Convert switch statement to expression
 #pragma warning disable IDE0090 // Use 'new(...)'
-#pragma warning disable IDE0250 // Make struct 'readonly'
 #pragma warning disable IDE0251 // Make member 'readonly'
 
 namespace Proto.Promises
@@ -58,15 +56,10 @@ namespace Proto.Promises
 
             void IDisposable.Dispose() { }
 
-            void IEnumerator.Reset()
-            {
-#pragma warning disable RECS0083 // Shows NotImplementedException throws in the quick task bar
-                throw new NotImplementedException();
-#pragma warning restore RECS0083 // Shows NotImplementedException throws in the quick task bar
-            }
+            void IEnumerator.Reset() => throw new NotImplementedException();
         }
 
-        internal struct TwoItems<T> : IReadonlyIndexableCollection<T>
+        internal readonly struct TwoItems<T> : IReadonlyIndexableCollection<T>
         {
             private readonly T _item1;
             private readonly T _item2;
@@ -91,7 +84,7 @@ namespace Proto.Promises
             }
         }
 
-        internal struct ThreeItems<T> : IReadonlyIndexableCollection<T>
+        internal readonly struct ThreeItems<T> : IReadonlyIndexableCollection<T>
         {
             private readonly T _item1;
             private readonly T _item2;
@@ -126,7 +119,7 @@ namespace Proto.Promises
             }
         }
 
-        internal struct FourItems<T> : IReadonlyIndexableCollection<T>
+        internal readonly struct FourItems<T> : IReadonlyIndexableCollection<T>
         {
             private readonly T _item1;
             private readonly T _item2;
@@ -211,12 +204,7 @@ namespace Proto.Promises
 
             void IDisposable.Dispose() { }
 
-            void IEnumerator.Reset()
-            {
-#pragma warning disable RECS0083 // Shows NotImplementedException throws in the quick task bar
-                throw new NotImplementedException();
-#pragma warning restore RECS0083 // Shows NotImplementedException throws in the quick task bar
-            }
+            void IEnumerator.Reset() => throw new NotImplementedException();
         }
 
         [MethodImpl(InlineOption)]
@@ -259,12 +247,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             void IDisposable.Dispose() => _tempCollection.Dispose();
 
-            void IEnumerator.Reset()
-            {
-#pragma warning disable RECS0083 // Shows NotImplementedException throws in the quick task bar
-                throw new NotImplementedException();
-#pragma warning restore RECS0083 // Shows NotImplementedException throws in the quick task bar
-            }
+            void IEnumerator.Reset() => throw new NotImplementedException();
         }
 
         // This is used to pass the span to methods accepting a generic enumerator. (C# doesn't support passing ref structs into generics currently.)

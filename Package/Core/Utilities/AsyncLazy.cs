@@ -8,8 +8,6 @@ using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
-
 namespace Proto.Promises
 {
     /// <summary>
@@ -44,13 +42,7 @@ namespace Proto.Promises
         /// </summary>
         /// <remarks>This reverts to <c>false</c> if the factory does not complete successfully.</remarks>
         public bool IsStarted
-        {
-            get
-            {
-                var lazyFields = _lazyFields;
-                return lazyFields == null || lazyFields.IsStarted;
-            }
-        }
+            => _lazyFields?.IsStarted != false;
 
         /// <summary>
         /// Starts the asynchronous factory method, if it has not already started, and returns the resulting <see cref="Promise{T}"/>.
@@ -58,7 +50,7 @@ namespace Proto.Promises
         public Promise<T> Promise
         {
             [MethodImpl(Internal.InlineOption)]
-            get { return GetResultAsync(); }
+            get => GetResultAsync();
         }
 
         /// <summary>
@@ -82,8 +74,6 @@ namespace Proto.Promises
         /// </summary>
         [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
         public CompilerServices.PromiseAwaiter<T> GetAwaiter()
-        {
-            return Promise.GetAwaiter();
-        }
+            => Promise.GetAwaiter();
     } // class AsyncLazy<T>
 }

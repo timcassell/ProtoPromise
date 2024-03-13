@@ -125,18 +125,10 @@ namespace Proto.Promises
 
                 ~AsyncEnumerableBase()
                 {
-                    try
+                    if (!_disposed)
                     {
-                        if (!_disposed)
-                        {
-                            string message = "An AsyncEnumerable's resources were garbage collected without it being disposed. You must call DisposeAsync on the AsyncEnumerator.";
-                            ReportRejection(new UnreleasedObjectException(message), this);
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        // This should never happen.
-                        ReportRejection(e, this);
+                        string message = "An AsyncEnumerable's resources were garbage collected without it being disposed. You must call DisposeAsync on the AsyncEnumerator.";
+                        ReportRejection(new UnreleasedObjectException(message), this);
                     }
                 }
 

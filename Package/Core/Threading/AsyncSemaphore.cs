@@ -4,8 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable CA1507 // Use nameof to express symbol names
-
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -48,8 +46,8 @@ namespace Proto.Promises.Threading
             if (maxCount <= 0 | initialCount < 0 | initialCount > maxCount)
             {
                 throw maxCount <= 0
-                    ? new ArgumentOutOfRangeException("maxCount", "maxCount must be greater than 0", Internal.GetFormattedStacktrace(1))
-                    : new ArgumentOutOfRangeException("initialCount", "initialCount must be >= 0 and <= maxCount", Internal.GetFormattedStacktrace(1));
+                    ? new ArgumentOutOfRangeException(nameof(maxCount), "maxCount must be greater than 0", Internal.GetFormattedStacktrace(1))
+                    : new ArgumentOutOfRangeException(nameof(initialCount), "initialCount must be >= 0 and <= maxCount", Internal.GetFormattedStacktrace(1));
             }
 
             _currentCount = initialCount;
@@ -125,7 +123,7 @@ namespace Proto.Promises.Threading
         {
             if (releaseCount < 1)
             {
-                throw new ArgumentOutOfRangeException("releaseCount", "releaseCount cannot be less than 1", Internal.GetFormattedStacktrace(1));
+                throw new ArgumentOutOfRangeException(nameof(releaseCount), "releaseCount cannot be less than 1", Internal.GetFormattedStacktrace(1));
             }
 
             ReleaseImpl(releaseCount);
@@ -141,10 +139,7 @@ namespace Proto.Promises.Threading
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public Promise<Scope> EnterScopeAsync()
-        {
-            return WaitAsync()
-                .Then(this, _this => new Scope(_this));
-        }
+            => WaitAsync().Then(this, _this => new Scope(_this));
 
         /// <summary>
         /// Blocks the current thread until it can enter this <see cref="AsyncSemaphore"/>, and returns a disposable that releases this when disposed, thus treating this <see cref="AsyncSemaphore"/> as a "multi-lock".
@@ -181,9 +176,7 @@ namespace Proto.Promises.Threading
             /// </remarks>
             [MethodImpl(Internal.InlineOption)]
             public void Dispose()
-            {
-                _target.Release();
-            }
+                => _target.Release();
         }
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     }

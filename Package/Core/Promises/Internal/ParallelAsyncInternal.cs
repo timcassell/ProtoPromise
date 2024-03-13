@@ -4,10 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable IDE0074 // Use compound assignment
-#pragma warning disable CA1507 // Use nameof to express symbol names
-
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -28,7 +24,7 @@ namespace Proto.Promises
             else if (maxDegreeOfParallelism < 1)
             {
                 enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
-                throw new ArgumentOutOfRangeException("maxDegreeOfParallelism", "maxDegreeOfParallelism must be positive, or -1 for default (Environment.ProcessorCount). Actual: " + maxDegreeOfParallelism, GetFormattedStacktrace(2));
+                throw new ArgumentOutOfRangeException(nameof(maxDegreeOfParallelism), "maxDegreeOfParallelism must be positive, or -1 for default (Environment.ProcessorCount). Actual: " + maxDegreeOfParallelism, GetFormattedStacktrace(2));
             }
 
             // One fast up-front check for cancelation before we start the whole operation.
@@ -107,7 +103,7 @@ namespace Proto.Promises
                 {
                     ValidateNoPending();
                     Dispose();
-                    _body = default(TParallelBody);
+                    _body = default;
                     _synchronizationContext = null;
                     _executionContext = null;
                     ObjectPool.MaybeRepool(this);
@@ -434,7 +430,7 @@ namespace Proto.Promises
                     if (InterlockedAddWithUnsignedOverflowCheck(ref _waitCounter, -completeCount) == 0)
                     {
                         _externalCancelationRegistration.Dispose();
-                        _externalCancelationRegistration = default(CancelationRegistration);
+                        _externalCancelationRegistration = default;
                         _cancelationRef.TryDispose(_cancelationRef.SourceId);
                         _cancelationRef = null;
 

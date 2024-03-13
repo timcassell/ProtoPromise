@@ -84,9 +84,7 @@ namespace Proto.Promises
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
 #if PROMISE_DEBUG
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-        {
-            Internal.ValidateArgument(arg, argName, skipFrames + 1);
-        }
+            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
 #endif
     }
 }

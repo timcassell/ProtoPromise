@@ -6,7 +6,6 @@
 
 #pragma warning disable IDE0074 // Use compound assignment
 
-using Proto.Promises.Collections;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -18,9 +17,7 @@ namespace Proto.Promises
     {
         [MethodImpl(Internal.InlineOption)]
         private static void GetAllResultContainer(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref IList<ResultContainer> result)
-        {
-            result[index] = new ResultContainer(rejectContainer, state);
-        }
+            => result[index] = new ResultContainer(rejectContainer, state);
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
         private static unsafe Internal.GetResultContainerDelegate<IList<ResultContainer>> GetAllResultContainerFunc
@@ -40,8 +37,8 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
         public static Promise<IList<ResultContainer>> AllSettled(Promise promise1, Promise promise2, IList<ResultContainer> valueContainer = null)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
             return AllSettled(Internal.GetEnumerator(promise1, promise2));
         }
 
@@ -54,9 +51,9 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
         public static Promise<IList<ResultContainer>> AllSettled(Promise promise1, Promise promise2, Promise promise3, IList<ResultContainer> valueContainer = null)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
             return AllSettled(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
@@ -70,10 +67,10 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
         public static Promise<IList<ResultContainer>> AllSettled(Promise promise1, Promise promise2, Promise promise3, Promise promise4, IList<ResultContainer> valueContainer = null)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
             return AllSettled(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
@@ -81,9 +78,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
         /// </summary>
         public static Promise<IList<ResultContainer>> AllSettled(params Promise[] promises)
-        {
-            return AllSettled(promises, new ResultContainer[promises.Length]);
-        }
+            => AllSettled(promises, new ResultContainer[promises.Length]);
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -101,9 +96,7 @@ namespace Proto.Promises
         /// <param name="promises">The promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
         public static Promise<IList<ResultContainer>> AllSettled(Promise[] promises, IList<ResultContainer> valueContainer = null)
-        {
-            return AllSettled(promises.GetGenericEnumerator(), valueContainer);
-        }
+            => AllSettled(promises.GetGenericEnumerator(), valueContainer);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
@@ -111,9 +104,7 @@ namespace Proto.Promises
         /// <param name="promises">The promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
         public static Promise<IList<ResultContainer>> AllSettled(IEnumerable<Promise> promises, IList<ResultContainer> valueContainer = null)
-        {
-            return AllSettled(promises.GetEnumerator(), valueContainer);
-        }
+            => AllSettled(promises.GetEnumerator(), valueContainer);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
@@ -122,7 +113,7 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
         public static Promise<IList<ResultContainer>> AllSettled<TEnumerator>(TEnumerator promises, IList<ResultContainer> valueContainer = null) where TEnumerator : IEnumerator<Promise>
         {
-            ValidateArgument(promises, "promises", 1);
+            ValidateArgument(promises, nameof(promises), 1);
 
             using (promises)
             {
@@ -212,9 +203,7 @@ namespace Proto.Promises
         /// <param name="promise2">The second promise to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
         public static Promise<IList<Promise<T>.ResultContainer>> AllSettled<T>(Promise<T> promise1, Promise<T> promise2, IList<Promise<T>.ResultContainer> valueContainer = null)
-        {
-            return Promise<T>.AllSettled(promise1, promise2, valueContainer);
-        }
+            => Promise<T>.AllSettled(promise1, promise2, valueContainer);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="Promise{T}.ResultContainer"/>s in the same order when they have all completed.
@@ -224,9 +213,7 @@ namespace Proto.Promises
         /// <param name="promise3">The third promise to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
         public static Promise<IList<Promise<T>.ResultContainer>> AllSettled<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, IList<Promise<T>.ResultContainer> valueContainer = null)
-        {
-            return Promise<T>.AllSettled(promise1, promise2, promise3, valueContainer);
-        }
+            => Promise<T>.AllSettled(promise1, promise2, promise3, valueContainer);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="Promise{T}.ResultContainer"/>s in the same order when they have all completed.
@@ -237,17 +224,13 @@ namespace Proto.Promises
         /// <param name="promise4">The fourth promise to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
         public static Promise<IList<Promise<T>.ResultContainer>> AllSettled<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4, IList<Promise<T>.ResultContainer> valueContainer = null)
-        {
-            return Promise<T>.AllSettled(promise1, promise2, promise3, promise4, valueContainer);
-        }
+            => Promise<T>.AllSettled(promise1, promise2, promise3, promise4, valueContainer);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="Promise{T}.ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
         /// </summary>
         public static Promise<IList<Promise<T>.ResultContainer>> AllSettled<T>(params Promise<T>[] promises)
-        {
-            return Promise<T>.AllSettled(promises);
-        }
+            => Promise<T>.AllSettled(promises);
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -265,9 +248,7 @@ namespace Proto.Promises
         /// <param name="promises">The promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
         public static Promise<IList<Promise<T>.ResultContainer>> AllSettled<T>(IEnumerable<Promise<T>> promises, IList<ResultContainer> valueContainer = null)
-        {
-            return Promise<T>.AllSettled(promises);
-        }
+            => Promise<T>.AllSettled(promises);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="Promise{T}.ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
@@ -275,9 +256,7 @@ namespace Proto.Promises
         /// <param name="promises">The enumerator of promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
         public static Promise<IList<Promise<T>.ResultContainer>> AllSettled<T, TEnumerator>(TEnumerator promises, IList<ResultContainer> valueContainer = null) where TEnumerator : IEnumerator<Promise<T>>
-        {
-            return Promise<T>.AllSettled(promises);
-        }
+            => Promise<T>.AllSettled(promises);
 
         #region 2Args
 
@@ -306,7 +285,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer>> Func = GetMergeResult;
@@ -315,10 +294,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer>>
-                GetSettled2()
-            {
-                return Settled2.Func;
-            }
+                GetSettled2() => Settled2.Func;
         }
 
         /// <summary>
@@ -326,8 +302,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<ValueTuple<ResultContainer, ResultContainer>> MergeSettled(Promise promise1, Promise promise2)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
 
             (ResultContainer, ResultContainer)
                 value = default;
@@ -378,7 +354,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer>> Func = GetMergeResult;
@@ -387,10 +363,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer>>
-                GetSettled1<T1>()
-            {
-                return Settled1<T1>.Func;
-            }
+                GetSettled1<T1>() => Settled1<T1>.Func;
         }
 
         /// <summary>
@@ -398,8 +371,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, ResultContainer>> MergeSettled<T1>(Promise<T1> promise1, Promise promise2)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
 
             (Promise<T1>.ResultContainer, ResultContainer)
                 value = default;
@@ -450,7 +423,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer>> Func = GetMergeResult;
@@ -459,10 +432,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer>>
-                GetSettled0<T1, T2>()
-            {
-                return Settled0<T1, T2>.Func;
-            }
+                GetSettled0<T1, T2>() => Settled0<T1, T2>.Func;
         }
 
         /// <summary>
@@ -471,8 +441,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer>> MergeSettled<T1, T2>(Promise<T1> promise1, Promise<T2> promise2)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer)
                 value = default;
@@ -530,7 +500,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
@@ -539,10 +509,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer>>
-                GetSettled3()
-            {
-                return Settled3.Func;
-            }
+                GetSettled3() => Settled3.Func;
         }
 
         /// <summary>
@@ -551,9 +518,9 @@ namespace Proto.Promises
         public static Promise<ValueTuple<ResultContainer, ResultContainer, ResultContainer>> MergeSettled(
             Promise promise1, Promise promise2, Promise promise3)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
 
             (ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -609,7 +576,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
@@ -618,10 +585,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer>>
-                GetSettled2<T1>()
-            {
-                return Settled2<T1>.Func;
-            }
+                GetSettled2<T1>() => Settled2<T1>.Func;
         }
 
         /// <summary>
@@ -630,9 +594,9 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1>(
             Promise<T1> promise1, Promise promise2, Promise promise3)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
 
             (Promise<T1>.ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -688,7 +652,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer>> Func = GetMergeResult;
@@ -697,10 +661,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer>>
-                GetSettled1<T1, T2>()
-            {
-                return Settled1<T1, T2>.Func;
-            }
+                GetSettled1<T1, T2>() => Settled1<T1, T2>.Func;
         }
 
         /// <summary>
@@ -709,9 +670,9 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer>> MergeSettled<T1, T2>(
             Promise<T1> promise1, Promise<T2> promise2, Promise promise3)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer)
                 value = default;
@@ -767,7 +728,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer>> Func = GetMergeResult;
@@ -776,10 +737,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer>>
-                GetSettled0<T1, T2, T3>()
-            {
-                return Settled0<T1, T2, T3>.Func;
-            }
+                GetSettled0<T1, T2, T3>() => Settled0<T1, T2, T3>.Func;
         }
 
         /// <summary>
@@ -788,9 +746,9 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer>> MergeSettled<T1, T2, T3>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer)
                 value = default;
@@ -853,7 +811,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
@@ -862,10 +820,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                GetSettled4()
-            {
-                return Settled4.Func;
-            }
+                GetSettled4() => Settled4.Func;
         }
 
         /// <summary>
@@ -874,10 +829,10 @@ namespace Proto.Promises
         public static Promise<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled(
             Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
 
             (ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -938,7 +893,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
@@ -947,10 +902,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                GetSettled3<T1>()
-            {
-                return Settled3<T1>.Func;
-            }
+                GetSettled3<T1>() => Settled3<T1>.Func;
         }
 
         /// <summary>
@@ -959,10 +911,10 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1>(
             Promise<T1> promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
 
             (Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -1023,7 +975,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
@@ -1032,10 +984,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer>>
-                GetSettled2<T1, T2>()
-            {
-                return Settled2<T1, T2>.Func;
-            }
+                GetSettled2<T1, T2>() => Settled2<T1, T2>.Func;
         }
 
         /// <summary>
@@ -1044,10 +993,10 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1, T2>(
             Promise<T1> promise1, Promise<T2> promise2, Promise promise3, Promise promise4)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -1108,7 +1057,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer>> Func
@@ -1118,10 +1067,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer>>
-                GetSettled1<T1, T2, T3>()
-            {
-                return Settled1<T1, T2, T3>.Func;
-            }
+                GetSettled1<T1, T2, T3>() => Settled1<T1, T2, T3>.Func;
         }
 
         /// <summary>
@@ -1130,10 +1076,10 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer>> MergeSettled<T1, T2, T3>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer)
                 value = default;
@@ -1194,7 +1140,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer>> Func
@@ -1204,10 +1150,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer>>
-                GetSettled0<T1, T2, T3, T4>()
-            {
-                return Settled0<T1, T2, T3, T4>.Func;
-            }
+                GetSettled0<T1, T2, T3, T4>() => Settled0<T1, T2, T3, T4>.Func;
         }
 
         /// <summary>
@@ -1216,10 +1159,10 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer>> MergeSettled<T1, T2, T3, T4>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer)
                 value = default;
@@ -1287,7 +1230,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
@@ -1296,10 +1239,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                GetSettled5()
-            {
-                return Settled5.Func;
-            }
+                GetSettled5() => Settled5.Func;
         }
 
         /// <summary>
@@ -1308,11 +1248,11 @@ namespace Proto.Promises
         public static Promise<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled(
             Promise promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            ValidateArgument(promise5, "promise5", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
 
             (ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -1378,7 +1318,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
@@ -1387,10 +1327,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                GetSettled4<T1>()
-            {
-                return Settled4<T1>.Func;
-            }
+                GetSettled4<T1>() => Settled4<T1>.Func;
         }
 
         /// <summary>
@@ -1399,11 +1336,11 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1>(
             Promise<T1> promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            ValidateArgument(promise5, "promise5", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
 
             (Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -1469,7 +1406,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
@@ -1478,10 +1415,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                GetSettled3<T1, T2>()
-            {
-                return Settled3<T1, T2>.Func;
-            }
+                GetSettled3<T1, T2>() => Settled3<T1, T2>.Func;
         }
 
         /// <summary>
@@ -1490,11 +1424,11 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1, T2>(
             Promise<T1> promise1, Promise<T2> promise2, Promise promise3, Promise promise4, Promise promise5)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            ValidateArgument(promise5, "promise5", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -1560,7 +1494,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer>> Func
@@ -1570,10 +1504,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer>>
-                GetSettled2<T1, T2, T3>()
-            {
-                return Settled2<T1, T2, T3>.Func;
-            }
+                GetSettled2<T1, T2, T3>() => Settled2<T1, T2, T3>.Func;
         }
 
         /// <summary>
@@ -1582,11 +1513,11 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1, T2, T3>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4, Promise promise5)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            ValidateArgument(promise5, "promise5", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -1652,7 +1583,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer>> Func
@@ -1662,10 +1593,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer>>
-                GetSettled1<T1, T2, T3, T4>()
-            {
-                return Settled1<T1, T2, T3, T4>.Func;
-            }
+                GetSettled1<T1, T2, T3, T4>() => Settled1<T1, T2, T3, T4>.Func;
         }
 
         /// <summary>
@@ -1674,11 +1602,11 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer>> MergeSettled<T1, T2, T3, T4>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise promise5)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            ValidateArgument(promise5, "promise5", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer)
                 value = default;
@@ -1744,7 +1672,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer>> Func
@@ -1754,10 +1682,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer>>
-                GetSettled0<T1, T2, T3, T4, T5>()
-            {
-                return Settled0<T1, T2, T3, T4, T5>.Func;
-            }
+                GetSettled0<T1, T2, T3, T4, T5>() => Settled0<T1, T2, T3, T4, T5>.Func;
         }
 
         /// <summary>
@@ -1766,11 +1691,11 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer>> MergeSettled<T1, T2, T3, T4, T5>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            ValidateArgument(promise5, "promise5", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer)
                 value = default;
@@ -1843,19 +1768,17 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                    = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                GetSettled6()
-            {
-                return Settled6.Func;
-            }
+                GetSettled6() => Settled6.Func;
         }
 
         /// <summary>
@@ -1864,12 +1787,12 @@ namespace Proto.Promises
         public static Promise<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled(
             Promise promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            ValidateArgument(promise5, "promise5", 1);
-            ValidateArgument(promise6, "promise6", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise6, nameof(promise6), 1);
 
             (ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -1940,19 +1863,17 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
+                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                    = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                GetSettled5<T1>()
-            {
-                return Settled5<T1>.Func;
-            }
+                GetSettled5<T1>() => Settled5<T1>.Func;
         }
 
         /// <summary>
@@ -1961,12 +1882,12 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1>(
             Promise<T1> promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            ValidateArgument(promise5, "promise5", 1);
-            ValidateArgument(promise6, "promise6", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise6, nameof(promise6), 1);
 
             (Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -2037,7 +1958,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
@@ -2047,10 +1968,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                GetSettled4<T1, T2>()
-            {
-                return Settled4<T1, T2>.Func;
-            }
+                GetSettled4<T1, T2>() => Settled4<T1, T2>.Func;
         }
 
         /// <summary>
@@ -2059,12 +1977,12 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1, T2>(
             Promise<T1> promise1, Promise<T2> promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            ValidateArgument(promise5, "promise5", 1);
-            ValidateArgument(promise6, "promise6", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise6, nameof(promise6), 1);
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -2135,7 +2053,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
@@ -2145,10 +2063,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                GetSettled3<T1, T2, T3>()
-            {
-                return Settled3<T1, T2, T3>.Func;
-            }
+                GetSettled3<T1, T2, T3>() => Settled3<T1, T2, T3>.Func;
         }
 
         /// <summary>
@@ -2157,12 +2072,12 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1, T2, T3>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4, Promise promise5, Promise promise6)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            ValidateArgument(promise5, "promise5", 1);
-            ValidateArgument(promise6, "promise6", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise6, nameof(promise6), 1);
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -2233,7 +2148,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer>> Func
@@ -2243,10 +2158,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer>>
-                GetSettled2<T1, T2, T3, T4>()
-            {
-                return Settled2<T1, T2, T3, T4>.Func;
-            }
+                GetSettled2<T1, T2, T3, T4>() => Settled2<T1, T2, T3, T4>.Func;
         }
 
         /// <summary>
@@ -2255,12 +2167,12 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1, T2, T3, T4>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise promise5, Promise promise6)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            ValidateArgument(promise5, "promise5", 1);
-            ValidateArgument(promise6, "promise6", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise6, nameof(promise6), 1);
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -2331,7 +2243,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer>> Func
@@ -2341,10 +2253,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer>>
-                GetSettled1<T1, T2, T3, T4, T5>()
-            {
-                return Settled1<T1, T2, T3, T4, T5>.Func;
-            }
+                GetSettled1<T1, T2, T3, T4, T5>() => Settled1<T1, T2, T3, T4, T5>.Func;
         }
 
         /// <summary>
@@ -2353,12 +2262,12 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer>> MergeSettled<T1, T2, T3, T4, T5>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise promise6)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            ValidateArgument(promise5, "promise5", 1);
-            ValidateArgument(promise6, "promise6", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise6, nameof(promise6), 1);
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer)
                 value = default;
@@ -2429,7 +2338,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer>> Func
@@ -2439,10 +2348,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer>>
-                GetSettled0<T1, T2, T3, T4, T5, T6>()
-            {
-                return Settled0<T1, T2, T3, T4, T5, T6>.Func;
-            }
+                GetSettled0<T1, T2, T3, T4, T5, T6>() => Settled0<T1, T2, T3, T4, T5, T6>.Func;
         }
 
         /// <summary>
@@ -2451,12 +2357,12 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer>> MergeSettled<T1, T2, T3, T4, T5, T6>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            ValidateArgument(promise5, "promise5", 1);
-            ValidateArgument(promise6, "promise6", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise6, nameof(promise6), 1);
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer)
                 value = default;
@@ -2534,7 +2440,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
@@ -2544,10 +2450,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                GetSettled7()
-            {
-                return Settled7.Func;
-            }
+                GetSettled7() => Settled7.Func;
         }
 
         /// <summary>
@@ -2556,13 +2459,13 @@ namespace Proto.Promises
         public static Promise<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled(
             Promise promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6, Promise promise7)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            ValidateArgument(promise5, "promise5", 1);
-            ValidateArgument(promise6, "promise6", 1);
-            ValidateArgument(promise7, "promise7", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise6, nameof(promise6), 1);
+            ValidateArgument(promise7, nameof(promise7), 1);
 
             (ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -2638,7 +2541,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
@@ -2648,10 +2551,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                GetSettled6<T1>()
-            {
-                return Settled6<T1>.Func;
-            }
+                GetSettled6<T1>() => Settled6<T1>.Func;
         }
 
         /// <summary>
@@ -2660,13 +2560,13 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1>(
             Promise<T1> promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6, Promise promise7)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            ValidateArgument(promise5, "promise5", 1);
-            ValidateArgument(promise6, "promise6", 1);
-            ValidateArgument(promise7, "promise7", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise6, nameof(promise6), 1);
+            ValidateArgument(promise7, nameof(promise7), 1);
 
             (Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -2742,7 +2642,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
@@ -2752,10 +2652,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                GetSettled5<T1, T2>()
-            {
-                return Settled5<T1, T2>.Func;
-            }
+                GetSettled5<T1, T2>() => Settled5<T1, T2>.Func;
         }
 
         /// <summary>
@@ -2764,13 +2661,13 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1, T2>(
             Promise<T1> promise1, Promise<T2> promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6, Promise promise7)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            ValidateArgument(promise5, "promise5", 1);
-            ValidateArgument(promise6, "promise6", 1);
-            ValidateArgument(promise7, "promise7", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise6, nameof(promise6), 1);
+            ValidateArgument(promise7, nameof(promise7), 1);
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -2846,7 +2743,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
@@ -2856,10 +2753,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                GetSettled4<T1, T2, T3>()
-            {
-                return Settled4<T1, T2, T3>.Func;
-            }
+                GetSettled4<T1, T2, T3>() => Settled4<T1, T2, T3>.Func;
         }
 
         /// <summary>
@@ -2868,13 +2762,13 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1, T2, T3>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4, Promise promise5, Promise promise6, Promise promise7)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            ValidateArgument(promise5, "promise5", 1);
-            ValidateArgument(promise6, "promise6", 1);
-            ValidateArgument(promise7, "promise7", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise6, nameof(promise6), 1);
+            ValidateArgument(promise7, nameof(promise7), 1);
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -2950,7 +2844,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
@@ -2960,10 +2854,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
-                GetSettled3<T1, T2, T3, T4>()
-            {
-                return Settled3<T1, T2, T3, T4>.Func;
-            }
+                GetSettled3<T1, T2, T3, T4>() => Settled3<T1, T2, T3, T4>.Func;
         }
 
         /// <summary>
@@ -2972,13 +2863,13 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1, T2, T3, T4>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise promise5, Promise promise6, Promise promise7)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            ValidateArgument(promise5, "promise5", 1);
-            ValidateArgument(promise6, "promise6", 1);
-            ValidateArgument(promise7, "promise7", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise6, nameof(promise6), 1);
+            ValidateArgument(promise7, nameof(promise7), 1);
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -3054,7 +2945,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer>> Func
@@ -3064,10 +2955,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer>>
-                GetSettled2<T1, T2, T3, T4, T5>()
-            {
-                return Settled2<T1, T2, T3, T4, T5>.Func;
-            }
+                GetSettled2<T1, T2, T3, T4, T5>() => Settled2<T1, T2, T3, T4, T5>.Func;
         }
 
         /// <summary>
@@ -3076,13 +2964,13 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1, T2, T3, T4, T5>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise promise6, Promise promise7)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            ValidateArgument(promise5, "promise5", 1);
-            ValidateArgument(promise6, "promise6", 1);
-            ValidateArgument(promise7, "promise7", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise6, nameof(promise6), 1);
+            ValidateArgument(promise7, nameof(promise7), 1);
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -3158,7 +3046,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer>> Func
@@ -3168,10 +3056,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer>>
-                GetSettled1<T1, T2, T3, T4, T5, T6>()
-            {
-                return Settled1<T1, T2, T3, T4, T5, T6>.Func;
-            }
+                GetSettled1<T1, T2, T3, T4, T5, T6>() => Settled1<T1, T2, T3, T4, T5, T6>.Func;
         }
 
         /// <summary>
@@ -3180,13 +3065,13 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer>> MergeSettled<T1, T2, T3, T4, T5, T6>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise promise7)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            ValidateArgument(promise5, "promise5", 1);
-            ValidateArgument(promise6, "promise6", 1);
-            ValidateArgument(promise7, "promise7", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise6, nameof(promise6), 1);
+            ValidateArgument(promise7, nameof(promise7), 1);
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer)
                 value = default;
@@ -3262,7 +3147,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer>> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer>> Func
@@ -3272,10 +3157,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer>>
-                GetSettled0<T1, T2, T3, T4, T5, T6, T7>()
-            {
-                return Settled0<T1, T2, T3, T4, T5, T6, T7>.Func;
-            }
+                GetSettled0<T1, T2, T3, T4, T5, T6, T7>() => Settled0<T1, T2, T3, T4, T5, T6, T7>.Func;
         }
 
         /// <summary>
@@ -3284,13 +3166,13 @@ namespace Proto.Promises
         public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer>> MergeSettled<T1, T2, T3, T4, T5, T6, T7>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise<T7> promise7)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
-            ValidateArgument(promise5, "promise5", 1);
-            ValidateArgument(promise6, "promise6", 1);
-            ValidateArgument(promise7, "promise7", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise6, nameof(promise6), 1);
+            ValidateArgument(promise7, nameof(promise7), 1);
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer)
                 value = default;

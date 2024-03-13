@@ -4,9 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0090 // Use 'new(...)'
-#pragma warning disable CA1507 // Use nameof to express symbol names
 
 using System;
 using System.Diagnostics;
@@ -194,8 +192,7 @@ namespace Proto.Promises
                     _waiters.Enqueue(promise);
                 }
                 _locker.Exit();
-                Promise.ResultContainer resultContainer;
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
                 resultContainer.RethrowIfRejected();
             }
 
@@ -236,8 +233,7 @@ namespace Proto.Promises
                     _waiters.Enqueue(promise);
                 }
                 _locker.Exit();
-                Promise<bool>.ResultContainer resultContainer;
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
                 resultContainer.RethrowIfRejected();
                 return resultContainer.Value;
             }
@@ -254,7 +250,7 @@ namespace Proto.Promises
                         _locker.Exit();
                         if (signalCount < 1)
                         {
-                            throw new ArgumentOutOfRangeException("signalCount", "AsyncCountdownEvent.Signal: signalCount must be greater than or equal to 1.", Internal.GetFormattedStacktrace(2));
+                            throw new ArgumentOutOfRangeException(nameof(signalCount), "AsyncCountdownEvent.Signal: signalCount must be greater than or equal to 1.", Internal.GetFormattedStacktrace(2));
                         }
                         throw new InvalidOperationException(current == 0
                             ? "AsyncCountdownEvent.Signal: The AsyncCountdownEvent is already set."
@@ -290,7 +286,7 @@ namespace Proto.Promises
             {
                 if (count < 0)
                 {
-                    throw new ArgumentOutOfRangeException("count", "AsyncCountdownEvent.Reset: count must be greater than or equal to 0.", Internal.GetFormattedStacktrace(2));
+                    throw new ArgumentOutOfRangeException(nameof(count), "AsyncCountdownEvent.Reset: count must be greater than or equal to 0.", Internal.GetFormattedStacktrace(2));
                 }
 
                 Internal.ValueLinkedStack<Internal.AsyncEventPromiseBase> waiters;
@@ -325,7 +321,7 @@ namespace Proto.Promises
                         _locker.Exit();
                         if (signalCount < 1)
                         {
-                            throw new ArgumentOutOfRangeException("signalCount", "AsyncCountdownEvent.TryAddCount: signalCount must be greater than or equal to 1.", Internal.GetFormattedStacktrace(2));
+                            throw new ArgumentOutOfRangeException(nameof(signalCount), "AsyncCountdownEvent.TryAddCount: signalCount must be greater than or equal to 1.", Internal.GetFormattedStacktrace(2));
                         }
                         throw new InvalidOperationException("AsyncCountdownEvent.TryAddCount: signalCount + CurrentCount exceeded int.MaxValue.", Internal.GetFormattedStacktrace(2));
                     }

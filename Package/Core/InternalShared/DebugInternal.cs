@@ -4,7 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE0074 // Use compound assignment
 #pragma warning disable IDE0090 // Use 'new(...)'
 
@@ -38,7 +37,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
         internal const MethodImplOptions InlineOption = MethodImplOptions.NoInlining;
 #else
-        internal const MethodImplOptions InlineOption = (MethodImplOptions) 256; // AggressiveInlining
+        internal const MethodImplOptions InlineOption = MethodImplOptions.AggressiveInlining;
 #endif
 
         internal static void ValidateProgressValue(double value, string argName, int skipFrames)
@@ -92,10 +91,7 @@ namespace Proto.Promises
             }
         }
 
-        private static ITraceable SynchronousTraceable
-        {
-            get { return SyncTrace.GetCurrent(2); }
-        }
+        private static ITraceable SynchronousTraceable => SyncTrace.GetCurrent(2);
 #else
         private const ITraceable SynchronousTraceable = null;
 #endif
@@ -134,24 +130,16 @@ namespace Proto.Promises
         }
 
         static partial void ClearCurrentInvoker()
-        {
-            ts_currentTrace = ts_traces.Pop();
-        }
+            => ts_currentTrace = ts_traces.Pop();
 
         private static StackTrace GetStackTrace(int skipFrames)
-        {
-            return new StackTrace(skipFrames + 1, true);
-        }
+            => new StackTrace(skipFrames + 1, true);
 
         internal static string GetFormattedStacktrace(ITraceable traceable)
-        {
-            return traceable != null ? traceable.Trace.ToString() : null;
-        }
+            => traceable?.Trace.ToString();
 
         internal static string GetFormattedStacktrace(int skipFrames)
-        {
-            return FormatStackTrace(new StackTrace[1] { GetStackTrace(skipFrames + 1) });
-        }
+            => FormatStackTrace(new StackTrace[1] { GetStackTrace(skipFrames + 1) });
 
         internal static void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
         {
@@ -255,14 +243,10 @@ namespace Proto.Promises
         partial class PromiseRefBase
         {
             partial void ValidateReturn(Promise other)
-            {
-                ValidateAwait(other._ref, other._id, false);
-            }
+                => ValidateAwait(other._ref, other._id, false);
 
             partial void ValidateAwait(PromiseRefBase other, short promiseId)
-            {
-                ValidateAwait(other, promiseId, true);
-            }
+                => ValidateAwait(other, promiseId, true);
 
             private void ValidateAwait(PromiseRefBase other, short promiseId, bool awaited)
             {
@@ -462,15 +446,9 @@ namespace Proto.Promises
             }
         }
 #else // PROMISE_DEBUG
-        internal static string GetFormattedStacktrace(int skipFrames)
-        {
-            return null;
-        }
+        internal static string GetFormattedStacktrace(int skipFrames) => null;
 
-        internal static string GetFormattedStacktrace(ITraceable traceable)
-        {
-            return null;
-        }
+        internal static string GetFormattedStacktrace(ITraceable traceable) => null;
 #endif // PROMISE_DEBUG
     } // class Internal
 
@@ -484,14 +462,10 @@ namespace Proto.Promises
 
 #if PROMISE_DEBUG
         partial void ValidateOperation(int skipFrames)
-        {
-            Internal.ValidateOperation(this, skipFrames + 1);
-        }
+            => Internal.ValidateOperation(this, skipFrames + 1);
 
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-        {
-            Internal.ValidateArgument(arg, argName, skipFrames + 1);
-        }
+            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
 
         static partial void ValidateArgument(Promise arg, string argName, int skipFrames)
         {
@@ -528,14 +502,10 @@ namespace Proto.Promises
         static partial void ValidateElement(Promise<T> promise, string argName, int skipFrames);
 #if PROMISE_DEBUG
         partial void ValidateOperation(int skipFrames)
-        {
-            Internal.ValidateOperation(this, skipFrames + 1);
-        }
+            => Internal.ValidateOperation(this, skipFrames + 1);
 
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-        {
-            Internal.ValidateArgument(arg, argName, skipFrames + 1);
-        }
+            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
 
         static partial void ValidateArgument(Promise<T> arg, string argName, int skipFrames)
         {

@@ -70,9 +70,7 @@ namespace Proto.Promises
 #else
             static PromiseAwaiterVoid()
 #endif
-            {
-                Internal.AwaitOverriderImpl<PromiseAwaiterVoid>.Create();
-            }
+                => Internal.AwaitOverriderImpl<PromiseAwaiterVoid>.Create();
         }
 
         partial struct PromiseAwaiter<T>
@@ -84,9 +82,7 @@ namespace Proto.Promises
 #else
             static PromiseAwaiter()
 #endif
-            {
-                Internal.AwaitOverriderImpl<PromiseAwaiter<T>>.Create();
-            }
+                => Internal.AwaitOverriderImpl<PromiseAwaiter<T>>.Create();
         }
 
         partial struct PromiseNoThrowAwaiterVoid
@@ -98,9 +94,7 @@ namespace Proto.Promises
 #else
             static PromiseNoThrowAwaiterVoid()
 #endif
-            {
-                Internal.AwaitOverriderImpl<PromiseNoThrowAwaiterVoid>.Create();
-            }
+                => Internal.AwaitOverriderImpl<PromiseNoThrowAwaiterVoid>.Create();
         }
 
         partial struct PromiseNoThrowAwaiter<T>
@@ -112,9 +106,7 @@ namespace Proto.Promises
 #else
             static PromiseNoThrowAwaiter()
 #endif
-            {
-                Internal.AwaitOverriderImpl<PromiseNoThrowAwaiter<T>>.Create();
-            }
+                => Internal.AwaitOverriderImpl<PromiseNoThrowAwaiter<T>>.Create();
         }
 #endif // !NETCOREAPP
 
@@ -178,7 +170,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public void OnCompleted(Action continuation)
             {
-                ValidateArgument(continuation, "continuation", 1);
+                ValidateArgument(continuation, nameof(continuation), 1);
                 var _ref = _promise._ref;
                 if (_ref == null)
                 {
@@ -200,16 +192,12 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
-            {
-                asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
-            }
+                => asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
 #if PROMISE_DEBUG
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-            {
-                Internal.ValidateArgument(arg, argName, skipFrames + 1);
-            }
+                => Internal.ValidateArgument(arg, argName, skipFrames + 1);
 #endif
         } // struct PromiseAwaiterVoid
 
@@ -274,7 +262,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public void OnCompleted(Action continuation)
             {
-                ValidateArgument(continuation, "continuation", 1);
+                ValidateArgument(continuation, nameof(continuation), 1);
                 var _ref = _promise._ref;
                 if (_ref == null)
                 {
@@ -290,22 +278,16 @@ namespace Proto.Promises
             /// <exception cref="InvalidOperationException">The <see cref="Promise{T}"/> has already been awaited or forgotten.</exception>
             [MethodImpl(Internal.InlineOption)]
             public void UnsafeOnCompleted(Action continuation)
-            {
-                OnCompleted(continuation);
-            }
+                => OnCompleted(continuation);
 
             [MethodImpl(Internal.InlineOption)]
             void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
-            {
-                asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
-            }
+                => asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
 #if PROMISE_DEBUG
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-            {
-                Internal.ValidateArgument(arg, argName, skipFrames + 1);
-            }
+                => Internal.ValidateArgument(arg, argName, skipFrames + 1);
 #endif
         } // struct PromiseAwaiter<T>
 
@@ -334,9 +316,7 @@ namespace Proto.Promises
             /// <returns>this</returns>
             [MethodImpl(Internal.InlineOption)]
             public PromiseNoThrowAwaiterVoid GetAwaiter()
-            {
-                return this;
-            }
+                => this;
 
             /// <summary>Gets whether the <see cref="Promise"/> being awaited is completed.</summary>
             /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
@@ -371,7 +351,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public void OnCompleted(Action continuation)
             {
-                ValidateArgument(continuation, "continuation", 1);
+                ValidateArgument(continuation, nameof(continuation), 1);
                 var _ref = _promise._ref;
                 if (_ref == null)
                 {
@@ -387,22 +367,16 @@ namespace Proto.Promises
             /// <exception cref="InvalidOperationException">The <see cref="Promise"/> has already been awaited or forgotten.</exception>
             [MethodImpl(Internal.InlineOption)]
             public void UnsafeOnCompleted(Action continuation)
-            {
-                OnCompleted(continuation);
-            }
+                => OnCompleted(continuation);
 
             [MethodImpl(Internal.InlineOption)]
             void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
-            {
-                asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
-            }
+                => asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
 #if PROMISE_DEBUG
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-            {
-                Internal.ValidateArgument(arg, argName, skipFrames + 1);
-            }
+                => Internal.ValidateArgument(arg, argName, skipFrames + 1);
 #endif
         } // struct PromiseNoThrowAwaiterVoid
 
@@ -431,9 +405,7 @@ namespace Proto.Promises
             /// <returns>this</returns>
             [MethodImpl(Internal.InlineOption)]
             public PromiseNoThrowAwaiter<T> GetAwaiter()
-            {
-                return this;
-            }
+                => this;
 
             /// <summary>Gets whether the <see cref="Promise{T}"/> being awaited is completed.</summary>
             /// <remarks>This property is intended for compiler use rather than use directly in code.</remarks>
@@ -468,7 +440,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public void OnCompleted(Action continuation)
             {
-                ValidateArgument(continuation, "continuation", 1);
+                ValidateArgument(continuation, nameof(continuation), 1);
                 var _ref = _promise._ref;
                 if (_ref == null)
                 {
@@ -484,22 +456,16 @@ namespace Proto.Promises
             /// <exception cref="InvalidOperationException">The <see cref="Promise{T}"/> has already been awaited or forgotten.</exception>
             [MethodImpl(Internal.InlineOption)]
             public void UnsafeOnCompleted(Action continuation)
-            {
-                OnCompleted(continuation);
-            }
+                => OnCompleted(continuation);
 
             [MethodImpl(Internal.InlineOption)]
             void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
-            {
-                asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
-            }
+                => asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
 #if PROMISE_DEBUG
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-            {
-                Internal.ValidateArgument(arg, argName, skipFrames + 1);
-            }
+                => Internal.ValidateArgument(arg, argName, skipFrames + 1);
 #endif
         } // struct PromiseNoThrowAwaiter<T>
     } // namespace CompilerServices

@@ -4,9 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0017 // Simplify object initialization
-#pragma warning disable IDE0019 // Use pattern matching
-#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0038 // Use pattern matching
 #pragma warning disable IDE0054 // Use compound assignment
 #pragma warning disable IDE0090 // Use 'new(...)'
@@ -26,7 +23,7 @@ namespace Proto.Promises
             // null check is same as typeof(TValue).IsValueType, but is actually optimized away by the JIT. This prevents the type check when TValue is a reference type.
             if (null != default(TValue) && typeof(TValue) == typeof(VoidResult))
             {
-                converted = default(TValue);
+                converted = default;
                 return true;
             }
 
@@ -36,7 +33,7 @@ namespace Proto.Promises
                 converted = (TValue) value;
                 return true;
             }
-            converted = default(TValue);
+            converted = default;
             return false;
         }
 
@@ -50,18 +47,14 @@ namespace Proto.Promises
 #endif
 
             protected object _value;
-            public object Value
-            {
-                get { return _value; }
-            }
+            public object Value => _value;
 
             public abstract void ReportUnhandled();
             public abstract ExceptionDispatchInfo GetExceptionDispatchInfo();
 
             internal static IRejectContainer Create(object reason, int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable)
             {
-                IRejectionToContainer internalRejection = reason as IRejectionToContainer;
-                if (internalRejection != null)
+                if (reason is IRejectionToContainer internalRejection)
                 {
                     // reason is an internal rejection object, get its container instead of wrapping it.
                     return internalRejection.ToContainer(traceable);
@@ -69,8 +62,7 @@ namespace Proto.Promises
 
                 // If reason is null, behave the same way .Net behaves if you throw null.
                 reason = reason ?? new NullReferenceException();
-                Exception e = reason as Exception;
-                return e != null
+                return reason is Exception e
                     ? RejectionContainerException.Create(e, rejectSkipFrames + 1, exceptionWithStacktrace, traceable)
                     // Only need to create one object pool for reference types.
                     : (IRejectContainer) RejectionContainer.Create(reason, rejectSkipFrames + 1, exceptionWithStacktrace, traceable);
@@ -101,8 +93,10 @@ namespace Proto.Promises
 
             new internal static RejectionContainer Create(object value, int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable)
             {
-                var container = new RejectionContainer();
-                container._value = value;
+                var container = new RejectionContainer
+                {
+                    _value = value
+                };
                 SetCreatedStacktrace(container, 2);
                 container.SetCreatedAndRejectedStacktrace(rejectSkipFrames + 1, exceptionWithStacktrace, traceable);
                 return container;
@@ -128,19 +122,13 @@ namespace Proto.Promises
             }
 
             public override ExceptionDispatchInfo GetExceptionDispatchInfo()
-            {
-                return ExceptionDispatchInfo.Capture(ToException());
-            }
+                => ExceptionDispatchInfo.Capture(ToException());
 
             IRejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
-            {
-                return this;
-            }
+                => this;
 
             void ICantHandleException.ReportUnhandled(ITraceable traceable)
-            {
-                ReportUnhandledException(ToException());
-            }
+                => ReportUnhandledException(ToException());
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -189,9 +177,11 @@ namespace Proto.Promises
 
             internal static RejectionContainerException Create(Exception value, int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable)
             {
-                var container = new RejectionContainerException();
-                container._value = value;
-                container._capturedInfo = ExceptionDispatchInfo.Capture(value);
+                var container = new RejectionContainerException
+                {
+                    _value = value,
+                    _capturedInfo = ExceptionDispatchInfo.Capture(value)
+                };
                 SetCreatedStacktrace(container, 2);
                 container.SetCreatedAndRejectedStacktrace(rejectSkipFrames + 1, exceptionWithStacktrace, traceable);
                 return container;
@@ -212,19 +202,13 @@ namespace Proto.Promises
             }
 
             public override ExceptionDispatchInfo GetExceptionDispatchInfo()
-            {
-                return _capturedInfo;
-            }
+                => _capturedInfo;
 
             IRejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
-            {
-                return this;
-            }
+                => this;
 
             void ICantHandleException.ReportUnhandled(ITraceable traceable)
-            {
-                ReportUnhandledException(ToException());
-            }
+                => ReportUnhandledException(ToException());
         }
     }
 }

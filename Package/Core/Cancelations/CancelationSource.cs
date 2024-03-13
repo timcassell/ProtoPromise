@@ -6,6 +6,9 @@
 
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
+
+#pragma warning disable IDE0090 // Use 'new(...)'
 
 namespace Proto.Promises
 {
@@ -26,9 +29,7 @@ namespace Proto.Promises
         /// <para/>Note: the new <see cref="CancelationSource"/> must be disposed when you are finished with it.
         /// </summary>
         public static CancelationSource New()
-        {
-            return new CancelationSource(Internal.CancelationRef.GetOrCreate());
-        }
+            => new CancelationSource(Internal.CancelationRef.GetOrCreate());
 
         private CancelationSource(Internal.CancelationRef cancelationRef)
         {
@@ -106,10 +107,8 @@ namespace Proto.Promises
         /// </summary>
         public CancelationToken Token
         {
-            get
-            {
-                return new CancelationToken(_ref, _tokenId);
-            }
+            [MethodImpl(Internal.InlineOption)]
+            get => new CancelationToken(_ref, _tokenId);
         }
 
         /// <summary>
@@ -117,32 +116,20 @@ namespace Proto.Promises
         /// <para/>A <see cref="CancelationSource"/> is valid if it was created from <see cref="New()"/> and was not disposed.
         /// </summary>
         public bool IsValid
-        {
-            get
-            {
-                return Internal.CancelationRef.IsValidSource(_ref, _sourceId);
-            }
-        }
+            => Internal.CancelationRef.IsValidSource(_ref, _sourceId);
 
         /// <summary>
         /// Gets whether cancelation has been requested for this source.
         /// </summary>
         public bool IsCancelationRequested
-        {
-            get
-            {
-                return Internal.CancelationRef.IsSourceCanceled(_ref, _sourceId);
-            }
-        }
+            => Internal.CancelationRef.IsSourceCanceled(_ref, _sourceId);
 
         /// <summary>
         /// Try to communicate a request for cancelation, and invoke all callbacks that are registered to the associated <see cref="Token"/>. Returns true if successful, false otherwise.
         /// </summary>
         /// <returns>True if this is valid and was not already canceled, false otherwise.</returns>
         public bool TryCancel()
-        {
-            return Internal.CancelationRef.TrySetCanceled(_ref, _sourceId);
-        }
+            => Internal.CancelationRef.TrySetCanceled(_ref, _sourceId);
 
         /// <summary>
         /// Communicate a request for cancelation, and invoke all callbacks that are registered to the associated <see cref="Token"/>.
@@ -161,9 +148,7 @@ namespace Proto.Promises
         /// </summary>
         /// <returns>True if this is valid and was not already disposed, false otherwise.</returns>
         public bool TryDispose()
-        {
-            return Internal.CancelationRef.TryDispose(_ref, _sourceId);
-        }
+            => Internal.CancelationRef.TryDispose(_ref, _sourceId);
 
         /// <summary>
         /// Release all resources used by this <see cref="CancelationSource"/>. This instance will no longer be valid.
@@ -179,32 +164,23 @@ namespace Proto.Promises
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="CancelationSource"/>.</summary>
         public bool Equals(CancelationSource other)
-        {
-            return this == other;
-        }
+            => this == other;
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
         public override bool Equals(object obj)
-        {
-            return obj is CancelationSource source && Equals(source);
-        }
+            => obj is CancelationSource source && Equals(source);
 
         /// <summary>Returns the hash code for this instance.</summary>
         public override int GetHashCode()
-        {
-            return Internal.BuildHashCode(_ref, _sourceId.GetHashCode(), 0);
-        }
+            => Internal.BuildHashCode(_ref, _sourceId.GetHashCode(), 0);
 
         /// <summary>Returns a value indicating whether two <see cref="CancelationSource"/> values are equal.</summary>
         public static bool operator ==(CancelationSource c1, CancelationSource c2)
-        {
-            return c1._ref == c2._ref & c1._sourceId == c2._sourceId;
-        }
+            => c1._ref == c2._ref
+            & c1._sourceId == c2._sourceId;
 
         /// <summary>Returns a value indicating whether two <see cref="CancelationSource"/> values are not equal.</summary>
         public static bool operator !=(CancelationSource c1, CancelationSource c2)
-        {
-            return !(c1 == c2);
-        }
+            => !(c1 == c2);
     }
 }

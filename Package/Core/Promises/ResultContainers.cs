@@ -4,7 +4,7 @@
 #undef PROMISE_DEBUG
 # endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0090 // Use 'new(...)'
 
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -24,7 +24,7 @@ namespace Proto.Promises
             internal static ResultContainer Resolved
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return new ResultContainer(null, State.Resolved); }
+                get => new ResultContainer(null, State.Resolved);
             }
 
             internal readonly Promise<Internal.VoidResult>.ResultContainer _target;
@@ -32,7 +32,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             internal ResultContainer(Internal.IRejectContainer rejectContainer, State state)
             {
-                _target = new Promise<Internal.VoidResult>.ResultContainer(default(Internal.VoidResult), rejectContainer, state);
+                _target = new Promise<Internal.VoidResult>.ResultContainer(default, rejectContainer, state);
             }
 
             [MethodImpl(Internal.InlineOption)]
@@ -46,27 +46,21 @@ namespace Proto.Promises
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public void RethrowIfRejectedOrCanceled()
-            {
-                _target.RethrowIfRejectedOrCanceled();
-            }
+                => _target.RethrowIfRejectedOrCanceled();
 
             /// <summary>
             /// If the <see cref="Promise"/> is rejected, rethrow the rejection.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public void RethrowIfRejected()
-            {
-                _target.RethrowIfRejected();
-            }
+                => _target.RethrowIfRejected();
 
             /// <summary>
             /// If the <see cref="Promise"/> is canceled, rethrow the cancelation.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public void RethrowIfCanceled()
-            {
-                _target.RethrowIfCanceled();
-            }
+                => _target.RethrowIfCanceled();
 
             /// <summary>
             /// Get the state of the <see cref="Promise"/>.
@@ -74,7 +68,7 @@ namespace Proto.Promises
             public State State
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return _target.State; }
+                get => _target.State;
             }
 
             /// <summary>
@@ -83,7 +77,7 @@ namespace Proto.Promises
             public object Reason
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return _target.Reason; }
+                get => _target.Reason;
             }
         }
     }
@@ -112,7 +106,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             private ResultContainer(Internal.IRejectContainer rejectContainer, Promise.State state)
-                : this(default(T), rejectContainer, state)
+                : this(default, rejectContainer, state)
             {
             }
 
@@ -159,7 +153,7 @@ namespace Proto.Promises
             public Promise.State State
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return _state; }
+                get => _state;
             }
 
             /// <summary>
@@ -168,21 +162,13 @@ namespace Proto.Promises
             public T Value
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return _result; }
+                get => _result;
             }
 
             /// <summary>
             /// Gets the reason of the rejected <see cref="Promise{T}"/>.
             /// </summary>
-            public object Reason
-            {
-                get
-                {
-                    return _state == Promise.State.Rejected
-                        ? _rejectContainer.Value
-                        : null;
-                }
-            }
+            public object Reason => _state == Promise.State.Rejected ? _rejectContainer.Value : null;
 
             /// <summary>
             /// Cast to <see cref="Promise.ResultContainer"/>.
@@ -199,9 +185,7 @@ namespace Proto.Promises
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public static implicit operator ResultContainer(in T value)
-            {
-                return new ResultContainer(value, null, Promise.State.Resolved);
-            }
+                => new ResultContainer(value, null, Promise.State.Resolved);
         }
     }
 }

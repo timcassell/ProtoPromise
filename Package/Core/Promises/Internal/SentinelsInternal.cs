@@ -25,10 +25,7 @@ namespace Proto.Promises
 
                 private PromiseCompletionSentinel() { }
 
-                internal override void Handle(PromiseRefBase handler, Promise.State state)
-                {
-                    throw new System.InvalidOperationException("PromiseCompletionSentinel handled from " + handler);
-                }
+                internal override void Handle(PromiseRefBase handler, Promise.State state) => throw new System.InvalidOperationException("PromiseCompletionSentinel handled from " + handler);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -67,19 +64,15 @@ namespace Proto.Promises
                     System.GC.SuppressFinalize(this);
                 }
 
-                internal override void Handle(PromiseRefBase handler, Promise.State state)
-                {
-                    throw new System.InvalidOperationException("InvalidAwaitSentinel handled from " + handler);
-                }
-
-                internal override void MaybeDispose() { throw new System.InvalidOperationException(); }
-                internal override void MaybeReportUnhandledAndDispose(Promise.State state) { throw new System.InvalidOperationException(); }
-                internal override void Forget(short promiseId) { throw new System.InvalidOperationException(); }
-                internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter) { throw new System.InvalidOperationException(); }
-                internal override PromiseRefBase GetDuplicate(short promiseId) { throw new System.InvalidOperationException(); }
-                internal override bool GetIsCompleted(short promiseId) { throw new System.InvalidOperationException(); }
-                internal override bool GetIsValid(short promiseId) { throw new System.InvalidOperationException(); }
-                internal override void MaybeMarkAwaitedAndDispose(short promiseId) { throw new System.InvalidOperationException(); }
+                internal override void Handle(PromiseRefBase handler, Promise.State state) => throw new System.InvalidOperationException("InvalidAwaitSentinel handled from " + handler);
+                internal override void MaybeDispose() => throw new System.InvalidOperationException();
+                internal override void MaybeReportUnhandledAndDispose(Promise.State state) => throw new System.InvalidOperationException();
+                internal override void Forget(short promiseId) => throw new System.InvalidOperationException();
+                internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter) => throw new System.InvalidOperationException();
+                internal override PromiseRefBase GetDuplicate(short promiseId) => throw new System.InvalidOperationException();
+                internal override bool GetIsCompleted(short promiseId) => throw new System.InvalidOperationException();
+                internal override bool GetIsValid(short promiseId) => throw new System.InvalidOperationException();
+                internal override void MaybeMarkAwaitedAndDispose(short promiseId) => throw new System.InvalidOperationException();
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -113,14 +106,14 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override void MaybeDispose() { throw new System.InvalidOperationException(); }
-                internal override void MaybeReportUnhandledAndDispose(Promise.State state) { throw new System.InvalidOperationException(); }
-                internal override void Forget(short promiseId) { throw new System.InvalidOperationException(); }
-                internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter) { throw new System.InvalidOperationException(); }
-                internal override PromiseRefBase GetDuplicate(short promiseId) { throw new System.InvalidOperationException(); }
-                internal override bool GetIsCompleted(short promiseId) { throw new System.InvalidOperationException(); }
-                internal override bool GetIsValid(short promiseId) { throw new System.InvalidOperationException(); }
-                internal override void MaybeMarkAwaitedAndDispose(short promiseId) { throw new System.InvalidOperationException(); }
+                internal override void MaybeDispose() => throw new System.InvalidOperationException();
+                internal override void MaybeReportUnhandledAndDispose(Promise.State state) => throw new System.InvalidOperationException();
+                internal override void Forget(short promiseId) => throw new System.InvalidOperationException();
+                internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter) => throw new System.InvalidOperationException();
+                internal override PromiseRefBase GetDuplicate(short promiseId) => throw new System.InvalidOperationException();
+                internal override bool GetIsCompleted(short promiseId) => throw new System.InvalidOperationException();
+                internal override bool GetIsValid(short promiseId) => throw new System.InvalidOperationException();
+                internal override void MaybeMarkAwaitedAndDispose(short promiseId) => throw new System.InvalidOperationException();
             }
 
             internal sealed partial class CanceledPromiseSentinel<TResult> : PromiseRef<TResult>
@@ -137,10 +130,8 @@ namespace Proto.Promises
                     System.GC.SuppressFinalize(this);
                 }
 
-                internal override void MaybeDispose()
-                {
-                    // Do nothing.
-                }
+                // Do nothing.
+                internal override void MaybeDispose() { }
 
                 internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter)
                 {
@@ -167,25 +158,17 @@ namespace Proto.Promises
                 }
 
                 internal override PromiseRefBase GetDuplicate(short promiseId)
-                {
-                    return this;
-                }
+                    => this;
 
                 internal override bool GetIsValid(short promiseId)
-                {
-                    return promiseId == Id;
-                }
+                    => promiseId == Id;
 
                 internal override void MaybeMarkAwaitedAndDispose(short promiseId)
-                {
-                    ValidateId(promiseId, this, 2);
                     // Do nothing.
-                }
+                    => ValidateId(promiseId, this, 2);
 
-                internal override void MaybeReportUnhandledAndDispose(Promise.State state)
-                {
-                    // Do nothing.
-                }
+                // Do nothing.
+                internal override void MaybeReportUnhandledAndDispose(Promise.State state) { }
 
                 internal override void Forget(short promiseId)
                 {
@@ -202,9 +185,9 @@ namespace Proto.Promises
         {
             internal static readonly BackgroundSynchronizationContextSentinel s_instance = new BackgroundSynchronizationContextSentinel();
 
-            public override void Post(SendOrPostCallback d, object state) { throw new System.InvalidOperationException(); }
-            public override void Send(SendOrPostCallback d, object state) { throw new System.InvalidOperationException(); }
-            public override SynchronizationContext CreateCopy() { throw new System.InvalidOperationException(); }
+            public override void Post(SendOrPostCallback d, object state) => throw new System.InvalidOperationException();
+            public override void Send(SendOrPostCallback d, object state) => throw new System.InvalidOperationException();
+            public override SynchronizationContext CreateCopy() => throw new System.InvalidOperationException();
         }
     } // Internal
 }

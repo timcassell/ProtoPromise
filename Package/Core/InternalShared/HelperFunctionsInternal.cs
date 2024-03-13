@@ -4,9 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0018 // Inline variable declaration
-#pragma warning disable IDE0019 // Use pattern matching
-#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0074 // Use compound assignment
 
 using System;
@@ -74,14 +71,11 @@ namespace Proto.Promises
         }
 
         internal static IRejectContainer CreateRejectContainer(object reason, int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable)
-        {
-            return RejectContainer.Create(reason, rejectSkipFrames, exceptionWithStacktrace, traceable);
-        }
+            => RejectContainer.Create(reason, rejectSkipFrames, exceptionWithStacktrace, traceable);
 
         internal static void ReportRejection(object unhandledValue, ITraceable traceable)
         {
-            ICantHandleException ex = unhandledValue as ICantHandleException;
-            if (ex != null)
+            if (unhandledValue is ICantHandleException ex)
             {
                 ex.ReportUnhandled(traceable);
                 return;
@@ -166,8 +160,7 @@ namespace Proto.Promises
         internal static bool TryUnregisterAndIsNotCanceling(ref CancelationRegistration cancelationRegistration)
         {
             // We check isCanceling in case the token is not cancelable (in which case TryUnregister returns false).
-            bool isCanceling;
-            bool unregistered = cancelationRegistration.TryUnregister(out isCanceling);
+            bool unregistered = cancelationRegistration.TryUnregister(out bool isCanceling);
             return unregistered | !isCanceling;
         }
 
@@ -208,13 +201,7 @@ namespace Proto.Promises
 
 #if !(NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER)
         internal static bool Remove<TKey, TValue>(this Dictionary<TKey, TValue> dict, TKey key, out TValue value)
-        {
-            if (dict.TryGetValue(key, out value))
-            {
-                return dict.Remove(key);
-            }
-            return false;
-        }
+            => dict.TryGetValue(key, out value) && dict.Remove(key);
 #endif
 
         internal static SynchronizationContext CaptureContext()
@@ -236,17 +223,17 @@ namespace Proto.Promises
             if (first == second | !first.CanBeCanceled)
             {
                 maybeJoinedToken = second;
-                return default(CancelationSource);
+                return default;
             }
             if (!second.CanBeCanceled)
             {
                 maybeJoinedToken = first;
-                return default(CancelationSource);
+                return default;
             }
             if (first.IsCancelationRequested | second.IsCancelationRequested)
             {
                 maybeJoinedToken = CancelationToken.Canceled();
-                return default(CancelationSource);
+                return default;
             }
             var source = CancelationSource.New(first, second);
             maybeJoinedToken = source.Token;

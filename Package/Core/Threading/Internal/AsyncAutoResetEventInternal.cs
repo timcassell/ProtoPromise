@@ -4,7 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 using System;
@@ -182,8 +181,7 @@ namespace Proto.Promises
                     _waiterQueue.Enqueue(promise);
                 }
                 _locker.Exit();
-                Promise.ResultContainer resultContainer;
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
                 resultContainer.RethrowIfRejected();
             }
 
@@ -220,8 +218,7 @@ namespace Proto.Promises
                     _waiterQueue.Enqueue(promise);
                 }
                 _locker.Exit();
-                Promise<bool>.ResultContainer resultContainer;
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
                 resultContainer.RethrowIfRejected();
                 return resultContainer.Value;
             }
@@ -245,9 +242,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             private void ResetImpl()
-            {
-                _isSet = false;
-            }
+                => _isSet = false;
 
             internal bool TryRemoveWaiter(Internal.AsyncEventPromiseBase waiter)
             {

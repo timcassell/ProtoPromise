@@ -115,8 +115,8 @@ namespace Proto.Promises
                 private AsyncConditionVariable _owner
 #pragma warning restore IDE1006 // Naming Styles
                 {
-                    get { return _ownerReference.Target as AsyncConditionVariable; }
-                    set { _ownerReference.Target = value; }
+                    get => _ownerReference.Target as AsyncConditionVariable;
+                    set => _ownerReference.Target = value;
                 }
 #else
                 private AsyncConditionVariable _owner;
@@ -234,9 +234,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             private void SetNextKey()
-            {
-                _currentKey = Internal.KeyGenerator<AsyncLock>.Next();
-            }
+                => _currentKey = Internal.KeyGenerator<AsyncLock>.Next();
 
             private Promise<Key> LockAsyncImpl()
             {
@@ -713,15 +711,11 @@ namespace Proto.Promises
 
             [MethodImpl(MethodImplOptions.NoInlining)]
             internal static void ThrowInvalidKey(int skipFrames)
-            {
-                throw new InvalidOperationException("The AsyncLock.Key is invalid for this operation.", Internal.GetFormattedStacktrace(skipFrames + 1));
-            }
+                => throw new InvalidOperationException("The AsyncLock.Key is invalid for this operation.", Internal.GetFormattedStacktrace(skipFrames + 1));
 
             [MethodImpl(MethodImplOptions.NoInlining)]
             internal static void ThrowConditionVariableAlreadyInUse(int skipFrames)
-            {
-                throw new InvalidOperationException("The AsyncConditionVariable is currently being used by another AsyncLock.", Internal.GetFormattedStacktrace(skipFrames + 1));
-            }
+                => throw new InvalidOperationException("The AsyncConditionVariable is currently being used by another AsyncLock.", Internal.GetFormattedStacktrace(skipFrames + 1));
 
             partial void ValidateNotAbandoned();
 #if PROMISE_DEBUG
@@ -978,34 +972,22 @@ namespace Proto.Promises
                 }
 
                 internal Promise WaitAsync(AsyncConditionVariable condVar)
-                {
-                    return ValidateAndGetOwner().WaitAsyncImpl(condVar, _key, Internal.CaptureContext());
-                }
+                    => ValidateAndGetOwner().WaitAsyncImpl(condVar, _key, Internal.CaptureContext());
 
                 internal Promise<bool> TryWaitAsync(AsyncConditionVariable condVar, CancelationToken cancelationToken)
-                {
-                    return ValidateAndGetOwner().TryWaitAsyncImpl(condVar, _key, cancelationToken, Internal.CaptureContext());
-                }
+                    => ValidateAndGetOwner().TryWaitAsyncImpl(condVar, _key, cancelationToken, Internal.CaptureContext());
 
                 internal void Wait(AsyncConditionVariable condVar)
-                {
-                    ValidateAndGetOwner().WaitAsyncImpl(condVar, _key, null).Wait();
-                }
+                    => ValidateAndGetOwner().WaitAsyncImpl(condVar, _key, null).Wait();
 
                 internal bool TryWait(AsyncConditionVariable condVar, CancelationToken cancelationToken)
-                {
-                    return ValidateAndGetOwner().TryWaitAsyncImpl(condVar, _key, cancelationToken, null).WaitForResult();
-                }
+                    => ValidateAndGetOwner().TryWaitAsyncImpl(condVar, _key, cancelationToken, null).WaitForResult();
 
                 internal void Pulse(AsyncConditionVariable condVar)
-                {
-                    ValidateAndGetOwner().Pulse(condVar, _key);
-                }
+                    => ValidateAndGetOwner().Pulse(condVar, _key);
 
                 internal void PulseAll(AsyncConditionVariable condVar)
-                {
-                    ValidateAndGetOwner().PulseAll(condVar, _key);
-                }
+                    => ValidateAndGetOwner().PulseAll(condVar, _key);
 
                 private AsyncLock ValidateAndGetOwner()
                 {

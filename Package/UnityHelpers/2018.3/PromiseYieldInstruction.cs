@@ -24,17 +24,13 @@ namespace Proto.Promises
         /// Convert the <paramref name="promise"/> to a <see cref="PromiseYieldInstruction"/>.
         /// </summary>
         public static PromiseYieldInstruction ToYieldInstruction(this Promise promise)
-        {
-            return InternalHelper.YieldInstructionVoid.GetOrCreate(promise);
-        }
+            => InternalHelper.YieldInstructionVoid.GetOrCreate(promise);
 
         /// <summary>
         /// Convert the <paramref name="promise"/> to a <see cref="PromiseYieldInstruction{T}"/>.
         /// </summary>
         public static PromiseYieldInstruction<T> ToYieldInstruction<T>(this Promise<T> promise)
-        {
-            return InternalHelper.YieldInstruction<T>.GetOrCreate(promise);
-        }
+            => InternalHelper.YieldInstruction<T>.GetOrCreate(promise);
     }
 
     /// <summary>
@@ -116,10 +112,7 @@ namespace Proto.Promises
         /// <see cref="Dispose"/>, you must release all references to the
         /// <see cref="YieldInstruction"/> so the garbage collector can reclaim the memory
         /// that the <see cref="YieldInstruction"/> was occupying.</remarks>
-        public virtual void Dispose()
-        {
-            ValidateOperation();
-        }
+        public abstract void Dispose();
 
         private protected void ValidateOperation()
         {
@@ -275,9 +268,7 @@ namespace Proto.Promises
 #endif
 
                 private static void Clear()
-                {
-                    s_head = null;
-                }
+                    => s_head = null;
 
                 internal static T TryTakeOrNull()
                 {
@@ -345,14 +336,10 @@ namespace Proto.Promises
             static partial void MarkNotInPool(object obj);
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             static partial void MarkInPool(object obj)
-            {
-                Internal.MarkInPool(obj);
-            }
+                => Internal.MarkInPool(obj);
 
             static partial void MarkNotInPool(object obj)
-            {
-                Internal.MarkNotInPool(obj);
-            }
+                => Internal.MarkNotInPool(obj);
 #endif
         }
     } // class InternalHelper

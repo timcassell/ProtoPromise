@@ -1,8 +1,6 @@
-﻿#pragma warning disable IDE0041 // Use 'is null' check
-#pragma warning disable IDE0051 // Remove unused private members
+﻿#pragma warning disable IDE0051 // Remove unused private members
 #pragma warning disable IDE0074 // Use compound assignment
 #pragma warning disable IDE0090 // Use 'new(...)'
-#pragma warning disable IDE0180 // Use tuple to swap values
 
 using Proto.Promises.Threading;
 using System.Collections.Generic;
@@ -24,18 +22,14 @@ namespace Proto.Promises
         // We can't use SubsystemRegistration or AfterAssembliesLoaded which run before BeforeSceneLoad, because it forcibly destroys the MonoBehaviour.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         internal static void InitializePromiseConfig()
-        {
-            PromiseBehaviour.Initialize();
-        }
+            => PromiseBehaviour.Initialize();
 
         // AppDomain reload could be disabled in editor, so we need to explicitly reset static fields.
         // See https://github.com/timcassell/ProtoPromise/issues/204
         // https://docs.unity3d.com/Manual/DomainReloading.html
         [RuntimeInitializeOnLoadMethod((RuntimeInitializeLoadType) 4)] // SubsystemRegistration
         internal static void ResetStaticState()
-        {
-            PromiseBehaviour.ResetStaticState();
-        }
+            => PromiseBehaviour.ResetStaticState();
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
@@ -47,7 +41,7 @@ namespace Proto.Promises
             internal static PromiseBehaviour Instance
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return s_instance; }
+                get => s_instance;
             }
 
             internal readonly PromiseSynchronizationContext _syncContext = new PromiseSynchronizationContext();
@@ -143,9 +137,7 @@ namespace Proto.Promises
                 object locker = _unhandledExceptions;
                 lock (locker)
                 {
-                    var temp = _unhandledExceptions;
-                    _unhandledExceptions = _currentlyReportingExceptions;
-                    _currentlyReportingExceptions = temp;
+                    (_currentlyReportingExceptions, _unhandledExceptions) = (_unhandledExceptions, _currentlyReportingExceptions);
                 }
 
                 while (_currentlyReportingExceptions.Count > 0)
@@ -194,7 +186,7 @@ namespace Proto.Promises
 
             internal static void ResetStaticState()
             {
-                if (!ReferenceEquals(s_instance, null))
+                if (s_instance is object)
                 {
                     s_instance.ResetProcessors();
                     s_instance.ResetConfig();

@@ -4,12 +4,11 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0018 // Inline variable declaration
-#pragma warning disable IDE0034 // Simplify 'default' expression
-
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+
+#pragma warning disable IDE0090 // Use 'new(...)'
 
 namespace Proto.Promises
 {
@@ -30,7 +29,7 @@ namespace Proto.Promises
         public static CancelationToken None
         {
             [MethodImpl(Internal.InlineOption)]
-            get { return default(CancelationToken); }
+            get => default;
         }
 
         internal CancelationToken(Internal.CancelationRef cancelationRef, int tokenId)
@@ -43,9 +42,7 @@ namespace Proto.Promises
         /// Get a token that is already in the canceled state.
         /// </summary>
         public static CancelationToken Canceled()
-        {
-            return new CancelationToken(Internal.CancelationRef.s_canceledSentinel, Internal.CancelationRef.s_canceledSentinel.TokenId);
-        }
+            => new CancelationToken(Internal.CancelationRef.s_canceledSentinel, Internal.CancelationRef.s_canceledSentinel.TokenId);
 
         /// <summary>
         /// Gets whether this token is capable of being in the canceled state.
@@ -55,23 +52,13 @@ namespace Proto.Promises
         /// or if the token is already canceled and it has been retained and not yet released.
         /// </remarks>
         public bool CanBeCanceled
-        {
-            get
-            {
-                return Internal.CancelationRef.CanTokenBeCanceled(_ref, _id);
-            }
-        }
+            => Internal.CancelationRef.CanTokenBeCanceled(_ref, _id);
 
         /// <summary>
         /// Gets whether cancelation has been requested for this token.
         /// </summary>
         public bool IsCancelationRequested
-        {
-            get
-            {
-                return Internal.CancelationRef.IsTokenCanceled(_ref, _id);
-            }
-        }
+            => Internal.CancelationRef.IsTokenCanceled(_ref, _id);
 
         /// <summary>
         /// If cancelation was requested on this token, throws a <see cref="CanceledException"/>.
@@ -94,7 +81,7 @@ namespace Proto.Promises
         /// <returns>true if <paramref name="callback"/> was registered successfully, false otherwise.</returns>
         public bool TryRegister(Action callback, out CancelationRegistration cancelationRegistration)
         {
-            ValidateArgument(callback, "callback", 1);
+            ValidateArgument(callback, nameof(callback), 1);
             return Internal.CancelationRef.TryRegister(_ref, _id, new Internal.CancelDelegateTokenVoid(callback), out cancelationRegistration);
         }
 
@@ -108,7 +95,7 @@ namespace Proto.Promises
         /// <returns>true if <paramref name="callback"/> was registered successfully, false otherwise.</returns>
         public bool TryRegister<TCapture>(TCapture captureValue, Action<TCapture> callback, out CancelationRegistration cancelationRegistration)
         {
-            ValidateArgument(callback, "callback", 1);
+            ValidateArgument(callback, nameof(callback), 1);
             return Internal.CancelationRef.TryRegister(_ref, _id, new Internal.CancelDelegateToken<TCapture>(captureValue, callback), out cancelationRegistration);
         }
 
@@ -121,7 +108,7 @@ namespace Proto.Promises
         /// <returns>true if <paramref name="cancelable"/> was registered successfully, false otherwise.</returns>
         public bool TryRegister<TCancelable>(TCancelable cancelable, out CancelationRegistration cancelationRegistration) where TCancelable : ICancelable
         {
-            ValidateArgument(cancelable, "cancelable", 1);
+            ValidateArgument(cancelable, nameof(cancelable), 1);
             return Internal.CancelationRef.TryRegister(_ref, _id, cancelable, out cancelationRegistration);
         }
 
@@ -135,7 +122,7 @@ namespace Proto.Promises
         /// <returns>true if <paramref name="cancelable"/> was registered successfully or this was already canceled, false otherwise.</returns>
         public bool TryRegisterWithoutImmediateInvoke<TCancelable>(TCancelable cancelable, out CancelationRegistration cancelationRegistration, out bool alreadyCanceled) where TCancelable : ICancelable
         {
-            ValidateArgument(cancelable, "cancelable", 1);
+            ValidateArgument(cancelable, nameof(cancelable), 1);
             return Internal.CancelationRef.TryRegister(_ref, _id, cancelable, out cancelationRegistration, out alreadyCanceled);
         }
 
@@ -147,8 +134,7 @@ namespace Proto.Promises
         /// <returns>The <see cref="CancelationRegistration"/> instance that can be used to unregister the callback.</returns>
         public CancelationRegistration Register(Action callback)
         {
-            CancelationRegistration registration;
-            TryRegister(callback, out registration);
+            TryRegister(callback, out var registration);
             return registration;
         }
 
@@ -161,8 +147,7 @@ namespace Proto.Promises
         /// <returns>The <see cref="CancelationRegistration"/> instance that can be used to unregister the callback.</returns>
         public CancelationRegistration Register<TCapture>(TCapture captureValue, Action<TCapture> callback)
         {
-            CancelationRegistration registration;
-            TryRegister(captureValue, callback, out registration);
+            TryRegister(captureValue, callback, out var registration);
             return registration;
         }
 
@@ -174,8 +159,7 @@ namespace Proto.Promises
         /// <returns>The <see cref="CancelationRegistration"/> instance that can be used to unregister the callback.</returns>
         public CancelationRegistration Register<TCancelable>(TCancelable cancelable) where TCancelable : ICancelable
         {
-            CancelationRegistration registration;
-            TryRegister(cancelable, out registration);
+            TryRegister(cancelable, out var registration);
             return registration;
         }
 
@@ -185,9 +169,7 @@ namespace Proto.Promises
         /// If successful, this should be paired with a call to <see cref="Release"/>.
         /// </summary>
         public bool TryRetain()
-        {
-            return Internal.CancelationRef.TryRetainUser(_ref, _id);
-        }
+            => Internal.CancelationRef.TryRetainUser(_ref, _id);
 
         /// <summary>
         /// Release this instance. Allows resources to be released when the associated <see cref="CancelationSource"/> is disposed (if <see cref="Release"/> has been called for all <see cref="TryRetain"/> calls).
@@ -207,56 +189,41 @@ namespace Proto.Promises
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public Retainer GetRetainer()
-        {
-            return new Retainer(this);
-        }
+            => new Retainer(this);
 
         /// <summary>
         /// Convert this to a <see cref="System.Threading.CancellationToken"/>.
         /// </summary>
         /// <returns>A <see cref="System.Threading.CancellationToken"/> that will be canceled when this is canceled.</returns>
         public System.Threading.CancellationToken ToCancellationToken()
-        {
-            return Internal.CancelationRef.GetCancellationToken(_ref, _id);
-        }
+            => Internal.CancelationRef.GetCancellationToken(_ref, _id);
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="CancelationToken"/>.</summary>
         public bool Equals(CancelationToken other)
-        {
-            return this == other;
-        }
+            => this == other;
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
         public override bool Equals(object obj)
-        {
-            return obj is CancelationToken token && Equals(token);
-        }
+            => obj is CancelationToken token && Equals(token);
 
         /// <summary>Returns the hash code for this instance.</summary>
         public override int GetHashCode()
-        {
-            return Internal.BuildHashCode(_ref, _id.GetHashCode(), 0);
-        }
+            => Internal.BuildHashCode(_ref, _id.GetHashCode(), 0);
 
         /// <summary>Returns a value indicating whether two <see cref="CancelationToken"/> values are equal.</summary>
         public static bool operator ==(CancelationToken lhs, CancelationToken rhs)
-        {
-            return lhs._ref == rhs._ref & lhs._id == rhs._id;
-        }
+            => lhs._ref == rhs._ref
+            & lhs._id == rhs._id;
 
         /// <summary>Returns a value indicating whether two <see cref="CancelationToken"/> values are not equal.</summary>
         public static bool operator !=(CancelationToken lhs, CancelationToken rhs)
-        {
-            return !(lhs == rhs);
-        }
+            => !(lhs == rhs);
 
         // Calls to this get compiled away in RELEASE mode
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
 #if PROMISE_DEBUG
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-        {
-            Internal.ValidateArgument(arg, argName, skipFrames + 1);
-        }
+            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
 #endif
 
         /// <summary>
@@ -303,8 +270,6 @@ namespace Proto.Promises
         /// <param name="token">The cancellation token to convert</param>
         /// <returns>A <see cref="CancelationToken"/> that will be canceled when <paramref name="token"/> is canceled.</returns>
         public static CancelationToken ToCancelationToken(this System.Threading.CancellationToken token)
-        {
-            return Internal.CancelationRef.CancelationConverter.Convert(token);
-        }
+            => Internal.CancelationRef.CancelationConverter.Convert(token);
     }
 }

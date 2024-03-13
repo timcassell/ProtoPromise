@@ -237,7 +237,7 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                internal override void Report(ref NewProgressReportValues reportValues) { throw new System.InvalidOperationException(); }
+                internal override void Report(ref NewProgressReportValues reportValues) => throw new System.InvalidOperationException();
             }
         }
 

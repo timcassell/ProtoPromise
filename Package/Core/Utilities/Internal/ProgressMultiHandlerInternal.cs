@@ -4,9 +4,6 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-#pragma warning disable IDE0090 // Use 'new(...)'
-#pragma warning disable IDE0180 // Use tuple to swap values
-
 namespace Proto.Promises
 {
     partial class Internal
@@ -51,15 +48,11 @@ namespace Proto.Promises
             // We use Monitor instead of SpinLocker since the lock could be held for a longer period of time when reporting.
             [MethodImpl(InlineOption)]
             private void EnterLock()
-            {
-                Monitor.Enter(this);
-            }
+                => Monitor.Enter(this);
 
             [MethodImpl(InlineOption)]
             internal override void ExitLock()
-            {
-                Monitor.Exit(this);
-            }
+                => Monitor.Exit(this);
 
             internal void Add(ProgressToken progressToken, int id)
             {

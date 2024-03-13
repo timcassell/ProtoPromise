@@ -4,9 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0250 // Make struct 'readonly'
-#pragma warning disable IDE0251 // Make member 'readonly'
-
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -31,7 +28,7 @@ namespace Proto.Promises
             internal bool IsStarted
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return _lazyPromise != null; }
+                get => _lazyPromise != null;
             }
 
             internal abstract Promise<T> GetOrStartPromise(AsyncLazy<T> owner, ProgressToken progressToken);
@@ -47,7 +44,7 @@ namespace Proto.Promises
             internal bool IsComplete
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return _factory == null; }
+                get => _factory == null;
             }
 
             internal LazyFieldsNoProgress(Func<Promise<T>> factory)
@@ -56,9 +53,7 @@ namespace Proto.Promises
             }
 
             internal override Promise<T> GetOrStartPromise(AsyncLazy<T> owner, ProgressToken progressToken)
-            {
-                return LazyPromiseNoProgress.GetOrStartPromise(owner, this);
-            }
+                => LazyPromiseNoProgress.GetOrStartPromise(owner, this);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -71,7 +66,7 @@ namespace Proto.Promises
             internal bool IsComplete
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return _factory == null; }
+                get => _factory == null;
             }
 
             internal LazyFieldsWithProgress(Func<ProgressToken, Promise<T>> factory)
@@ -80,9 +75,7 @@ namespace Proto.Promises
             }
 
             internal override Promise<T> GetOrStartPromise(AsyncLazy<T> owner, ProgressToken progressToken)
-            {
-                return LazyWithProgressPromise.GetOrStartPromise(owner, this, progressToken);
-            }
+                => LazyWithProgressPromise.GetOrStartPromise(owner, this, progressToken);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -379,7 +372,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
                 [DebuggerNonUserCode, StackTraceHidden]
 #endif
-                private struct CompleteHandler : IWaitForCompleteHandler
+                private readonly struct CompleteHandler : IWaitForCompleteHandler
                 {
                     private readonly LazyPromise<TResult> _owner;
 
@@ -402,9 +395,7 @@ namespace Proto.Promises
 
                     [MethodImpl(InlineOption)]
                     void IWaitForCompleteHandler.HandleNull()
-                    {
-                        _owner.OnComplete(Promise.State.Resolved);
-                    }
+                        => _owner.OnComplete(Promise.State.Resolved);
                 }
             }
         } // class PromiseRefBase

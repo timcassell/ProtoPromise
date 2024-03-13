@@ -4,7 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0270 // Use coalesce expression
 
 using Proto.Promises.CompilerServices;
@@ -25,9 +25,7 @@ namespace Proto.Promises
         /// This function is not recommended. Instead, you should prefer async/await or .Then API.
         /// </remarks>
         public static Promise Sequence(params Func<Promise>[] promiseFuncs)
-        {
-            return Sequence(default(CancelationToken), promiseFuncs.GetGenericEnumerator());
-        }
+            => Sequence(default, promiseFuncs.GetGenericEnumerator());
 
         /// <summary>
         /// Runs <paramref name="promiseFuncs"/> in sequence, returning a <see cref="Promise"/> that will resolve when all promises have resolved.
@@ -40,9 +38,7 @@ namespace Proto.Promises
         /// This function is not recommended. Instead, you should prefer async/await or .Then API.
         /// </remarks>
         public static Promise Sequence(CancelationToken cancelationToken, params Func<Promise>[] promiseFuncs)
-        {
-            return Sequence(cancelationToken, promiseFuncs.GetGenericEnumerator());
-        }
+            => Sequence(cancelationToken, promiseFuncs.GetGenericEnumerator());
 
         /// <summary>
         /// Runs <paramref name="promiseFuncs"/> in sequence, returning a <see cref="Promise"/> that will resolve when all promises have resolved.
@@ -52,9 +48,7 @@ namespace Proto.Promises
         /// This function is not recommended. Instead, you should prefer async/await or .Then API.
         /// </remarks>
         public static Promise Sequence(IEnumerable<Func<Promise>> promiseFuncs)
-        {
-            return Sequence(default(CancelationToken), promiseFuncs.GetEnumerator());
-        }
+            => Sequence(default, promiseFuncs.GetEnumerator());
 
         /// <summary>
         /// Runs <paramref name="promiseFuncs"/> in sequence, returning a <see cref="Promise"/> that will resolve when all promises have resolved.
@@ -67,9 +61,7 @@ namespace Proto.Promises
         /// This function is not recommended. Instead, you should prefer async/await or .Then API.
         /// </remarks>
         public static Promise Sequence(CancelationToken cancelationToken, IEnumerable<Func<Promise>> promiseFuncs)
-        {
-            return Sequence(cancelationToken, promiseFuncs.GetEnumerator());
-        }
+            => Sequence(cancelationToken, promiseFuncs.GetEnumerator());
 
         /// <summary>
         /// Runs <paramref name="promiseFuncs"/> in sequence, returning a <see cref="Promise"/> that will resolve when all promises have resolved.
@@ -79,9 +71,7 @@ namespace Proto.Promises
         /// This function is not recommended. Instead, you should prefer async/await or .Then API.
         /// </remarks>
         public static Promise Sequence<TEnumerator>(TEnumerator promiseFuncs) where TEnumerator : IEnumerator<Func<Promise>>
-        {
-            return Sequence(default(CancelationToken), promiseFuncs);
-        }
+            => Sequence(default, promiseFuncs);
 
         /// <summary>
         /// Runs <paramref name="promiseFuncs"/> in sequence, returning a <see cref="Promise"/> that will resolve when all promises have resolved.
@@ -95,7 +85,7 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise Sequence<TEnumerator>(CancelationToken cancelationToken, TEnumerator promiseFuncs) where TEnumerator : IEnumerator<Func<Promise>>
         {
-            ValidateArgument(promiseFuncs, "promiseFuncs", 2);
+            ValidateArgument(promiseFuncs, nameof(promiseFuncs), 2);
 
             using (promiseFuncs)
             {
@@ -109,28 +99,21 @@ namespace Proto.Promises
         }
 
         private static Promise SwitchToContext(SynchronizationOption synchronizationOption, bool forceAsync)
-        {
-            return Resolved()
-                .WaitAsync(synchronizationOption, forceAsync);
-        }
+            => Resolved().WaitAsync(synchronizationOption, forceAsync);
 
         /// <summary>
         /// Returns a new <see cref="Promise"/> that will resolve on the foreground context.
         /// </summary>
         /// <param name="forceAsync">If true, forces the context switch to happen asynchronously.</param>
         public static Promise SwitchToForeground(bool forceAsync = false)
-        {
-            return SwitchToContext(SynchronizationOption.Foreground, forceAsync);
-        }
+            => SwitchToContext(SynchronizationOption.Foreground, forceAsync);
 
         /// <summary>
         /// Returns a new <see cref="Promise"/> that will resolve on the background context.
         /// </summary>
         /// <param name="forceAsync">If true, forces the context switch to happen asynchronously.</param>
         public static Promise SwitchToBackground(bool forceAsync = false)
-        {
-            return SwitchToContext(SynchronizationOption.Background, forceAsync);
-        }
+            => SwitchToContext(SynchronizationOption.Background, forceAsync);
 
         /// <summary>
         /// Returns a new <see cref="Promise"/> that will resolve on the provided <paramref name="synchronizationContext"/>
@@ -138,10 +121,7 @@ namespace Proto.Promises
         /// <param name="synchronizationContext">The context to switch to. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the context switch to happen asynchronously.</param>
         public static Promise SwitchToContext(SynchronizationContext synchronizationContext, bool forceAsync = false)
-        {
-            return Resolved()
-                .WaitAsync(synchronizationContext, forceAsync);
-        }
+            => Resolved().WaitAsync(synchronizationContext, forceAsync);
 
         /// <summary>
         /// Switch to the foreground context in an async method.
@@ -170,9 +150,7 @@ namespace Proto.Promises
         /// This method is equivalent to <see cref="SwitchToBackground(bool)"/>, butbut is more efficient when used directly with the <see langword="await"/> keyword.
         /// </remarks>
         public static PromiseSwitchToContextAwaiter SwitchToBackgroundAwait(bool forceAsync = false)
-        {
-            return new PromiseSwitchToContextAwaiter(Config.BackgroundContext, forceAsync);
-        }
+            => new PromiseSwitchToContextAwaiter(Config.BackgroundContext, forceAsync);
 
         /// <summary>
         /// Switch to the provided context in an async method.
@@ -183,9 +161,7 @@ namespace Proto.Promises
         /// This method is equivalent to <see cref="SwitchToContext(SynchronizationContext, bool)"/>, but is more efficient when used directly with the <see langword="await"/> keyword.
         /// </remarks>
         public static PromiseSwitchToContextAwaiter SwitchToContextAwait(SynchronizationContext synchronizationContext, bool forceAsync = false)
-        {
-            return new PromiseSwitchToContextAwaiter(synchronizationContext, forceAsync);
-        }
+            => new PromiseSwitchToContextAwaiter(synchronizationContext, forceAsync);
 
         /// <summary>
         /// Returns a new <see cref="Promise"/>. <paramref name="resolver"/> is invoked with a <see cref="Deferred"/> that controls the state of the new <see cref="Promise"/>.
@@ -198,7 +174,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the <paramref name="resolver"/> to be invoked asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
 		public static Promise New(Action<Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous, bool forceAsync = false)
         {
-            ValidateArgument(resolver, "resolver", 1);
+            ValidateArgument(resolver, nameof(resolver), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid.New(Internal.PromiseRefBase.DelegateWrapper.Create(resolver), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
@@ -213,7 +189,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the <paramref name="resolver"/> to be invoked asynchronously.</param>
 		public static Promise New(Action<Deferred> resolver, SynchronizationContext synchronizationContext, bool forceAsync = false)
         {
-            ValidateArgument(resolver, "resolver", 1);
+            ValidateArgument(resolver, nameof(resolver), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid.New(Internal.PromiseRefBase.DelegateWrapper.Create(resolver), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
@@ -230,7 +206,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the <paramref name="resolver"/> to be invoked asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
         public static Promise New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous, bool forceAsync = false)
         {
-            ValidateArgument(resolver, "resolver", 1);
+            ValidateArgument(resolver, nameof(resolver), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid.New(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, resolver), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
@@ -246,7 +222,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the <paramref name="resolver"/> to be invoked asynchronously.</param>
         public static Promise New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver, SynchronizationContext synchronizationContext, bool forceAsync = false)
         {
-            ValidateArgument(resolver, "resolver", 1);
+            ValidateArgument(resolver, nameof(resolver), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid.New(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, resolver), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
@@ -260,7 +236,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
 		public static Promise Run(Action action, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
         {
-            ValidateArgument(action, "action", 1);
+            ValidateArgument(action, nameof(action), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid.Run(Internal.PromiseRefBase.DelegateWrapper.Create(action), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
@@ -275,7 +251,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
 		public static Promise Run<TCapture>(TCapture captureValue, Action<TCapture> action, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
         {
-            ValidateArgument(action, "action", 1);
+            ValidateArgument(action, nameof(action), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid.Run(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, action), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
@@ -289,7 +265,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
 		public static Promise Run(Action action, SynchronizationContext synchronizationContext, bool forceAsync = true)
         {
-            ValidateArgument(action, "action", 1);
+            ValidateArgument(action, nameof(action), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid.Run(Internal.PromiseRefBase.DelegateWrapper.Create(action), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
@@ -304,7 +280,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
 		public static Promise Run<TCapture>(TCapture captureValue, Action<TCapture> action, SynchronizationContext synchronizationContext, bool forceAsync = true)
         {
-            ValidateArgument(action, "action", 1);
+            ValidateArgument(action, nameof(action), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid.Run(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, action), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
@@ -318,7 +294,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
 		public static Promise<T> Run<T>(Func<T> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
         {
-            ValidateArgument(function, "function", 1);
+            ValidateArgument(function, nameof(function), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<T>.Run(Internal.PromiseRefBase.DelegateWrapper.Create(function), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
@@ -333,7 +309,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
 		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, T> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
         {
-            ValidateArgument(function, "function", 1);
+            ValidateArgument(function, nameof(function), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<T>.Run(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, function), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
@@ -347,7 +323,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
 		public static Promise<T> Run<T>(Func<T> function, SynchronizationContext synchronizationContext, bool forceAsync = true)
         {
-            ValidateArgument(function, "function", 1);
+            ValidateArgument(function, nameof(function), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<T>.Run(Internal.PromiseRefBase.DelegateWrapper.Create(function), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
@@ -362,7 +338,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
 		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, T> function, SynchronizationContext synchronizationContext, bool forceAsync = true)
         {
-            ValidateArgument(function, "function", 1);
+            ValidateArgument(function, nameof(function), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<T>.Run(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, function), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
@@ -376,7 +352,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
 		public static Promise Run(Func<Promise> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
         {
-            ValidateArgument(function, "function", 1);
+            ValidateArgument(function, nameof(function), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(function), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
@@ -391,7 +367,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
 		public static Promise Run<TCapture>(TCapture captureValue, Func<TCapture, Promise> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
         {
-            ValidateArgument(function, "function", 1);
+            ValidateArgument(function, nameof(function), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, function), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
@@ -405,7 +381,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
 		public static Promise Run(Func<Promise> function, SynchronizationContext synchronizationContext, bool forceAsync = true)
         {
-            ValidateArgument(function, "function", 1);
+            ValidateArgument(function, nameof(function), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(function), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
@@ -420,7 +396,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
 		public static Promise Run<TCapture>(TCapture captureValue, Func<TCapture, Promise> function, SynchronizationContext synchronizationContext, bool forceAsync = true)
         {
-            ValidateArgument(function, "function", 1);
+            ValidateArgument(function, nameof(function), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, function), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
@@ -434,7 +410,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
 		public static Promise<T> Run<T>(Func<Promise<T>> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
         {
-            ValidateArgument(function, "function", 1);
+            ValidateArgument(function, nameof(function), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<T>.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(function), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
@@ -449,7 +425,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
 		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, Promise<T>> function, SynchronizationOption synchronizationOption = SynchronizationOption.Background, bool forceAsync = true)
         {
-            ValidateArgument(function, "function", 1);
+            ValidateArgument(function, nameof(function), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<T>.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, function), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
@@ -463,7 +439,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
 		public static Promise<T> Run<T>(Func<Promise<T>> function, SynchronizationContext synchronizationContext, bool forceAsync = true)
         {
-            ValidateArgument(function, "function", 1);
+            ValidateArgument(function, nameof(function), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<T>.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(function), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
@@ -478,7 +454,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the invoke to happen asynchronously.</param>
 		public static Promise<T> Run<TCapture, T>(TCapture captureValue, Func<TCapture, Promise<T>> function, SynchronizationContext synchronizationContext, bool forceAsync = true)
         {
-            ValidateArgument(function, "function", 1);
+            ValidateArgument(function, nameof(function), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<T>.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, function), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
@@ -532,36 +508,28 @@ namespace Proto.Promises
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public static Promise Canceled()
-        {
-            return Internal.CreateCanceled();
-        }
+            => Internal.CreateCanceled();
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that is already canceled.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public static Promise<T> Canceled<T>()
-        {
-            return Promise<T>.Canceled();
-        }
+            => Promise<T>.Canceled();
 
         /// <summary>
         /// Returns a new <see cref="Deferred"/> instance that is linked to and controls the state of a new <see cref="Promise"/>.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public static Deferred NewDeferred()
-        {
-            return Deferred.New();
-        }
+            => Deferred.New();
 
         /// <summary>
         /// Returns a <see cref="Promise{T}.Deferred"/> object that is linked to and controls the state of a new <see cref="Promise{T}"/>.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public static Promise<T>.Deferred NewDeferred<T>()
-        {
-            return Promise<T>.Deferred.New();
-        }
+            => Promise<T>.Deferred.New();
 
         /// <summary>
         /// Get a <see cref="RethrowException"/> that can be thrown inside an onRejected callback to rethrow the caught rejection, preserving the stack trace.
@@ -569,29 +537,20 @@ namespace Proto.Promises
         /// This is similar to "throw;" in a synchronous catch clause.
         /// </summary>
         public static RethrowException Rethrow
-        {
-            get
-            {
-                return RethrowException.GetOrCreate();
-            }
-        }
+            => RethrowException.GetOrCreate();
 
         /// <summary>
         /// Get a <see cref="CanceledException"/> that can be thrown to cancel the promise from an onResolved or onRejected callback, or in an async Promise function.
         /// This should be used as "throw Promise.CancelException();"
         /// </summary>
         public static CanceledException CancelException()
-        {
-            return Internal.CanceledExceptionInternal.GetOrCreate();
-        }
+            => Internal.CanceledExceptionInternal.GetOrCreate();
 
         /// <summary>
         /// Get a <see cref="Promises.RejectException"/> that can be thrown to reject the promise from an onResolved or onRejected callback, or in an async Promise function.
         /// This should be used as "throw Promise.RejectException(value);"
         /// </summary>
         public static RejectException RejectException<T>(T value)
-        {
-            return new Internal.RejectExceptionInternal(value);
-        }
+            => new Internal.RejectExceptionInternal(value);
     }
 }

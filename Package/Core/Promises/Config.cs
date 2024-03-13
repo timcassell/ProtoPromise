@@ -53,7 +53,7 @@ namespace Proto.Promises
             public static bool ObjectPoolingEnabled
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return false; }
+                get => false;
                 [MethodImpl(Internal.InlineOption)]
                 set { }
             }
@@ -61,9 +61,9 @@ namespace Proto.Promises
             public static bool ObjectPoolingEnabled
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return s_objectPoolingEnabled; } 
+                get => s_objectPoolingEnabled;
                 [MethodImpl(Internal.InlineOption)]
-                set { s_objectPoolingEnabled = value; } 
+                set => s_objectPoolingEnabled = value;
             }
             private static bool s_objectPoolingEnabled = true; // Enabled by default.
 #endif
@@ -75,16 +75,16 @@ namespace Proto.Promises
             public static TraceLevel DebugCausalityTracer
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return s_debugCausalityTracer; }
+                get => s_debugCausalityTracer;
                 [MethodImpl(Internal.InlineOption)]
-                set { s_debugCausalityTracer = value; }
+                set => s_debugCausalityTracer = value;
             }
             private static TraceLevel s_debugCausalityTracer = TraceLevel.Rejections;
 #else
             public static TraceLevel DebugCausalityTracer
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return default(TraceLevel); }
+                get => default;
                 [MethodImpl(Internal.InlineOption)]
                 set { }
             }
@@ -99,9 +99,9 @@ namespace Proto.Promises
             public static Action<UnhandledException> UncaughtRejectionHandler
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return s_uncaughtRejectionHandler; }
+                get => s_uncaughtRejectionHandler;
                 [MethodImpl(Internal.InlineOption)]
-                set { s_uncaughtRejectionHandler = value; }
+                set => s_uncaughtRejectionHandler = value;
             }
             private static Action<UnhandledException> s_uncaughtRejectionHandler;
 
@@ -117,11 +117,9 @@ namespace Proto.Promises
             public static SynchronizationContext ForegroundContext
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return s_foregroundContext; }
-                set
-                {
-                    s_foregroundContext = value;
-                }
+                get => s_foregroundContext;
+                [MethodImpl(Internal.InlineOption)]
+                set => s_foregroundContext = value;
             }
             private static SynchronizationContext s_foregroundContext;
 
@@ -131,9 +129,9 @@ namespace Proto.Promises
             public static SynchronizationContext BackgroundContext
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return s_backgroundContext; }
+                get => s_backgroundContext;
                 [MethodImpl(Internal.InlineOption)]
-                set { s_backgroundContext = value; }
+                set => s_backgroundContext = value;
             }
             private static SynchronizationContext s_backgroundContext;
 
@@ -146,7 +144,7 @@ namespace Proto.Promises
             public static bool AsyncFlowExecutionContextEnabled
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return s_asyncFlowExecutionContextEnabled; }
+                get => s_asyncFlowExecutionContextEnabled;
                 [MethodImpl(Internal.InlineOption)]
                 set
                 {
@@ -161,9 +159,7 @@ namespace Proto.Promises
 
             [MethodImpl(MethodImplOptions.NoInlining)]
             private static void ThrowCannotDisableAsyncFlow()
-            {
-                throw new InvalidOperationException("Cannot disable AsyncFlowExecutionContext. It may only be enabled.");
-            }
+                => throw new InvalidOperationException("Cannot disable AsyncFlowExecutionContext. It may only be enabled.");
         }
     }
 }
