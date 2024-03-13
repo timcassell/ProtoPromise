@@ -4,9 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0018 // Inline variable declaration
-#pragma warning disable IDE0031 // Use null propagation
-#pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0090 // Use 'new(...)'
 
 using System;
 using System.Collections.Generic;
@@ -42,9 +40,8 @@ namespace Proto.Promises
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public static implicit operator System.Threading.Tasks.ValueTask<T>(in Promise<T> rhs)
-        {
-            return rhs.AsValueTask();
-        }
+            => rhs.AsValueTask();
+
         /// <summary>
         /// Convert this to a <see cref="System.Threading.Tasks.ValueTask"/>.
         /// </summary>
@@ -63,41 +60,29 @@ namespace Proto.Promises
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public static implicit operator System.Threading.Tasks.ValueTask(in Promise<T> rhs)
-        {
-            return rhs.AsValueTaskVoid();
-        }
+            => rhs.AsValueTaskVoid();
 #endif // UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
 
         /// <summary>
         /// Gets whether this instance is valid to be awaited.
         /// </summary>
         public bool IsValid
-        {
-            get
-            {
-                // I would prefer to have a null ref only valid if the promise was created from Promise.Resolved, but it's more efficient to allow default values to be valid.
-                var r = _ref;
-                return r == null || r.GetIsValid(_id);
-            }
-        }
+            // I would prefer to have a null ref only valid if the promise was created from Promise.Resolved, but it's more efficient to allow default values to be valid.
+            => _ref?.GetIsValid(_id) == true;
 
         /// <summary>
         /// Cast to <see cref="Promise"/>.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public Promise AsPromise()
-        {
-            return new Promise(_ref, _id);
-        }
+            => new Promise(_ref, _id);
 
         /// <summary>
         /// Cast to <see cref="Promise"/>.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public static implicit operator Promise(in Promise<T> rhs)
-        {
-            return rhs.AsPromise();
-        }
+            => rhs.AsPromise();
 
         /// <summary>
         /// Mark this as awaited and get a new <see cref="Promise{T}"/> of <typeparamref name="T"/> that inherits the state of this and can be awaited multiple times until <see cref="Forget"/> is called on it.
@@ -123,11 +108,7 @@ namespace Proto.Promises
         public void Forget()
         {
             ValidateOperation(1);
-            var r = _ref;
-            if (r != null)
-            {
-                r.Forget(_id);
-            }
+            _ref?.Forget(_id);
         }
 
         /// <summary>
@@ -154,8 +135,7 @@ namespace Proto.Promises
             {
                 return new ResultContainer(_result, null, Promise.State.Resolved);
             }
-            ResultContainer resultContainer;
-            Internal.PromiseSynchronousWaiter.TryWaitForResult(r, _id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
+            Internal.PromiseSynchronousWaiter.TryWaitForResult(r, _id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
             return resultContainer;
         }
 
@@ -170,10 +150,9 @@ namespace Proto.Promises
         /// </remarks>
         public bool TryWaitForResult(TimeSpan timeout, out T result)
         {
-            ResultContainer resultContainer;
-            if (!TryWaitForResultNoThrow(timeout, out resultContainer))
+            if (!TryWaitForResultNoThrow(timeout, out var resultContainer))
             {
-                result = default(T);
+                result = default;
                 return false;
             }
             resultContainer.RethrowIfRejectedOrCanceled();
@@ -220,7 +199,7 @@ namespace Proto.Promises
         /// <param name="continuationOption">Indicates on which context the next continuation will be executed.</param>
         /// <param name="forceAsync">If true, forces the next continuation to be invoked asynchronously. If <paramref name="continuationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
         /// <param name="cancelationToken">If canceled before this is complete, the returned <see cref="Promise{T}"/> will be canceled, and the cancelation will propagate on the context of the provided <paramref name="continuationOption"/>.</param>
-        public Promise<T> WaitAsync(SynchronizationOption continuationOption, bool forceAsync = false, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<T> WaitAsync(SynchronizationOption continuationOption, bool forceAsync = false, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
             return Internal.PromiseRefBase.CallbackHelperVoid.WaitAsync(this, (Internal.SynchronizationOption) continuationOption, null, forceAsync, cancelationToken);
@@ -233,7 +212,7 @@ namespace Proto.Promises
         /// <param name="continuationContext">The context on which context the next continuation will be executed. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the next continuation to be invoked asynchronously.</param>
         /// <param name="cancelationToken">If canceled before this is complete, the returned <see cref="Promise{T}"/> will be canceled, and the cancelation will propagate on the provided <paramref name="continuationContext"/>.</param>
-        public Promise<T> WaitAsync(SynchronizationContext continuationContext, bool forceAsync = false, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<T> WaitAsync(SynchronizationContext continuationContext, bool forceAsync = false, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
             return Internal.PromiseRefBase.CallbackHelperVoid.WaitAsync(this, Internal.SynchronizationOption.Explicit, continuationContext, forceAsync, cancelationToken);
@@ -258,7 +237,7 @@ namespace Proto.Promises
         public Promise<T> Finally(Action onFinally)
         {
             ValidateOperation(1);
-            ValidateArgument(onFinally, "onFinally", 1);
+            ValidateArgument(onFinally, nameof(onFinally), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddFinally(this, Internal.PromiseRefBase.DelegateWrapper.Create(onFinally));
         }
@@ -279,7 +258,7 @@ namespace Proto.Promises
         public Promise<T> Finally(Func<Promise> onFinally)
         {
             ValidateOperation(1);
-            ValidateArgument(onFinally, "onFinally", 1);
+            ValidateArgument(onFinally, nameof(onFinally), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddFinallyWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onFinally));
         }
@@ -293,10 +272,10 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
-        public Promise<T> CatchCancelation(Func<T> onCanceled, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<T> CatchCancelation(Func<T> onCanceled, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onCanceled, "onCanceled", 1);
+            ValidateArgument(onCanceled, nameof(onCanceled), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<T>.AddCancel(this, Internal.PromiseRefBase.DelegateWrapper.Create(onCanceled), cancelationToken);
         }
@@ -310,10 +289,10 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
-        public Promise<T> CatchCancelation(Func<Promise<T>> onCanceled, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<T> CatchCancelation(Func<Promise<T>> onCanceled, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onCanceled, "onCanceled", 1);
+            ValidateArgument(onCanceled, nameof(onCanceled), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<T>.AddCancelWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onCanceled), cancelationToken);
         }
@@ -328,10 +307,10 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise Then(Action<T> onResolved, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then(Action<T> onResolved, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolve(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), cancelationToken);
         }
@@ -345,10 +324,10 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<T, TResult> onResolved, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TResult>(Func<T, TResult> onResolved, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolve(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), cancelationToken);
         }
@@ -362,10 +341,10 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise Then(Func<T, Promise> onResolved, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then(Func<T, Promise> onResolved, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), cancelationToken);
         }
@@ -379,10 +358,10 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<T, Promise<TResult>> onResolved, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TResult>(Func<T, Promise<TResult>> onResolved, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), cancelationToken);
         }
@@ -398,10 +377,10 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<T> Catch(Func<T> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<T> Catch(Func<T> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, T>
                 .AddResolveReject(this, Internal.PromiseRefBase.DelegateWrapper.CreatePassthrough<T>(), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
@@ -417,10 +396,10 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<T> Catch<TReject>(Func<TReject, T> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<T> Catch<TReject>(Func<TReject, T> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, T>
                 .AddResolveReject(this, Internal.PromiseRefBase.DelegateWrapper.CreatePassthrough<T>(), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
@@ -435,10 +414,10 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<T> Catch(Func<Promise<T>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<T> Catch(Func<Promise<T>> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, T>
                 .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.CreatePassthrough<T>(), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
@@ -453,10 +432,10 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<T> Catch<TReject>(Func<TReject, Promise<T>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<T> Catch<TReject>(Func<TReject, Promise<T>> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, T>
                 .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.CreatePassthrough<T>(), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
@@ -474,11 +453,11 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then(Action<T> onResolved, Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then(Action<T> onResolved, Action onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>
                 .AddResolveReject(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
@@ -495,11 +474,11 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TReject>(Action<T> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TReject>(Action<T> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>
                 .AddResolveReject(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
@@ -515,11 +494,11 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<T, TResult> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TResult>(Func<T, TResult> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>
                 .AddResolveReject(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
@@ -536,11 +515,11 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult, TReject>(Func<T, TResult> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TResult, TReject>(Func<T, TResult> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>
                 .AddResolveReject(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
@@ -556,11 +535,11 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then(Func<T, Promise> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then(Func<T, Promise> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>
                 .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
@@ -577,11 +556,11 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TReject>(Func<T, Promise> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TReject>(Func<T, Promise> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>
                 .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
@@ -597,11 +576,11 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<T, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TResult>(Func<T, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>
                 .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
@@ -618,11 +597,11 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult, TReject>(Func<T, Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TResult, TReject>(Func<T, Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>
                 .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
@@ -638,11 +617,11 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then(Action<T> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then(Action<T> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>
                 .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
@@ -659,11 +638,11 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TReject>(Action<T> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TReject>(Action<T> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>
                 .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
@@ -679,11 +658,11 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<T, TResult> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TResult>(Func<T, TResult> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>
                 .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
@@ -700,11 +679,11 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult, TReject>(Func<T, TResult> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TResult, TReject>(Func<T, TResult> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>
                 .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
@@ -720,11 +699,11 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then(Func<T, Promise> onResolved, Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then(Func<T, Promise> onResolved, Action onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>
                 .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
@@ -741,11 +720,11 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TReject>(Func<T, Promise> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TReject>(Func<T, Promise> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>
                 .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
@@ -761,11 +740,11 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<T, Promise<TResult>> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TResult>(Func<T, Promise<TResult>> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>
                 .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
@@ -782,11 +761,11 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult, TReject>(Func<T, Promise<TResult>> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TResult, TReject>(Func<T, Promise<TResult>> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>
                 .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
@@ -801,10 +780,10 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onContinue"/> will not be invoked.
         /// </summary>
-        public Promise ContinueWith(Action<ResultContainer> onContinue, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise ContinueWith(Action<ResultContainer> onContinue, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onContinue, "onContinue", 1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddContinue(this, Internal.PromiseRefBase.DelegateWrapper.Create(onContinue), cancelationToken);
         }
@@ -816,10 +795,10 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onContinue"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> ContinueWith<TResult>(Func<ResultContainer, TResult> onContinue, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> ContinueWith<TResult>(Func<ResultContainer, TResult> onContinue, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onContinue, "onContinue", 1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddContinue(this, Internal.PromiseRefBase.DelegateWrapper.Create(onContinue), cancelationToken);
         }
@@ -832,10 +811,10 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onContinue"/> will not be invoked.
         /// </summary>
-        public Promise ContinueWith(Func<ResultContainer, Promise> onContinue, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise ContinueWith(Func<ResultContainer, Promise> onContinue, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onContinue, "onContinue", 1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddContinueWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onContinue), cancelationToken);
         }
@@ -847,10 +826,10 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onContinue"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> ContinueWith<TResult>(Func<ResultContainer, Promise<TResult>> onContinue, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> ContinueWith<TResult>(Func<ResultContainer, Promise<TResult>> onContinue, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onContinue, "onContinue", 1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddContinueWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onContinue), cancelationToken);
         }
@@ -867,7 +846,7 @@ namespace Proto.Promises
         public Promise<T> Finally<TCaptureFinally>(TCaptureFinally finallyCaptureValue, Action<TCaptureFinally> onFinally)
         {
             ValidateOperation(1);
-            ValidateArgument(onFinally, "onFinally", 1);
+            ValidateArgument(onFinally, nameof(onFinally), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddFinally(this, Internal.PromiseRefBase.DelegateWrapper.Create(finallyCaptureValue, onFinally));
         }
@@ -889,7 +868,7 @@ namespace Proto.Promises
         public Promise<T> Finally<TCaptureFinally>(TCaptureFinally finallyCaptureValue, Func<TCaptureFinally, Promise> onFinally)
         {
             ValidateOperation(1);
-            ValidateArgument(onFinally, "onFinally", 1);
+            ValidateArgument(onFinally, nameof(onFinally), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddFinallyWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(finallyCaptureValue, onFinally));
         }
@@ -903,10 +882,10 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
-        public Promise<T> CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Func<TCaptureCancel, T> onCanceled, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<T> CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Func<TCaptureCancel, T> onCanceled, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onCanceled, "onCanceled", 1);
+            ValidateArgument(onCanceled, nameof(onCanceled), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<T>.AddCancel(this, Internal.PromiseRefBase.DelegateWrapper.Create(cancelCaptureValue, onCanceled), cancelationToken);
         }
@@ -920,10 +899,10 @@ namespace Proto.Promises
         /// 
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
-        public Promise<T> CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Func<TCaptureCancel, Promise<T>> onCanceled, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<T> CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Func<TCaptureCancel, Promise<T>> onCanceled, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onCanceled, "onCanceled", 1);
+            ValidateArgument(onCanceled, nameof(onCanceled), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<T>.AddCancelWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(cancelCaptureValue, onCanceled), cancelationToken);
         }
@@ -938,10 +917,10 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolve(this, Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved), cancelationToken);
         }
@@ -955,10 +934,10 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolve(this, Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved), cancelationToken);
         }
@@ -972,10 +951,10 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved), cancelationToken);
         }
@@ -989,10 +968,10 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved), cancelationToken);
         }
@@ -1008,10 +987,10 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<T> Catch<TCaptureReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, T> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<T> Catch<TCaptureReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, T> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, T>.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.CreatePassthrough<T>(),
@@ -1029,10 +1008,10 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<T> Catch<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, T> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<T> Catch<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, T> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, T>.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.CreatePassthrough<T>(),
@@ -1049,10 +1028,10 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<T> Catch<TCaptureReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<T>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<T> Catch<TCaptureReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<T>> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, T>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.CreatePassthrough<T>(),
@@ -1070,10 +1049,10 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<T> Catch<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<T>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<T> Catch<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<T>> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, T>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.CreatePassthrough<T>(),
@@ -1093,11 +1072,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, Action onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1115,11 +1094,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureReject>(Action<T> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureReject>(Action<T> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
@@ -1137,11 +1116,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1160,11 +1139,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1183,11 +1162,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureReject, TReject>(Action<T> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureReject, TReject>(Action<T> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
@@ -1206,11 +1185,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1229,11 +1208,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1251,11 +1230,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureReject, TResult>(Func<T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureReject, TResult>(Func<T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
@@ -1273,11 +1252,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1296,11 +1275,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1319,11 +1298,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
@@ -1342,11 +1321,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1364,11 +1343,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1386,11 +1365,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureReject>(Func<T, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureReject>(Func<T, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
@@ -1408,11 +1387,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1431,11 +1410,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1454,11 +1433,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureReject, TReject>(Func<T, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureReject, TReject>(Func<T, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
@@ -1477,11 +1456,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1499,11 +1478,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1521,11 +1500,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureReject, TResult>(Func<T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureReject, TResult>(Func<T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
@@ -1543,11 +1522,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1566,11 +1545,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1589,11 +1568,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
@@ -1612,11 +1591,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1634,11 +1613,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1656,11 +1635,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureReject>(Action<T> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureReject>(Action<T> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
@@ -1678,11 +1657,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1701,11 +1680,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1724,11 +1703,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureReject, TReject>(Action<T> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureReject, TReject>(Action<T> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
@@ -1747,11 +1726,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve, T> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1770,11 +1749,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1792,11 +1771,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureReject, TResult>(Func<T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureReject, TResult>(Func<T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
@@ -1814,11 +1793,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1837,11 +1816,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1860,11 +1839,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
@@ -1883,11 +1862,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1905,11 +1884,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, Action onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1927,11 +1906,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureReject>(Func<T, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureReject>(Func<T, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
@@ -1949,11 +1928,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1972,11 +1951,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -1995,11 +1974,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureReject, TReject>(Func<T, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureReject, TReject>(Func<T, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
@@ -2018,11 +1997,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -2040,11 +2019,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -2062,11 +2041,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureReject, TResult>(Func<T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureReject, TResult>(Func<T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
@@ -2084,11 +2063,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -2107,11 +2086,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -2130,11 +2109,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
@@ -2153,11 +2132,11 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, T, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onResolved, "onResolved", 1);
-            ValidateArgument(onRejected, "onRejected", 1);
+            ValidateArgument(onResolved, nameof(onResolved), 1);
+            ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
@@ -2174,10 +2153,10 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onContinue"/> will not be invoked.
         /// </summary>
-        public Promise ContinueWith<TCapture>(TCapture continueCaptureValue, Action<TCapture, ResultContainer> onContinue, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise ContinueWith<TCapture>(TCapture continueCaptureValue, Action<TCapture, ResultContainer> onContinue, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onContinue, "onContinue", 1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddContinue(this, Internal.PromiseRefBase.DelegateWrapper.Create(continueCaptureValue, onContinue), cancelationToken);
         }
@@ -2189,10 +2168,10 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onContinue"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> ContinueWith<TCapture, TResult>(TCapture continueCaptureValue, Func<TCapture, ResultContainer, TResult> onContinue, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> ContinueWith<TCapture, TResult>(TCapture continueCaptureValue, Func<TCapture, ResultContainer, TResult> onContinue, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onContinue, "onContinue", 1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddContinue(this, Internal.PromiseRefBase.DelegateWrapper.Create(continueCaptureValue, onContinue), cancelationToken);
         }
@@ -2204,10 +2183,10 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onContinue"/> will not be invoked.
         /// </summary>
-        public Promise ContinueWith<TCapture>(TCapture continueCaptureValue, Func<TCapture, ResultContainer, Promise> onContinue, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise ContinueWith<TCapture>(TCapture continueCaptureValue, Func<TCapture, ResultContainer, Promise> onContinue, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onContinue, "onContinue", 1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
 
             return Internal.PromiseRefBase.CallbackHelperArg<T>.AddContinueWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(continueCaptureValue, onContinue), cancelationToken);
         }
@@ -2219,10 +2198,10 @@ namespace Proto.Promises
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onContinue"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> ContinueWith<TCapture, TResult>(TCapture continueCaptureValue, Func<TCapture, ResultContainer, Promise<TResult>> onContinue, CancelationToken cancelationToken = default(CancelationToken))
+        public Promise<TResult> ContinueWith<TCapture, TResult>(TCapture continueCaptureValue, Func<TCapture, ResultContainer, Promise<TResult>> onContinue, CancelationToken cancelationToken = default)
         {
             ValidateOperation(1);
-            ValidateArgument(onContinue, "onContinue", 1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddContinueWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(continueCaptureValue, onContinue), cancelationToken);
         }
@@ -2243,10 +2222,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise CatchCancelation(Action onCanceled, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().CatchCancelation(onCanceled, cancelationToken);
-        }
+        public Promise CatchCancelation(Action onCanceled, CancelationToken cancelationToken = default)
+            => AsPromise().CatchCancelation(onCanceled, cancelationToken);
 
         /// <summary>
         /// Add a cancel callback. Returns a new <see cref="Promise"/>.
@@ -2258,10 +2235,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise CatchCancelation(Func<Promise> onCanceled, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().CatchCancelation(onCanceled, cancelationToken);
-        }
+        public Promise CatchCancelation(Func<Promise> onCanceled, CancelationToken cancelationToken = default)
+            => AsPromise().CatchCancelation(onCanceled, cancelationToken);
 
 #region Resolve Callbacks
         /// <summary>
@@ -2274,10 +2249,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then(Action onResolved, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, cancelationToken);
-        }
+        public Promise Then(Action onResolved, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, cancelationToken);
 
         /// <summary>
         /// Add a resolve callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -2289,10 +2262,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TResult>(Func<TResult> onResolved, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, cancelationToken);
-        }
+        public Promise<TResult> Then<TResult>(Func<TResult> onResolved, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, cancelationToken);
 
         /// <summary>
         /// Add a resolve callback. Returns a new <see cref="Promise"/>.
@@ -2304,10 +2275,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then(Func<Promise> onResolved, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, cancelationToken);
-        }
+        public Promise Then(Func<Promise> onResolved, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, cancelationToken);
 
         /// <summary>
         /// Add a resolve callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -2319,10 +2288,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, cancelationToken);
-        }
+        public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, cancelationToken);
 #endregion
 
 #region Reject Callbacks
@@ -2336,10 +2303,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Catch(Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Catch(onRejected, cancelationToken);
-        }
+        public Promise Catch(Action onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Catch(onRejected, cancelationToken);
 
         /// <summary>
         /// Add a reject callback. Returns a new <see cref="Promise"/>.
@@ -2352,10 +2317,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Catch<TReject>(Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Catch(onRejected, cancelationToken);
-        }
+        public Promise Catch<TReject>(Action<TReject> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Catch(onRejected, cancelationToken);
 
         /// <summary>
         /// Add a reject callback. Returns a new <see cref="Promise"/>.
@@ -2367,10 +2330,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Catch(Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Catch(onRejected, cancelationToken);
-        }
+        public Promise Catch(Func<Promise> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Catch(onRejected, cancelationToken);
 
         /// <summary>
         /// Add a reject callback. Returns a new <see cref="Promise"/>.
@@ -2383,10 +2344,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Catch<TReject>(Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Catch(onRejected, cancelationToken);
-        }
+        public Promise Catch<TReject>(Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Catch(onRejected, cancelationToken);
 #endregion
 
 #region Resolve or Reject Callbacks
@@ -2401,10 +2360,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then(Action onResolved, Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, onRejected, cancelationToken);
-        }
+        public Promise Then(Action onResolved, Action onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -2418,10 +2375,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TReject>(Action onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, onRejected, cancelationToken);
-        }
+        public Promise Then<TReject>(Action onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -2434,10 +2389,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TResult>(Func<TResult> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TResult>(Func<TResult> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -2451,10 +2404,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TResult, TReject>(Func<TResult> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TResult, TReject>(Func<TResult> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -2467,10 +2418,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then(Func<Promise> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, onRejected, cancelationToken);
-        }
+        public Promise Then(Func<Promise> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -2484,10 +2433,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TReject>(Func<Promise> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, onRejected, cancelationToken);
-        }
+        public Promise Then<TReject>(Func<Promise> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -2500,10 +2447,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -2517,10 +2462,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TResult, TReject>(Func<Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TResult, TReject>(Func<Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -2533,10 +2476,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then(Action onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, onRejected, cancelationToken);
-        }
+        public Promise Then(Action onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -2550,10 +2491,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TReject>(Action onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, onRejected, cancelationToken);
-        }
+        public Promise Then<TReject>(Action onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -2566,10 +2505,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TResult>(Func<TResult> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TResult>(Func<TResult> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -2583,10 +2520,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TResult, TReject>(Func<TResult> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TResult, TReject>(Func<TResult> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -2599,10 +2534,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then(Func<Promise> onResolved, Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, onRejected, cancelationToken);
-        }
+        public Promise Then(Func<Promise> onResolved, Action onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -2616,10 +2549,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TReject>(Func<Promise> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, onRejected, cancelationToken);
-        }
+        public Promise Then<TReject>(Func<Promise> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -2632,10 +2563,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -2649,10 +2578,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TResult, TReject>(Func<Promise<TResult>> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TResult, TReject>(Func<Promise<TResult>> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, onRejected, cancelationToken);
 #endregion
 
         // Capture values below.
@@ -2667,10 +2594,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel> onCanceled, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().CatchCancelation(cancelCaptureValue, onCanceled, cancelationToken);
-        }
+        public Promise CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel> onCanceled, CancelationToken cancelationToken = default)
+            => AsPromise().CatchCancelation(cancelCaptureValue, onCanceled, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a cancel callback. Returns a new <see cref="Promise"/>.
@@ -2682,10 +2607,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Func<TCaptureCancel, Promise> onCanceled, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().CatchCancelation(cancelCaptureValue, onCanceled, cancelationToken);
-        }
+        public Promise CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Func<TCaptureCancel, Promise> onCanceled, CancelationToken cancelationToken = default)
+            => AsPromise().CatchCancelation(cancelCaptureValue, onCanceled, cancelationToken);
 
 #region Resolve Callbacks
         /// <summary>
@@ -2698,10 +2621,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, cancelationToken);
-        }
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -2713,10 +2634,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve callback. Returns a new <see cref="Promise"/>.
@@ -2728,10 +2647,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, cancelationToken);
-        }
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -2743,10 +2660,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, cancelationToken);
 #endregion
 
 #region Reject Callbacks
@@ -2760,10 +2675,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Catch<TCaptureReject>(TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Catch(rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise Catch<TCaptureReject>(TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Catch(rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a reject callback. Returns a new <see cref="Promise"/>.
@@ -2776,10 +2689,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Catch<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Catch(rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise Catch<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Catch(rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a reject callback. Returns a new <see cref="Promise"/>.
@@ -2791,10 +2702,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Catch<TCaptureReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Catch(rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise Catch<TCaptureReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Catch(rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a reject callback. Returns a new <see cref="Promise"/>.
@@ -2807,10 +2716,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Catch<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Catch(rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise Catch<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Catch(rejectCaptureValue, onRejected, cancelationToken);
 #endregion
 
 #region Resolve or Reject Callbacks
@@ -2825,10 +2732,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Action onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -2841,10 +2746,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureReject>(Action onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureReject>(Action onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -2857,10 +2760,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -2874,10 +2775,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -2891,10 +2790,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureReject, TReject>(Action onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureReject, TReject>(Action onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -2908,10 +2805,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -2924,10 +2819,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -2940,10 +2833,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureReject, TResult>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureReject, TResult>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -2956,10 +2847,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -2973,10 +2862,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -2990,10 +2877,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -3007,10 +2892,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -3023,10 +2906,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -3039,10 +2920,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -3055,10 +2934,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -3072,10 +2949,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -3089,10 +2964,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureReject, TReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureReject, TReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -3106,10 +2979,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -3122,10 +2993,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -3138,10 +3007,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureReject, TResult>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureReject, TResult>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -3154,10 +3021,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -3171,10 +3036,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -3188,10 +3051,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -3205,10 +3066,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -3221,10 +3080,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -3237,10 +3094,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureReject>(Action onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureReject>(Action onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -3253,10 +3108,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -3270,10 +3123,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -3287,10 +3138,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureReject, TReject>(Action onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureReject, TReject>(Action onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -3304,10 +3153,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -3320,10 +3167,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -3336,10 +3181,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureReject, TResult>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureReject, TResult>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -3352,10 +3195,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -3369,10 +3210,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -3386,10 +3225,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -3403,10 +3240,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -3419,10 +3254,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Action onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Action onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -3435,10 +3268,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -3451,10 +3282,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -3468,10 +3297,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -3485,10 +3312,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureReject, TReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureReject, TReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
@@ -3502,10 +3327,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -3518,10 +3341,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -3534,10 +3355,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureReject, TResult>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureReject, TResult>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -3550,10 +3369,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -3567,10 +3384,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -3584,10 +3399,8 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(onResolved, rejectCaptureValue, onRejected, cancelationToken);
 
         /// <summary>
         /// Capture 2 values and add a resolve and a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
@@ -3601,24 +3414,18 @@ namespace Proto.Promises
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
-        }
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default)
+            => AsPromise().Then(resolveCaptureValue, onResolved, rejectCaptureValue, onRejected, cancelationToken);
         #endregion
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="Promise{T}"/>.</summary>
         [MethodImpl(Internal.InlineOption)]
         public bool Equals(Promise<T> other)
-        {
-            return this == other;
-        }
+            => this == other;
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
         public override bool Equals(object obj)
-        {
-            return obj is Promise<T> promise && Equals(promise);
-        }
+            => obj is Promise<T> promise && Equals(promise);
 
         // Promises really shouldn't be used for lookups, but GetHashCode is overridden to complement ==.
         /// <summary>Returns the hash code for this instance.</summary>
@@ -3631,18 +3438,14 @@ namespace Proto.Promises
 
         /// <summary>Returns a value indicating whether two <see cref="Promise{T}"/> values are equal.</summary>
         public static bool operator ==(Promise<T> lhs, Promise<T> rhs)
-        {
-            return lhs._ref == rhs._ref
+            => lhs._ref == rhs._ref
                 & lhs._id == rhs._id
                 & EqualityComparer<T>.Default.Equals(lhs._result, rhs._result);
-        }
 
         /// <summary>Returns a value indicating whether two <see cref="Promise{T}"/> values are not equal.</summary>
         [MethodImpl(Internal.InlineOption)]
         public static bool operator !=(Promise<T> lhs, Promise<T> rhs)
-        {
-            return !(lhs == rhs);
-        }
+            => !(lhs == rhs);
 
         /// <summary>
         /// Gets the string representation of this instance.

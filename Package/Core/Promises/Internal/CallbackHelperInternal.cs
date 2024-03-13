@@ -4,8 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0031 // Use null propagation
-#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0074 // Use compound assignment
 
 using System;
@@ -223,10 +221,7 @@ namespace Proto.Promises
             {
                 internal static Promise<TResult> Canceled(PromiseRefBase _ref, short promiseId)
                 {
-                    if (_ref != null)
-                    {
-                        _ref.MaybeMarkAwaitedAndDispose(promiseId);
-                    }
+                    _ref?.MaybeMarkAwaitedAndDispose(promiseId);
                     var deferred = DeferredPromise<TResult>.GetOrCreate();
                     deferred.CancelDirect();
                     return new Promise<TResult>(deferred, deferred.Id);
@@ -238,10 +233,7 @@ namespace Proto.Promises
                 {
                     try
                     {
-                        if (resolved._ref != null)
-                        {
-                            resolved._ref.MaybeMarkAwaitedAndDispose(resolved._id);
-                        }
+                        resolved._ref?.MaybeMarkAwaitedAndDispose(resolved._id);
                         TResult result = resolver.Invoke();
                         return Promise.Resolved(result);
                     }
@@ -830,10 +822,7 @@ namespace Proto.Promises
                 {
                     try
                     {
-                        if (resolved._ref != null)
-                        {
-                            resolved._ref.MaybeMarkAwaitedAndDispose(resolved._id);
-                        }
+                        resolved._ref?.MaybeMarkAwaitedAndDispose(resolved._id);
                         resolver.Invoke();
                         return Promise.Resolved();
                     }
@@ -849,10 +838,7 @@ namespace Proto.Promises
                 {
                     try
                     {
-                        if (resolved._ref != null)
-                        {
-                            resolved._ref.MaybeMarkAwaitedAndDispose(resolved._id);
-                        }
+                        resolved._ref?.MaybeMarkAwaitedAndDispose(resolved._id);
                         return resolver.Invoke().Duplicate();
                     }
                     catch (Exception e)
@@ -890,10 +876,7 @@ namespace Proto.Promises
 
                 internal static Promise Canceled(PromiseRefBase _ref, short promiseId)
                 {
-                    if (_ref != null)
-                    {
-                        _ref.MaybeMarkAwaitedAndDispose(promiseId);
-                    }
+                    _ref?.MaybeMarkAwaitedAndDispose(promiseId);
                     var deferred = DeferredPromise<VoidResult>.GetOrCreate();
                     deferred.CancelDirect();
                     return new Promise(deferred, deferred.Id);

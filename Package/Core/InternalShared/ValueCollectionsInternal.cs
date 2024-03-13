@@ -126,9 +126,7 @@ namespace Proto.Promises
             /// </summary>
             [MethodImpl(InlineOption)]
             public bool MoveNext()
-            {
-                return _current != null;
-            }
+                => _current != null;
 
             /// <summary>
             /// Actually moves next and returns current.
@@ -144,10 +142,7 @@ namespace Proto.Promises
                 }
             }
 
-            object IEnumerator.Current
-            {
-                get { return Current; }
-            }
+            object IEnumerator.Current => Current;
 
             void IEnumerator.Reset() { }
 
@@ -169,12 +164,12 @@ namespace Proto.Promises
             internal bool IsEmpty
             {
                 [MethodImpl(InlineOption)]
-                get { return _head == null; }
+                get => _head == null;
             }
             internal bool IsNotEmpty
             {
                 [MethodImpl(InlineOption)]
-                get { return _head != null; }
+                get => _head != null;
             }
 
             [MethodImpl(InlineOption)]
@@ -211,19 +206,11 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             public Enumerator<T> GetEnumerator()
-            {
-                return new Enumerator<T>(_head);
-            }
+                => new Enumerator<T>(_head);
 
-            IEnumerator<T> IEnumerable<T>.GetEnumerator()
-            {
-                return GetEnumerator();
-            }
+            IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
 
-            IEnumerator IEnumerable.GetEnumerator()
-            {
-                return GetEnumerator();
-            }
+            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         }
 
         /// <summary>
@@ -260,9 +247,7 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             internal void Exit()
-            {
-                _locker = 0; // Release lock.
-            }
+                => _locker = 0; // Release lock.
         }
 
         /// <summary>
@@ -338,13 +323,13 @@ namespace Proto.Promises
             internal bool IsEmpty
             {
                 [MethodImpl(InlineOption)]
-                get { return _head == null; }
+                get => _head == null;
             }
 
             internal bool IsNotEmpty
             {
                 [MethodImpl(InlineOption)]
-                get { return _head != null; }
+                get => _head != null;
             }
 
             [MethodImpl(InlineOption)]
@@ -505,19 +490,11 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             public Enumerator<T> GetEnumerator()
-            {
-                return new Enumerator<T>(_head);
-            }
+                => new Enumerator<T>(_head);
 
-            IEnumerator<T> IEnumerable<T>.GetEnumerator()
-            {
-                return GetEnumerator();
-            }
+            IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
 
-            IEnumerator IEnumerable.GetEnumerator()
-            {
-                return GetEnumerator();
-            }
+            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         }
 
         /// <summary>
@@ -536,15 +513,15 @@ namespace Proto.Promises
             internal int Count
             {
                 [MethodImpl(InlineOption)]
-                get { return _count; }
+                get => _count;
             }
 
             internal T this[int index]
             {
                 [MethodImpl(InlineOption)]
-                get { return _storage[index]; }
+                get => _storage[index];
                 [MethodImpl(InlineOption)]
-                set { _storage[index] = value; }
+                set => _storage[index] = value;
             }
 
             [MethodImpl(InlineOption)]

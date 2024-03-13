@@ -4,7 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
+#pragma warning disable IDE0074 // Use compound assignment
 
 using System;
 using System.Diagnostics;
@@ -26,14 +26,10 @@ namespace Proto.Promises
         internal static class DeferredPromiseHelper
         {
             internal static bool GetIsValidAndPending(IDeferredPromise _this, int deferredId)
-            {
-                return _this != null && _this.DeferredId == deferredId;
-            }
+                => _this?.DeferredId == deferredId;
 
             internal static bool TryIncrementDeferredId(IDeferredPromise _this, int deferredId)
-            {
-                return _this?.TryIncrementDeferredId(deferredId) == true;
-            }
+                => _this?.TryIncrementDeferredId(deferredId) == true;
         }
 
         partial class PromiseRefBase
@@ -46,25 +42,17 @@ namespace Proto.Promises
                 public int DeferredId
                 {
                     [MethodImpl(InlineOption)]
-                    get { return _deferredId; }
+                    get => _deferredId;
                 }
 
                 protected DeferredPromiseBase() { }
 
                 ~DeferredPromiseBase()
                 {
-                    try
+                    if (State == Promise.State.Pending)
                     {
-                        if (State == Promise.State.Pending)
-                        {
-                            // Deferred wasn't handled.
-                            ReportRejection(UnhandledDeferredException.instance, this);
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        // This should never happen.
-                        ReportRejection(e, this);
+                        // Deferred wasn't handled.
+                        ReportRejection(UnhandledDeferredException.instance, this);
                     }
                 }
 
@@ -246,7 +234,7 @@ namespace Proto.Promises
 
                     var deferredId = DeferredId;
                     var runner = _runner;
-                    _runner = default(TDelegate);
+                    _runner = default;
 
                     SetCurrentInvoker(this);
                     try

@@ -20,9 +20,9 @@ namespace Proto.Promises
             HandleablePromiseBase ILinked<HandleablePromiseBase>.Next
             {
                 [MethodImpl(InlineOption)]
-                get { return _next; }
+                get => _next;
                 [MethodImpl(InlineOption)]
-                set { _next = value; }
+                set => _next = value;
             }
 
             internal virtual void Handle(PromiseRefBase handler, Promise.State state) { throw new System.InvalidOperationException(); }

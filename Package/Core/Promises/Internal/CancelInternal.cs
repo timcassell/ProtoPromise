@@ -4,8 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
-
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -26,28 +24,22 @@ namespace Proto.Promises
             partial class PromiseMultiAwait<TResult>
             {
                 internal override void MaybeReportUnhandledAndDispose(Promise.State state)
-                {
                     // We don't report unhandled rejection here unless none of the waiters suppressed.
                     // This way we only report it once in case multiple waiters were canceled.
-                    MaybeDispose();
-                }
+                    => MaybeDispose();
             }
 
             internal partial struct CancelationHelper
             {
                 [MethodImpl(InlineOption)]
                 internal void Reset()
-                {
                     // _retainCounter is necessary to make sure the promise is disposed after the cancelation has invoked or unregistered,
                     // and the previous promise has handled this.
-                    _retainCounter = 2;
-                }
+                    => _retainCounter = 2;
 
                 [MethodImpl(InlineOption)]
                 internal void Register(CancelationToken cancelationToken, ICancelable owner)
-                {
-                    cancelationToken.TryRegister(owner, out _cancelationRegistration);
-                }
+                    => cancelationToken.TryRegister(owner, out _cancelationRegistration);
 
                 internal bool TryUnregister(PromiseRefBase owner)
                 {
@@ -57,9 +49,7 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal bool TryRelease()
-                {
-                    return InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0;
-                }
+                    => InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0;
             }
 
             [MethodImpl(InlineOption)]
@@ -107,8 +97,8 @@ namespace Proto.Promises
                 new private void Dispose()
                 {
                     base.Dispose();
-                    _cancelationHelper = default(CancelationHelper);
-                    _resolver = default(TResolver);
+                    _cancelationHelper = default;
+                    _resolver = default;
                     ObjectPool.MaybeRepool(this);
                 }
 
@@ -133,10 +123,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void ICancelable.Cancel()
-                {
-                    HandleFromCancelation();
-                }
+                void ICancelable.Cancel() => HandleFromCancelation();
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -177,8 +164,8 @@ namespace Proto.Promises
                 new private void Dispose()
                 {
                     base.Dispose();
-                    _cancelationHelper = default(CancelationHelper);
-                    _resolver = default(TResolver);
+                    _cancelationHelper = default;
+                    _resolver = default;
                     ObjectPool.MaybeRepool(this);
                 }
 
@@ -192,7 +179,7 @@ namespace Proto.Promises
                     }
 
                     var resolveCallback = _resolver;
-                    _resolver = default(TResolver);
+                    _resolver = default;
                     bool unregistered = _cancelationHelper.TryUnregister(this);
                     if (unregistered & state == Promise.State.Resolved)
                     {
@@ -211,10 +198,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void ICancelable.Cancel()
-                {
-                    HandleFromCancelation();
-                }
+                void ICancelable.Cancel() => HandleFromCancelation();
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -257,9 +241,9 @@ namespace Proto.Promises
                 new private void Dispose()
                 {
                     base.Dispose();
-                    _cancelationHelper = default(CancelationHelper);
-                    _resolver = default(TResolver);
-                    _rejecter = default(TRejecter);
+                    _cancelationHelper = default;
+                    _resolver = default;
+                    _rejecter = default;
                     ObjectPool.MaybeRepool(this);
                 }
 
@@ -294,10 +278,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void ICancelable.Cancel()
-                {
-                    HandleFromCancelation();
-                }
+                void ICancelable.Cancel() => HandleFromCancelation();
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -340,9 +321,9 @@ namespace Proto.Promises
                 new private void Dispose()
                 {
                     base.Dispose();
-                    _cancelationHelper = default(CancelationHelper);
-                    _resolver = default(TResolver);
-                    _rejecter = default(TRejecter);
+                    _cancelationHelper = default;
+                    _resolver = default;
+                    _rejecter = default;
                     ObjectPool.MaybeRepool(this);
                 }
 
@@ -356,7 +337,7 @@ namespace Proto.Promises
                     }
 
                     var resolveCallback = _resolver;
-                    _resolver = default(TResolver);
+                    _resolver = default;
                     var rejectCallback = _rejecter;
                     bool unregistered = _cancelationHelper.TryUnregister(this);
                     if (unregistered & state == Promise.State.Resolved)
@@ -383,10 +364,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void ICancelable.Cancel()
-                {
-                    HandleFromCancelation();
-                }
+                void ICancelable.Cancel() => HandleFromCancelation();
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -427,8 +405,8 @@ namespace Proto.Promises
                 new private void Dispose()
                 {
                     base.Dispose();
-                    _cancelationHelper = default(CancelationHelper);
-                    _continuer = default(TContinuer);
+                    _cancelationHelper = default;
+                    _continuer = default;
                     ObjectPool.MaybeRepool(this);
                 }
 
@@ -447,10 +425,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void ICancelable.Cancel()
-                {
-                    HandleFromCancelation();
-                }
+                void ICancelable.Cancel() => HandleFromCancelation();
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -491,8 +466,8 @@ namespace Proto.Promises
                 new private void Dispose()
                 {
                     base.Dispose();
-                    _cancelationHelper = default(CancelationHelper);
-                    _continuer = default(TContinuer);
+                    _cancelationHelper = default;
+                    _continuer = default;
                     ObjectPool.MaybeRepool(this);
                 }
 
@@ -506,7 +481,7 @@ namespace Proto.Promises
                     }
 
                     var callback = _continuer;
-                    _continuer = default(TContinuer);
+                    _continuer = default;
                     if (_cancelationHelper.TryUnregister(this))
                     {
                         handler.SuppressRejection = true;
@@ -520,10 +495,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void ICancelable.Cancel()
-                {
-                    HandleFromCancelation();
-                }
+                void ICancelable.Cancel() => HandleFromCancelation();
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -564,8 +536,8 @@ namespace Proto.Promises
                 new private void Dispose()
                 {
                     base.Dispose();
-                    _cancelationHelper = default(CancelationHelper);
-                    _canceler = default(TCanceler);
+                    _cancelationHelper = default;
+                    _canceler = default;
                     ObjectPool.MaybeRepool(this);
                 }
 
@@ -590,10 +562,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void ICancelable.Cancel()
-                {
-                    HandleFromCancelation();
-                }
+                void ICancelable.Cancel() => HandleFromCancelation();
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -634,8 +603,8 @@ namespace Proto.Promises
                 new private void Dispose()
                 {
                     base.Dispose();
-                    _cancelationHelper = default(CancelationHelper);
-                    _canceler = default(TCanceler);
+                    _cancelationHelper = default;
+                    _canceler = default;
                     ObjectPool.MaybeRepool(this);
                 }
 
@@ -649,7 +618,7 @@ namespace Proto.Promises
                     }
 
                     var callback = _canceler;
-                    _canceler = default(TCanceler);
+                    _canceler = default;
                     bool unregistered = _cancelationHelper.TryUnregister(this);
                     if (unregistered & state == Promise.State.Canceled)
                     {
@@ -668,10 +637,7 @@ namespace Proto.Promises
                     }
                 }
 
-                void ICancelable.Cancel()
-                {
-                    HandleFromCancelation();
-                }
+                void ICancelable.Cancel() => HandleFromCancelation();
             }
         } // PromiseRefBase
     } // Internal

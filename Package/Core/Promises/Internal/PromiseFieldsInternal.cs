@@ -15,19 +15,9 @@
 #define OPTIMIZED_ASYNC_MODE
 #endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable IDE0044 // Add readonly modifier
-#pragma warning disable IDE0052 // Remove unread private members
-#pragma warning disable IDE0090 // Use 'new(...)'
-#pragma warning disable CA1822 // Mark members as static
-#pragma warning disable 0649 // Field is never assigned to, and will always have its default value
-#pragma warning disable 0414 // The private field is assigned but its value is never used
-
 using Proto.Promises.Collections;
 using System;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace Proto.Promises
@@ -54,7 +44,7 @@ namespace Proto.Promises
         [MethodImpl(Internal.InlineOption)]
         internal Promise(Internal.PromiseRefBase.PromiseRef<T> promiseRef, short id)
         {
-            _result = default(T);
+            _result = default;
             _ref = promiseRef;
             _id = id;
         }

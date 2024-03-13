@@ -4,11 +4,8 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0074 // Use compound assignment
-#pragma warning disable CA1507 // Use nameof to express symbol names
 
-using Proto.Promises.Collections;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -24,8 +21,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Race(Promise<T> promise1, Promise<T> promise2)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
             return Race(Internal.GetEnumerator(promise1, promise2));
         }
         
@@ -35,9 +32,9 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Race(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
             return Race(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
@@ -47,10 +44,10 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Race(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
             return Race(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
@@ -59,9 +56,7 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<T> Race(params Promise<T>[] promises)
-        {
-            return Race(promises.GetGenericEnumerator());
-        }
+            => Race(promises.GetGenericEnumerator());
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -79,9 +74,7 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<T> Race(IEnumerable<Promise<T>> promises)
-        {
-            return Race(promises.GetEnumerator());
-        }
+            => Race(promises.GetEnumerator());
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
@@ -89,13 +82,13 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Race<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
-            ValidateArgument(promises, "promises", 1);
+            ValidateArgument(promises, nameof(promises), 1);
 
             using (promises)
             {
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
+                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
                 }
 
                 bool isResolved = false;
@@ -153,8 +146,8 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> First(Promise<T> promise1, Promise<T> promise2)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
             return First(Internal.GetEnumerator(promise1, promise2));
         }
 
@@ -164,9 +157,9 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> First(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
             return First(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
@@ -176,10 +169,10 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> First(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
             return First(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
@@ -188,9 +181,7 @@ namespace Proto.Promises
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
         public static Promise<T> First(params Promise<T>[] promises)
-        {
-            return First(promises.GetGenericEnumerator());
-        }
+            => First(promises.GetGenericEnumerator());
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -208,9 +199,7 @@ namespace Proto.Promises
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
         public static Promise<T> First(IEnumerable<Promise<T>> promises)
-        {
-            return First(promises.GetEnumerator());
-        }
+            => First(promises.GetEnumerator());
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the <paramref name="promises"/> has resolved with the same value as that promise.
@@ -218,13 +207,13 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> First<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
-            ValidateArgument(promises, "promises", 1);
+            ValidateArgument(promises, nameof(promises), 1);
 
             using (promises)
             {
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException("promises", "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
+                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
                 }
 
                 bool isResolved = false;
@@ -289,36 +278,28 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<(int winIndex, T result)> RaceWithIndex(Promise<T> promise1, Promise<T> promise2)
-        {
-            return Promise.RaceWithIndex(promise1, promise2);
-        }
+            => Promise.RaceWithIndex(promise1, promise2);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<(int winIndex, T result)> RaceWithIndex(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
-        {
-            return Promise.RaceWithIndex(promise1, promise2, promise3);
-        }
+            => Promise.RaceWithIndex(promise1, promise2, promise3);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<(int winIndex, T result)> RaceWithIndex(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
-        {
-            return Promise.RaceWithIndex(promise1, promise2, promise3, promise4);
-        }
+            => Promise.RaceWithIndex(promise1, promise2, promise3, promise4);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<(int winIndex, T result)> RaceWithIndex(params Promise<T>[] promises)
-        {
-            return RaceWithIndex(promises.GetGenericEnumerator());
-        }
+            => RaceWithIndex(promises.GetGenericEnumerator());
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -336,54 +317,42 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<(int winIndex, T result)> RaceWithIndex(IEnumerable<Promise<T>> promises)
-        {
-            return RaceWithIndex(promises.GetEnumerator());
-        }
+            => RaceWithIndex(promises.GetEnumerator());
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<ValueTuple<int, T>> RaceWithIndex<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
-        {
-            return Promise.RaceWithIndex<T, TEnumerator>(promises);
-        }
+            => Promise.RaceWithIndex<T, TEnumerator>(promises);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
         public static Promise<(int winIndex, T result)> FirstWithIndex(Promise<T> promise1, Promise<T> promise2)
-        {
-            return Promise.FirstWithIndex(promise1, promise2);
-        }
+            => Promise.FirstWithIndex(promise1, promise2);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
         public static Promise<(int winIndex, T result)> FirstWithIndex(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
-        {
-            return Promise.FirstWithIndex(promise1, promise2, promise3);
-        }
+            => Promise.FirstWithIndex(promise1, promise2, promise3);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
         public static Promise<(int winIndex, T result)> FirstWithIndex(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
-        {
-            return Promise.FirstWithIndex(promise1, promise2, promise3, promise4);
-        }
+            => Promise.FirstWithIndex(promise1, promise2, promise3, promise4);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
         public static Promise<(int winIndex, T result)> FirstWithIndex(params Promise<T>[] promises)
-        {
-            return FirstWithIndex(promises.GetGenericEnumerator());
-        }
+            => FirstWithIndex(promises.GetGenericEnumerator());
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -401,32 +370,26 @@ namespace Proto.Promises
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
         public static Promise<(int winIndex, T result)> FirstWithIndex(IEnumerable<Promise<T>> promises)
-        {
-            return FirstWithIndex(promises.GetEnumerator());
-        }
+            => FirstWithIndex(promises.GetEnumerator());
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
         public static Promise<ValueTuple<int, T>> FirstWithIndex<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
-        {
-            return Promise.FirstWithIndex<T, TEnumerator>(promises);
-        }
+            => Promise.FirstWithIndex<T, TEnumerator>(promises);
 
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
 
         [MethodImpl(Internal.InlineOption)]
         private static void GetAllResult(Internal.PromiseRefBase handler, int index, ref IList<T> result)
-        {
-            result[index] = handler.GetResult<T>();
-        }
+            => result[index] = handler.GetResult<T>();
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
         private static unsafe Internal.GetResultDelegate<IList<T>> GetAllResultFunc
         {
             [MethodImpl(Internal.InlineOption)]
-            get { return new(&GetAllResult); }
+            get => new(&GetAllResult);
         }
 #else
         private static readonly Internal.GetResultDelegate<IList<T>> GetAllResultFunc = GetAllResult;
@@ -441,8 +404,8 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All(Promise<T> promise1, Promise<T> promise2, IList<T> valueContainer = null)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
             return All(Internal.GetEnumerator(promise1, promise2), valueContainer);
         }
 
@@ -456,9 +419,9 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, IList<T> valueContainer = null)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
             return All(Internal.GetEnumerator(promise1, promise2, promise3), valueContainer);
         }
 
@@ -473,10 +436,10 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4, IList<T> valueContainer = null)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
             return All(Internal.GetEnumerator(promise1, promise2, promise3, promise4), valueContainer);
         }
 
@@ -485,9 +448,7 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<IList<T>> All(params Promise<T>[] promises)
-        {
-            return All(promises, new T[promises.Length]);
-        }
+            => All(promises, new T[promises.Length]);
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -509,9 +470,7 @@ namespace Proto.Promises
         /// <param name="promises">The promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All(Promise<T>[] promises, IList<T> valueContainer = null)
-        {
-            return All(promises.GetGenericEnumerator(), valueContainer);
-        }
+            => All(promises.GetGenericEnumerator(), valueContainer);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of values in the same order as <paramref name="promises"/>s when they have all resolved.
@@ -520,9 +479,7 @@ namespace Proto.Promises
         /// <param name="promises">The promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All(IEnumerable<Promise<T>> promises, IList<T> valueContainer = null)
-        {
-            return All(promises.GetEnumerator(), valueContainer);
-        }
+            => All(promises.GetEnumerator(), valueContainer);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve a list of values in the same order as <paramref name="promises"/> when they have all resolved.
@@ -532,7 +489,7 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All<TEnumerator>(TEnumerator promises, IList<T> valueContainer = null) where TEnumerator : IEnumerator<Promise<T>>
         {
-            ValidateArgument(promises, "promises", 1);
+            ValidateArgument(promises, nameof(promises), 1);
 
             using (promises)
             {
@@ -617,15 +574,13 @@ namespace Proto.Promises
 
         [MethodImpl(Internal.InlineOption)]
         private static void GetAllResultContainer(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, Promise.State state, int index, ref IList<ResultContainer> result)
-        {
-            result[index] = new ResultContainer(handler.GetResult<T>(), rejectContainer, state);
-        }
+            => result[index] = new ResultContainer(handler.GetResult<T>(), rejectContainer, state);
         
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
         private static unsafe Internal.GetResultContainerDelegate<IList<ResultContainer>> GetAllResultContainerFunc
         {
             [MethodImpl(Internal.InlineOption)]
-            get { return new(&GetAllResultContainer); }
+            get => new(&GetAllResultContainer);
         }
 #else
         private static readonly Internal.GetResultContainerDelegate<IList<ResultContainer>> GetAllResultContainerFunc = GetAllResultContainer;
@@ -639,8 +594,8 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
         public static Promise<IList<ResultContainer>> AllSettled(Promise<T> promise1, Promise<T> promise2, IList<ResultContainer> valueContainer = null)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
             return AllSettled(Internal.GetEnumerator(promise1, promise2), valueContainer);
         }
 
@@ -653,9 +608,9 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
         public static Promise<IList<ResultContainer>> AllSettled(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, IList<ResultContainer> valueContainer = null)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
             return AllSettled(Internal.GetEnumerator(promise1, promise2, promise3), valueContainer);
         }
 
@@ -669,10 +624,10 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
         public static Promise<IList<ResultContainer>> AllSettled(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4, IList<ResultContainer> valueContainer = null)
         {
-            ValidateArgument(promise1, "promise1", 1);
-            ValidateArgument(promise2, "promise2", 1);
-            ValidateArgument(promise3, "promise3", 1);
-            ValidateArgument(promise4, "promise4", 1);
+            ValidateArgument(promise1, nameof(promise1), 1);
+            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise4, nameof(promise4), 1);
             return AllSettled(Internal.GetEnumerator(promise1, promise2, promise3, promise4), valueContainer);
         }
 
@@ -680,9 +635,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
         /// </summary>
         public static Promise<IList<ResultContainer>> AllSettled(params Promise<T>[] promises)
-        {
-            return AllSettled(promises, new ResultContainer[promises.Length]);
-        }
+            => AllSettled(promises, new ResultContainer[promises.Length]);
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -702,9 +655,7 @@ namespace Proto.Promises
         /// <param name="promises">The promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
         public static Promise<IList<ResultContainer>> AllSettled(Promise<T>[] promises, IList<ResultContainer> valueContainer = null)
-        {
-            return AllSettled(promises.GetGenericEnumerator(), valueContainer);
-        }
+            => AllSettled(promises.GetGenericEnumerator(), valueContainer);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
@@ -712,9 +663,7 @@ namespace Proto.Promises
         /// <param name="promises">The promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
         public static Promise<IList<ResultContainer>> AllSettled(IEnumerable<Promise<T>> promises, IList<ResultContainer> valueContainer = null)
-        {
-            return AllSettled(promises.GetEnumerator(), valueContainer);
-        }
+            => AllSettled(promises.GetEnumerator(), valueContainer);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
@@ -723,7 +672,7 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
         public static Promise<IList<ResultContainer>> AllSettled<TEnumerator>(TEnumerator promises, IList<ResultContainer> valueContainer = null) where TEnumerator : IEnumerator<Promise<T>>
         {
-            ValidateArgument(promises, "promises", 1);
+            ValidateArgument(promises, nameof(promises), 1);
 
             using (promises)
             {
@@ -817,7 +766,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the <paramref name="resolver"/> to be invoked asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
         public static Promise<T> New(Action<Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous, bool forceAsync = false)
         {
-            ValidateArgument(resolver, "resolver", 1);
+            ValidateArgument(resolver, nameof(resolver), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<T>.New(Internal.PromiseRefBase.DelegateWrapper.Create<T>(resolver), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
@@ -834,7 +783,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the <paramref name="resolver"/> to be invoked asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
         public static Promise<T> New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous, bool forceAsync = false)
         {
-            ValidateArgument(resolver, "resolver", 1);
+            ValidateArgument(resolver, nameof(resolver), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<T>.New(Internal.PromiseRefBase.DelegateWrapper.Create<TCapture, T>(captureValue, resolver), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
         }
@@ -849,7 +798,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the <paramref name="resolver"/> to be invoked asynchronously.</param>
 		public static Promise<T> New(Action<Deferred> resolver, SynchronizationContext synchronizationContext, bool forceAsync = false)
         {
-            ValidateArgument(resolver, "resolver", 1);
+            ValidateArgument(resolver, nameof(resolver), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<T>.New(Internal.PromiseRefBase.DelegateWrapper.Create<T>(resolver), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
@@ -865,7 +814,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the <paramref name="resolver"/> to be invoked asynchronously.</param>
         public static Promise<T> New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver, SynchronizationContext synchronizationContext, bool forceAsync = false)
         {
-            ValidateArgument(resolver, "resolver", 1);
+            ValidateArgument(resolver, nameof(resolver), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<T>.New(Internal.PromiseRefBase.DelegateWrapper.Create<TCapture, T>(captureValue, resolver), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
         }
@@ -875,9 +824,7 @@ namespace Proto.Promises
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
 		public static Promise<T> Resolved(T value)
-        {
-            return Promise.Resolved(value);
-        }
+            => Promise.Resolved(value);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that is already rejected with <paramref name="reason"/>.
@@ -894,17 +841,13 @@ namespace Proto.Promises
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public static Promise<T> Canceled()
-        {
-            return Internal.CreateCanceled<T>();
-        }
+            => Internal.CreateCanceled<T>();
 
         /// <summary>
         /// Returns a <see cref="Promise{T}.Deferred"/> object that is linked to and controls the state of a new <see cref="Promise{T}"/>.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public static Deferred NewDeferred()
-        {
-            return Deferred.New();
-        }
+            => Deferred.New();
     }
 }

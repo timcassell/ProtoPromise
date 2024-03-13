@@ -4,11 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0018 // Inline variable declaration
-#pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable IDE0074 // Use compound assignment
-#pragma warning disable IDE0250 // Make struct 'readonly'
-#pragma warning disable CA1507 // Use nameof to express symbol names
+#pragma warning disable IDE0251 // Make member 'readonly'
 
 using System;
 using System.Collections;
@@ -99,7 +95,7 @@ namespace Proto.Promises
                 return true;
 
             ReturnFalse:
-                value = default(T);
+                value = default;
                 return false;
             }
 
@@ -115,7 +111,7 @@ namespace Proto.Promises
             Promise Invoke(TSource source, CancelationToken cancelationToken);
         }
 
-        internal struct ParallelBody<TSource> : IParallelBody<TSource>
+        internal readonly struct ParallelBody<TSource> : IParallelBody<TSource>
         {
             private readonly Func<TSource, CancelationToken, Promise> _body;
 
@@ -127,12 +123,10 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             Promise IParallelBody<TSource>.Invoke(TSource source, CancelationToken cancelationToken)
-            {
-                return _body.Invoke(source, cancelationToken);
-            }
+                => _body.Invoke(source, cancelationToken);
         }
 
-        internal struct ParallelCaptureBody<TSource, TCapture> : IParallelBody<TSource>
+        internal readonly struct ParallelCaptureBody<TSource, TCapture> : IParallelBody<TSource>
         {
             private readonly Func<TSource, TCapture, CancelationToken, Promise> _body;
             private readonly TCapture _capturedValue;
@@ -146,9 +140,7 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             Promise IParallelBody<TSource>.Invoke(TSource source, CancelationToken cancelationToken)
-            {
-                return _body.Invoke(source, _capturedValue, cancelationToken);
-            }
+                => _body.Invoke(source, _capturedValue, cancelationToken);
         }
 
         internal static Promise ParallelFor<TParallelBody>(int fromIndex, int toIndex, TParallelBody body, CancelationToken cancelationToken, SynchronizationContext synchronizationContext, int maxDegreeOfParallelism)
@@ -160,7 +152,7 @@ namespace Proto.Promises
             }
             else if (maxDegreeOfParallelism < 1)
             {
-                throw new ArgumentOutOfRangeException("maxDegreeOfParallelism", "maxDegreeOfParallelism must be positive, or -1 for default (Environment.ProcessorCount). Actual: " + maxDegreeOfParallelism, GetFormattedStacktrace(2));
+                throw new ArgumentOutOfRangeException(nameof(maxDegreeOfParallelism), "maxDegreeOfParallelism must be positive, or -1 for default (Environment.ProcessorCount). Actual: " + maxDegreeOfParallelism, GetFormattedStacktrace(2));
             }
 
             // Just return immediately if from >= to.
@@ -192,7 +184,7 @@ namespace Proto.Promises
             else if (maxDegreeOfParallelism < 1)
             {
                 enumerator.Dispose();
-                throw new ArgumentOutOfRangeException("maxDegreeOfParallelism", "maxDegreeOfParallelism must be positive, or -1 for default (Environment.ProcessorCount). Actual: " + maxDegreeOfParallelism, GetFormattedStacktrace(2));
+                throw new ArgumentOutOfRangeException(nameof(maxDegreeOfParallelism), "maxDegreeOfParallelism must be positive, or -1 for default (Environment.ProcessorCount). Actual: " + maxDegreeOfParallelism, GetFormattedStacktrace(2));
             }
 
             // One fast up-front check for cancelation before we start the whole operation.
@@ -263,7 +255,7 @@ namespace Proto.Promises
                 {
                     ValidateNoPending();
                     Dispose();
-                    _body = default(TParallelBody);
+                    _body = default;
                     _synchronizationContext = null;
                     _executionContext = null;
                     ObjectPool.MaybeRepool(this);
@@ -345,8 +337,7 @@ namespace Proto.Promises
                     // The worker body. Each worker will execute this same body.
                     while (true)
                     {
-                        TSource element;
-                        if (!_enumerator.TryMoveNext(this, _cancelationRef, out element))
+                        if (!_enumerator.TryMoveNext(this, _cancelationRef, out var element))
                         {
                             MaybeComplete();
                             return;
@@ -427,7 +418,7 @@ namespace Proto.Promises
                     if (InterlockedAddWithUnsignedOverflowCheck(ref _waitCounter, -1) == 0)
                     {
                         _externalCancelationRegistration.Dispose();
-                        _externalCancelationRegistration = default(CancelationRegistration);
+                        _externalCancelationRegistration = default;
                         _cancelationRef.TryDispose(_cancelationRef.SourceId);
                         _cancelationRef = null;
 

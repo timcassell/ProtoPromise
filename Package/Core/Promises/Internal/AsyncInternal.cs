@@ -13,8 +13,6 @@
 #define OPTIMIZED_ASYNC_MODE
 #endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable IDE0038 // Use pattern matching
 #pragma warning disable IDE0074 // Use compound assignment
 
 using System;
@@ -102,6 +100,7 @@ namespace Proto.Promises
                     SetStateMachine(ref stateMachine, ref _ref);
 #if NETCOREAPP
                     // These checks and cast are eliminated by the JIT.
+#pragma warning disable IDE0038 // Use pattern matching
                     if (null != default(TAwaiter) && awaiter is IPromiseAwaiter)
                     {
                         ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_ref);
@@ -110,6 +109,7 @@ namespace Proto.Promises
                     {
                         awaiter.OnCompleted(_ref.MoveNext);
                     }
+#pragma warning restore IDE0038 // Use pattern matching
 #else
                     // Unity does not optimize the pattern, so we have to call through AwaitOverrider to avoid boxing allocations.
                     AwaitOverrider<TAwaiter>.AwaitOnCompleted(ref awaiter, _ref, _ref.MoveNext);
@@ -124,6 +124,7 @@ namespace Proto.Promises
                     SetStateMachine(ref stateMachine, ref _ref);
 #if NETCOREAPP
                     // These checks and cast are eliminated by the JIT.
+#pragma warning disable IDE0038 // Use pattern matching
                     if (null != default(TAwaiter) && awaiter is IPromiseAwaiter)
                     {
                         ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_ref);
@@ -132,6 +133,7 @@ namespace Proto.Promises
                     {
                         awaiter.UnsafeOnCompleted(_ref.MoveNext);
                     }
+#pragma warning restore IDE0038 // Use pattern matching
 #else
                     // Unity does not optimize the pattern, so we have to call through CriticalAwaitOverrider to avoid boxing allocations.
                     CriticalAwaitOverrider<TAwaiter>.AwaitOnCompleted(ref awaiter, _ref, _ref.MoveNext);
@@ -154,7 +156,7 @@ namespace Proto.Promises
                 private Action MoveNext
                 {
                     [MethodImpl(InlineOption)]
-                    get { return _continuer.MoveNext; }
+                    get => _continuer.MoveNext;
                 }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -165,7 +167,7 @@ namespace Proto.Promises
                     internal Action MoveNext
                     {
                         [MethodImpl(InlineOption)]
-                        get { return _moveNext; }
+                        get => _moveNext;
                     }
 
                     private PromiseMethodContinuer() { }
@@ -214,7 +216,7 @@ namespace Proto.Promises
                         public override void Dispose()
                         {
                             _owner = null;
-                            _stateMachine = default(TStateMachine);
+                            _stateMachine = default;
                             ObjectPool.MaybeRepool(this);
                         }
 
@@ -348,7 +350,7 @@ namespace Proto.Promises
                 private Action MoveNext
                 {
                     [MethodImpl(InlineOption)]
-                    get { return _moveNext; }
+                    get => _moveNext;
                 }
 
                 protected AsyncPromiseRef() { }

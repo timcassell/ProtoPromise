@@ -4,7 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 using System;
@@ -42,7 +41,7 @@ namespace Proto.Promises
                 {
                     base.Dispose();
                     _callerContext = null;
-                    _cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default;
                 }
 
                 protected void Continue()
@@ -83,7 +82,7 @@ namespace Proto.Promises
 
                 public abstract void Cancel();
 
-                internal override sealed void Handle(PromiseRefBase handler, Promise.State state) { throw new System.InvalidOperationException(); }
+                internal override sealed void Handle(PromiseRefBase handler, Promise.State state) => throw new System.InvalidOperationException();
 
 #if PROMISE_DEBUG
                 internal void Reject(IRejectContainer rejectContainer)
@@ -105,8 +104,8 @@ namespace Proto.Promises
             protected AsyncEventPromiseBase _nextEventPromise;
             AsyncEventPromiseBase ILinked<AsyncEventPromiseBase>.Next
             {
-                get { return _nextEventPromise; }
-                set { _nextEventPromise = value; }
+                get => _nextEventPromise;
+                set => _nextEventPromise = value;
             }
 
             internal void Resolve()
@@ -136,8 +135,8 @@ namespace Proto.Promises
             protected TOwner _owner
 #pragma warning restore IDE1006 // Naming Styles
             {
-                get { return _ownerReference.Target as TOwner; }
-                set { _ownerReference.Target = value; }
+                get => _ownerReference.Target as TOwner;
+                set => _ownerReference.Target = value;
             }
 #else
             protected TOwner _owner;

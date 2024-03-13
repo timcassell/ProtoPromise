@@ -4,8 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable CA1507 // Use nameof to express symbol names
-
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -28,7 +26,7 @@ namespace Proto.Promises.Threading
         {
             if (initialCount < 0)
             {
-                throw new ArgumentOutOfRangeException("initialCount", "initialCount must be greater than or equal to 0.", Internal.GetFormattedStacktrace(1));
+                throw new ArgumentOutOfRangeException(nameof(initialCount), "initialCount must be greater than or equal to 0.", Internal.GetFormattedStacktrace(1));
             }
 
             _initialCount = initialCount;
@@ -183,8 +181,6 @@ namespace Proto.Promises.Threading
         /// </summary>
         [EditorBrowsable(EditorBrowsableState.Never)]
         public CompilerServices.PromiseAwaiterVoid GetAwaiter()
-        {
-            return WaitAsync().GetAwaiter();
-        }
+            => WaitAsync().GetAwaiter();
     }
 }

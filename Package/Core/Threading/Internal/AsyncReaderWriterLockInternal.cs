@@ -452,31 +452,19 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             internal void ReleaseReaderLock()
-            {
-                ValidateAndGetOwner(AsyncReaderWriterLockType.Reader).ReleaseReaderLock(_key);
-
-            }
+                => ValidateAndGetOwner(AsyncReaderWriterLockType.Reader).ReleaseReaderLock(_key);
 
             [MethodImpl(InlineOption)]
             internal void ReleaseWriterLock()
-            {
-                ValidateAndGetOwner(AsyncReaderWriterLockType.Writer).ReleaseNormalWriterLock(_key);
-
-            }
+                => ValidateAndGetOwner(AsyncReaderWriterLockType.Writer).ReleaseNormalWriterLock(_key);
 
             [MethodImpl(InlineOption)]
             internal void ReleaseUpgradeableReaderLock()
-            {
-                ValidateAndGetOwner(AsyncReaderWriterLockType.Upgradeable).ReleaseUpgradeableReaderLock(_key);
-
-            }
+                => ValidateAndGetOwner(AsyncReaderWriterLockType.Upgradeable).ReleaseUpgradeableReaderLock(_key);
 
             [MethodImpl(InlineOption)]
             internal void ReleaseUpgradedWriterLock()
-            {
-                ValidateAndGetOwner(AsyncReaderWriterLockType.Writer).ReleaseUpgradedWriterLock(_key);
-
-            }
+                => ValidateAndGetOwner(AsyncReaderWriterLockType.Writer).ReleaseUpgradedWriterLock(_key);
 
             private AsyncReaderWriterLock ValidateAndGetOwner(AsyncReaderWriterLockType lockType)
             {
@@ -490,9 +478,8 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             public static bool operator ==(AsyncReaderWriterLockKey lhs, AsyncReaderWriterLockKey rhs)
-            {
-                return lhs._owner == rhs._owner & lhs._key == rhs._key;
-            }
+                => lhs._owner == rhs._owner
+                & lhs._key == rhs._key;
         }
 #endif // PROMISE_DEBUG
     } // class Internal
@@ -576,9 +563,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             private void SetNextKey()
-            {
-                _currentKey = Internal.KeyGenerator<AsyncReaderWriterLock>.Next();
-            }
+                => _currentKey = Internal.KeyGenerator<AsyncReaderWriterLock>.Next();
 
             [MethodImpl(Internal.InlineOption)]
             private void SetNextAndPreviousKeys()
@@ -589,9 +574,7 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             private void RestorePreviousKey()
-            {
-                _currentKey = _previousReaderKey;
-            }
+                => _currentKey = _previousReaderKey;
 
             [MethodImpl(Internal.InlineOption)]
             private void IncrementReaderLockCount()
@@ -2252,9 +2235,7 @@ namespace Proto.Promises
 
             [MethodImpl(MethodImplOptions.NoInlining)]
             internal static void ThrowInvalidKey(AsyncReaderWriterLockType keyType, int skipFrames)
-            {
-                throw new InvalidOperationException($"The {GetKeyTypeString(keyType)} is invalid for this operation.", Internal.GetFormattedStacktrace(skipFrames + 1));
-            }
+                => throw new InvalidOperationException($"The {GetKeyTypeString(keyType)} is invalid for this operation.", Internal.GetFormattedStacktrace(skipFrames + 1));
 
             [MethodImpl(MethodImplOptions.NoInlining)]
             private void ThrowInvalidUpgradeableKeyReleased(long key, int skipFrames)

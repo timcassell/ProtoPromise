@@ -4,8 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
-
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -56,9 +54,7 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise All(params Promise[] promises)
-        {
-            return All(promises.GetGenericEnumerator());
-        }
+            => All(promises.GetGenericEnumerator());
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -76,9 +72,7 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise All(IEnumerable<Promise> promises)
-        {
-            return All(promises.GetEnumerator());
-        }
+            => All(promises.GetEnumerator());
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when all <paramref name="promises"/> have resolved.
@@ -86,7 +80,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise All<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
-            ValidateArgument(promises, "promises", 1);
+            ValidateArgument(promises, nameof(promises), 1);
 
             using (promises)
             {
@@ -130,9 +124,7 @@ namespace Proto.Promises
         /// <param name="promise2">The second promise to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2, IList<T> valueContainer = null)
-        {
-            return Promise<T>.All(promise1, promise2, valueContainer);
-        }
+            => Promise<T>.All(promise1, promise2, valueContainer);
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve with a list of the promises' values in the same order when they have all resolved.
@@ -143,9 +135,7 @@ namespace Proto.Promises
         /// <param name="promise3">The third promise to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, IList<T> valueContainer = null)
-        {
-            return Promise<T>.All(promise1, promise2, promise3, valueContainer);
-        }
+            => Promise<T>.All(promise1, promise2, promise3, valueContainer);
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve with a list of the promises' values in the same order when they have all resolved.
@@ -157,18 +147,14 @@ namespace Proto.Promises
         /// <param name="promise4">The fourth promise to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4, IList<T> valueContainer = null)
-        {
-            return Promise<T>.All(promise1, promise2, promise3, promise4, valueContainer);
-        }
+            => Promise<T>.All(promise1, promise2, promise3, promise4, valueContainer);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of values in the same order as <paramref name="promises"/> when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<IList<T>> All<T>(params Promise<T>[] promises)
-        {
-            return Promise<T>.All(promises);
-        }
+            => Promise<T>.All(promises);
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -188,9 +174,7 @@ namespace Proto.Promises
         /// <param name="promises">The promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All<T>(IEnumerable<Promise<T>> promises, IList<T> valueContainer = null)
-        {
-            return Promise<T>.All(promises, valueContainer);
-        }
+            => Promise<T>.All(promises, valueContainer);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve a list of values in the same order as <paramref name="promises"/> when they have all resolved.
@@ -199,9 +183,7 @@ namespace Proto.Promises
         /// <param name="promises">The enumerator of promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static Promise<IList<T>> All<T, TEnumerator>(TEnumerator promises, IList<T> valueContainer = null) where TEnumerator : IEnumerator<Promise<T>>
-        {
-            return Promise<T>.All(promises, valueContainer);
-        }
+            => Promise<T>.All(promises, valueContainer);
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
@@ -230,7 +212,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultDelegate<T1> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultDelegate<T1> Func = GetMergeResult;
@@ -238,10 +220,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultDelegate<T1> GetOne<T1>()
-            {
-                return One<T1>.Func;
-            }
+            internal static Internal.GetResultDelegate<T1> GetOne<T1>() => One<T1>.Func;
         }
 
         /// <summary>
@@ -258,7 +237,7 @@ namespace Proto.Promises
             }
 
             uint pendingCount = 1;
-            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(default(T1), MergeResultFuncs.GetOne<T1>());
+            var promise = Internal.PromiseRefBase.GetOrCreateMergePromise(default, MergeResultFuncs.GetOne<T1>());
             promise.AddWaiter(promise2._ref, promise2._id);
             if (promise1._ref == null)
             {
@@ -298,7 +277,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultDelegate<(T1, T2)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultDelegate<(T1, T2)> Func = GetMergeResult;
@@ -306,10 +285,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultDelegate<(T1, T2)> GetTwo<T1, T2>()
-            {
-                return Two<T1, T2>.Func;
-            }
+            internal static Internal.GetResultDelegate<(T1, T2)> GetTwo<T1, T2>() => Two<T1, T2>.Func;
         }
 
         /// <summary>
@@ -400,7 +376,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultDelegate<(T1, T2, T3)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultDelegate<(T1, T2, T3)> Func = GetMergeResult;
@@ -408,10 +384,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultDelegate<(T1, T2, T3)> GetThree<T1, T2, T3>()
-            {
-                return Three<T1, T2, T3>.Func;
-            }
+            internal static Internal.GetResultDelegate<(T1, T2, T3)> GetThree<T1, T2, T3>() => Three<T1, T2, T3>.Func;
         }
 
         /// <summary>
@@ -511,7 +484,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultDelegate<(T1, T2, T3, T4)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultDelegate<(T1, T2, T3, T4)> Func = GetMergeResult;
@@ -519,10 +492,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultDelegate<(T1, T2, T3, T4)> GetFour<T1, T2, T3, T4>()
-            {
-                return Four<T1, T2, T3, T4>.Func;
-            }
+            internal static Internal.GetResultDelegate<(T1, T2, T3, T4)> GetFour<T1, T2, T3, T4>() => Four<T1, T2, T3, T4>.Func;
         }
 
         /// <summary>
@@ -631,7 +601,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultDelegate<(T1, T2, T3, T4, T5)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultDelegate<(T1, T2, T3, T4, T5)> Func = GetMergeResult;
@@ -639,10 +609,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultDelegate<(T1, T2, T3, T4, T5)> GetFive<T1, T2, T3, T4, T5>()
-            {
-                return Five<T1, T2, T3, T4, T5>.Func;
-            }
+            internal static Internal.GetResultDelegate<(T1, T2, T3, T4, T5)> GetFive<T1, T2, T3, T4, T5>() => Five<T1, T2, T3, T4, T5>.Func;
         }
 
         /// <summary>
@@ -760,7 +727,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultDelegate<(T1, T2, T3, T4, T5, T6)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultDelegate<(T1, T2, T3, T4, T5, T6)> Func = GetMergeResult;
@@ -768,10 +735,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultDelegate<(T1, T2, T3, T4, T5, T6)> GetSix<T1, T2, T3, T4, T5, T6>()
-            {
-                return Six<T1, T2, T3, T4, T5, T6>.Func;
-            }
+            internal static Internal.GetResultDelegate<(T1, T2, T3, T4, T5, T6)> GetSix<T1, T2, T3, T4, T5, T6>() => Six<T1, T2, T3, T4, T5, T6>.Func;
         }
 
         /// <summary>
@@ -898,7 +862,7 @@ namespace Proto.Promises
                 internal static unsafe Internal.GetResultDelegate<(T1, T2, T3, T4, T5, T6, T7)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
-                    get { return new(&GetMergeResult); }
+                    get => new(&GetMergeResult);
                 }
 #else
                 internal static readonly Internal.GetResultDelegate<(T1, T2, T3, T4, T5, T6, T7)> Func = GetMergeResult;
@@ -906,10 +870,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultDelegate<(T1, T2, T3, T4, T5, T6, T7)> GetSeven<T1, T2, T3, T4, T5, T6, T7>()
-            {
-                return Seven<T1, T2, T3, T4, T5, T6, T7>.Func;
-            }
+            internal static Internal.GetResultDelegate<(T1, T2, T3, T4, T5, T6, T7)> GetSeven<T1, T2, T3, T4, T5, T6, T7>() => Seven<T1, T2, T3, T4, T5, T6, T7>.Func;
         }
 
         /// <summary>

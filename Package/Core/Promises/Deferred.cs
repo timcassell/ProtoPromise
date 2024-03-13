@@ -4,7 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0019 // Use pattern matching
+#pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0270 // Use coalesce expression
 
 using System;
@@ -54,11 +54,7 @@ namespace Proto.Promises
             public bool IsValid
             {
                 [MethodImpl(Internal.InlineOption)]
-                get
-                {
-                    var _this = _ref as Internal.PromiseRefBase;
-                    return _this != null && _this.GetIsValid(_promiseId);
-                }
+                get => _ref is Internal.PromiseRefBase _this && _this.GetIsValid(_promiseId);
             }
 
             /// <summary>
@@ -67,10 +63,7 @@ namespace Proto.Promises
             public bool IsValidAndPending
             {
                 [MethodImpl(Internal.InlineOption)]
-                get
-                {
-                    return Internal.DeferredPromiseHelper.GetIsValidAndPending(_ref, _deferredId);
-                }
+                get => Internal.DeferredPromiseHelper.GetIsValidAndPending(_ref, _deferredId);
             }
 
             /// <summary>
@@ -90,21 +83,17 @@ namespace Proto.Promises
             /// <exception cref="InvalidCastException"/>
             [MethodImpl(Internal.InlineOption)]
             public Deferred ToDeferred()
-            {
-                return new Deferred(
+                => new Deferred(
                     (Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult>) _ref,
                     _promiseId,
                     _deferredId);
-            }
 
             /// <summary>
             /// Cast this to <see cref="Deferred"/>. Returns an invalid <see cref="Deferred"/> if it cannot be casted.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public Deferred AsDeferred()
-            {
-                return new Deferred(_ref as Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult>, _promiseId, _deferredId);
-            }
+                => new Deferred(_ref as Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult>, _promiseId, _deferredId);
 
             /// <summary>
             /// Cast this to <see cref="Promise{T}.Deferred"/>. Throws an <see cref="InvalidCastException"/> if it cannot be casted.
@@ -112,42 +101,34 @@ namespace Proto.Promises
             /// <exception cref="InvalidCastException"/>
             [MethodImpl(Internal.InlineOption)]
             public Promise<T>.Deferred ToDeferred<T>()
-            {
-                return new Promise<T>.Deferred(
+                => new Promise<T>.Deferred(
                     (Internal.PromiseRefBase.DeferredPromise<T>) _ref,
                     _promiseId,
                     _deferredId);
-            }
 
             /// <summary>
             /// Cast this to <see cref="Promise{T}.Deferred"/>. Returns an invalid <see cref="Promise{T}.Deferred"/> if it cannot be casted.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public Promise<T>.Deferred AsDeferred<T>()
-            {
-                return new Promise<T>.Deferred(_ref as Internal.PromiseRefBase.DeferredPromise<T>, _promiseId, _deferredId);
-            }
+                => new Promise<T>.Deferred(_ref as Internal.PromiseRefBase.DeferredPromise<T>, _promiseId, _deferredId);
 
             /// <summary>
             /// Reject the linked <see cref="Promise"/> with <paramref name="reason"/>.
             /// </summary>
             /// <exception cref="InvalidOperationException"/>
-            [MethodImpl(Internal.InlineOption)]
             public void Reject<TReject>(TReject reason)
             {
-                var _this = _ref;
-                if (_this == null || !_this.TryIncrementDeferredId(_deferredId))
+                if (!TryReject(reason))
                 {
                     throw new InvalidOperationException("DeferredBase.Reject: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
-                _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
             }
 
             /// <summary>
             /// Try to reject the linked <see cref="Promise"/> with <paramref name="reason"/>.
             /// <para/> Returns true if successful, false otherwise.
             /// </summary>
-            [MethodImpl(Internal.InlineOption)]
             public bool TryReject<TReject>(TReject reason)
             {
                 var _this = _ref;
@@ -197,38 +178,28 @@ namespace Proto.Promises
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="DeferredBase"/>.</summary>
             [MethodImpl(Internal.InlineOption)]
             public bool Equals(DeferredBase other)
-            {
-                return this == other;
-            }
+                => this == other;
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
             public override bool Equals(object obj)
-            {
-                return obj is DeferredBase deferred && Equals(deferred);
-            }
+                => obj is DeferredBase deferred && Equals(deferred);
 
             /// <summary>Returns the hash code for this instance.</summary>
             [MethodImpl(Internal.InlineOption)]
             public override int GetHashCode()
-            {
-                return Internal.BuildHashCode(_ref, _deferredId.GetHashCode(), _promiseId.GetHashCode());
-            }
+                => Internal.BuildHashCode(_ref, _deferredId.GetHashCode(), _promiseId.GetHashCode());
 
             /// <summary>Returns a value indicating whether two <see cref="DeferredBase"/> values are equal.</summary>
             [MethodImpl(Internal.InlineOption)]
             public static bool operator ==(DeferredBase lhs, DeferredBase rhs)
-            {
-                return lhs._ref == rhs._ref
+                => lhs._ref == rhs._ref
                     & lhs._deferredId == rhs._deferredId
                     & lhs._promiseId == rhs._promiseId;
-            }
 
             /// <summary>Returns a value indicating whether two <see cref="DeferredBase"/> values are not equal.</summary>
             [MethodImpl(Internal.InlineOption)]
             public static bool operator !=(DeferredBase lhs, DeferredBase rhs)
-            {
-                return !(lhs == rhs);
-            }
+                => !(lhs == rhs);
         } // struct DeferredBase
 
         /// <summary>
@@ -268,11 +239,7 @@ namespace Proto.Promises
             public bool IsValid
             {
                 [MethodImpl(Internal.InlineOption)]
-                get
-                {
-                    var _this = _ref;
-                    return _this != null && _this.GetIsValid(_promiseId);
-                }
+                get => _ref?.GetIsValid(_promiseId) == true;
             }
 
             /// <summary>
@@ -281,11 +248,7 @@ namespace Proto.Promises
             public bool IsValidAndPending
             {
                 [MethodImpl(Internal.InlineOption)]
-                get
-                {
-                    var _this = _ref;
-                    return _this != null && _this.DeferredId == _deferredId;
-                }
+                get => _ref?.DeferredId == _deferredId;
             }
 
             [MethodImpl(Internal.InlineOption)]
@@ -331,30 +294,24 @@ namespace Proto.Promises
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public bool TryResolve()
-            {
-                return Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult>.TryResolveVoid(_ref, _deferredId);
-            }
+                => Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult>.TryResolveVoid(_ref, _deferredId);
 
             /// <summary>
             /// Reject the linked <see cref="Promise"/> with <paramref name="reason"/>.
             /// </summary>
             /// <exception cref="InvalidOperationException"/>
-            [MethodImpl(Internal.InlineOption)]
             public void Reject<TReject>(TReject reason)
             {
-                var _this = _ref;
-                if (_this == null || !_this.TryIncrementDeferredId(_deferredId))
+                if (!TryReject(reason))
                 {
                     throw new InvalidOperationException("Deferred.Reject: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
-                _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
             }
 
             /// <summary>
             /// Try to reject the linked <see cref="Promise"/> with <paramref name="reason"/>.
             /// <para/> Returns true if successful, false otherwise.
             /// </summary>
-            [MethodImpl(Internal.InlineOption)]
             public bool TryReject<TReject>(TReject reason)
             {
                 var _this = _ref;
@@ -406,54 +363,40 @@ namespace Proto.Promises
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public static implicit operator DeferredBase(Deferred rhs)
-            {
-                return new DeferredBase(rhs._ref, rhs._promiseId, rhs._deferredId);
-            }
+                => new DeferredBase(rhs._ref, rhs._promiseId, rhs._deferredId);
 
             /// <summary>
             /// Cast <see cref="DeferredBase"/> to <see cref="Deferred"/>.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public static explicit operator Deferred(DeferredBase rhs)
-            {
-                return rhs.ToDeferred();
-            }
+                => rhs.ToDeferred();
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="Deferred"/>.</summary>
             [MethodImpl(Internal.InlineOption)]
             public bool Equals(Deferred other)
-            {
-                return this == other;
-            }
+                => this == other;
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
             public override bool Equals(object obj)
-            {
-                return obj is Deferred deferred && Equals(deferred);
-            }
+                => obj is Deferred deferred && Equals(deferred);
 
             /// <summary>Returns the hash code for this instance.</summary>
             [MethodImpl(Internal.InlineOption)]
             public override int GetHashCode()
-            {
-                return Internal.BuildHashCode(_ref, _deferredId.GetHashCode(), _promiseId.GetHashCode());
-            }
+                => Internal.BuildHashCode(_ref, _deferredId.GetHashCode(), _promiseId.GetHashCode());
 
             /// <summary>Returns a value indicating whether two <see cref="Deferred"/> values are equal.</summary>
             [MethodImpl(Internal.InlineOption)]
             public static bool operator ==(Deferred lhs, Deferred rhs)
-            {
-                return lhs._ref == rhs._ref
+                => lhs._ref == rhs._ref
                     & lhs._deferredId == rhs._deferredId
                     & lhs._promiseId == rhs._promiseId;
-            }
 
             /// <summary>Returns a value indicating whether two <see cref="Deferred"/> values are not equal.</summary>
             [MethodImpl(Internal.InlineOption)]
             public static bool operator !=(Deferred lhs, Deferred rhs)
-            {
-                return !(lhs == rhs);
-            }
+                => !(lhs == rhs);
         } // struct Deferred
     } // struct Promise
 
@@ -496,11 +439,7 @@ namespace Proto.Promises
             public bool IsValid
             {
                 [MethodImpl(Internal.InlineOption)]
-                get
-                {
-                    var _this = _ref;
-                    return _this != null && _this.GetIsValid(_promiseId);
-                }
+                get => _ref?.GetIsValid(_promiseId) == true;
             }
 
             /// <summary>
@@ -509,11 +448,7 @@ namespace Proto.Promises
             public bool IsValidAndPending
             {
                 [MethodImpl(Internal.InlineOption)]
-                get
-                {
-                    var _this = _ref;
-                    return _this != null && _this.DeferredId == _deferredId;
-                }
+                get => _ref?.DeferredId == _deferredId;
             }
 
             [MethodImpl(Internal.InlineOption)]
@@ -559,30 +494,24 @@ namespace Proto.Promises
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public bool TryResolve(T value)
-            {
-                return Internal.PromiseRefBase.DeferredPromise<T>.TryResolve(_ref, _deferredId, value);
-            }
+                => Internal.PromiseRefBase.DeferredPromise<T>.TryResolve(_ref, _deferredId, value);
 
             /// <summary>
             /// Reject the linked <see cref="Promise"/> with <paramref name="reason"/>.
             /// </summary>
             /// <exception cref="InvalidOperationException"/>
-            [MethodImpl(Internal.InlineOption)]
             public void Reject<TReject>(TReject reason)
             {
-                var _this = _ref;
-                if (_this == null || !_this.TryIncrementDeferredId(_deferredId))
+                if (!TryReject(reason))
                 {
                     throw new InvalidOperationException("Deferred.Reject: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
-                _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
             }
 
             /// <summary>
             /// Try to reject the linked <see cref="Promise"/> with <paramref name="reason"/>.
             /// <para/> Returns true if successful, false otherwise.
             /// </summary>
-            [MethodImpl(Internal.InlineOption)]
             public bool TryReject<TReject>(TReject reason)
             {
                 var _this = _ref;
@@ -634,54 +563,40 @@ namespace Proto.Promises
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public static implicit operator Promise.DeferredBase(Deferred rhs)
-            {
-                return new Promise.DeferredBase(rhs._ref, rhs._promiseId, rhs._deferredId);
-            }
+                => new Promise.DeferredBase(rhs._ref, rhs._promiseId, rhs._deferredId);
 
             /// <summary>
             /// Cast <see cref="Promise.DeferredBase"/> to <see cref="Deferred"/>.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public static explicit operator Deferred(Promise.DeferredBase rhs)
-            {
-                return rhs.ToDeferred<T>();
-            }
+                => rhs.ToDeferred<T>();
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="Deferred"/>.</summary>
             [MethodImpl(Internal.InlineOption)]
             public bool Equals(Deferred other)
-            {
-                return this == other;
-            }
+                => this == other;
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
             public override bool Equals(object obj)
-            {
-                return obj is Deferred deferred && Equals(deferred);
-            }
+                => obj is Deferred deferred && Equals(deferred);
 
             /// <summary>Returns the hash code for this instance.</summary>
             [MethodImpl(Internal.InlineOption)]
             public override int GetHashCode()
-            {
-                return Internal.BuildHashCode(_ref, _deferredId.GetHashCode(), _promiseId.GetHashCode());
-            }
+                => Internal.BuildHashCode(_ref, _deferredId.GetHashCode(), _promiseId.GetHashCode());
 
             /// <summary>Returns a value indicating whether two <see cref="Deferred"/> values are equal.</summary>
             [MethodImpl(Internal.InlineOption)]
             public static bool operator ==(Deferred lhs, Deferred rhs)
-            {
-                return lhs._ref == rhs._ref
+                => lhs._ref == rhs._ref
                     & lhs._deferredId == rhs._deferredId
                     & lhs._promiseId == rhs._promiseId;
-            }
 
             /// <summary>Returns a value indicating whether two <see cref="Deferred"/> values are not equal.</summary>
             [MethodImpl(Internal.InlineOption)]
             public static bool operator !=(Deferred lhs, Deferred rhs)
-            {
-                return !(lhs == rhs);
-            }
+                => !(lhs == rhs);
         } // struct Deferred
     } // struct Promise<T>
 } // namespace Proto.Promises

@@ -4,14 +4,12 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0018 // Inline variable declaration
-#pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable IDE0044 // Add readonly modifier
-
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
+
+#pragma warning disable IDE0090 // Use 'new(...)'
 
 namespace Proto.Promises
 {
@@ -64,9 +62,11 @@ namespace Proto.Promises
             private static bool s_isCanceled;
 
             // This must not be readonly.
+#pragma warning disable IDE0044 // Add readonly modifier
             private TAwaitInstruction _awaitInstruction;
+#pragma warning restore IDE0044 // Add readonly modifier
             private Action _continuation;
-            private CancelationToken _cancelationToken;
+            private readonly CancelationToken _cancelationToken;
             private bool _isTokenRetained;
 
             /// <summary>
@@ -76,7 +76,7 @@ namespace Proto.Promises
             public AwaitInstructionAwaiter(TAwaitInstruction awaitInstruction)
             {
                 _awaitInstruction = awaitInstruction;
-                _cancelationToken = default(CancelationToken);
+                _cancelationToken = default;
                 _continuation = null;
                 _isTokenRetained = false;
             }
@@ -98,9 +98,7 @@ namespace Proto.Promises
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public AwaitInstructionAwaiter<TAwaitInstruction> WithCancelation(CancelationToken cancelationToken)
-            {
-                return new AwaitInstructionAwaiter<TAwaitInstruction>(_awaitInstruction, cancelationToken);
-            }
+                => new AwaitInstructionAwaiter<TAwaitInstruction>(_awaitInstruction, cancelationToken);
 
             /// <summary>
             /// Gets whether this is complete.
@@ -126,17 +124,14 @@ namespace Proto.Promises
             /// Returns self.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            public AwaitInstructionAwaiter<TAwaitInstruction> GetAwaiter()
-            {
-                return this;
-            }
+            public AwaitInstructionAwaiter<TAwaitInstruction> GetAwaiter() => this;
 
             /// <summary>
             /// Schedules the continuation.
             /// </summary>
             public void OnCompleted(Action continuation)
             {
-                ValidateArgument(continuation, "continuation", 1);
+                ValidateArgument(continuation, nameof(continuation), 1);
                 InternalHelper.ValidateIsOnMainThread(1);
                 var copy = this;
                 copy._continuation = continuation;
@@ -148,9 +143,7 @@ namespace Proto.Promises
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public void UnsafeOnCompleted(Action continuation)
-            {
-                OnCompleted(continuation);
-            }
+                => OnCompleted(continuation);
 
             /// <summary>
             /// Completes the await.
@@ -216,10 +209,8 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             void InternalHelper.IYieldInstruction.MaybeRetainCancelationToken()
-            {
                 // This is called after it's placed in the array, so the field will stick.
-                _isTokenRetained = _cancelationToken.TryRetain();
-            }
+                => _isTokenRetained = _cancelationToken.TryRetain();
         }
 
         /// <summary>
@@ -227,27 +218,21 @@ namespace Proto.Promises
         /// </summary>
         public static AwaitInstructionAwaiter<TAwaitInstruction> GetAwaiter<TAwaitInstruction>(this TAwaitInstruction awaitInstruction)
             where TAwaitInstruction : IAwaitInstruction
-        {
-            return new AwaitInstructionAwaiter<TAwaitInstruction>(awaitInstruction);
-        }
+            => new AwaitInstructionAwaiter<TAwaitInstruction>(awaitInstruction);
 
         /// <summary>
         /// Gets an awaiter wrapping the <paramref name="awaitInstruction"/>, with cancelation.
         /// </summary>
         public static AwaitInstructionAwaiter<TAwaitInstruction> WithCancelation<TAwaitInstruction>(this TAwaitInstruction awaitInstruction, CancelationToken cancelationToken)
             where TAwaitInstruction : IAwaitInstruction
-        {
-            return new AwaitInstructionAwaiter<TAwaitInstruction>(awaitInstruction, cancelationToken);
-        }
+            => new AwaitInstructionAwaiter<TAwaitInstruction>(awaitInstruction, cancelationToken);
 
         /// <summary>
         /// Converts the <paramref name="awaitInstruction"/> to a <see cref="Promise"/>.
         /// </summary>
-        public static Promise ToPromise<TAwaitInstruction>(this TAwaitInstruction awaitInstruction, CancelationToken cancelationToken = default(CancelationToken))
+        public static Promise ToPromise<TAwaitInstruction>(this TAwaitInstruction awaitInstruction, CancelationToken cancelationToken = default)
             where TAwaitInstruction : IAwaitInstruction
-        {
-            return new AwaitInstructionAwaiter<TAwaitInstruction>(awaitInstruction, cancelationToken).ToPromise();
-        }
+            => new AwaitInstructionAwaiter<TAwaitInstruction>(awaitInstruction, cancelationToken).ToPromise();
 
         /// <summary>
         /// Converts the <paramref name="awaiter"/> to a <see cref="Promise"/>.
@@ -261,9 +246,7 @@ namespace Proto.Promises
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
 #if PROMISE_DEBUG
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-        {
-            Internal.ValidateArgument(arg, argName, skipFrames + 1);
-        }
+            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
 #endif
     } // PromiseYieldExtensions
 }

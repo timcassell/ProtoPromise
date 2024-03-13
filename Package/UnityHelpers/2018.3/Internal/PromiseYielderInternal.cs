@@ -4,9 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0029 // Use coalesce expression
-#pragma warning disable IDE0031 // Use null propagation
-#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0051 // Remove unused private members
 #pragma warning disable IDE0090 // Use 'new(...)'
 
@@ -29,14 +26,12 @@ namespace Proto.Promises
 
         [MethodImpl(Internal.InlineOption)]
         internal static bool IsOnMainThread()
-        {
-            return PromiseBehaviour.s_mainThread == Thread.CurrentThread;
-        }
+            => PromiseBehaviour.s_mainThread == Thread.CurrentThread;
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
         internal static void ValidateIsOnMainThread(int skipFrames)
         {
-            if (PromiseBehaviour.s_mainThread != Thread.CurrentThread)
+            if (!IsOnMainThread())
             {
                 throw new InvalidOperationException("Must be on main thread to use PromiseYielder awaits. Use `Promise.SwitchToForeground()` to switch to the main thread.", Internal.GetFormattedStacktrace(skipFrames + 1));
             }
@@ -112,14 +107,10 @@ namespace Proto.Promises
 
             // This is called from Update after the synchronization context is executed.
             partial void ProcessUpdate()
-            {
-                s_updateProcessor.Process();
-            }
+                => s_updateProcessor.Process();
 
             private void LateUpdate()
-            {
-                s_lateUpdateProcessor.Process();
-            }
+                => s_lateUpdateProcessor.Process();
 
             private IEnumerator FixedUpdateRoutine()
             {
@@ -183,7 +174,9 @@ namespace Proto.Promises
             internal void Process()
             {
                 // Store the next in a local for iteration, and swap queues.
+#pragma warning disable IDE0180 // Use tuple to swap values
                 var current = _nextQueue;
+#pragma warning restore IDE0180 // Use tuple to swap values
                 _nextQueue = _currentQueue;
                 _currentQueue = current;
 
@@ -481,10 +474,8 @@ namespace Proto.Promises
                 }
 
                 internal override void Reset()
-                {
                     // We reset the static field.
-                    s_instance = null;
-                }
+                    => s_instance = null;
             }
         }
 
@@ -525,9 +516,9 @@ namespace Proto.Promises
                 var routine = GetOrCreate();
                 routine._next = null;
                 routine._deferred = Promise.NewDeferred();
-                runner = runner != null ? runner : PromiseBehaviour.Instance;
+                runner = runner ? runner : PromiseBehaviour.Instance;
                 routine.Current = yieldInstruction;
-                cancelationToken.TryRegister(ValueTuple.Create(routine, runner), cv => cv.Item1.OnCancel(cv.Item2), out routine._cancelationRegistration);
+                cancelationToken.TryRegister((routine, runner), cv => cv.routine.OnCancel(cv.runner), out routine._cancelationRegistration);
 
                 runner.StartCoroutine(routine);
                 return routine._deferred.Promise;
@@ -573,8 +564,8 @@ namespace Proto.Promises
                     return;
                 }
 
-                // If it's null, the monobehaviour was destroyed, so the coroutine will have already been stopped.
-                if (runner != null)
+                // If the runner is valid, we stop the coroutine. Otherwise, the coroutine was already stopped by Unity.
+                if (runner)
                 {
                     runner.StopCoroutine(this);
                 }
@@ -589,8 +580,8 @@ namespace Proto.Promises
                     ++_id;
                 }
                 var deferred = _deferred;
-                _deferred = default(Promise.Deferred);
-                _cancelationRegistration = default(CancelationRegistration);
+                _deferred = default;
+                _cancelationRegistration = default;
                 Current = null;
                 _isYieldInstructionComplete = false;
                 // Place this back in the pool before invoking the deferred, in case the invocation will re-use this.

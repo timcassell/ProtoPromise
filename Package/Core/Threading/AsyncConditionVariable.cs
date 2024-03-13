@@ -6,7 +6,6 @@
 
 #pragma warning disable IDE0090 // Use 'new(...)'
 
-using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -83,9 +82,7 @@ namespace Proto.Promises.Threading
         /// </returns>
         [MethodImpl(Internal.InlineOption)]
         public Promise WaitAsync(AsyncLock.Key asyncLockKey)
-        {
-            return asyncLockKey.WaitAsync(this);
-        }
+            => asyncLockKey.WaitAsync(this);
 
         /// <summary>
         /// Release the lock and asynchronously wait for a notify signal on the <see cref="AsyncLock"/> associated with the <paramref name="asyncLockKey"/>, while observing a <see cref="CancelationToken"/>.
@@ -100,9 +97,7 @@ namespace Proto.Promises.Threading
         /// </returns>
         [MethodImpl(Internal.InlineOption)]
         public Promise<bool> TryWaitAsync(AsyncLock.Key asyncLockKey, CancelationToken cancelationToken)
-        {
-            return asyncLockKey.TryWaitAsync(this, cancelationToken);
-        }
+            => asyncLockKey.TryWaitAsync(this, cancelationToken);
 
         /// <summary>
         /// Release the lock and synchronously wait for a notify signal on the <see cref="AsyncLock"/> associated with the <paramref name="asyncLockKey"/>.
@@ -111,9 +106,7 @@ namespace Proto.Promises.Threading
         /// <param name="asyncLockKey">The key to the <see cref="AsyncLock"/> that is currently acquired.</param>
         [MethodImpl(Internal.InlineOption)]
         public void Wait(AsyncLock.Key asyncLockKey)
-        {
-            asyncLockKey.Wait(this);
-        }
+            => asyncLockKey.Wait(this);
 
         /// <summary>
         /// Release the lock and synchronously wait for a notify signal on the <see cref="AsyncLock"/> associated with the <paramref name="asyncLockKey"/>, while observing a <see cref="CancelationToken"/>.
@@ -127,9 +120,7 @@ namespace Proto.Promises.Threading
         /// </returns>
         [MethodImpl(Internal.InlineOption)]
         public bool TryWait(AsyncLock.Key asyncLockKey, CancelationToken cancelationToken)
-        {
-            return asyncLockKey.TryWait(this, cancelationToken);
-        }
+            => asyncLockKey.TryWait(this, cancelationToken);
 
         /// <summary>
         /// Send a signal to a single waiter on the <see cref="AsyncLock"/> associated with the <paramref name="asyncLockKey"/>.
@@ -137,9 +128,7 @@ namespace Proto.Promises.Threading
         /// <param name="asyncLockKey">The key to the <see cref="AsyncLock"/> that is currently acquired.</param>
         [MethodImpl(Internal.InlineOption)]
         public void Notify(AsyncLock.Key asyncLockKey)
-        {
-            asyncLockKey.Pulse(this);
-        }
+            => asyncLockKey.Pulse(this);
 
         /// <summary>
         /// Send a signal to all waiters on the <see cref="AsyncLock"/> associated with the <paramref name="asyncLockKey"/>.
@@ -147,9 +136,7 @@ namespace Proto.Promises.Threading
         /// <param name="asyncLockKey">The key to the <see cref="AsyncLock"/> that is currently acquired.</param>
         [MethodImpl(Internal.InlineOption)]
         public void NotifyAll(AsyncLock.Key asyncLockKey)
-        {
-            asyncLockKey.PulseAll(this);
-        }
+            => asyncLockKey.PulseAll(this);
     } // class AsyncConditionVariable
 
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP

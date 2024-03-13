@@ -4,9 +4,8 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0090 // Use 'new(...)'
-#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
 using System;
 using System.Diagnostics;
@@ -24,7 +23,7 @@ namespace Proto.Promises
         }
 
         private readonly string _stackTrace;
-        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+        public override string StackTrace => _stackTrace ?? base.StackTrace;
     }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -38,7 +37,7 @@ namespace Proto.Promises
         }
 
         private readonly string _stackTrace;
-        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+        public override string StackTrace => _stackTrace ?? base.StackTrace;
     }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -52,7 +51,7 @@ namespace Proto.Promises
         }
 
         private readonly string _stackTrace;
-        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+        public override string StackTrace => _stackTrace ?? base.StackTrace;
     }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -66,7 +65,7 @@ namespace Proto.Promises
         }
 
         private readonly string _stackTrace;
-        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+        public override string StackTrace => _stackTrace ?? base.StackTrace;
     }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -80,7 +79,7 @@ namespace Proto.Promises
         }
 
         private readonly string _stackTrace;
-        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+        public override string StackTrace => _stackTrace ?? base.StackTrace;
     }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -94,7 +93,7 @@ namespace Proto.Promises
         }
 
         private readonly string _stackTrace;
-        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+        public override string StackTrace => _stackTrace ?? base.StackTrace;
     }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -108,7 +107,7 @@ namespace Proto.Promises
         }
 
         private readonly string _stackTrace;
-        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+        public override string StackTrace => _stackTrace ?? base.StackTrace;
     }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -133,7 +132,7 @@ namespace Proto.Promises
         }
 
         private readonly string _stackTrace;
-        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+        public override string StackTrace => _stackTrace ?? base.StackTrace;
     }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -162,9 +161,9 @@ namespace Proto.Promises
             _stackTrace = stackTrace;
         }
 
-        public override string StackTrace { get { return _stackTrace; } }
+        public override string StackTrace => _stackTrace;
 
-        public object Value { get { return _value; } }
+        public object Value => _value;
     }
 
     /// <summary>
@@ -224,12 +223,6 @@ namespace Proto.Promises
     {
         internal RejectException() { }
 
-        public override string Message
-        {
-            get
-            {
-                return "This is used to reject a Promise from an onResolved or onRejected handler.";
-            }
-        }
+        public override string Message => "This is used to reject a Promise from an onResolved or onRejected handler.";
     }
 }

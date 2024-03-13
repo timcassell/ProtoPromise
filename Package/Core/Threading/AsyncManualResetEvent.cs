@@ -109,8 +109,6 @@ namespace Proto.Promises.Threading
         /// </summary>
         [EditorBrowsable(EditorBrowsableState.Never)]
         public CompilerServices.PromiseAwaiterVoid GetAwaiter()
-        {
-            return WaitAsync().GetAwaiter();
-        }
+            => WaitAsync().GetAwaiter();
     }
 }

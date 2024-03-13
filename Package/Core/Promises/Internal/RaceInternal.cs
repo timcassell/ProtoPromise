@@ -4,7 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 

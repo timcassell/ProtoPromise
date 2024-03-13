@@ -4,9 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable IDE0044 // Add readonly modifier
-
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -46,9 +43,7 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             internal void OnCompleted(Action continuation, short promiseId)
-            {
-                HookupNewWaiter(promiseId, AwaiterRef<DelegateVoidVoid>.GetOrCreate(new DelegateVoidVoid(continuation)));
-            }
+                => HookupNewWaiter(promiseId, AwaiterRef<DelegateVoidVoid>.GetOrCreate(new DelegateVoidVoid(continuation)));
 
             [MethodImpl(InlineOption)]
             internal Promise.ResultContainer GetResultContainerAndMaybeDispose(short promiseId)
@@ -142,7 +137,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 private void Dispose()
                 {
-                    _continuer = default(TContinuer);
+                    _continuer = default;
                     ObjectPool.MaybeRepool(this);
                 }
 
@@ -187,16 +182,12 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             private static void DefaultAwaitOnCompleted(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, Action continuation)
-            {
-                awaiter.OnCompleted(continuation);
-            }
+                => awaiter.OnCompleted(continuation);
 
             [MethodImpl(InlineOption)]
             internal static void AwaitOnCompleted(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, Action continuation)
-            {
                 // We call the function without a branch. If the awaiter is not a known awaiter type, the default function will be called.
-                s_awaitFunc(ref awaiter, asyncPromiseRef, continuation);
-            }
+                => s_awaitFunc(ref awaiter, asyncPromiseRef, continuation);
         }
 
         internal unsafe static class CriticalAwaitOverrider<TAwaiter> where TAwaiter : ICriticalNotifyCompletion
@@ -205,16 +196,12 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             private static void DefaultAwaitOnCompleted(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, Action continuation)
-            {
-                awaiter.UnsafeOnCompleted(continuation);
-            }
+                => awaiter.UnsafeOnCompleted(continuation);
 
             [MethodImpl(InlineOption)]
             internal static void AwaitOnCompleted(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, Action continuation)
-            {
                 // We call the function without a branch. If the awaiter is not a known awaiter type, the default function will be called.
-                s_awaitFunc(ref awaiter, asyncPromiseRef, continuation);
-            }
+                => s_awaitFunc(ref awaiter, asyncPromiseRef, continuation);
         }
 
         internal unsafe static class AwaitOverriderImpl<TAwaiter> where TAwaiter : struct, ICriticalNotifyCompletion, IPromiseAwaiter
@@ -229,9 +216,7 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             private static void AwaitOnCompletedOverride(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, Action continuation)
-            {
-                awaiter.AwaitOnCompletedInternal(asyncPromiseRef);
-            }
+                => awaiter.AwaitOnCompletedInternal(asyncPromiseRef);
         }
 #else // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER
         internal abstract class AwaitOverrider<TAwaiter> where TAwaiter : INotifyCompletion

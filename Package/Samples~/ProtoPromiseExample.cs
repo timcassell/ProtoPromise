@@ -1,5 +1,4 @@
 ﻿using Proto.Promises;
-using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -43,7 +42,7 @@ namespace Proto.Promises.Examples
                 image.sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
             }
         }
-#elif CSHARP_7_3_OR_NEWER
+#else
         public void OnClick()
         {
             // Don't use `async void` because that uses Tasks instead of Promises.
@@ -72,25 +71,6 @@ namespace Proto.Promises.Examples
                     image.sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
                 }
             }
-        }
-#else
-        public void OnClick()
-        {
-            cancelationSource.TryCancel(); // Cancel previous download if it's not yet completed.
-            var cs = CancelationSource.New();
-            cancelationSource = cs;
-            cancelButton.interactable = true;
-            
-            var progress = Progress.New(this, (_this, value) => _this.OnProgress(value));
-            DownloadHelper.DownloadTexture(imageUrl, progress.Token, cs.Token)
-                .Finally(progress, p => p.DisposeAsync()) // Dispose the progress object.
-                .Then(this, (_this, texture) => // Capture `this` to prevent closure allocation.
-                {
-                    _this.cancelButton.interactable = false;
-                    _this.image.sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
-                })
-                .Finally(cs, source => source.Dispose()) // Must dispose the source after the async operation completes.
-                .Forget();
         }
 #endif
 
