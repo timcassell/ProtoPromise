@@ -164,20 +164,7 @@ namespace Proto.Promises
 
         public override string StackTrace { get { return _stackTrace; } }
 
-        public Type ValueType { get { return _value.GetType(); } }
-
         public object Value { get { return _value; } }
-
-        public bool TryGetValueAs<T>(out T value)
-        {
-            if (typeof(T).IsAssignableFrom(ValueType))
-            {
-                value = (T) _value;
-                return true;
-            }
-            value = default(T);
-            return false;
-        }
     }
 
     /// <summary>
