@@ -10,12 +10,12 @@ using System.Diagnostics;
 namespace Proto.Promises
 {
     /// <summary>
-    /// Helpful extensions to convert promises to and from other asynchronous types.
+    /// Helpful extensions to convert (Value)Task to and from Promise.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public static partial class Extensions
+    public static class TaskExtensions
     {
         /// <summary>
         /// Convert the <paramref name="promise"/> to a <see cref="Task"/>.

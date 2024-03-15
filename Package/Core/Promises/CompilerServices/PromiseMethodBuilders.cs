@@ -16,6 +16,7 @@
 #pragma warning disable CA1822 // Mark members as static
 #pragma warning disable IDE0060 // Remove unused parameter
 #pragma warning disable IDE0074 // Use compound assignment
+#pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0251 // Make member 'readonly'
 // Other async libraries could be doing the same AsyncMethodBuilderAttribute trick, but left theirs public, so we suppress the warning just in case.
 #pragma warning disable CS0436 // Type conflicts with imported type
@@ -27,7 +28,7 @@ using System.Security;
 
 namespace System.Runtime.CompilerServices
 {
-#if !NETSTANDARD2_1_OR_GREATER && !NETCOREAPP
+#if !(NETCOREAPP || NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER)
     // This attribute is required for the C# compiler to compile custom async methods. It is only included publicly in .Net Standard 2.1 and .Net Core.
     // We don't need to make it public, as the C# compiler can work with it being internal.
 
