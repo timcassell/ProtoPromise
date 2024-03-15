@@ -4,7 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable RECS0108 // Warns about static fields in generic types
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 using System;

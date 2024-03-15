@@ -4,7 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable RECS0108 // Warns about static fields in generic types
 #pragma warning disable IDE0054 // Use compound assignment
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable CA1816 // Dispose methods should call SuppressFinalize

@@ -57,7 +57,7 @@ namespace Proto.Promises
         /// Starts the asynchronous factory method, if it has not already started, and returns the resulting <see cref="Promise{T}"/>.
         /// </summary>
         /// <param name="progressToken">The progress token that will be reported to if this instance was created with progress support.</param>
-        public Promise<T> GetResultAsync(ProgressToken progressToken = default(ProgressToken))
+        public Promise<T> GetResultAsync(ProgressToken progressToken = default)
         {
             // This is a volatile read, so we don't need a full memory barrier to prevent the result read from moving before it.
             var lazyFields = _lazyFields;

@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0251 // Make member 'readonly'
 
 using System;
@@ -107,56 +108,14 @@ namespace Proto.Promises
 #endif
         }
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal struct Enumerator<T> : IEnumerator<T> where T : class, ILinked<T>
-        {
-            private T _current;
-
-            [MethodImpl(InlineOption)]
-            internal Enumerator(T first)
-            {
-                _current = first;
-            }
-
-            /// <summary>
-            /// Doesn't actually move next, just returns if Current is valid.
-            /// This allows the function to be branch-less. Useful for foreach loops.
-            /// </summary>
-            [MethodImpl(InlineOption)]
-            public bool MoveNext()
-                => _current != null;
-
-            /// <summary>
-            /// Actually moves next and returns current.
-            /// </summary>
-            public T Current
-            {
-                [MethodImpl(InlineOption)]
-                get
-                {
-                    T temp = _current;
-                    _current = _current.Next;
-                    return temp;
-                }
-            }
-
-            object IEnumerator.Current => Current;
-
-            void IEnumerator.Reset() { }
-
-            void IDisposable.Dispose() { }
-        }
-
         /// <summary>
         /// This structure is unsuitable for general purpose.
         /// </summary>
 #if PROTO_PROMISE_DEVELOPER_MODE
-        internal partial class ValueLinkedStack<T> : IEnumerable<T> where T : class, ILinked<T>
+        internal partial class ValueLinkedStack<T> where T : class, ILinked<T>
 #else
         [DebuggerNonUserCode, StackTraceHidden]
-        internal struct ValueLinkedStack<T> : IEnumerable<T> where T : class, ILinked<T>
+        internal struct ValueLinkedStack<T> where T : class, ILinked<T>
 #endif
         {
             private T _head;
@@ -203,51 +162,6 @@ namespace Proto.Promises
                 MarkRemovedFromCollection(temp);
                 return temp;
             }
-
-            [MethodImpl(InlineOption)]
-            public Enumerator<T> GetEnumerator()
-                => new Enumerator<T>(_head);
-
-            IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
-
-            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-        }
-
-        /// <summary>
-        /// Use instead of Monitor.Enter(object).
-        /// Must not be readonly.
-        /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal struct SpinLocker
-        {
-            volatile private int _locker;
-
-            internal void Enter()
-            {
-                Thread.MemoryBarrier();
-                if (Interlocked.Exchange(ref _locker, 1) == 1)
-                {
-                    EnterCore();
-                }
-            }
-
-            [MethodImpl(MethodImplOptions.NoInlining)]
-            private void EnterCore()
-            {
-                // Spin until we successfully get lock.
-                var spinner = new SpinWait();
-                do
-                {
-                    spinner.SpinOnce();
-                }
-                while (Interlocked.Exchange(ref _locker, 1) == 1);
-            }
-
-            [MethodImpl(InlineOption)]
-            internal void Exit()
-                => _locker = 0; // Release lock.
         }
 
         /// <summary>
@@ -311,10 +225,10 @@ namespace Proto.Promises
         /// This structure is unsuitable for general purpose.
         /// </summary>
 #if PROTO_PROMISE_DEVELOPER_MODE
-        internal partial class ValueLinkedQueue<T> : IEnumerable<T> where T : class, ILinked<T>
+        internal partial class ValueLinkedQueue<T> where T : class, ILinked<T>
 #else
         [DebuggerNonUserCode, StackTraceHidden]
-        internal struct ValueLinkedQueue<T> : IEnumerable<T> where T : class, ILinked<T>
+        internal struct ValueLinkedQueue<T> where T : class, ILinked<T>
 #endif
         {
             private T _head;
@@ -487,14 +401,6 @@ namespace Proto.Promises
                 other._tail = null;
             }
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-
-            [MethodImpl(InlineOption)]
-            public Enumerator<T> GetEnumerator()
-                => new Enumerator<T>(_head);
-
-            IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
-
-            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         }
 
         /// <summary>

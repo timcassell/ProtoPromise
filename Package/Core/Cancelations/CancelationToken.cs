@@ -262,7 +262,13 @@ namespace Proto.Promises
         }
     }
 
-    partial class Extensions
+    /// <summary>
+    /// Helpful extension class to convert <see cref="System.Threading.CancellationToken"/> to <see cref="CancelationToken"/>.
+    /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode, StackTraceHidden]
+#endif
+    public static class CancellationTokenExtensions
     {
         /// <summary>
         /// Convert <paramref name="token"/> to a <see cref="CancelationToken"/>.
