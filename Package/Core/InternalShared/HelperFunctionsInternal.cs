@@ -133,8 +133,7 @@ namespace Proto.Promises
                 int initialValue, newValue;
                 do
                 {
-                    Thread.MemoryBarrier();
-                    initialValue = location;
+                    initialValue = Volatile.Read(ref location);
                     uint uValue = (uint) initialValue;
                     checked
                     {

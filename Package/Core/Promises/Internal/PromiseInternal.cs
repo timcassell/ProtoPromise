@@ -368,8 +368,6 @@ namespace Proto.Promises
 
             private void Dispose()
             {
-                // Make sure instructions are not re-ordered to after this is disposed.
-                Thread.MemoryBarrier();
                 ThrowIfInPool(this);
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE

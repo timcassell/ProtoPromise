@@ -25,7 +25,6 @@ namespace Proto.Promises
 
             internal void Enter()
             {
-                Thread.MemoryBarrier();
                 if (Interlocked.Exchange(ref _locker, 1) == 1)
                 {
                     EnterCore();
