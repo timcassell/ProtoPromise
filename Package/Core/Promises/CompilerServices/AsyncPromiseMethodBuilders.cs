@@ -47,10 +47,10 @@ namespace System.Runtime.CompilerServices
 
 namespace Proto.Promises
 {
-    [AsyncMethodBuilder(typeof(CompilerServices.PromiseMethodBuilder))]
+    [AsyncMethodBuilder(typeof(CompilerServices.AsyncPromiseMethodBuilder))]
     partial struct Promise { }
 
-    [AsyncMethodBuilder(typeof(CompilerServices.PromiseMethodBuilder<>))]
+    [AsyncMethodBuilder(typeof(CompilerServices.AsyncPromiseMethodBuilder<>))]
     partial struct Promise<T> { }
 
     namespace CompilerServices
@@ -62,7 +62,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public partial struct PromiseMethodBuilder
+        public partial struct AsyncPromiseMethodBuilder
         {
             /// <summary>
             /// Schedules the specified state machine to be pushed forward when the specified awaiter completes.
@@ -123,7 +123,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public partial struct PromiseMethodBuilder<T>
+        public partial struct AsyncPromiseMethodBuilder<T>
         {
             /// <summary>
             /// Schedules the specified state machine to be pushed forward when the specified awaiter completes.
@@ -158,7 +158,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public void Start<TStateMachine>(ref TStateMachine stateMachine)
                 where TStateMachine : IAsyncStateMachine
-                => new PromiseMethodBuilder().Start(ref stateMachine);
+                => new AsyncPromiseMethodBuilder().Start(ref stateMachine);
 
             /// <summary>Does nothing.</summary>
             /// <param name="stateMachine">The heap-allocated state machine object.</param>
@@ -168,10 +168,10 @@ namespace Proto.Promises
 
 #if !OPTIMIZED_ASYNC_MODE
 
-        partial struct PromiseMethodBuilder
+        partial struct AsyncPromiseMethodBuilder
         {
             [MethodImpl(Internal.InlineOption)]
-            private PromiseMethodBuilder(Internal.PromiseRefBase.AsyncPromiseRef<Internal.VoidResult> promise)
+            private AsyncPromiseMethodBuilder(Internal.PromiseRefBase.AsyncPromiseRef<Internal.VoidResult> promise)
             {
                 _ref = promise;
             }
@@ -184,11 +184,11 @@ namespace Proto.Promises
                 get => new Promise(_ref, _ref.Id);
             }
 
-            /// <summary>Initializes a new <see cref="PromiseMethodBuilder"/>.</summary>
-            /// <returns>The initialized <see cref="PromiseMethodBuilder"/>.</returns>
+            /// <summary>Initializes a new <see cref="AsyncPromiseMethodBuilder"/>.</summary>
+            /// <returns>The initialized <see cref="AsyncPromiseMethodBuilder"/>.</returns>
             [MethodImpl(Internal.InlineOption)]
-            public static PromiseMethodBuilder Create()
-                => new PromiseMethodBuilder(Internal.PromiseRefBase.AsyncPromiseRef<Internal.VoidResult>.GetOrCreate());
+            public static AsyncPromiseMethodBuilder Create()
+                => new AsyncPromiseMethodBuilder(Internal.PromiseRefBase.AsyncPromiseRef<Internal.VoidResult>.GetOrCreate());
 
             /// <summary>
             /// Completes the <see cref="Promise"/> in the <see cref="Promise.State">Rejected</see> state with the specified exception.
@@ -205,10 +205,10 @@ namespace Proto.Promises
                 => _ref.SetAsyncResultVoid();
         }
 
-        partial struct PromiseMethodBuilder<T>
+        partial struct AsyncPromiseMethodBuilder<T>
         {
             [MethodImpl(Internal.InlineOption)]
-            private PromiseMethodBuilder(Internal.PromiseRefBase.AsyncPromiseRef<T> promise)
+            private AsyncPromiseMethodBuilder(Internal.PromiseRefBase.AsyncPromiseRef<T> promise)
             {
                 _ref = promise;
             }
@@ -221,11 +221,11 @@ namespace Proto.Promises
                 get => new Promise<T>(_ref, _ref.Id);
             }
 
-            /// <summary>Initializes a new <see cref="PromiseMethodBuilder{T}"/>.</summary>
-            /// <returns>The initialized <see cref="PromiseMethodBuilder{T}"/>.</returns>
+            /// <summary>Initializes a new <see cref="AsyncPromiseMethodBuilder{T}"/>.</summary>
+            /// <returns>The initialized <see cref="AsyncPromiseMethodBuilder{T}"/>.</returns>
             [MethodImpl(Internal.InlineOption)]
-            public static PromiseMethodBuilder<T> Create()
-                => new PromiseMethodBuilder<T>(Internal.PromiseRefBase.AsyncPromiseRef<T>.GetOrCreate());
+            public static AsyncPromiseMethodBuilder<T> Create()
+                => new AsyncPromiseMethodBuilder<T>(Internal.PromiseRefBase.AsyncPromiseRef<T>.GetOrCreate());
 
             /// <summary>
             /// Completes the <see cref="Promise{T}"/> in the <see cref="Promise.State">Rejected</see> state with the specified exception.
@@ -246,7 +246,7 @@ namespace Proto.Promises
 #else // !OPTIMIZED_ASYNC_MODE
 
         // This code could be used for DEBUG mode, but IL2CPP requires the non-optimized code even in RELEASE mode, and I don't want to add extra unnecessary null checks there.
-        partial struct PromiseMethodBuilder
+        partial struct AsyncPromiseMethodBuilder
         {
             /// <summary>Gets the <see cref="Promise"/> for this builder.</summary>
             /// <returns>The <see cref="Promise"/> representing the builder's asynchronous operation.</returns>
@@ -256,10 +256,10 @@ namespace Proto.Promises
                 get => _ref == null ? Promise.Resolved() : new Promise(_ref, _ref.Id);
             }
 
-            /// <summary>Initializes a new <see cref="PromiseMethodBuilder"/>.</summary>
-            /// <returns>The initialized <see cref="PromiseMethodBuilder"/>.</returns>
+            /// <summary>Initializes a new <see cref="AsyncPromiseMethodBuilder"/>.</summary>
+            /// <returns>The initialized <see cref="AsyncPromiseMethodBuilder"/>.</returns>
             [MethodImpl(Internal.InlineOption)]
-            public static PromiseMethodBuilder Create()
+            public static AsyncPromiseMethodBuilder Create()
                 => default;
 
             /// <summary>
@@ -283,7 +283,7 @@ namespace Proto.Promises
                 => _ref?.SetAsyncResultVoid();
         }
 
-        partial struct PromiseMethodBuilder<T>
+        partial struct AsyncPromiseMethodBuilder<T>
         {
             /// <summary>Gets the <see cref="Promise{T}"/> for this builder.</summary>
             /// <returns>The <see cref="Promise{T}"/> representing the builder's asynchronous operation.</returns>
@@ -293,10 +293,10 @@ namespace Proto.Promises
                 get => _ref == null ? new Promise<T>(_result) : new Promise<T>(_ref, _ref.Id);
             }
 
-            /// <summary>Initializes a new <see cref="PromiseMethodBuilder{T}"/>.</summary>
-            /// <returns>The initialized <see cref="PromiseMethodBuilder{T}"/>.</returns>
+            /// <summary>Initializes a new <see cref="AsyncPromiseMethodBuilder{T}"/>.</summary>
+            /// <returns>The initialized <see cref="AsyncPromiseMethodBuilder{T}"/>.</returns>
             [MethodImpl(Internal.InlineOption)]
-            public static PromiseMethodBuilder<T> Create()
+            public static AsyncPromiseMethodBuilder<T> Create()
                 => default;
 
             /// <summary>
