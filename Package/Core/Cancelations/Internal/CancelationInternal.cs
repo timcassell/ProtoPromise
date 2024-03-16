@@ -600,8 +600,7 @@ namespace Proto.Promises
                             // possibly causing cancelations to be triggered unexpectedly.
                             _bclSource.Dispose();
                         }
-                        _bclSource = null;
-                        Thread.MemoryBarrier();
+                        Volatile.Write(ref _bclSource, null);
                     }
                     unchecked
                     {
@@ -1209,8 +1208,7 @@ namespace Proto.Promises
                     if (s_tokenCache.TryGetValue(source, out var cancelationRef))
                     {
                         var tokenId = cancelationRef.TokenId;
-                        Thread.MemoryBarrier();
-                        return cancelationRef._bclSource == source // In case of race condition on another thread.
+                        return Volatile.Read(ref cancelationRef._bclSource) == source // In case of race condition on another thread.
                             ? new CancelationToken(cancelationRef, tokenId)
                             : default;
                     }
