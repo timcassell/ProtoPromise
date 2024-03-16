@@ -397,13 +397,13 @@ namespace Proto.Promises
 
     namespace CompilerServices
     {
-        partial struct PromiseMethodBuilder
+        partial struct AsyncPromiseMethodBuilder
         {
             // This must not be readonly.
             private Internal.PromiseRefBase.AsyncPromiseRef<Internal.VoidResult> _ref;
         }
 
-        partial struct PromiseMethodBuilder<T>
+        partial struct AsyncPromiseMethodBuilder<T>
         {
             // These must not be readonly.
             private Internal.PromiseRefBase.AsyncPromiseRef<T> _ref;
