@@ -93,11 +93,11 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption | AggressiveOptimizationOption)]
-                internal static void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref)
+                internal static void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref, ref short id)
                     where TAwaiter : INotifyCompletion
                     where TStateMachine : IAsyncStateMachine
                 {
-                    SetStateMachine(ref stateMachine, ref _ref);
+                    SetStateMachine(ref stateMachine, ref _ref, ref id);
 #if NETCOREAPP
                     // These checks and cast are eliminated by the JIT.
 #pragma warning disable IDE0038 // Use pattern matching
@@ -117,11 +117,11 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption | AggressiveOptimizationOption)]
-                internal static void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref)
+                internal static void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref, ref short id)
                     where TAwaiter : ICriticalNotifyCompletion
                     where TStateMachine : IAsyncStateMachine
                 {
-                    SetStateMachine(ref stateMachine, ref _ref);
+                    SetStateMachine(ref stateMachine, ref _ref, ref id);
 #if NETCOREAPP
                     // These checks and cast are eliminated by the JIT.
 #pragma warning disable IDE0038 // Use pattern matching
@@ -249,7 +249,9 @@ namespace Proto.Promises
                 private PromiseMethodContinuer _continuer;
 
                 [MethodImpl(InlineOption)]
-                private static void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref) where TStateMachine : IAsyncStateMachine
+#pragma warning disable IDE0060 // Remove unused parameter
+                private static void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref, ref short id) where TStateMachine : IAsyncStateMachine
+#pragma warning restore IDE0060 // Remove unused parameter
                 {
                     if (_ref._continuer == null)
                     {
@@ -308,10 +310,11 @@ namespace Proto.Promises
                             : obj.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>();
                     }
 
-                    internal static void SetStateMachine(ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref)
+                    internal static void SetStateMachine(ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref, ref short id)
                     {
                         var promise = GetOrCreate();
                         promise.Reset();
+                        id = promise.Id;
                         // ORDER VERY IMPORTANT, ref must be set before copying stateMachine.
                         _ref = promise;
                         promise._stateMachine = stateMachine;
@@ -356,11 +359,11 @@ namespace Proto.Promises
                 protected AsyncPromiseRef() { }
 
                 [MethodImpl(InlineOption)]
-                private static void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref) where TStateMachine : IAsyncStateMachine
+                private static void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref, ref short id) where TStateMachine : IAsyncStateMachine
                 {
                     if (_ref == null)
                     {
-                        AsyncPromiseRefMachine<TStateMachine>.SetStateMachine(ref stateMachine, ref _ref);
+                        AsyncPromiseRefMachine<TStateMachine>.SetStateMachine(ref stateMachine, ref _ref, ref id);
                     }
                     if (Promise.Config.AsyncFlowExecutionContextEnabled)
                     {

@@ -64,6 +64,14 @@ namespace Proto.Promises
 #endif
         public partial struct AsyncPromiseMethodBuilder
         {
+            /// <summary>Gets the <see cref="Promise"/> for this builder.</summary>
+            /// <returns>The <see cref="Promise"/> representing the builder's asynchronous operation.</returns>
+            public Promise Task
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get => new Promise(_ref, _id);
+            }
+
             /// <summary>
             /// Schedules the specified state machine to be pushed forward when the specified awaiter completes.
             /// </summary>
@@ -75,7 +83,7 @@ namespace Proto.Promises
             public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
                 where TAwaiter : INotifyCompletion
                 where TStateMachine : IAsyncStateMachine
-                => Internal.PromiseRefBase.AsyncPromiseRef<Internal.VoidResult>.AwaitOnCompleted(ref awaiter, ref stateMachine, ref _ref);
+                => Internal.PromiseRefBase.AsyncPromiseRef<Internal.VoidResult>.AwaitOnCompleted(ref awaiter, ref stateMachine, ref _ref, ref _id);
 
             /// <summary>
             /// Schedules the specified state machine to be pushed forward when the specified awaiter completes.
@@ -89,7 +97,7 @@ namespace Proto.Promises
             public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
                 where TAwaiter : ICriticalNotifyCompletion
                 where TStateMachine : IAsyncStateMachine
-                => Internal.PromiseRefBase.AsyncPromiseRef<Internal.VoidResult>.AwaitUnsafeOnCompleted(ref awaiter, ref stateMachine, ref _ref);
+                => Internal.PromiseRefBase.AsyncPromiseRef<Internal.VoidResult>.AwaitUnsafeOnCompleted(ref awaiter, ref stateMachine, ref _ref, ref _id);
 
             /// <summary>Initiates the builder's execution with the associated state machine.</summary>
             /// <typeparam name="TStateMachine">Specifies the type of the state machine.</typeparam>
@@ -125,6 +133,14 @@ namespace Proto.Promises
 #endif
         public partial struct AsyncPromiseMethodBuilder<T>
         {
+            /// <summary>Gets the <see cref="Promise{T}"/> for this builder.</summary>
+            /// <returns>The <see cref="Promise{T}"/> representing the builder's asynchronous operation.</returns>
+            public Promise<T> Task
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get => new Promise<T>(_ref, _id, _result);
+            }
+
             /// <summary>
             /// Schedules the specified state machine to be pushed forward when the specified awaiter completes.
             /// </summary>
@@ -136,7 +152,7 @@ namespace Proto.Promises
             public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
                 where TAwaiter : INotifyCompletion
                 where TStateMachine : IAsyncStateMachine
-                => Internal.PromiseRefBase.AsyncPromiseRef<T>.AwaitOnCompleted(ref awaiter, ref stateMachine, ref _ref);
+                => Internal.PromiseRefBase.AsyncPromiseRef<T>.AwaitOnCompleted(ref awaiter, ref stateMachine, ref _ref, ref _id);
 
             /// <summary>
             /// Schedules the specified state machine to be pushed forward when the specified awaiter completes.
@@ -150,7 +166,7 @@ namespace Proto.Promises
             public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine)
                 where TAwaiter : ICriticalNotifyCompletion
                 where TStateMachine : IAsyncStateMachine
-                => Internal.PromiseRefBase.AsyncPromiseRef<T>.AwaitUnsafeOnCompleted(ref awaiter, ref stateMachine, ref _ref);
+                => Internal.PromiseRefBase.AsyncPromiseRef<T>.AwaitUnsafeOnCompleted(ref awaiter, ref stateMachine, ref _ref, ref _id);
 
             /// <summary>Initiates the builder's execution with the associated state machine.</summary>
             /// <typeparam name="TStateMachine">Specifies the type of the state machine.</typeparam>
@@ -174,14 +190,7 @@ namespace Proto.Promises
             private AsyncPromiseMethodBuilder(Internal.PromiseRefBase.AsyncPromiseRef<Internal.VoidResult> promise)
             {
                 _ref = promise;
-            }
-
-            /// <summary>Gets the <see cref="Promise"/> for this builder.</summary>
-            /// <returns>The <see cref="Promise"/> representing the builder's asynchronous operation.</returns>
-            public Promise Task
-            {
-                [MethodImpl(Internal.InlineOption)]
-                get => new Promise(_ref, _ref.Id);
+                _id = promise.Id;
             }
 
             /// <summary>Initializes a new <see cref="AsyncPromiseMethodBuilder"/>.</summary>
@@ -211,14 +220,7 @@ namespace Proto.Promises
             private AsyncPromiseMethodBuilder(Internal.PromiseRefBase.AsyncPromiseRef<T> promise)
             {
                 _ref = promise;
-            }
-
-            /// <summary>Gets the <see cref="Promise{T}"/> for this builder.</summary>
-            /// <returns>The <see cref="Promise{T}"/> representing the builder's asynchronous operation.</returns>
-            public Promise<T> Task
-            {
-                [MethodImpl(Internal.InlineOption)]
-                get => new Promise<T>(_ref, _ref.Id);
+                _id = promise.Id;
             }
 
             /// <summary>Initializes a new <see cref="AsyncPromiseMethodBuilder{T}"/>.</summary>
@@ -248,14 +250,6 @@ namespace Proto.Promises
         // This code could be used for DEBUG mode, but IL2CPP requires the non-optimized code even in RELEASE mode, and I don't want to add extra unnecessary null checks there.
         partial struct AsyncPromiseMethodBuilder
         {
-            /// <summary>Gets the <see cref="Promise"/> for this builder.</summary>
-            /// <returns>The <see cref="Promise"/> representing the builder's asynchronous operation.</returns>
-            public Promise Task
-            {
-                [MethodImpl(Internal.InlineOption)]
-                get => _ref == null ? Promise.Resolved() : new Promise(_ref, _ref.Id);
-            }
-
             /// <summary>Initializes a new <see cref="AsyncPromiseMethodBuilder"/>.</summary>
             /// <returns>The initialized <see cref="AsyncPromiseMethodBuilder"/>.</returns>
             [MethodImpl(Internal.InlineOption)]
@@ -271,6 +265,7 @@ namespace Proto.Promises
                 if (_ref == null)
                 {
                     _ref = Internal.PromiseRefBase.AsyncPromiseRef<Internal.VoidResult>.GetOrCreate();
+                    _id = _ref.Id;
                 }
                 _ref.SetException(exception);
             }
@@ -285,14 +280,6 @@ namespace Proto.Promises
 
         partial struct AsyncPromiseMethodBuilder<T>
         {
-            /// <summary>Gets the <see cref="Promise{T}"/> for this builder.</summary>
-            /// <returns>The <see cref="Promise{T}"/> representing the builder's asynchronous operation.</returns>
-            public Promise<T> Task
-            {
-                [MethodImpl(Internal.InlineOption)]
-                get => _ref == null ? new Promise<T>(_result) : new Promise<T>(_ref, _ref.Id);
-            }
-
             /// <summary>Initializes a new <see cref="AsyncPromiseMethodBuilder{T}"/>.</summary>
             /// <returns>The initialized <see cref="AsyncPromiseMethodBuilder{T}"/>.</returns>
             [MethodImpl(Internal.InlineOption)]
@@ -308,6 +295,7 @@ namespace Proto.Promises
                 if (_ref == null)
                 {
                     _ref = Internal.PromiseRefBase.AsyncPromiseRef<T>.GetOrCreate();
+                    _id = _ref.Id;
                 }
                 _ref.SetException(exception);
             }

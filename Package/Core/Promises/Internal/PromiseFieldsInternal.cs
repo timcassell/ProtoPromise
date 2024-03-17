@@ -50,7 +50,7 @@ namespace Proto.Promises
         }
 
         [MethodImpl(Internal.InlineOption)]
-        internal Promise(Internal.PromiseRefBase.PromiseRef<T> promiseRef, short id, T result)
+        internal Promise(Internal.PromiseRefBase.PromiseRef<T> promiseRef, short id, in T result)
         {
             _ref = promiseRef;
             _result = result;
@@ -58,7 +58,7 @@ namespace Proto.Promises
         }
 
         [MethodImpl(Internal.InlineOption)]
-        internal Promise(T result)
+        internal Promise(in T result)
         {
             _ref = null;
             _id = 0;
@@ -399,16 +399,20 @@ namespace Proto.Promises
     {
         partial struct AsyncPromiseMethodBuilder
         {
-            // This must not be readonly.
+            // These must not be readonly.
             private Internal.PromiseRefBase.AsyncPromiseRef<Internal.VoidResult> _ref;
+            private short _id;
         }
 
         partial struct AsyncPromiseMethodBuilder<T>
         {
             // These must not be readonly.
             private Internal.PromiseRefBase.AsyncPromiseRef<T> _ref;
+            private short _id;
 #if OPTIMIZED_ASYNC_MODE
             private T _result;
+#else
+            private T _result => default;
 #endif
         }
     }
