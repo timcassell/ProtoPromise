@@ -25,9 +25,7 @@ namespace Proto.Promises.Threading
         /// <param name="initialCount">The initial number of requests for the semaphore that can be granted
         /// concurrently.</param>
         /// <exception cref="System.ArgumentOutOfRangeException"><paramref name="initialCount"/> is less than 0.</exception>
-        public AsyncSemaphore(int initialCount) : this(initialCount, int.MaxValue)
-        {
-        }
+        public AsyncSemaphore(int initialCount) : this(initialCount, int.MaxValue) { }
 
         /// <summary>
         /// Creates an async-compatible Semaphore, specifying
@@ -142,13 +140,51 @@ namespace Proto.Promises.Threading
             => WaitAsync().Then(this, _this => new Scope(_this));
 
         /// <summary>
-        /// Blocks the current thread until it can enter this <see cref="AsyncSemaphore"/>, and returns a disposable that releases this when disposed, thus treating this <see cref="AsyncSemaphore"/> as a "multi-lock".
+        /// Asynchronously wait to enter this <see cref="AsyncSemaphore"/>, or for the <paramref name="cancelationToken"/> to be canceled.
+        /// The result of the returned <see cref="Promise{T}"/> is a disposable that releases this when disposed, thus treating this <see cref="AsyncSemaphore"/> as a "multi-lock".
+        /// </summary>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the wait.</param>
+        /// <remarks>
+        /// If the <paramref name="cancelationToken"/> is canceled before this is entered, the returned <see cref="Promise{T}"/> will be canceled.
+        /// </remarks>
+        public Promise<Scope> EnterScopeAsync(CancelationToken cancelationToken)
+            => cancelationToken.IsCancelationRequested
+            ? Promise<Scope>.Canceled()
+            : TryWaitAsync(cancelationToken).Then(this, (_this, entered) =>
+            {
+                if (entered)
+                {
+                    return new Scope(_this);
+                }
+                throw Promise.CancelException();
+            });
+
+        /// <summary>
+        /// Blocks the current thread until it can enter this <see cref="AsyncSemaphore"/>.
+        /// Returns a disposable that releases this when disposed, thus treating this <see cref="AsyncSemaphore"/> as a "multi-lock".
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public Scope EnterScope()
         {
             Wait();
             return new Scope(this);
+        }
+
+        /// <summary>
+        /// Blocks the current thread until it can enter this <see cref="AsyncSemaphore"/>, or the <paramref name="cancelationToken"/> is canceled.
+        /// Returns a disposable that releases this when disposed, thus treating this <see cref="AsyncSemaphore"/> as a "multi-lock".
+        /// </summary>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the wait.</param>
+        /// <remarks>
+        /// If the <paramref name="cancelationToken"/> is canceled before this is entered, a <see cref="CanceledException"/> will be thrown.
+        /// </remarks>
+        public Scope EnterScope(CancelationToken cancelationToken)
+        {
+            if (!cancelationToken.IsCancelationRequested && TryWait(cancelationToken))
+            {
+                return new Scope(this);
+            }
+            throw Promise.CancelException();
         }
 
         /// <summary>
