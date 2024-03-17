@@ -108,7 +108,8 @@ namespace Proto.Promises
             /// <summary>
             /// The <see cref="SynchronizationContext"/> used to marshal work to the UI thread.
             /// </summary>
-            /// <remarks>It is recommended to set this at application startup. It is also recommended to set <see cref="Manager.ThreadStaticSynchronizationContext"/> at the same time.</remarks>
+            /// <remarks>It is recommended to set this at application startup. It is also recommended to set <see cref="Manager.ThreadStaticSynchronizationContext"/> at the same time
+            /// if you are in a .Net environment that is older than .Net 6.</remarks>
             /// <example>
             /// <code>
             /// Promise.Config.ForegroundContext = SynchronizationContext.Current;
