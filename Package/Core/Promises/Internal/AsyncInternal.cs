@@ -320,7 +320,7 @@ namespace Proto.Promises
                     internal override void MaybeDispose()
                     {
                         Dispose();
-                        _stateMachine = default(TStateMachine);
+                        _stateMachine = default;
                         _executionContext = null;
                         ObjectPool.MaybeRepool(this);
                     }
