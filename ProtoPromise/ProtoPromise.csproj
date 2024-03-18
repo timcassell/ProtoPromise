@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netstandard2.1;net6.0</TargetFrameworks>
-    <Version>2.7.0</Version>
+    <Version>3.0.0</Version>
     <!--Set true to help debug internal promise code (allows the debugger to step into the code and includes internal stacktraces).-->
     <DeveloperMode>false</DeveloperMode>
   </PropertyGroup>
