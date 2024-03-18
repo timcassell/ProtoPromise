@@ -7,8 +7,6 @@ Update the version in `ProtoPromise.csproj`, `ProtoPromise.UnityHelpers/**.cspro
 
 To create the UnityPackage for releases:
 
-Edit `Packages/README.md` to remove the `## Package Installation` and `## Latest Updates` sections, and other unnecessary information at the top (like benchmark results).
-
 1. Open `ProtoPromise_Unity` in Unity 2018.3
 2. Copy `Package` folder to `Assets/Plugins/ProtoPromise`
 3. Delete `Tests` folder
@@ -28,8 +26,6 @@ For Unity Asset Store package upload:
 
 Unity version may need to be updated to use the earliest version that the Asset Store Tools supports.
 
-Revert changes to `Packages/README.md`.
-
 
 For the ProtoPromise.Analyzer package, if changes were made:
 
@@ -42,6 +38,6 @@ For the ProtoPromise.Analyzer package, if changes were made:
 - Run the `Publish analyzer nuget package` workflow on GitHub with the new version.
 
 
-For Debugging:
+For debugging internal library code:
 
-By default, ProtoPromise types are marked with the `DebuggerNonUserCodeAttribute`, making the debugger skip over the library code instead of stepping into it. To disable this behavior and to get more detailed stack traces, define the compiler symbol `PROTO_PROMISE_DEVELOPER_MODE` in Unity, or change `<DeveloperMode>` to `true` in the non-unity csproj.
+By default, ProtoPromise types are marked with the `[DebuggerNonUserCode]` and `[StackTraceHidden]`, making the debugger skip over the library code instead of stepping into it. To disable this behavior and to get more detailed stack traces, define the compiler symbol `PROTO_PROMISE_DEVELOPER_MODE` in Unity, or change `<DeveloperMode>` to `true` in the non-unity csproj.
