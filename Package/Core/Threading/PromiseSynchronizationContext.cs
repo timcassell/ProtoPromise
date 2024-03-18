@@ -1,5 +1,7 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
 #endif
 
 using System;
@@ -9,11 +11,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 
-#pragma warning disable CA1507 // Use nameof to express symbol names
 #pragma warning disable IDE0016 // Use 'throw' expression
-#pragma warning disable IDE0031 // Use null propagation
-#pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable IDE0074 // Use compound assignment
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 namespace Proto.Promises.Threading
@@ -33,7 +31,7 @@ namespace Proto.Promises.Threading
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        private struct PostCallback
+        private readonly struct PostCallback
         {
             internal readonly SendOrPostCallback _callback;
             internal readonly object _state;
@@ -47,9 +45,7 @@ namespace Proto.Promises.Threading
 
             [MethodImpl(Internal.InlineOption)]
             internal void Invoke()
-            {
-                _callback.Invoke(_state);
-            }
+                => _callback.Invoke(_state);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -106,24 +102,13 @@ namespace Proto.Promises.Threading
                 var capturedInfo = _capturedInfo;
 
                 Dispose(); // Dispose after invoke.
-#if NET_LEGACY
-                // Old runtime does not support ExceptionDispatchInfo, so we have to wrap the exception to preserve its stacktrace.
-                if (capturedInfo.SourceException != null)
-                {
-                    throw new Exception("An exception was thrown from the invoked delegate.", capturedInfo.SourceException);
-                }
-#else
-                if (capturedInfo != null)
-                {
-                    capturedInfo.Throw();
-                }
-#endif
+                capturedInfo?.Throw();
             }
 
             private void Dispose()
             {
-                _callback = default(PostCallback);
-                _capturedInfo = default(ExceptionDispatchInfo);
+                _callback = default;
+                _capturedInfo = default;
                 Internal.ObjectPool.MaybeRepool(this);
             }
         }
@@ -150,7 +135,7 @@ namespace Proto.Promises.Threading
         {
             if (runThread == null)
             {
-                throw new ArgumentNullException("runThread", "runThread may not be null", Internal.GetFormattedStacktrace(1));
+                throw new ArgumentNullException(nameof(runThread), "runThread may not be null", Internal.GetFormattedStacktrace(1));
             }
             _thread = runThread;
             // Start with a modest initial capacity. This will grow in Post() if necessary.
@@ -162,10 +147,7 @@ namespace Proto.Promises.Threading
         /// Create copy.
         /// </summary>
         /// <returns>this</returns>
-        public override SynchronizationContext CreateCopy()
-        {
-            return this;
-        }
+        public override SynchronizationContext CreateCopy() => this;
 
         /// <summary>
         /// Schedule the delegate to execute on this context with the given state asynchronously, without waiting for it to complete.
@@ -174,7 +156,7 @@ namespace Proto.Promises.Threading
         {
             if (d == null)
             {
-                throw new System.ArgumentNullException("d", "SendOrPostCallback may not be null.");
+                throw new System.ArgumentNullException(nameof(d), "SendOrPostCallback may not be null.");
             }
 
             _syncLocker.Enter();
@@ -195,7 +177,7 @@ namespace Proto.Promises.Threading
         {
             if (d == null)
             {
-                throw new System.ArgumentNullException("d", "SendOrPostCallback may not be null.");
+                throw new System.ArgumentNullException(nameof(d), "SendOrPostCallback may not be null.");
             }
 
             if (Thread.CurrentThread == _thread)
@@ -256,7 +238,7 @@ namespace Proto.Promises.Threading
                         try
                         {
                             postQueue[i].Invoke();
-                            postQueue[i] = default(PostCallback);
+                            postQueue[i] = default;
                         }
                         catch (Exception e)
                         {

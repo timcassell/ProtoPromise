@@ -14,7 +14,6 @@ using System.Linq;
 
 namespace Proto.Promises.Linq
 {
-#if CSHARP_7_3_OR_NEWER
     /// <summary>
     /// A temporary collection of objects that have a common key.
     /// </summary>
@@ -1255,5 +1254,4 @@ namespace Proto.Promises.Linq
         }
         #endregion ConfiguredAsyncEnumerable
     }
-#endif // CSHARP_7_3_OR_NEWER
-    }
+}

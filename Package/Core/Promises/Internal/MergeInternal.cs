@@ -1,25 +1,16 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
-
-#pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
+
+#pragma warning disable IDE0074 // Use compound assignment
 
 namespace Proto.Promises
 {
@@ -40,160 +31,319 @@ namespace Proto.Promises
 
         internal readonly unsafe struct GetResultContainerDelegate<TResult>
         {
-            private readonly delegate*<PromiseRefBase, object, Promise.State, int, ref TResult, void> _ptr;
+            private readonly delegate*<PromiseRefBase, IRejectContainer, Promise.State, int, ref TResult, void> _ptr;
 
             [MethodImpl(InlineOption)]
-            internal GetResultContainerDelegate(delegate*<PromiseRefBase, object, Promise.State, int, ref TResult, void> ptr) => _ptr = ptr;
+            internal GetResultContainerDelegate(delegate*<PromiseRefBase, IRejectContainer, Promise.State, int, ref TResult, void> ptr) => _ptr = ptr;
 
             [MethodImpl(InlineOption)]
-            internal void Invoke(PromiseRefBase handler, object rejectContainer, Promise.State state, int index, ref TResult result) => _ptr(handler, rejectContainer, state, index, ref result);
+            internal void Invoke(PromiseRefBase handler, IRejectContainer rejectContainer, Promise.State state, int index, ref TResult result) => _ptr(handler, rejectContainer, state, index, ref result);
         }
 #else
         internal delegate void GetResultDelegate<TResult>(PromiseRefBase handler, int index, ref TResult result);
 
-        internal delegate void GetResultContainerDelegate<TResult>(PromiseRefBase handler, object rejectContainer, Promise.State state, int index, ref TResult result);
+        internal delegate void GetResultContainerDelegate<TResult>(PromiseRefBase handler, IRejectContainer rejectContainer, Promise.State state, int index, ref TResult result);
 #endif
+
+        [MethodImpl(InlineOption)]
+        internal static void PrepareForMerge<TResult>(Promise promise, in TResult result, ref uint pendingCount,
+            ref PromiseRefBase.MergePromise<TResult> mergePromise, GetResultDelegate<TResult> getResultDelegate)
+        {
+            if (promise._ref != null)
+            {
+                checked { ++pendingCount; }
+                if (mergePromise == null)
+                {
+                    mergePromise = PromiseRefBase.GetOrCreateMergePromise(result, getResultDelegate);
+                }
+                mergePromise.AddWaiter(promise._ref, promise._id);
+            }
+        }
+
+        [MethodImpl(InlineOption)]
+        internal static void PrepareForMerge<T, TResult>(Promise<T> promise, ref T value, in TResult result, ref uint pendingCount, int index,
+            ref PromiseRefBase.MergePromise<TResult> mergePromise, GetResultDelegate<TResult> getResultDelegate)
+        {
+            if (promise._ref == null)
+            {
+                value = promise._result;
+            }
+            else
+            {
+                checked { ++pendingCount; }
+                if (mergePromise == null)
+                {
+                    mergePromise = PromiseRefBase.GetOrCreateMergePromise(result, getResultDelegate);
+                }
+                mergePromise.AddWaiterWithIndex(promise._ref, promise._id, index);
+            }
+        }
+
+        [MethodImpl(InlineOption)]
+        internal static void PrepareForMergeSettled<TResult>(Promise promise, in TResult result, ref uint pendingCount, int index,
+            ref PromiseRefBase.MergeSettledPromise<TResult> mergePromise, GetResultContainerDelegate<TResult> getResultDelegate)
+        {
+            if (promise._ref != null)
+            {
+                checked { ++pendingCount; }
+                if (mergePromise == null)
+                {
+                    mergePromise = PromiseRefBase.GetOrCreateMergeSettledPromise(result, getResultDelegate);
+                }
+                mergePromise.AddWaiterWithIndex(promise._ref, promise._id, index);
+            }
+        }
+
+        [MethodImpl(InlineOption)]
+        internal static void PrepareForMergeSettled<T, TResult>(Promise<T> promise, ref Promise<T>.ResultContainer value, in TResult result, ref uint pendingCount, int index,
+            ref PromiseRefBase.MergeSettledPromise<TResult> mergePromise, GetResultContainerDelegate<TResult> getResultDelegate)
+        {
+            if (promise._ref == null)
+            {
+                value = promise._result;
+            }
+            else
+            {
+                checked { ++pendingCount; }
+                if (mergePromise == null)
+                {
+                    mergePromise = PromiseRefBase.GetOrCreateMergeSettledPromise(result, getResultDelegate);
+                }
+                mergePromise.AddWaiterWithIndex(promise._ref, promise._id, index);
+            }
+        }
 
         partial class PromiseRefBase
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal abstract partial class MultiHandleablePromiseBase<TResult> : PromiseSingleAwait<TResult>
+            internal sealed partial class PromisePassThroughForAll : PromisePassThrough, ILinked<PromisePassThroughForAll>
             {
-                partial void AddPending(PromiseRefBase pendingPromise);
-                partial void ClearPending();
+                PromisePassThroughForAll ILinked<PromisePassThroughForAll>.Next
+                {
+                    get => _next.UnsafeAs<PromisePassThroughForAll>();
+                    set => _next = value;
+                }
 
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
+                internal PromiseRefBase Owner
+                {
+                    [MethodImpl(InlineOption)]
+                    get => _owner;
+                }
 
-                // When each promise is completed, we decrement the wait count until it reaches zero before we handle the next waiter.
-                // If a promise completes with a state that should complete this promise before all the other promises were complete,
-                // we instead swap the count to 0 so that it will be marked complete early, and future completions will decrement into negative and never read 0 again.
-                // (Merge reject/cancel, or First resolve, Race always tries to set complete).
+                private PromisePassThroughForAll() { }
+
                 [MethodImpl(InlineOption)]
-                protected bool TrySetComplete()
+                private static PromisePassThroughForAll GetOrCreate()
                 {
-                    return InterlockedExchange(ref _waitCount, 0) > 0;
+                    var obj = ObjectPool.TryTakeOrInvalid<PromisePassThroughForAll>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new PromisePassThroughForAll()
+                        : obj.UnsafeAs<PromisePassThroughForAll>();
                 }
 
                 [MethodImpl(InlineOption)]
-                protected bool RemoveWaiterAndGetIsComplete()
+                internal static PromisePassThroughForAll GetOrCreate(PromiseRefBase owner, short id, int index)
                 {
-                    // No overflow check as we expect the count to be able to go negative.
-                    return Interlocked.Add(ref _waitCount, -1) == 0;
-                }
-
-                protected void Setup(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
-                {
-                    _waitCount = pendingAwaits;
-                    _retainCounter = pendingAwaits;
-                    Reset(depth);
-
-                    _passThroughs = promisePassThroughs;
-                    foreach (var passThrough in promisePassThroughs)
-                    {
-                        AddPending(passThrough.Owner);
-                        passThrough.SetTargetAndAddToOwner(this);
-                    }
-                }
-
-                new protected void Dispose()
-                {
-                    base.Dispose();
-                    while (_passThroughs.IsNotEmpty)
-                    {
-                        _passThroughs.Pop().Dispose();
-                    }
-                    ClearPending();
-                }
-            }
-
-            internal abstract partial class MergePromise<TResult> : MultiHandleablePromiseBase<TResult>
-            {
-                internal void Setup(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ulong completedProgress, ushort depth)
-                {
-#if PROMISE_PROGRESS
-                    _completeProgress = completedProgress;
+                    var passThrough = GetOrCreate();
+                    passThrough._next = null;
+                    passThrough._index = index;
+                    passThrough._owner = owner;
+                    passThrough._id = id;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    passThrough._disposed = false;
 #endif
-                    Setup(promisePassThroughs, pendingAwaits, depth);
+                    return passThrough;
                 }
-            }
 
-            internal static MergePromise<VoidResult> GetOrCreateAllPromiseVoid(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ulong completedProgress, ushort depth)
-            {
-                var promise = MergePromiseVoid.GetOrCreate();
-                promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
-                return promise;
+                internal void Hookup(PromiseRefBase target)
+                {
+                    ThrowIfInPool(this);
+                    _next = target;
+                    _owner.HookupNewWaiter(_id, this);
+                }
+
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                {
+                    var target = _next;
+                    var index = _index;
+                    Dispose();
+                    target.Handle(handler, state, index);
+                }
+
+                private void Dispose()
+                {
+                    ThrowIfInPool(this);
+                    _owner = null;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    _disposed = true;
+#endif
+                    ObjectPool.MaybeRepool(this);
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed class MergePromiseVoid : MergePromise<VoidResult>
+            internal abstract partial class MultiHandleablePromiseBase<TResult> : PromiseSingleAwait<TResult>
             {
+                partial void AddPending(PromiseRefBase pendingPromise);
+                partial void RemoveComplete(PromiseRefBase completePromise);
+
+                internal override void Handle(PromiseRefBase handler, Promise.State state) { throw new System.InvalidOperationException(); }
+
                 [MethodImpl(InlineOption)]
-                internal static MergePromiseVoid GetOrCreate()
+                new protected void Reset()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<MergePromiseVoid>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new MergePromiseVoid()
-                        : obj.UnsafeAs<MergePromiseVoid>();
+                    _isComplete = 0; // false
+                    _retainCounter = 1; // Start with 1 so this won't be disposed while promises are still being hooked up.
+                    base.Reset();
                 }
 
-                internal override void MaybeDispose()
+                [MethodImpl(InlineOption)]
+                protected bool TrySetComplete(PromiseRefBase completePromise)
                 {
-                    if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0)
-                    {
-                        Dispose();
-                        ObjectPool.MaybeRepool(this);
-                    }
+                    RemoveComplete(completePromise);
+                    return Interlocked.Exchange(ref _isComplete, 1) == 0;
                 }
 
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
+                [MethodImpl(InlineOption)]
+                protected bool RemoveWaiterAndGetIsComplete(PromiseRefBase completePromise, ref int waitCount)
                 {
-                    bool isComplete = state == Promise.State.Resolved
-                        ? RemoveWaiterAndGetIsComplete()
-                        : TrySetComplete();
-                    if (isComplete)
+                    if (InterlockedAddWithUnsignedOverflowCheck(ref waitCount, -1) == 0)
                     {
-                        handler.SuppressRejection = true;
-                        handler.MaybeDispose();
-                        HandleNextInternal(rejectContainer, state);
-                        return;
+                        return TrySetComplete(completePromise);
                     }
-                    handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
-                    MaybeDispose();
+                    RemoveComplete(completePromise);
+                    return false;
+                }
+
+                [MethodImpl(InlineOption)]
+                protected void AddWaiterForAll(PromisePassThroughForAll passthrough)
+                {
+                    AddPending(passthrough.Owner);
+                    passthrough.Hookup(this);
+                }
+
+                internal void AddWaiterWithIndex(PromiseRefBase promise, short id, int index)
+                {
+                    InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, 1);
+                    AddPending(promise);
+                    var passthrough = PromisePassThrough.GetOrCreate(promise, this, index);
+                    promise.HookupNewWaiter(id, passthrough);
+                }
+
+                internal void AddWaiter(PromiseRefBase promise, short id)
+                {
+                    InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, 1);
+                    AddPending(promise);
+                    promise.HookupNewWaiter(id, this);
+                }
+
+                protected void MarkReady(uint totalWaiters, ref int waitCount, Promise.State stateIfComplete)
+                {
+                    // This method is called after all promises have been hooked up to this,
+                    // so that we only need to do this Interlocked loop once, instead of for each promise.
+                    // _waitCount is set to -1 when this is created, so we need to subtract how many promises have already completed.
+                    // Promises can complete concurrently on other threads, which is why we need to do this with an Interlocked loop.
+                    unchecked
+                    {
+                        int previousWaitCount = Volatile.Read(ref waitCount);
+                        while (true)
+                        {
+                            uint completedCount = uint.MaxValue - (uint) previousWaitCount;
+                            uint newWaitCount = totalWaiters - completedCount;
+                            if (newWaitCount == 0)
+                            {
+                                // All promises already completed.
+                                if (_isComplete == 0)
+                                {
+                                    _next = PromiseCompletionSentinel.s_instance;
+                                    SetCompletionState(_rejectContainer == null ? stateIfComplete : Promise.State.Rejected);
+                                }
+                                break;
+                            }
+                            int oldCount = Interlocked.CompareExchange(ref waitCount, (int) newWaitCount, previousWaitCount);
+                            if (oldCount == previousWaitCount)
+                            {
+                                break;
+                            }
+                            previousWaitCount = oldCount;
+                        }
+                    }
                 }
             }
 
-            internal sealed class MergePromiseT<TResult> : MergePromise<TResult>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal abstract partial class MergePromiseBase<TResult> : MultiHandleablePromiseBase<TResult>
+            {
+                [MethodImpl(InlineOption)]
+                new protected void Reset()
+                {
+                    _waitCount = -1; // uint.MaxValue
+                    base.Reset();
+                }
+
+                [MethodImpl(InlineOption)]
+                protected bool RemoveWaiterAndGetIsComplete(PromiseRefBase completePromise)
+                    => RemoveWaiterAndGetIsComplete(completePromise, ref _waitCount);
+
+                [MethodImpl(InlineOption)]
+                internal void MarkReady(uint totalWaiters)
+                    => MarkReady(totalWaiters, ref _waitCount, Promise.State.Resolved);
+            }
+
+            internal sealed partial class MergePromise<TResult> : MergePromiseBase<TResult>
             {
                 private static GetResultDelegate<TResult> s_getResult;
 
                 [MethodImpl(InlineOption)]
-                private static MergePromiseT<TResult> GetOrCreate()
+                private static MergePromise<TResult> GetOrCreate()
                 {
-                    // We take the base type instead of the concrete type because the base type re-pools with its type.
-                    var obj = ObjectPool.TryTakeOrInvalid<MergePromiseT<TResult>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<MergePromise<TResult>>();
                     return obj == InvalidAwaitSentinel.s_instance
-                        ? new MergePromiseT<TResult>()
-                        : obj.UnsafeAs<MergePromiseT<TResult>>();
+                        ? new MergePromise<TResult>()
+                        : obj.UnsafeAs<MergePromise<TResult>>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static MergePromiseT<TResult> GetOrCreate(
-                    ValueLinkedStack<PromisePassThrough> promisePassThroughs,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TResult value,
-                    int pendingAwaits, ulong completedProgress, ushort depth,
-                    GetResultDelegate<TResult> getResultFunc)
+                internal static MergePromise<TResult> GetOrCreate(in TResult value, GetResultDelegate<TResult> getResultFunc)
                 {
                     s_getResult = getResultFunc;
                     var promise = GetOrCreate();
+                    promise.Reset();
                     promise._result = value;
-                    promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
+                    return promise;
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static MergePromise<TResult> GetOrCreateVoid()
+                {
+                    var promise = GetOrCreate();
+                    promise.Reset();
+                    return promise;
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static MergePromise<TResult> GetOrCreateAll(
+                    TResult value,
+                    GetResultDelegate<TResult> getResultFunc,
+                    ValueLinkedStack<PromisePassThroughForAll> passthroughs,
+                    int waitCount)
+                {
+                    s_getResult = getResultFunc;
+                    var promise = GetOrCreate();
+                    promise.Reset();
+                    promise._result = value;
+                    promise._waitCount = waitCount;
+                    unchecked { promise._retainCounter = waitCount + 1; }
+                    do
+                    {
+                        promise.AddWaiterForAll(passthroughs.Pop());
+                    } while (passthroughs.IsNotEmpty);
                     return promise;
                 }
 
@@ -206,51 +356,76 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override sealed void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
+                internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
+                    handler.SetCompletionState(state);
                     bool isComplete;
                     if (state == Promise.State.Resolved)
                     {
                         s_getResult.Invoke(handler, index, ref _result);
-                        isComplete = RemoveWaiterAndGetIsComplete();
+                        isComplete = RemoveWaiterAndGetIsComplete(handler);
                     }
                     else
                     {
-                        isComplete = TrySetComplete();
+                        isComplete = TrySetComplete(handler);
                     }
                     if (isComplete)
                     {
+                        _rejectContainer = handler._rejectContainer;
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
-                        HandleNextInternal(rejectContainer, state);
+                        InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1);
+                        HandleNextInternal(state);
                         return;
                     }
-                    handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
+                    handler.MaybeReportUnhandledAndDispose(state);
+                    MaybeDispose();
+                }
+
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                {
+                    // This is called from void promises. They don't need to update any value, so they have no index.
+                    handler.SetCompletionState(state);
+                    bool isComplete = state == Promise.State.Resolved
+                        ? RemoveWaiterAndGetIsComplete(handler)
+                        : TrySetComplete(handler);
+                    if (isComplete)
+                    {
+                        _rejectContainer = handler._rejectContainer;
+                        handler.SuppressRejection = true;
+                        handler.MaybeDispose();
+                        InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1);
+                        HandleNextInternal(state);
+                        return;
+                    }
+                    handler.MaybeReportUnhandledAndDispose(state);
                     MaybeDispose();
                 }
             }
 
             [MethodImpl(InlineOption)]
-            internal static MergePromise<TResult> GetOrCreateMergePromise<TResult>(
-                ValueLinkedStack<PromisePassThrough> promisePassThroughs,
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                TResult value,
-                int pendingAwaits, ulong completedProgress, ushort depth,
-                GetResultDelegate<TResult> getResultFunc)
-            {
-                return MergePromiseT<TResult>.GetOrCreate(promisePassThroughs, value, pendingAwaits, completedProgress, depth, getResultFunc);
-            }
+            internal static MergePromise<VoidResult> GetOrCreateAllPromiseVoid()
+                => MergePromise<VoidResult>.GetOrCreateVoid();
 
-            internal sealed partial class MergeSettledPromise<TResult> : MergePromise<TResult>
+            [MethodImpl(InlineOption)]
+            internal static MergePromise<TResult> GetOrCreateMergePromise<TResult>(in TResult value, GetResultDelegate<TResult> getResultFunc)
+                => MergePromise<TResult>.GetOrCreate(value, getResultFunc);
+
+            [MethodImpl(InlineOption)]
+            internal static MergePromise<IList<TResult>> GetOrCreateAllPromise<TResult>(
+                IList<TResult> value,
+                GetResultDelegate<IList<TResult>> getResultFunc,
+                ValueLinkedStack<PromisePassThroughForAll> passthroughs,
+                uint waitCount)
+                => MergePromise<IList<TResult>>.GetOrCreateAll(value, getResultFunc, passthroughs, unchecked((int) waitCount));
+
+            internal sealed partial class MergeSettledPromise<TResult> : MergePromiseBase<TResult>
             {
                 private static GetResultContainerDelegate<TResult> s_getResult;
 
                 [MethodImpl(InlineOption)]
                 private static MergeSettledPromise<TResult> GetOrCreate()
                 {
-                    // We take the base type instead of the concrete type because the base type re-pools with its type.
                     var obj = ObjectPool.TryTakeOrInvalid<MergeSettledPromise<TResult>>();
                     return obj == InvalidAwaitSentinel.s_instance
                         ? new MergeSettledPromise<TResult>()
@@ -258,19 +433,32 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static MergeSettledPromise<TResult> GetOrCreate(
-                    ValueLinkedStack<PromisePassThrough> promisePassThroughs,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TResult value,
-                    int pendingAwaits, ulong completedProgress, ushort depth,
-                    GetResultContainerDelegate<TResult> getResultFunc)
+                internal static MergeSettledPromise<TResult> GetOrCreate(in TResult value, GetResultContainerDelegate<TResult> getResultFunc)
                 {
                     s_getResult = getResultFunc;
                     var promise = GetOrCreate();
+                    promise.Reset();
                     promise._result = value;
-                    promise.Setup(promisePassThroughs, pendingAwaits, completedProgress, depth);
+                    return promise;
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static MergeSettledPromise<TResult> GetOrCreateAll(
+                    TResult value,
+                    GetResultContainerDelegate<TResult> getResultFunc,
+                    ValueLinkedStack<PromisePassThroughForAll> passthroughs,
+                    int waitCount)
+                {
+                    s_getResult = getResultFunc;
+                    var promise = GetOrCreate();
+                    promise.Reset();
+                    promise._result = value;
+                    promise._waitCount = waitCount;
+                    unchecked { promise._retainCounter = waitCount + 1; }
+                    do
+                    {
+                        promise.AddWaiterForAll(passthroughs.Pop());
+                    } while (passthroughs.IsNotEmpty);
                     return promise;
                 }
 
@@ -283,14 +471,17 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override sealed void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
+                internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
-                    s_getResult.Invoke(handler, rejectContainer, state, index, ref _result);
+                    handler.SetCompletionState(state);
+                    _rejectContainer = handler._rejectContainer;
+                    s_getResult.Invoke(handler, _rejectContainer, state, index, ref _result);
                     handler.SuppressRejection = true;
                     handler.MaybeDispose();
-                    if (RemoveWaiterAndGetIsComplete())
+                    if (RemoveWaiterAndGetIsComplete(handler))
                     {
-                        HandleNextInternal(null, Promise.State.Resolved);
+                        InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1);
+                        HandleNextInternal(Promise.State.Resolved);
                         return;
                     }
                     MaybeDispose();
@@ -298,17 +489,16 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static MergeSettledPromise<TResult> GetOrCreateMergeSettledPromise<TResult>(
-                ValueLinkedStack<PromisePassThrough> promisePassThroughs,
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                TResult value,
-                int pendingAwaits, ulong completedProgress, ushort depth,
-                GetResultContainerDelegate<TResult> getResultFunc)
-            {
-                return MergeSettledPromise<TResult>.GetOrCreate(promisePassThroughs, value, pendingAwaits, completedProgress, depth, getResultFunc);
-            }
+            internal static MergeSettledPromise<TResult> GetOrCreateMergeSettledPromise<TResult>(in TResult value, GetResultContainerDelegate<TResult> getResultFunc)
+                => MergeSettledPromise<TResult>.GetOrCreate(value, getResultFunc);
+
+            [MethodImpl(InlineOption)]
+            internal static MergeSettledPromise<IList<TResultContainer>> GetOrCreateAllSettledPromise<TResultContainer>(
+                IList<TResultContainer> value,
+                GetResultContainerDelegate<IList<TResultContainer>> getResultFunc,
+                ValueLinkedStack<PromisePassThroughForAll> passthroughs,
+                uint waitCount)
+                => MergeSettledPromise<IList<TResultContainer>>.GetOrCreateAll(value, getResultFunc, passthroughs, unchecked((int) waitCount));
         } // class PromiseRefBase
     } // class Internal
 }

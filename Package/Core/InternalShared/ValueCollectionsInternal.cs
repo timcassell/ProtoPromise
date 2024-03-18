@@ -1,15 +1,11 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
+#pragma warning disable IDE0090 // Use 'new(...)'
+#pragma warning disable IDE0251 // Make member 'readonly'
 
 using System;
 using System.Collections;
@@ -112,61 +108,14 @@ namespace Proto.Promises
 #endif
         }
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal struct Enumerator<T> : IEnumerator<T> where T : class, ILinked<T>
-        {
-            private T _current;
-
-            [MethodImpl(InlineOption)]
-            internal Enumerator(T first)
-            {
-                _current = first;
-            }
-
-            /// <summary>
-            /// Doesn't actually move next, just returns if Current is valid.
-            /// This allows the function to be branch-less. Useful for foreach loops.
-            /// </summary>
-            [MethodImpl(InlineOption)]
-            public bool MoveNext()
-            {
-                return _current != null;
-            }
-
-            /// <summary>
-            /// Actually moves next and returns current.
-            /// </summary>
-            public T Current
-            {
-                [MethodImpl(InlineOption)]
-                get
-                {
-                    T temp = _current;
-                    _current = _current.Next;
-                    return temp;
-                }
-            }
-
-            object IEnumerator.Current
-            {
-                get { return Current; }
-            }
-
-            void IEnumerator.Reset() { }
-
-            void IDisposable.Dispose() { }
-        }
-
         /// <summary>
         /// This structure is unsuitable for general purpose.
         /// </summary>
 #if PROTO_PROMISE_DEVELOPER_MODE
-        internal partial class ValueLinkedStack<T> : IEnumerable<T> where T : class, ILinked<T>
+        internal partial class ValueLinkedStack<T> where T : class, ILinked<T>
 #else
         [DebuggerNonUserCode, StackTraceHidden]
-        internal struct ValueLinkedStack<T> : IEnumerable<T> where T : class, ILinked<T>
+        internal struct ValueLinkedStack<T> where T : class, ILinked<T>
 #endif
         {
             private T _head;
@@ -174,12 +123,12 @@ namespace Proto.Promises
             internal bool IsEmpty
             {
                 [MethodImpl(InlineOption)]
-                get { return _head == null; }
+                get => _head == null;
             }
             internal bool IsNotEmpty
             {
                 [MethodImpl(InlineOption)]
-                get { return _head != null; }
+                get => _head != null;
             }
 
             [MethodImpl(InlineOption)]
@@ -212,69 +161,6 @@ namespace Proto.Promises
                 _head = _head.Next;
                 MarkRemovedFromCollection(temp);
                 return temp;
-            }
-
-            [MethodImpl(InlineOption)]
-            public Enumerator<T> GetEnumerator()
-            {
-                return new Enumerator<T>(_head);
-            }
-
-            IEnumerator<T> IEnumerable<T>.GetEnumerator()
-            {
-                return GetEnumerator();
-            }
-
-            IEnumerator IEnumerable.GetEnumerator()
-            {
-                return GetEnumerator();
-            }
-        }
-
-        /// <summary>
-        /// Use instead of Monitor.Enter(object).
-        /// Must not be readonly.
-        /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal struct SpinLocker
-        {
-            volatile private int _locker;
-
-            internal void Enter()
-            {
-                Thread.MemoryBarrier();
-#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. So use CompareExchange instead
-                if (Interlocked.CompareExchange(ref _locker, 1, 0) == 1)
-#else
-                if (Interlocked.Exchange(ref _locker, 1) == 1)
-#endif
-                {
-                    EnterCore();
-                }
-            }
-
-            [MethodImpl(MethodImplOptions.NoInlining)]
-            private void EnterCore()
-            {
-                // Spin until we successfully get lock.
-                var spinner = new SpinWait();
-                do
-                {
-                    spinner.SpinOnce();
-                }
-#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. So use CompareExchange instead
-                while (Interlocked.CompareExchange(ref _locker, 1, 0) == 1);
-#else
-                while (Interlocked.Exchange(ref _locker, 1) == 1);
-#endif
-            }
-
-            [MethodImpl(InlineOption)]
-            internal void Exit()
-            {
-                _locker = 0; // Release lock.
             }
         }
 
@@ -339,10 +225,10 @@ namespace Proto.Promises
         /// This structure is unsuitable for general purpose.
         /// </summary>
 #if PROTO_PROMISE_DEVELOPER_MODE
-        internal partial class ValueLinkedQueue<T> : IEnumerable<T> where T : class, ILinked<T>
+        internal partial class ValueLinkedQueue<T> where T : class, ILinked<T>
 #else
         [DebuggerNonUserCode, StackTraceHidden]
-        internal struct ValueLinkedQueue<T> : IEnumerable<T> where T : class, ILinked<T>
+        internal struct ValueLinkedQueue<T> where T : class, ILinked<T>
 #endif
         {
             private T _head;
@@ -351,13 +237,36 @@ namespace Proto.Promises
             internal bool IsEmpty
             {
                 [MethodImpl(InlineOption)]
-                get { return _head == null; }
+                get => _head == null;
             }
 
             internal bool IsNotEmpty
             {
                 [MethodImpl(InlineOption)]
-                get { return _head != null; }
+                get => _head != null;
+            }
+
+            [MethodImpl(InlineOption)]
+            internal ValueLinkedQueue(T head)
+            {
+                _head = head;
+                _tail = head;
+            }
+
+            // Only use if this is known to be not empty.
+            internal void EnqueueUnsafe(T item)
+            {
+                AssertNotInCollection(item);
+
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                if (_head == null)
+                {
+                    throw new System.InvalidOperationException("EnqueueUnsafe must only be used on a non-empty queue.");
+                }
+#endif
+
+                _tail.Next = item;
+                _tail = item;
             }
 
             internal void Enqueue(T item)
@@ -492,22 +401,6 @@ namespace Proto.Promises
                 other._tail = null;
             }
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-
-            [MethodImpl(InlineOption)]
-            public Enumerator<T> GetEnumerator()
-            {
-                return new Enumerator<T>(_head);
-            }
-
-            IEnumerator<T> IEnumerable<T>.GetEnumerator()
-            {
-                return GetEnumerator();
-            }
-
-            IEnumerator IEnumerable.GetEnumerator()
-            {
-                return GetEnumerator();
-            }
         }
 
         /// <summary>
@@ -526,15 +419,15 @@ namespace Proto.Promises
             internal int Count
             {
                 [MethodImpl(InlineOption)]
-                get { return _count; }
+                get => _count;
             }
 
             internal T this[int index]
             {
                 [MethodImpl(InlineOption)]
-                get { return _storage[index]; }
+                get => _storage[index];
                 [MethodImpl(InlineOption)]
-                set { _storage[index] = value; }
+                set => _storage[index] = value;
             }
 
             [MethodImpl(InlineOption)]

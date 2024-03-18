@@ -1,21 +1,12 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0018 // Inline variable declaration
-#pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable IDE0044 // Add readonly modifier
 #pragma warning disable IDE0090 // Use 'new(...)'
-#pragma warning disable IDE0074 // Use compound assignment
-#pragma warning disable IDE0250 // Make struct 'readonly'
+#pragma warning disable IDE0251 // Make member 'readonly'
 #pragma warning disable IDE0270 // Use coalesce expression
-#pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
 
 using System;
 using System.Collections.Generic;
@@ -31,7 +22,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal struct CancelDelegateTokenVoid : ICancelable
+        internal readonly struct CancelDelegateTokenVoid : ICancelable
         {
             private readonly Action _callback;
 
@@ -43,25 +34,19 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             public void Cancel()
-            {
-                _callback.Invoke();
-            }
+                => _callback.Invoke();
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal struct CancelDelegateToken<TCapture> : ICancelable
+        internal readonly struct CancelDelegateToken<TCapture> : ICancelable
         {
             private readonly TCapture _capturedValue;
             private readonly Action<TCapture> _callback;
 
             [MethodImpl(InlineOption)]
-            internal CancelDelegateToken(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                TCapture capturedValue, Action<TCapture> callback)
+            internal CancelDelegateToken(in TCapture capturedValue, Action<TCapture> callback)
             {
                 _capturedValue = capturedValue;
                 _callback = callback;
@@ -69,9 +54,7 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             public void Cancel()
-            {
-                _callback.Invoke(_capturedValue);
-            }
+                => _callback.Invoke(_capturedValue);
         }
 
         internal abstract class CancelationLinkedListNode : HandleablePromiseBase
@@ -81,7 +64,7 @@ namespace Proto.Promises
             // This uses the least amount of memory while also avoiding null checks when adding and removing nodes.
             internal CancelationLinkedListNode _previous;
 
-            internal virtual void Dispose() { throw new System.InvalidOperationException(); }
+            internal virtual void Dispose() => throw new System.InvalidOperationException();
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -114,25 +97,17 @@ namespace Proto.Promises
 
             ~CancelationRef()
             {
-                try
+                if (_userRetainCounter > 0)
                 {
-                    if (_userRetainCounter > 0)
-                    {
-                        // CancelationToken wasn't released.
-                        string message = "A CancelationToken's resources were garbage collected without being released. You must release all IRetainable objects that you have retained.";
-                        ReportRejection(new UnreleasedObjectException(message), this);
-                    }
-                    // We don't check the disposed state if this was linked to a System.Threading.CancellationToken.
-                    if (!_linkedToBclToken & _state != State.Disposed)
-                    {
-                        // CancelationSource wasn't disposed.
-                        ReportRejection(new UnreleasedObjectException("CancelationSource's resources were garbage collected without being disposed."), this);
-                    }
+                    // CancelationToken wasn't released.
+                    string message = "A CancelationToken's resources were garbage collected without being released. You must release all IRetainable objects that you have retained.";
+                    ReportRejection(new UnreleasedObjectException(message), this);
                 }
-                catch (Exception e)
+                // We don't check the disposed state if this was linked to a System.Threading.CancellationToken.
+                if (!_linkedToBclToken & _state != State.Disposed)
                 {
-                    // This should never happen.
-                    ReportRejection(e, this);
+                    // CancelationSource wasn't disposed.
+                    ReportRejection(new UnreleasedObjectException("CancelationSource's resources were garbage collected without being disposed."), this);
                 }
             }
 
@@ -165,9 +140,7 @@ namespace Proto.Promises
                 }
 
                 internal static SmallFields Create()
-                {
-                    return new SmallFields(Interlocked.Increment(ref s_idCounter));
-                }
+                    => new SmallFields(Interlocked.Increment(ref s_idCounter));
             }
 
 #if NET6_0_OR_GREATER
@@ -180,23 +153,31 @@ namespace Proto.Promises
             private ValueLinkedStack<LinkedCancelationNode> _links = new ValueLinkedStack<LinkedCancelationNode>();
             internal SmallFields _smallFields = SmallFields.Create();
             // Start with Id 1 instead of 0 to reduce risk of false positives.
-            volatile private int _sourceId = 1;
-            volatile private int _tokenId = 1;
+            private int _sourceId = 1;
+            private int _tokenId = 1;
             private uint _userRetainCounter;
             private readonly byte _userRetainIncrementor; // 0 for s_canceledSentinel, 1 for all others.
             private byte _internalRetainCounter;
             internal bool _linkedToBclToken;
+            // There is no Volatile.Read API for enums, so we have to make the field volatile.
             volatile internal State _state;
 
             internal int SourceId
             {
                 [MethodImpl(InlineOption)]
-                get { return _sourceId; }
+                get => _sourceId;
             }
+
             internal int TokenId
             {
                 [MethodImpl(InlineOption)]
-                get { return _tokenId; }
+                get => _tokenId;
+            }
+
+            internal int VolatileTokenId
+            {
+                [MethodImpl(InlineOption)]
+                get => Volatile.Read(ref _tokenId);
             }
 
             [MethodImpl(InlineOption)]
@@ -235,38 +216,33 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             internal static bool IsValidSource(CancelationRef _this, int sourceId)
-            {
-                return _this != null && _this.SourceId == sourceId;
-            }
+                => _this != null && Volatile.Read(ref _this._sourceId) == sourceId;
 
             [MethodImpl(InlineOption)]
             internal static bool IsSourceCanceled(CancelationRef _this, int sourceId)
-            {
-                return _this != null && _this.IsSourceCanceled(sourceId);
-            }
+                => _this != null && _this.IsSourceCanceled(sourceId);
 
             [MethodImpl(InlineOption)]
             private bool IsSourceCanceled(int sourceId)
-            {
-                return sourceId == SourceId & _state >= State.Canceled;
-            }
+                // Volatile read the state before the id.
+                => _state >= State.Canceled & sourceId == SourceId;
 
             [MethodImpl(InlineOption)]
             internal static bool CanTokenBeCanceled(CancelationRef _this, int tokenId)
-            {
-                return _this != null && (_this.TokenId == tokenId & _this._state != State.Disposed);
-            }
+                => _this != null
+                    // Volatile read the state before the id.
+                    && (_this._state != State.Disposed & _this.TokenId == tokenId);
 
             [MethodImpl(InlineOption)]
             internal static bool IsTokenCanceled(CancelationRef _this, int tokenId)
-            {
-                return _this != null && _this.IsTokenCanceled(tokenId);
-            }
+                => _this != null && _this.IsTokenCanceled(tokenId);
 
             [MethodImpl(InlineOption)]
             private bool IsTokenCanceled(int tokenId)
             {
-                return tokenId == TokenId & (_state >= State.Canceled
+                // Volatile read the state before everything else.
+                var state = _state;
+                return tokenId == TokenId & (state >= State.Canceled
                     // TODO: Unity hasn't adopted .Net 6+ yet, and they usually use different compilation symbols than .Net SDK, so we'll have to update the compilation symbols here once Unity finally does adopt it.
 #if NET6_0_OR_GREATER
                     // This is only necessary in .Net 6 or later, since `CancellationTokenSource.TryReset()` was added.
@@ -299,30 +275,48 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static bool TryRegister<TCancelable>(CancelationRef _this, int tokenId,
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                TCancelable cancelable, out CancelationRegistration registration) where TCancelable : ICancelable
+            internal static bool TryRegister<TCancelable>(CancelationRef _this, int tokenId, in TCancelable cancelable, out CancelationRegistration registration)
+                where TCancelable : ICancelable
             {
                 if (_this == null)
                 {
-                    registration = default(CancelationRegistration);
+                    registration = default;
                     return false;
                 }
                 return _this.TryRegister(cancelable, tokenId, out registration);
             }
 
             [MethodImpl(InlineOption)]
-            private bool TryRegister<TCancelable>(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                TCancelable cancelable, int tokenId, out CancelationRegistration registration) where TCancelable : ICancelable
+            private bool TryRegister<TCancelable>(in TCancelable cancelable, int tokenId, out CancelationRegistration registration)
+                where TCancelable : ICancelable
             {
                 var nodeCreator = new UserNodeCreator<TCancelable>(cancelable);
                 bool success = TryRegister(ref nodeCreator, tokenId);
                 registration = nodeCreator._registration;
+                return success;
+            }
+
+            [MethodImpl(InlineOption)]
+            internal static bool TryRegister<TCancelable>(CancelationRef _this, int tokenId, in TCancelable cancelable, out CancelationRegistration registration, out bool alreadyCanceled)
+                where TCancelable : ICancelable
+            {
+                if (_this == null)
+                {
+                    registration = default;
+                    alreadyCanceled = false;
+                    return false;
+                }
+                return _this.TryRegister(cancelable, tokenId, out registration, out alreadyCanceled);
+            }
+
+            [MethodImpl(InlineOption)]
+            private bool TryRegister<TCancelable>(in TCancelable cancelable, int tokenId, out CancelationRegistration registration, out bool alreadyCanceled)
+                where TCancelable : ICancelable
+            {
+                var nodeCreator = new UserNodeCreatorNoInvoke<TCancelable>(cancelable);
+                bool success = TryRegister(ref nodeCreator, tokenId);
+                registration = nodeCreator._registration;
+                alreadyCanceled = nodeCreator._isCanceled;
                 return success;
             }
 
@@ -430,9 +424,7 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             internal static bool TrySetCanceled(CancelationRef _this, int sourceId)
-            {
-                return _this != null && _this.TrySetCanceled(sourceId);
-            }
+                => _this != null && _this.TrySetCanceled(sourceId);
 
             [MethodImpl(InlineOption)]
             private bool TrySetCanceled(int sourceId)
@@ -494,9 +486,7 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             internal static bool TryDispose(CancelationRef _this, int sourceId)
-            {
-                return _this != null && _this.TryDispose(sourceId);
-            }
+                => _this != null && _this.TryDispose(sourceId);
 
             internal bool TryDispose(int sourceId)
             {
@@ -544,9 +534,7 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             internal static bool TryRetainUser(CancelationRef _this, int tokenId)
-            {
-                return _this != null && _this.TryRetainUser(tokenId);
-            }
+                => _this != null && _this.TryRetainUser(tokenId);
 
             [MethodImpl(InlineOption)]
             private bool TryRetainUser(int tokenId)
@@ -569,9 +557,7 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             internal static bool TryReleaseUser(CancelationRef _this, int tokenId)
-            {
-                return _this != null && _this.TryReleaseUser(tokenId);
-            }
+                => _this != null && _this.TryReleaseUser(tokenId);
 
             [MethodImpl(InlineOption)]
             private bool TryReleaseUser(int tokenId)
@@ -603,21 +589,19 @@ namespace Proto.Promises
             {
                 if (--_internalRetainCounter == 0 & _userRetainCounter == 0)
                 {
-#if !NET_LEGACY || NET40
                     if (_bclSource != null)
                     {
                         CancelationConverter.DetachCancelationRef(_bclSource);
                         // We should only dispose the source if we were the one that created it.
                         if (!_linkedToBclToken)
                         {
-                            // TODO: We can call _cancellationTokenSource.TryReset() in .Net 6+ instead of always creating a new one.
-                            // But this should only be done if we add a TryReset() API to our own CancelationSource, because if a user still holds an old token after this is reused, it could have cancelations triggered unexpectedly.
+                            // We *could* call _cancellationTokenSource.TryReset() in .Net 6+ instead of always creating a new one,
+                            // but if a user still holds an old token after this is reused, its cancelation state would be incorrect,
+                            // possibly causing cancelations to be triggered unexpectedly.
                             _bclSource.Dispose();
                         }
-                        _bclSource = null;
-                        Thread.MemoryBarrier();
+                        Volatile.Write(ref _bclSource, null);
                     }
-#endif
                     unchecked
                     {
                         ++_tokenId;
@@ -668,23 +652,15 @@ namespace Proto.Promises
                 private CallbackNodeImpl() { }
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                volatile private bool _disposed;
+                private bool _disposed;
 
                 ~CallbackNodeImpl()
                 {
-                    try
+                    if (!_disposed)
                     {
-                        if (!_disposed)
-                        {
-                            // For debugging. This should never happen.
-                            string message = "A " + GetType() + " was garbage collected without it being disposed.";
-                            ReportRejection(new UnreleasedObjectException(message), this);
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        // This should never happen.
-                        ReportRejection(e, this);
+                        // For debugging. This should never happen.
+                        string message = $"A {GetType()} was garbage collected without it being disposed.";
+                        ReportRejection(new UnreleasedObjectException(message), this);
                     }
                 }
 #endif
@@ -699,11 +675,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static CallbackNodeImpl<TCancelable> GetOrCreate(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCancelable cancelable, CancelationRef parent)
+                internal static CallbackNodeImpl<TCancelable> GetOrCreate(in TCancelable cancelable, CancelationRef parent)
                 {
                     var node = GetOrCreate();
                     node._parentId = parent._smallFields._instanceId;
@@ -739,7 +711,7 @@ namespace Proto.Promises
                     {
                         ++_nodeId;
                     }
-                    _cancelable = default(TCancelable);
+                    _cancelable = default;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     _disposed = true;
 #endif
@@ -755,28 +727,20 @@ namespace Proto.Promises
                 LinkedCancelationNode ILinked<LinkedCancelationNode>.Next { get; set; }
 
                 private CancelationRef _target;
-                volatile private CancelationRef _parent;
+                private CancelationRef _parent;
 
                 private LinkedCancelationNode() { }
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                volatile private bool _disposed;
+                private bool _disposed;
 
                 ~LinkedCancelationNode()
                 {
-                    try
+                    if (!_disposed)
                     {
-                        if (!_disposed)
-                        {
-                            // For debugging. This should never happen.
-                            string message = "A LinkedCancelationNode was garbage collected without it being disposed.";
-                            ReportRejection(new UnreleasedObjectException(message), _target);
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        // This should never happen.
-                        ReportRejection(e, _target);
+                        // For debugging. This should never happen.
+                        string message = "A LinkedCancelationNode was garbage collected without it being disposed.";
+                        ReportRejection(new UnreleasedObjectException(message), _target);
                     }
                 }
 #endif
@@ -869,7 +833,7 @@ namespace Proto.Promises
 
                     // Spin until this has been disposed.
                     var spinner = new SpinWait();
-                    while (_parent != null)
+                    while (Volatile.Read(ref _parent) != null)
                     {
                         spinner.SpinOnce();
                     }
@@ -890,13 +854,9 @@ namespace Proto.Promises
                 private readonly TCancelable _cancelable;
 
                 [MethodImpl(InlineOption)]
-                public UserNodeCreator(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TCancelable cancelable)
+                public UserNodeCreator(in TCancelable cancelable)
                 {
-                    _registration = default(CancelationRegistration);
+                    _registration = default;
                     _cancelable = cancelable;
                 }
 
@@ -910,9 +870,35 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 public void Invoke()
+                    => _cancelable.Cancel();
+            }
+
+            private struct UserNodeCreatorNoInvoke<TCancelable> : INodeCreator
+                where TCancelable : ICancelable
+            {
+                internal CancelationRegistration _registration;
+                private readonly TCancelable _cancelable;
+                internal bool _isCanceled;
+
+                [MethodImpl(InlineOption)]
+                public UserNodeCreatorNoInvoke(in TCancelable cancelable)
                 {
-                    _cancelable.Cancel();
+                    _registration = default;
+                    _cancelable = cancelable;
+                    _isCanceled = false;
                 }
+
+                [MethodImpl(InlineOption)]
+                public CancelationCallbackNodeBase CreateNode(CancelationRef parent, int tokenId)
+                {
+                    var node = CallbackNodeImpl<TCancelable>.GetOrCreate(_cancelable, parent);
+                    _registration = new CancelationRegistration(parent, node, node.NodeId, tokenId);
+                    return node;
+                }
+
+                [MethodImpl(InlineOption)]
+                public void Invoke()
+                    => _isCanceled = true;
             }
 
             private struct LinkedNodeCreator : INodeCreator
@@ -929,15 +915,11 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 public CancelationCallbackNodeBase CreateNode(CancelationRef parent, int tokenId)
-                {
-                    return _node = LinkedCancelationNode.GetOrCreate(_target, parent);
-                }
+                    => _node = LinkedCancelationNode.GetOrCreate(_target, parent);
 
                 [MethodImpl(InlineOption)]
                 public void Invoke()
-                {
-                    _target.Cancel();
-                }
+                    => _target.Cancel();
             }
         } // class CancelationRef
 
@@ -955,20 +937,13 @@ namespace Proto.Promises
 
         internal abstract class CancelationCallbackNode : CancelationCallbackNodeBase
         {
-            volatile protected int _nodeId = 1; // Start with id 1 instead of 0 to reduce risk of false positives.
+            protected int _nodeId = 1; // Start with id 1 instead of 0 to reduce risk of false positives.
             protected int _parentId; // In case the CancelationRegistration is torn from threads.
 
             internal int NodeId
             {
                 [MethodImpl(InlineOption)]
-                get { return _nodeId; }
-            }
-
-            [MethodImpl(InlineOption)]
-            private bool GetIsRegistered(CancelationRef parent, int nodeId, int tokenId)
-            {
-                return parent._smallFields._instanceId == _parentId & parent.TokenId == tokenId
-                    & _nodeId == nodeId & _previous != null;
+                get => _nodeId;
             }
 
             [MethodImpl(InlineOption)]
@@ -978,7 +953,9 @@ namespace Proto.Promises
                 {
                     return false;
                 }
-                return _this.GetIsRegistered(parent, nodeId, tokenId);
+                // Volatile read the id before everything else.
+                return parent.VolatileTokenId == tokenId & parent._smallFields._instanceId == _this._parentId
+                    & _this._nodeId == nodeId & _this._previous != null;
             }
 
             [MethodImpl(InlineOption)]
@@ -990,7 +967,9 @@ namespace Proto.Promises
                 }
 
                 parent._smallFields._locker.Enter();
-                if (!_this.GetIsRegistered(parent, nodeId, tokenId))
+                var isRegistered = parent.TokenId == tokenId & parent._smallFields._instanceId == _this._parentId
+                    & _this._nodeId == nodeId & _this._previous != null;
+                if (!isRegistered)
                 {
                     parent._smallFields._locker.Exit();
                     return false;
@@ -1006,7 +985,8 @@ namespace Proto.Promises
             private bool GetIsRegisteredAndIsCanceled(CancelationRef parent, int nodeId, int tokenId, out bool isCanceled)
             {
                 bool canceled = parent._state >= CancelationRef.State.Canceled;
-                bool tokenIdMatches = parent._smallFields._instanceId == _parentId & parent.TokenId == tokenId;
+                // We read state volatile, so we don't need to read anything else volatile.
+                bool tokenIdMatches = parent.TokenId == tokenId & parent._smallFields._instanceId == _parentId;
                 bool isRegistered = tokenIdMatches & _nodeId == nodeId & _previous != null;
                 isCanceled = canceled & tokenIdMatches;
                 return isRegistered;
@@ -1078,7 +1058,7 @@ namespace Proto.Promises
                     // _this._nodeId will be incremented when the callback is complete and this is disposed.
                     // parent.TokenId will be incremented when all callbacks are complete and it is disposed.
                     // We really only need to compare the nodeId, the tokenId comparison is just for a little extra safety in case of thread starvation and node re-use.
-                    while (nodeId == _this._nodeId & tokenId == parent.TokenId)
+                    while (nodeId == Volatile.Read(ref _this._nodeId) & tokenId == parent.TokenId)
                     {
                         spinner.SpinOnce(); // Spin, as we assume callback execution is fast and that this situation is rare.
                     }
@@ -1127,7 +1107,7 @@ namespace Proto.Promises
                 // node._nodeId will be incremented when the callback is complete and it is disposed.
                 // parent.TokenId will be incremented when all callbacks are complete and it is disposed.
                 // We really only need to compare the nodeId, the tokenId comparison is just for a little extra safety in case of thread starvation and node re-use.
-                if (nodeId == node._nodeId & tokenId == parent.TokenId)
+                if (nodeId == Volatile.Read(ref node._nodeId) & tokenId == parent.TokenId)
                 {
                     // Queue the check to happen again on a background thread.
                     // Force async so the current thread will be yielded if this is already being executed on a background thread.
@@ -1146,7 +1126,6 @@ namespace Proto.Promises
 
         partial class CancelationRef
         {
-#if !NET_LEGACY || NET40
             // A separate class so that static data won't need to be created if it is never used.
             internal static class CancelationConverter
             {
@@ -1198,7 +1177,7 @@ namespace Proto.Promises
 
                     if (!token.CanBeCanceled)
                     {
-                        return default(CancelationToken);
+                        return default;
                     }
                     if (token.IsCancellationRequested)
                     {
@@ -1223,17 +1202,15 @@ namespace Proto.Promises
                     catch (ObjectDisposedException)
                     {
                         // Check canceled state again in case of a race condition.
-                        return source.IsCancellationRequested ? CancelationToken.Canceled() : default(CancelationToken);
+                        return source.IsCancellationRequested ? CancelationToken.Canceled() : default;
                     }
 
-                    CancelationRef cancelationRef;
-                    if (s_tokenCache.TryGetValue(source, out cancelationRef))
+                    if (s_tokenCache.TryGetValue(source, out var cancelationRef))
                     {
                         var tokenId = cancelationRef.TokenId;
-                        Thread.MemoryBarrier();
-                        return cancelationRef._bclSource != source // In case of race condition on another thread.
-                            ? default(CancelationToken)
-                            : new CancelationToken(cancelationRef, tokenId);
+                        return Volatile.Read(ref cancelationRef._bclSource) == source // In case of race condition on another thread.
+                            ? new CancelationToken(cancelationRef, tokenId)
+                            : default;
                     }
 
                     // Lock instead of AddOrUpdate so multiple refs won't be created on separate threads.
@@ -1289,9 +1266,7 @@ namespace Proto.Promises
             }
 
             internal static System.Threading.CancellationToken GetCancellationToken(CancelationRef _this, int tokenId)
-            {
-                return _this == null ? default(CancellationToken) : _this.GetCancellationToken(tokenId);
-            }
+                => _this?.GetCancellationToken(tokenId) ?? default;
 
             private System.Threading.CancellationToken GetCancellationToken(int tokenId)
             {
@@ -1301,7 +1276,7 @@ namespace Proto.Promises
                     var state = _state;
                     if (tokenId != TokenId | state == State.Disposed)
                     {
-                        return default(CancellationToken);
+                        return default;
                     }
                     if (state >= State.Canceled)
                     {
@@ -1320,14 +1295,13 @@ namespace Proto.Promises
                 // The original source may be disposed, in which case the Token property will throw ObjectDisposedException.
                 catch (ObjectDisposedException)
                 {
-                    return _bclSource.IsCancellationRequested ? new CancellationToken(true) : default(CancellationToken);
+                    return _bclSource.IsCancellationRequested ? new CancellationToken(true) : default;
                 }
                 finally
                 {
                     _smallFields._locker.Exit();
                 }
             }
-#endif // !NET_LEGACY || NET40
         } // class CancelationRef
     } // class Internal
 } // namespace Proto.Promises

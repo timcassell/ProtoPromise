@@ -1,9 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net35;net40;net45;net47;netstandard2.0;netstandard2.1;netcoreapp2.1;net5.0;net6.0</TargetFrameworks>
-    <Configurations>Release;Debug;Release_NoProgress;Debug_NoProgress</Configurations>
-    <Version>2.7.0</Version>
+    <TargetFrameworks>netstandard2.0;netstandard2.1;net6.0</TargetFrameworks>
+    <Version>3.0.0</Version>
     <!--Set true to help debug internal promise code (allows the debugger to step into the code and includes internal stacktraces).-->
     <DeveloperMode>false</DeveloperMode>
   </PropertyGroup>
@@ -17,10 +16,6 @@
   <PropertyGroup>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <!-- Remove unnecessary suppression -->
-    <NoWarn>IDE0079</NoWarn>
-    <!-- Deprecated runtime and vulnerabilities from old runtime -->
-    <NoWarn>NETSDK1138;NU1901;NU1902;NU1903;NU1904</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -34,41 +29,19 @@
       If someone chooses to use the Nuget package instead of the Unity package, and builds with IL2CPP, we must make sure everything still works with those workarounds.
       To keep things simple, we just define ENABLE_IL2CPP in all non-core build targets (standard and framework), so all build targets that Unity can possibly consume will have the workarounds baked in.
       (At least until Unity finally adds .Net Core runtime, and hopefully all IL2CPP bugs will be fixed by then.)-->
-    <When Condition="'$(TargetFramework)'=='net35' OR '$(TargetFramework)'=='net40'">
-      <PropertyGroup>
-        <!--The newest language version Unity 5.5 supports (by default).-->
-        <LangVersion>4</LangVersion>
-        <!--Unity uses NET_LEGACY for old runtime prior to .Net 4.6, so we will do the same here (except .Net 4.5 which we treat as not legacy).-->
-        <DefineConstants>$(DefineConstants);NET_LEGACY;ENABLE_IL2CPP</DefineConstants>
-      </PropertyGroup>
-    </When>
-    <When Condition="'$(TargetFramework)'=='net45'">
-      <PropertyGroup>
-        <!--The newest language version Unity 2017 supports with experimental .Net 4.6 scripting backend.-->
-        <LangVersion>6</LangVersion>
-        <DefineConstants>$(DefineConstants);ENABLE_IL2CPP</DefineConstants>
-      </PropertyGroup>
-    </When>
-    <When Condition="'$(TargetFramework)'=='net47' OR '$(TargetFramework)'=='netstandard2.0'">
+    <When Condition="'$(TargetFramework)'=='netstandard2.0'">
       <PropertyGroup>
         <LangVersion>7.3</LangVersion>
-        <DefineConstants>$(DefineConstants);ENABLE_IL2CPP;CSHARP_7_3_OR_NEWER</DefineConstants>
+        <DefineConstants>$(DefineConstants);ENABLE_IL2CPP</DefineConstants>
       </PropertyGroup>
     </When>
     <When Condition="'$(TargetFramework)'=='netstandard2.1'">
       <PropertyGroup>
-        <!--For function pointers in await override implementation.-->
+        <!--For function pointers.-->
         <LangVersion>9</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <DefineConstants>$(DefineConstants);ENABLE_IL2CPP;CSHARP_7_3_OR_NEWER;UNITY_2021_2_OR_NEWER</DefineConstants>
-      </PropertyGroup>
-    </When>
-    <When Condition="'$(TargetFramework)'=='netcoreapp2.1'">
-      <PropertyGroup>
-        <!--For function pointers in await override implementation.-->
-        <LangVersion>9</LangVersion>
-        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <DefineConstants>$(DefineConstants);ENABLE_IL2CPP;CSHARP_7_3_OR_NEWER</DefineConstants>
+        <!--We check UNITY_2021_2_OR_NEWER to see if C#9 is supported, since Unity doesn't have a language define constant for it.-->
+        <DefineConstants>$(DefineConstants);ENABLE_IL2CPP;UNITY_2021_2_OR_NEWER</DefineConstants>
       </PropertyGroup>
     </When>
     <Otherwise>
@@ -77,27 +50,16 @@
         <LangVersion>9</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <!--We check UNITY_2021_2_OR_NEWER to see if C#9 is supported, since Unity doesn't have a language define constant for it.-->
-        <DefineConstants>$(DefineConstants);CSHARP_7_3_OR_NEWER;UNITY_2021_2_OR_NEWER</DefineConstants>
+        <DefineConstants>$(DefineConstants);UNITY_2021_2_OR_NEWER</DefineConstants>
       </PropertyGroup>
     </Otherwise>
   </Choose>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_NoProgress|AnyCPU'">
-    <DefineConstants>$(DefineConstants);RELEASE;PROTO_PROMISE_PROGRESS_DISABLE</DefineConstants>
-    <DebugSymbols>false</DebugSymbols>
-    <DebugType>portable</DebugType>
-    <Optimize>true</Optimize>
-  </PropertyGroup>
 
   <PropertyGroup Condition="'$(DeveloperMode)'=='true'">
     <DefineConstants>$(DefineConstants);TRACE;PROTO_PROMISE_DEVELOPER_MODE</DefineConstants>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>portable</DebugType>
     <Optimize>false</Optimize>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_NoProgress|AnyCPU'">
-    <DefineConstants>$(DefineConstants);TRACE;DEBUG;PROTO_PROMISE_PROGRESS_DISABLE</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -108,35 +70,15 @@
     <None Remove="nuget\**" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'net45'">
-    <PackageReference Include="System.ValueTuple">
-      <Version>4.5.0</Version>
-    </PackageReference>
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net45' OR '$(TargetFramework)' == 'net47' OR '$(TargetFramework)' == 'netstandard2.0'">
-    <PackageReference Include="System.Threading.Tasks.Extensions">
-      <Version>4.5.4</Version>
-    </PackageReference>
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net47' OR '$(TargetFramework)' == 'netstandard2.0'">
-    <PackageReference Include="System.Buffers">
-      <Version>4.5.1</Version>
-    </PackageReference>
-    <PackageReference Include="System.Memory">
-      <Version>4.5.5</Version>
-    </PackageReference>
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net47' OR '$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'netcoreapp2.1'">
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces">
-      <Version>5.0.0</Version>
-    </PackageReference>
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
+    <PackageReference Include="System.Buffers" Version="4.5.1" />
+    <PackageReference Include="System.Memory" Version="4.5.5" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="5.0.0" />
   </ItemGroup>
 
   <!--Exclude the analyzer reference while building the nuget package.-->
-  <ItemGroup Condition="'$(IsNugetBuild)' != 'true' AND '$(TargetFramework)' != 'net35' AND '$(TargetFramework)' != 'net40' AND '$(TargetFramework)' != 'net45'">
+  <ItemGroup Condition="'$(IsNugetBuild)' != 'true'">
     <ProjectReference Include="..\ProtoPromise.Analyzer\ProtoPromise.Analyzer\ProtoPromise.Analyzer.csproj"
                       PrivateAssets="all"
                       ReferenceOutputAssembly="false"

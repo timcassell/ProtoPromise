@@ -3,8 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 
-#pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
-
 namespace ProtoPromiseTests
 {
     // Used instead of ThreadPool, because ThreadPool has issues in old runtime, causing tests to fail.
@@ -59,6 +57,7 @@ namespace ProtoPromiseTests
 
             private void ThreadAction()
             {
+                Promise.Manager.ThreadStaticSynchronizationContext = _owner;
                 while (true)
                 {
                     BackgroundSynchronizationContext owner = _owner;

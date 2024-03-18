@@ -13,7 +13,6 @@ using System.Threading;
 
 namespace Proto.Promises
 {
-#if CSHARP_7_3_OR_NEWER
     partial class Internal
     {
         internal interface IAsyncEnumerable<T>
@@ -126,18 +125,10 @@ namespace Proto.Promises
 
                 ~AsyncEnumerableBase()
                 {
-                    try
+                    if (!_disposed)
                     {
-                        if (!_disposed)
-                        {
-                            string message = "An AsyncEnumerable's resources were garbage collected without it being disposed. You must call DisposeAsync on the AsyncEnumerator.";
-                            ReportRejection(new UnreleasedObjectException(message), this);
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        // This should never happen.
-                        ReportRejection(e, this);
+                        string message = "An AsyncEnumerable's resources were garbage collected without it being disposed. You must call DisposeAsync on the AsyncEnumerator.";
+                        ReportRejection(new UnreleasedObjectException(message), this);
                     }
                 }
 
@@ -223,7 +214,7 @@ namespace Proto.Promises
                         _isStarted = true;
                         Start(newId);
                     }
-                    return new Promise<bool>(this, Id, 0);
+                    return new Promise<bool>(this, Id);
                 }
 
                 private void MoveNext()
@@ -233,7 +224,7 @@ namespace Proto.Promises
                     // Reset for the next awaiter.
                     ResetWithoutStacktrace();
                     // Handle iterator promise to move the async state machine forward.
-                    InterlockedExchange(ref _iteratorPromiseRef, null).Handle(this, null, Promise.State.Resolved);
+                    Interlocked.Exchange(ref _iteratorPromiseRef, null).Handle(this, Promise.State.Resolved);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -282,7 +273,7 @@ namespace Proto.Promises
 
                     ThrowIfInPool(this);
                     _disposed = true;
-                    var iteratorPromise = InterlockedExchange(ref _iteratorPromiseRef, null);
+                    var iteratorPromise = Interlocked.Exchange(ref _iteratorPromiseRef, null);
                     if (iteratorPromise == null)
                     {
                         // DisposeAsync was called before MoveNextAsync, the async iterator function never started.
@@ -298,40 +289,40 @@ namespace Proto.Promises
                     IncrementPromiseIdAndClearPrevious();
                     // Reset for the next awaiter.
                     ResetWithoutStacktrace();
-                    iteratorPromise.Handle(this, null, Promise.State.Resolved);
-                    return new Promise(this, Id, 0);
+                    iteratorPromise.Handle(this, Promise.State.Resolved);
+                    return new Promise(this, Id);
                 }
 
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
                     // This is called when the async iterator function completes.
                     ThrowIfInPool(this);
-                    handler.SetCompletionState(rejectContainer, state);
+                    handler.SetCompletionState(state);
                     if (Interlocked.CompareExchange(ref _enumerableId, _iteratorCompleteId, _iteratorCompleteExpectedId) != _iteratorCompleteExpectedId)
                     {
-                        handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
-                        rejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create async iterator completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
+                        handler.MaybeReportUnhandledAndDispose(state);
+                        _rejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create async iterator completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
                         state = Promise.State.Rejected;
                     }
                     else
                     {
+                        _rejectContainer = handler._rejectContainer;
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
                     }
-                    HandleNextInternal(rejectContainer, state);
+                    HandleNextInternal(state);
                 }
 
                 protected void HandleFromSynchronouslyCompletedIterator()
                 {
                     ThrowIfInPool(this);
-                    object rejectContainer = null;
                     Promise.State state = Promise.State.Resolved;
                     if (Interlocked.CompareExchange(ref _enumerableId, _iteratorCompleteId, _iteratorCompleteExpectedId) != _iteratorCompleteExpectedId)
                     {
-                        rejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create async iterator completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
+                        _rejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create async iterator completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
                         state = Promise.State.Rejected;
                     }
-                    HandleNextInternal(rejectContainer, state);
+                    HandleNextInternal(state);
                 }
 
                 internal void GetResultForAsyncStreamYielder(int enumerableId)
@@ -364,7 +355,7 @@ namespace Proto.Promises
                     }
                     // Complete the MoveNextAsync promise.
                     _result = hasValue;
-                    HandleNextInternal(null, Promise.State.Resolved);
+                    HandleNextInternal(Promise.State.Resolved);
                 }
 
                 protected abstract void Start(int enumerableId);
@@ -429,7 +420,6 @@ namespace Proto.Promises
                 }
 
                 // We only set _previous to support circular await detection.
-                // We don't set _rejectContainerOrPreviousOrLink to prevent progress subscriptions from going down the chain, because progress is meaningless for AsyncEnumerable.
 #if PROMISE_DEBUG
                 _previous = iteratorPromise._ref;
 #endif
@@ -452,5 +442,4 @@ namespace Proto.Promises
             throw new InvalidOperationException("AsyncEnumerable instance is not valid. AsyncEnumerable may only be used once.", GetFormattedStacktrace(skipFrames + 1));
         }
     } // class Internal
-#endif
 } // namespace Proto.Promises

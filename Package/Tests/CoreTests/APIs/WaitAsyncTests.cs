@@ -1,8 +1,8 @@
-﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
 #else
-#undef PROMISE_PROGRESS
-# endif
+#undef PROMISE_DEBUG
+#endif
 
 using NUnit.Framework;
 using Proto.Promises;
@@ -1237,7 +1237,6 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-#if CSHARP_7_3_OR_NEWER
         [Test, TestCaseSource("GetArgs_ContinueWith")]
         public void CallbacksWillBeInvokedOnTheCorrectSynchronizationContext_Await_void(
             CompleteType firstCompleteType,
@@ -1609,7 +1608,6 @@ namespace ProtoPromiseTests.APIs
                 Assert.Fail("Timed out after " + timeout + ", didInvoke: " + didInvoke);
             }
         }
-#endif // CSHARP_7_3_OR_NEWER
 
         [Test]
         public void WaitAsyncWithCancelationTokenWillBeCompletedProperly_void(
@@ -1647,7 +1645,6 @@ namespace ProtoPromiseTests.APIs
                     .Forget();
             }
 
-#if CSHARP_7_3_OR_NEWER
             foreach (var p in TestHelper.GetTestablePromises(promise))
             {
                 ++expectedInvokes;
@@ -1674,7 +1671,6 @@ namespace ProtoPromiseTests.APIs
                 Assert.AreEqual(expectedCompleteState, actualCompleteState);
                 Interlocked.Increment(ref invokeCounter);
             }
-#endif
 
             if (waitAsyncCancelType == ConfigureAwaitCancelType.CancelFirst)
             {
@@ -1725,7 +1721,6 @@ namespace ProtoPromiseTests.APIs
                     .Forget();
             }
 
-#if CSHARP_7_3_OR_NEWER
             foreach (var p in TestHelper.GetTestablePromises(promise))
             {
                 ++expectedInvokes;
@@ -1752,7 +1747,6 @@ namespace ProtoPromiseTests.APIs
                 Assert.AreEqual(expectedCompleteState, actualCompleteState);
                 Interlocked.Increment(ref invokeCounter);
             }
-#endif
 
             if (waitAsyncCancelType == ConfigureAwaitCancelType.CancelFirst)
             {

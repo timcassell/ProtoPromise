@@ -9,7 +9,6 @@
 
 namespace Proto.Promises.Linq
 {
-#if CSHARP_7_3_OR_NEWER
     partial class AsyncEnumerable
     {
         // Implementation note: unlike System.Linq which does a type-check for IList<T> before iterating, we don't do it.
@@ -210,5 +209,4 @@ namespace Proto.Promises.Linq
         }
 #endif // NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NETCOREAPP3_0_OR_GREATER
     }
-#endif // CSHARP_7_3_OR_NEWER
 }

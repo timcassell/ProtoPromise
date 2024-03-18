@@ -4,7 +4,9 @@
 // Different namespace to avoid collisions if someone else brings in the ArrayPool package.
 namespace Proto.Promises.Collections
 {
-#if CSHARP_7_3_OR_NEWER && !(NET47 || NETCOREAPP || NETSTANDARD2_0_OR_GREATER || UNITY_2021_2_OR_NEWER)
+    // We reference the nuget package for the nuget builds, but to not have any nuget dependencies in Unity, we include the source.
+    // ArrayPool was added in netstandard2.1, so we only need this in Unity versions older than 2021.2.
+#if UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
 
     /// <summary>
     /// Provides a resource pool that enables reusing instances of arrays.
@@ -80,5 +82,5 @@ namespace Proto.Promises.Collections
         public abstract void Return(T[] array, bool clearArray = false);
     }
 
-#endif // CSHARP_7_3_OR_NEWER && !(NET47 || NETCOREAPP || NETSTANDARD2_0_OR_GREATER || UNITY_2021_2_OR_NEWER)
+#endif // UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
 }

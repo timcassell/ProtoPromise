@@ -1,7 +1,3 @@
-#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
 #if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
@@ -9,6 +5,7 @@
 #endif
 
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Proto.Promises
@@ -23,18 +20,15 @@ namespace Proto.Promises
 #endif
         internal static class KeyGenerator<T> // Separate generator per type.
         {
-            private static long s_current;
+            // We start with 1 and add 2 so we will only get odd numbered keys to prevent ever getting 0.
+            // This is more efficient than using a lock or a loop. We lose out on half of the possible values,
+            // but 64-bit long is sufficiently large enough that it doesn't matter practically.
+            // Most applications will not run long enough to overflow a 64-bit integer, even while skipping half of the values.
+            private static long s_current = 1;
 
-            internal static long Next()
-            {
-                long newKey;
-                do
-                {
-                    // We don't check for overflow to let the key generator wrap around for infinite re-use.
-                    newKey = Interlocked.Increment(ref s_current);
-                } while (newKey == 0); // Don't allow 0 key.
-                return newKey;
-            }
+            // We don't check for overflow to let the key generator wrap around for infinite re-use.
+            [MethodImpl(InlineOption)]
+            internal static long Next() => Interlocked.Add(ref s_current, 2);
         }
     }
 }

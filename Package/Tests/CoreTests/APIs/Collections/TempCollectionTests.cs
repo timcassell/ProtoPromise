@@ -4,8 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#if CSHARP_7_3_OR_NEWER
-
 using System.Linq;
 using Proto.Promises;
 using NUnit.Framework;
@@ -232,5 +230,3 @@ namespace ProtoPromiseTests.APIs.Collections
         }
     }
 }
-
-#endif // CSHARP_7_3_OR_NEWER

@@ -3,18 +3,11 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
 using NUnit.Framework;
 using Proto.Promises;
 using System;
 using System.Threading;
-
-#pragma warning disable 0618 // Type or member is obsolete
 
 namespace ProtoPromiseTests.APIs
 {
@@ -33,38 +26,6 @@ namespace ProtoPromiseTests.APIs
         }
 
 #if PROMISE_DEBUG
-
-#if PROMISE_PROGRESS
-        [Test]
-        public void IfOnProgressIsNullThrow_void()
-        {
-            var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
-
-            Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
-            {
-                promise.Progress(100, default(Action<int, float>));
-            });
-
-            deferred.Resolve();
-            promise.Forget();
-        }
-
-        [Test]
-        public void IfOnProgressIsNullThrow_T()
-        {
-            var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
-
-            Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
-            {
-                promise.Progress(100, default(Action<int, float>));
-            });
-
-            deferred.Resolve(1);
-            promise.Forget();
-        }
-#endif
 
         [Test]
         public void IfOnCanceledIsNullThrow_void()
@@ -136,19 +97,19 @@ namespace ProtoPromiseTests.APIs
 
             Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
-                promise.ContinueWith(100, default(Promise.ContinueAction<int>));
+                promise.ContinueWith(100, default(Action<int, Promise.ResultContainer>));
             });
             Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
-                promise.ContinueWith(100, default(Promise.ContinueFunc<int, bool>));
+                promise.ContinueWith(100, default(Func<int, Promise.ResultContainer, bool>));
             });
             Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
-                promise.ContinueWith(100, default(Promise.ContinueFunc<int, Promise>));
+                promise.ContinueWith(100, default(Func<int, Promise.ResultContainer, Promise>));
             });
             Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
-                promise.ContinueWith(100, default(Promise.ContinueFunc<int, Promise<bool>>));
+                promise.ContinueWith(100, default(Func<int, Promise.ResultContainer, Promise<bool>>));
             });
 
             deferred.Resolve();
@@ -164,19 +125,19 @@ namespace ProtoPromiseTests.APIs
 
             Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
-                promise.ContinueWith(100, default(Promise<int>.ContinueAction<int>));
+                promise.ContinueWith(100, default(Action<int, Promise<int>.ResultContainer>));
             });
             Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
-                promise.ContinueWith(100, default(Promise<int>.ContinueFunc<int, bool>));
+                promise.ContinueWith(100, default(Func<int, Promise<int>.ResultContainer, bool>));
             });
             Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
-                promise.ContinueWith(100, default(Promise<int>.ContinueFunc<int, Promise>));
+                promise.ContinueWith(100, default(Func<int, Promise<int>.ResultContainer, Promise>));
             });
             Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
             {
-                promise.ContinueWith(100, default(Promise<int>.ContinueFunc<int, Promise<bool>>));
+                promise.ContinueWith(100, default(Func<int, Promise<int>.ResultContainer, Promise<bool>>));
             });
 
             deferred.Resolve(1);
@@ -588,56 +549,6 @@ namespace ProtoPromiseTests.APIs
 
             deferred.Resolve(1);
             promise.Forget();
-        }
-#endif
-
-#if PROMISE_PROGRESS
-        [Test]
-        public void OnProgressWillBeInvokedWithCapturedValue_void([Values] SynchronizationOption synchronizationOption)
-        {
-            string expected = "expected";
-            bool invoked = false;
-
-            var deferred = Promise.NewDeferred();
-
-            deferred.Promise
-                .Progress(expected, (cv, progress) =>
-                {
-                    Assert.AreEqual(expected, cv);
-                    invoked = true;
-                    Thread.MemoryBarrier();
-                }, synchronizationOption)
-                .Forget();
-
-            deferred.ReportProgress(0.5f);
-            deferred.Resolve();
-
-            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
-            Assert.True(invoked);
-        }
-
-        [Test]
-        public void OnProgressWillBeInvokedWithCapturedValue_T([Values] SynchronizationOption synchronizationOption)
-        {
-            string expected = "expected";
-            bool invoked = false;
-
-            var deferred = Promise.NewDeferred<int>();
-
-            deferred.Promise
-                .Progress(expected, (cv, progress) =>
-                {
-                    Assert.AreEqual(expected, cv);
-                    invoked = true;
-                    Thread.MemoryBarrier();
-                }, synchronizationOption)
-                .Forget();
-
-            deferred.ReportProgress(0.5f);
-            deferred.Resolve(1);
-
-            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
-            Assert.True(invoked);
         }
 #endif
 

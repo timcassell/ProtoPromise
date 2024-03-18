@@ -1,6 +1,4 @@
-﻿#if CSHARP_7_3_OR_NEWER
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -253,5 +251,3 @@ namespace ProtoPromiseTests.APIs.Linq
         }
     }
 }
-
-#endif

@@ -4,11 +4,8 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable RECS0108 // Warns about static fields in generic types
-#pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE0054 // Use compound assignment
 #pragma warning disable IDE0090 // Use 'new(...)'
-#pragma warning disable IDE1005 // Delegate invocation can be simplified.
 #pragma warning disable CA1816 // Dispose methods should call SuppressFinalize
 
 using System;
@@ -22,13 +19,8 @@ namespace Proto.Promises
     {
         // If C#9 is available, we use function pointers instead of delegates to clear the pool.
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-        // Pointers cannot be used as array types, so we have to wrap it in a struct.
-        private unsafe struct Ptr
-        {
-            internal delegate*<void> _ptr;
-        }
-
-        private static Ptr[] s_clearPoolPointers = new Ptr[64];
+        // Pointers cannot be used as array types, so we have to cast to/from IntPtr.
+        private static IntPtr[] s_clearPoolPointers = new IntPtr[64];
         private static int s_clearPoolCount;
         // Must not be readonly.
         private static SpinLocker s_clearPoolLock = new SpinLocker();
@@ -39,7 +31,7 @@ namespace Proto.Promises
             var temp = s_clearPoolPointers;
             for (int i = 0, max = s_clearPoolCount; i < max; ++i)
             {
-                temp[i]._ptr();
+                ((delegate*<void>) temp[i])();
             }
         }
 
@@ -51,7 +43,7 @@ namespace Proto.Promises
             {
                 Array.Resize(ref s_clearPoolPointers, count * 2);
             }
-            s_clearPoolPointers[count]._ptr = action;
+            s_clearPoolPointers[count] = (IntPtr) action;
             // Volatile write the new count so when ClearPool is called it doesn't need to lock.
             // This prevents the count write from being moved before the pointer write.
             System.Threading.Volatile.Write(ref s_clearPoolCount, count + 1);
@@ -61,18 +53,10 @@ namespace Proto.Promises
         private static event Action OnClearPool;
 
         internal static void ClearPool()
-        {
-            Action temp = OnClearPool;
-            if (temp != null)
-            {
-                temp.Invoke();
-            }
-        }
+            => OnClearPool?.Invoke();
 
         internal static void AddClearPoolListener(Action action)
-        {
-            OnClearPool += action;
-        }
+            => OnClearPool += action;
 #endif
 
         // Using static generic classes to hold the pools allows direct pool access at runtime without doing a dictionary lookup.
@@ -103,21 +87,15 @@ namespace Proto.Promises
 #endif
 
                 private static void Clear()
-                {
-                    s_pool.ClearUnsafe();
-                }
+                    => s_pool.ClearUnsafe();
 
                 [MethodImpl(InlineOption)]
                 internal static HandleablePromiseBase TryTakeOrInvalid()
-                {
-                    return s_pool.PopOrInvalid();
-                }
+                    => s_pool.PopOrInvalid();
 
                 [MethodImpl(InlineOption)]
                 internal static void Repool(T obj)
-                {
-                    s_pool.Push(obj);
-                }
+                    => s_pool.Push(obj);
             }
 
             [MethodImpl(InlineOption)]
@@ -156,14 +134,10 @@ namespace Proto.Promises
             static partial void MarkNotInPoolPrivate(object obj);
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             static partial void MarkInPoolPrivate(object obj)
-            {
-                MarkInPool(obj);
-            }
+                => MarkInPool(obj);
 
             static partial void MarkNotInPoolPrivate(object obj)
-            {
-                MarkNotInPool(obj);
-            }
+                => MarkNotInPool(obj);
 #endif
         } // class ObjectPool
 
@@ -248,9 +222,7 @@ namespace Proto.Promises
 
         // This is used in unit testing, because finalizers are not guaranteed to run, even when calling `GC.WaitForPendingFinalizers()`.
         internal static void TrackObjectsForRelease()
-        {
-            s_trackObjectsForRelease = true;
-        }
+            => s_trackObjectsForRelease = true;
 
         internal static void AssertAllObjectsReleased()
         {

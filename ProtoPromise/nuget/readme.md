@@ -13,10 +13,8 @@ Robust and efficient library for management of asynchronous operations.
 - Interoperable with Tasks
 - CLS compliant
 
-This library was built to work in all C#/.Net ecosystems, including Unity, Mono, .Net Framework, .Net Core, UI frameworks, and AOT compilation. It is CLS compliant, so it is not restricted to only C#, and will work with any .Net language.
+This library was built to work in all C#/.Net ecosystems, including Unity, Mono, .Net Framework, .Net Core, and AOT compilation. It is CLS compliant, so it works with any .Net language.
 
-ProtoPromise conforms to the [Promises/A+ Spec](https://promisesaplus.com/) as far as is possible with C# (using static typing instead of dynamic), and further extends it to support Cancelations and Progress.
-
-This library took inspiration from [ES6 Promises](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) (javascript), [RSG Promises](https://github.com/Real-Serious-Games/C-Sharp-Promise) (C#), [uPromise](https://assetstore.unity.com/packages/tools/upromise-15604) (C#/Unity), [TPL](https://docs.microsoft.com/en-us/dotnet/standard/parallel-programming/task-parallel-library-tpl), and [UniTask](https://github.com/Cysharp/UniTask) (C#/Unity).
+ProtoPromise conforms to the [Promises/A+ Spec](https://promisesaplus.com/) as far as is possible with C#.
 
 [See full README on GitHub.](https://github.com/timcassell/ProtoPromise)

@@ -424,7 +424,6 @@ namespace ProtoPromiseTests.Concurrency
             }
         }
 
-#if CSHARP_7_3_OR_NEWER
         [Test]
         public void PromiseWithReferenceBackingMayOnlyBeAwaitedOnce_void()
         {
@@ -494,7 +493,6 @@ namespace ProtoPromiseTests.Concurrency
             Assert.AreEqual(1, successCount);
             Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
         }
-#endif
     }
 }
 

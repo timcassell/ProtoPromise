@@ -350,8 +350,8 @@ namespace ProtoPromiseTests.APIs
             promisePreserved.Forget();
             cts.Dispose();
 
-            Assert.IsInstanceOf<Proto.Promises.AggregateException>(actual);
-            var aggregate = (Proto.Promises.AggregateException) actual;
+            Assert.IsInstanceOf<AggregateException>(actual);
+            var aggregate = (AggregateException) actual;
             Assert.AreEqual(1, aggregate.InnerExceptions.Count);
             Assert.AreEqual(expected, aggregate.InnerException);
         }
@@ -395,8 +395,8 @@ namespace ProtoPromiseTests.APIs
                 .Catch((Exception e) => actual = e)
                 .WaitWithTimeout(TimeSpan.FromSeconds(Environment.ProcessorCount));
 
-            Assert.IsInstanceOf<Proto.Promises.AggregateException>(actual);
-            var aggregate = (Proto.Promises.AggregateException) actual;
+            Assert.IsInstanceOf<AggregateException>(actual);
+            var aggregate = (AggregateException) actual;
             Assert.AreEqual(1, aggregate.InnerExceptions.Count);
             Assert.AreEqual(expected, aggregate.InnerException);
         }
@@ -426,8 +426,8 @@ namespace ProtoPromiseTests.APIs
                 .Catch((Exception e) => actual = e)
                 .WaitWithTimeout(TimeSpan.FromSeconds(barrier.ParticipantCount));
 
-            Assert.IsInstanceOf<Proto.Promises.AggregateException>(actual);
-            var aggregate = (Proto.Promises.AggregateException) actual;
+            Assert.IsInstanceOf<AggregateException>(actual);
+            var aggregate = (AggregateException) actual;
 
             Assert.AreEqual(2, aggregate.InnerExceptions.Count);
             Assert.IsTrue(aggregate.InnerExceptions.Any(e => e is FormatException));
@@ -437,7 +437,7 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void Exception_ImplicitlyCancelsOtherWorkers_Sync()
         {
-            Proto.Promises.AggregateException aggregateException = null;
+            AggregateException aggregateException = null;
 
             Promise.ParallelForEach(Infinite(), (item, cancelationToken) =>
             {
@@ -447,7 +447,7 @@ namespace ProtoPromiseTests.APIs
                 }
                 return Promise.Resolved();
             })
-                .Catch((Proto.Promises.AggregateException e) => aggregateException = e)
+                .Catch((AggregateException e) => aggregateException = e)
                 .WaitWithTimeout(TimeSpan.FromSeconds(Environment.ProcessorCount));
 
             Assert.IsNotNull(aggregateException);
@@ -464,7 +464,7 @@ namespace ProtoPromiseTests.APIs
                 cancelationToken.Register(() => deferred.Resolve());
                 return deferred.Promise;
             }, maxDegreeOfParallelism: 2)
-                .Catch((Proto.Promises.AggregateException e) => aggregateException = e)
+                .Catch((AggregateException e) => aggregateException = e)
                 .WaitWithTimeout(TimeSpan.FromSeconds(2));
 
             Assert.IsNotNull(aggregateException);
@@ -532,7 +532,6 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-#if CSHARP_7_3_OR_NEWER
         [Test]
         public void ParallelFor_ExecutionContextFlowsToWorkerBodies(
             [Values] bool foregroundContext)
@@ -578,7 +577,6 @@ namespace ProtoPromiseTests.APIs
             })
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
         }
-#endif // CSHARP_7_3_OR_NEWER
     }
 #endif // !UNITY_WEBGL
 }

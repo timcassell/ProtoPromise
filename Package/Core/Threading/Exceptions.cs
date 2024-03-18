@@ -4,7 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
 using System.Diagnostics;
 
@@ -53,6 +53,6 @@ namespace Proto.Promises.Threading
         }
 
         private readonly string _stackTrace;
-        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+        public override string StackTrace => _stackTrace ?? base.StackTrace;
     }
 }

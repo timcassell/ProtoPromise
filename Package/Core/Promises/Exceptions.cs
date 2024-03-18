@@ -4,12 +4,10 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0090 // Use 'new(...)'
-#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
 using System;
-using System.ComponentModel;
 using System.Diagnostics;
 
 namespace Proto.Promises
@@ -25,7 +23,7 @@ namespace Proto.Promises
         }
 
         private readonly string _stackTrace;
-        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+        public override string StackTrace => _stackTrace ?? base.StackTrace;
     }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -39,7 +37,7 @@ namespace Proto.Promises
         }
 
         private readonly string _stackTrace;
-        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+        public override string StackTrace => _stackTrace ?? base.StackTrace;
     }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -53,7 +51,7 @@ namespace Proto.Promises
         }
 
         private readonly string _stackTrace;
-        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+        public override string StackTrace => _stackTrace ?? base.StackTrace;
     }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -67,7 +65,7 @@ namespace Proto.Promises
         }
 
         private readonly string _stackTrace;
-        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+        public override string StackTrace => _stackTrace ?? base.StackTrace;
     }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -81,7 +79,7 @@ namespace Proto.Promises
         }
 
         private readonly string _stackTrace;
-        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+        public override string StackTrace => _stackTrace ?? base.StackTrace;
     }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -95,7 +93,7 @@ namespace Proto.Promises
         }
 
         private readonly string _stackTrace;
-        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+        public override string StackTrace => _stackTrace ?? base.StackTrace;
     }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -109,7 +107,7 @@ namespace Proto.Promises
         }
 
         private readonly string _stackTrace;
-        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+        public override string StackTrace => _stackTrace ?? base.StackTrace;
     }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -134,7 +132,7 @@ namespace Proto.Promises
         }
 
         private readonly string _stackTrace;
-        public override string StackTrace { get { return _stackTrace ?? base.StackTrace; } }
+        public override string StackTrace => _stackTrace ?? base.StackTrace;
     }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -163,22 +161,9 @@ namespace Proto.Promises
             _stackTrace = stackTrace;
         }
 
-        public override string StackTrace { get { return _stackTrace; } }
+        public override string StackTrace => _stackTrace;
 
-        public Type ValueType { get { return _value.GetType(); } }
-
-        public object Value { get { return _value; } }
-
-        public bool TryGetValueAs<T>(out T value)
-        {
-            if (typeof(T).IsAssignableFrom(ValueType))
-            {
-                value = (T) _value;
-                return true;
-            }
-            value = default(T);
-            return false;
-        }
+        public object Value => _value;
     }
 
     /// <summary>
@@ -190,31 +175,6 @@ namespace Proto.Promises
     public abstract class CanceledException : OperationCanceledException
     {
         internal CanceledException(string message) : base(message) { }
-
-
-        [Obsolete("Cancelation reasons are no longer supported.", true), EditorBrowsable(EditorBrowsableState.Never)]
-        public Type ValueType
-        {
-            get
-            {
-                throw new InvalidOperationException("Cancelation reasons are no longer supported.", Internal.GetFormattedStacktrace(1));
-            }
-        }
-
-        [Obsolete("Cancelation reasons are no longer supported.", true), EditorBrowsable(EditorBrowsableState.Never)]
-        public object Value
-        {
-            get
-            {
-                throw new InvalidOperationException("Cancelation reasons are no longer supported.", Internal.GetFormattedStacktrace(1));
-            }
-        }
-
-        [Obsolete("Cancelation reasons are no longer supported.", true), EditorBrowsable(EditorBrowsableState.Never)]
-        public bool TryGetValueAs<T>(out T value)
-        {
-            throw new InvalidOperationException("Cancelation reasons are no longer supported.", Internal.GetFormattedStacktrace(1));
-        }
     }
 
 
@@ -263,12 +223,6 @@ namespace Proto.Promises
     {
         internal RejectException() { }
 
-        public override string Message
-        {
-            get
-            {
-                return "This is used to reject a Promise from an onResolved or onRejected handler.";
-            }
-        }
+        public override string Message => "This is used to reject a Promise from an onResolved or onRejected handler.";
     }
 }

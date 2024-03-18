@@ -1,16 +1,7 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
-#endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
 #endif
 
 // Fix for IL2CPP compile bug. https://issuetracker.unity3d.com/issues/il2cpp-incorrect-results-when-calling-a-method-from-outside-class-in-a-struct
@@ -22,9 +13,6 @@
 #define OPTIMIZED_ASYNC_MODE
 #endif
 
-#pragma warning disable IDE0018 // Inline variable declaration
-#pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable IDE0038 // Use pattern matching
 #pragma warning disable IDE0074 // Use compound assignment
 
 using System;
@@ -54,25 +42,6 @@ namespace Proto.Promises
                 awaiter.HookupExistingWaiter(promiseId, this);
             }
 
-            [MethodImpl(InlineOption)]
-            internal void HookupAwaiterWithProgress(PromiseRefBase awaiter, short promiseId, ushort depth, float minProgress, float maxProgress, ref AsyncPromiseFields asyncFields)
-            {
-#if !PROMISE_PROGRESS
-                HookupAwaiter(awaiter, promiseId);
-#else
-                ValidateAwait(awaiter, promiseId);
-
-                HandleablePromiseBase previousWaiter;
-                PromiseRefBase promiseSingleAwait = awaiter.AddWaiter(promiseId, this, out previousWaiter);
-                if (previousWaiter != PendingAwaitSentinel.s_instance)
-                {
-                    awaiter.VerifyAndHandleWaiter(this, promiseSingleAwait);
-                    return;
-                }
-                SetPreviousAndMaybeHookupAsyncProgress(awaiter, minProgress, maxProgress, ref asyncFields);
-#endif
-            }
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
@@ -99,11 +68,12 @@ namespace Proto.Promises
                 {
                     if (exception is OperationCanceledException)
                     {
-                        HandleNextInternal(null, Promise.State.Canceled);
+                        HandleNextInternal(Promise.State.Canceled);
                     }
                     else
                     {
-                        HandleNextInternal(CreateRejectContainer(exception, int.MinValue, null, this), Promise.State.Rejected);
+                        _rejectContainer = CreateRejectContainer(exception, int.MinValue, null, this);
+                        HandleNextInternal(Promise.State.Rejected);
                     }
                 }
 
@@ -111,88 +81,73 @@ namespace Proto.Promises
                 internal void SetAsyncResultVoid()
                 {
                     ThrowIfInPool(this);
-                    HandleNextInternal(null, Promise.State.Resolved);
+                    HandleNextInternal(Promise.State.Resolved);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal void SetAsyncResult(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TResult result)
+                internal void SetAsyncResult(in TResult result)
                 {
                     ThrowIfInPool(this);
                     _result = result;
-                    HandleNextInternal(null, Promise.State.Resolved);
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static void Start<TStateMachine>(ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref)
-                    where TStateMachine : IAsyncStateMachine
-                {
-                    if (Promise.Config.AsyncFlowExecutionContextEnabled)
-                    {
-                        // To support ExecutionContext for AsyncLocal<T>.
-#if !NET_LEGACY
-                        // We can use AsyncTaskMethodBuilder to run the state machine on the execution context without creating an object. https://github.com/dotnet/runtime/discussions/56202#discussioncomment-1042195
-                        new AsyncTaskMethodBuilder().Start(ref stateMachine);
-#else
-                        // AsyncTaskMethodBuilder isn't available pre .Net 4.5, so we have to create the object to run the state machine on the execution context.
-                        SetStateMachine(ref stateMachine, ref _ref);
-                        _ref.MoveNext();
-#endif
-                    }
-                    else
-                    {
-                        stateMachine.MoveNext();
-                    }
+                    HandleNextInternal(Promise.State.Resolved);
                 }
 
                 [MethodImpl(InlineOption | AggressiveOptimizationOption)]
-                internal static void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref)
+                internal static void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref, ref short id)
                     where TAwaiter : INotifyCompletion
                     where TStateMachine : IAsyncStateMachine
                 {
-                    SetStateMachine(ref stateMachine, ref _ref);
+                    SetStateMachine(ref stateMachine, ref _ref, ref id);
 #if NETCOREAPP
                     // These checks and cast are eliminated by the JIT.
+#pragma warning disable IDE0038 // Use pattern matching
                     if (null != default(TAwaiter) && awaiter is IPromiseAwaiter)
                     {
-                        ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_ref, ref _ref._fields);
+                        ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_ref);
                     }
                     else
                     {
                         awaiter.OnCompleted(_ref.MoveNext);
                     }
+#pragma warning restore IDE0038 // Use pattern matching
 #else
                     // Unity does not optimize the pattern, so we have to call through AwaitOverrider to avoid boxing allocations.
-                    AwaitOverrider<TAwaiter>.AwaitOnCompleted(ref awaiter, _ref, _ref.MoveNext, ref _ref._fields);
+                    AwaitOverrider<TAwaiter>.AwaitOnCompleted(ref awaiter, _ref, _ref.MoveNext);
 #endif
                 }
 
                 [MethodImpl(InlineOption | AggressiveOptimizationOption)]
-                internal static void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref)
+                internal static void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref, ref short id)
                     where TAwaiter : ICriticalNotifyCompletion
                     where TStateMachine : IAsyncStateMachine
                 {
-                    SetStateMachine(ref stateMachine, ref _ref);
+                    SetStateMachine(ref stateMachine, ref _ref, ref id);
 #if NETCOREAPP
                     // These checks and cast are eliminated by the JIT.
+#pragma warning disable IDE0038 // Use pattern matching
                     if (null != default(TAwaiter) && awaiter is IPromiseAwaiter)
                     {
-                        ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_ref, ref _ref._fields);
+                        ((IPromiseAwaiter) awaiter).AwaitOnCompletedInternal(_ref);
                     }
                     else
                     {
                         awaiter.UnsafeOnCompleted(_ref.MoveNext);
                     }
+#pragma warning restore IDE0038 // Use pattern matching
 #else
                     // Unity does not optimize the pattern, so we have to call through CriticalAwaitOverrider to avoid boxing allocations.
-                    CriticalAwaitOverrider<TAwaiter>.AwaitOnCompleted(ref awaiter, _ref, _ref.MoveNext, ref _ref._fields);
+                    CriticalAwaitOverrider<TAwaiter>.AwaitOnCompleted(ref awaiter, _ref, _ref.MoveNext);
 #endif
                 }
 
                 partial void SetAwaitedComplete(PromiseRefBase handler);
+
+#if PROMISE_DEBUG
+                partial void SetAwaitedComplete(PromiseRefBase handler)
+                {
+                    _previous = null;
+                }
+#endif
             }
 
 #if !OPTIMIZED_ASYNC_MODE
@@ -201,7 +156,7 @@ namespace Proto.Promises
                 private Action MoveNext
                 {
                     [MethodImpl(InlineOption)]
-                    get { return _continuer.MoveNext; }
+                    get => _continuer.MoveNext;
                 }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -212,7 +167,7 @@ namespace Proto.Promises
                     internal Action MoveNext
                     {
                         [MethodImpl(InlineOption)]
-                        get { return _moveNext; }
+                        get => _moveNext;
                     }
 
                     private PromiseMethodContinuer() { }
@@ -232,7 +187,8 @@ namespace Proto.Promises
 #endif
                     private sealed partial class Continuer<TStateMachine> : PromiseMethodContinuer where TStateMachine : IAsyncStateMachine
                     {
-                        private static readonly ContextCallback s_executionContextCallback = ExecutionContextCallback;
+                        private static readonly ContextCallback s_executionContextCallback = state
+                            => state.UnsafeAs<Continuer<TStateMachine>>()._stateMachine.MoveNext();
 
                         private Continuer()
                         {
@@ -260,13 +216,8 @@ namespace Proto.Promises
                         public override void Dispose()
                         {
                             _owner = null;
-                            _stateMachine = default(TStateMachine);
+                            _stateMachine = default;
                             ObjectPool.MaybeRepool(this);
-                        }
-
-                        private static void ExecutionContextCallback(object state)
-                        {
-                            state.UnsafeAs<Continuer<TStateMachine>>()._stateMachine.MoveNext();
                         }
 
                         private void ContinueMethod()
@@ -276,9 +227,9 @@ namespace Proto.Promises
                             try
 #endif
                             {
-                                if (_owner._fields._executionContext != null)
+                                if (_owner._executionContext != null)
                                 {
-                                    ExecutionContext.Run(_owner._fields._executionContext, s_executionContextCallback, this);
+                                    ExecutionContext.Run(_owner._executionContext, s_executionContextCallback, this);
                                 }
                                 else
                                 {
@@ -298,7 +249,9 @@ namespace Proto.Promises
                 private PromiseMethodContinuer _continuer;
 
                 [MethodImpl(InlineOption)]
-                private static void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref) where TStateMachine : IAsyncStateMachine
+#pragma warning disable IDE0060 // Remove unused parameter
+                private static void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref, ref short id) where TStateMachine : IAsyncStateMachine
+#pragma warning restore IDE0060 // Remove unused parameter
                 {
                     if (_ref._continuer == null)
                     {
@@ -306,7 +259,7 @@ namespace Proto.Promises
                     }
                     if (Promise.Config.AsyncFlowExecutionContextEnabled)
                     {
-                        _ref._fields._executionContext = ExecutionContext.Capture();
+                        _ref._executionContext = ExecutionContext.Capture();
                     }
                 }
 
@@ -318,14 +271,14 @@ namespace Proto.Promises
                         _continuer.Dispose();
                         _continuer = null;
                     }
-                    _fields._executionContext = null;
+                    _executionContext = null;
                     ObjectPool.MaybeRepool(this);
                 }
 
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
                     ThrowIfInPool(this);
-                    handler.SetCompletionState(rejectContainer, state);
+                    handler.SetCompletionState(state);
                     SetAwaitedComplete(handler);
                     _continuer.MoveNext.Invoke();
                 }
@@ -340,7 +293,8 @@ namespace Proto.Promises
 #endif
                 private sealed partial class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef<TResult> where TStateMachine : IAsyncStateMachine
                 {
-                    private static readonly ContextCallback s_executionContextCallback = ExecutionContextCallback;
+                    private static readonly ContextCallback s_executionContextCallback = state
+                        => state.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>()._stateMachine.MoveNext();
 
                     private AsyncPromiseRefMachine()
                     {
@@ -356,10 +310,11 @@ namespace Proto.Promises
                             : obj.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>();
                     }
 
-                    internal static void SetStateMachine(ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref)
+                    internal static void SetStateMachine(ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref, ref short id)
                     {
                         var promise = GetOrCreate();
                         promise.Reset();
+                        id = promise.Id;
                         // ORDER VERY IMPORTANT, ref must be set before copying stateMachine.
                         _ref = promise;
                         promise._stateMachine = stateMachine;
@@ -368,22 +323,17 @@ namespace Proto.Promises
                     internal override void MaybeDispose()
                     {
                         Dispose();
-                        _stateMachine = default(TStateMachine);
-                        _fields._executionContext = null;
+                        _stateMachine = default;
+                        _executionContext = null;
                         ObjectPool.MaybeRepool(this);
-                    }
-
-                    private static void ExecutionContextCallback(object state)
-                    {
-                        state.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>()._stateMachine.MoveNext();
                     }
 
                     [MethodImpl(InlineOption)]
                     private void ContinueMethod()
                     {
-                        if (_fields._executionContext != null)
+                        if (_executionContext != null)
                         {
-                            ExecutionContext.Run(_fields._executionContext, s_executionContextCallback, this);
+                            ExecutionContext.Run(_executionContext, s_executionContextCallback, this);
                         }
                         else
                         {
@@ -391,10 +341,10 @@ namespace Proto.Promises
                         }
                     }
 
-                    internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
+                    internal override void Handle(PromiseRefBase handler, Promise.State state)
                     {
                         ThrowIfInPool(this);
-                        handler.SetCompletionState(rejectContainer, state);
+                        handler.SetCompletionState(state);
                         SetAwaitedComplete(handler);
                         ContinueMethod();
                     }
@@ -403,28 +353,28 @@ namespace Proto.Promises
                 private Action MoveNext
                 {
                     [MethodImpl(InlineOption)]
-                    get { return _moveNext; }
+                    get => _moveNext;
                 }
 
                 protected AsyncPromiseRef() { }
 
                 [MethodImpl(InlineOption)]
-                private static void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref) where TStateMachine : IAsyncStateMachine
+                private static void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref, ref short id) where TStateMachine : IAsyncStateMachine
                 {
                     if (_ref == null)
                     {
-                        AsyncPromiseRefMachine<TStateMachine>.SetStateMachine(ref stateMachine, ref _ref);
+                        AsyncPromiseRefMachine<TStateMachine>.SetStateMachine(ref stateMachine, ref _ref, ref id);
                     }
                     if (Promise.Config.AsyncFlowExecutionContextEnabled)
                     {
-                        _ref._fields._executionContext = ExecutionContext.Capture();
+                        _ref._executionContext = ExecutionContext.Capture();
                     }
                 }
 
                 internal override void MaybeDispose()
                 {
                     Dispose();
-                    _fields._executionContext = null;
+                    _executionContext = null;
                     ObjectPool.MaybeRepool(this);
                 }
             }

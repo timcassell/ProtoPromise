@@ -1,4 +1,4 @@
-using Proto.Promises.Async.CompilerServices;
+using Proto.Promises.CompilerServices;
 using Proto.Promises.Linq;
 using System;
 using System.Diagnostics;
@@ -9,7 +9,6 @@ using System.Security;
 
 namespace Proto.Promises.CompilerServices
 {
-#if CSHARP_7_3_OR_NEWER
     /// <summary>
     /// Awaitable type used to wait for the consumer to move the async iterator forward.
     /// </summary>
@@ -20,10 +19,10 @@ namespace Proto.Promises.CompilerServices
     public struct AsyncIteratorMethodBuilder
 
     {
-        private PromiseMethodBuilder _builder;
+        private AsyncPromiseMethodBuilder _builder;
 
         [MethodImpl(Internal.InlineOption)]
-        private AsyncIteratorMethodBuilder(PromiseMethodBuilder builder)
+        private AsyncIteratorMethodBuilder(AsyncPromiseMethodBuilder builder)
             => _builder = builder;
 
         /// <summary>Gets the <see cref="AsyncIteratorMethod"/> for this builder.</summary>
@@ -38,7 +37,7 @@ namespace Proto.Promises.CompilerServices
         /// <returns>The initialized <see cref="AsyncIteratorMethodBuilder"/>.</returns>
         [MethodImpl(Internal.InlineOption)]
         public static AsyncIteratorMethodBuilder Create()
-            => new AsyncIteratorMethodBuilder(PromiseMethodBuilder.Create());
+            => new AsyncIteratorMethodBuilder(AsyncPromiseMethodBuilder.Create());
 
         /// <summary>
         /// Completes the <see cref="Promise"/> in the <see cref="Promise.State">Rejected</see> state with the specified exception.
@@ -105,5 +104,4 @@ namespace Proto.Promises.CompilerServices
         public void SetStateMachine(IAsyncStateMachine stateMachine)
             => _builder.SetStateMachine(stateMachine);
     }
-#endif
 }

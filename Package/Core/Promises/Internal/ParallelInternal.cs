@@ -1,23 +1,10 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
-#pragma warning disable IDE0018 // Inline variable declaration
-#pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable IDE0074 // Use compound assignment
-#pragma warning disable IDE0250 // Make struct 'readonly'
-#pragma warning disable CA1507 // Use nameof to express symbol names
+#pragma warning disable IDE0251 // Make member 'readonly'
 
 using System;
 using System.Collections;
@@ -108,12 +95,15 @@ namespace Proto.Promises
                 return true;
 
             ReturnFalse:
-                value = default(T);
+                value = default;
                 return false;
             }
 
             [MethodImpl(InlineOption)]
-            void IDisposable.Dispose() { }
+            void IDisposable.Dispose()
+            {
+                _enumerator.Dispose();
+            }
         }
 
         internal interface IParallelBody<TSource>
@@ -121,7 +111,7 @@ namespace Proto.Promises
             Promise Invoke(TSource source, CancelationToken cancelationToken);
         }
 
-        internal struct ParallelBody<TSource> : IParallelBody<TSource>
+        internal readonly struct ParallelBody<TSource> : IParallelBody<TSource>
         {
             private readonly Func<TSource, CancelationToken, Promise> _body;
 
@@ -133,12 +123,10 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             Promise IParallelBody<TSource>.Invoke(TSource source, CancelationToken cancelationToken)
-            {
-                return _body.Invoke(source, cancelationToken);
-            }
+                => _body.Invoke(source, cancelationToken);
         }
 
-        internal struct ParallelCaptureBody<TSource, TCapture> : IParallelBody<TSource>
+        internal readonly struct ParallelCaptureBody<TSource, TCapture> : IParallelBody<TSource>
         {
             private readonly Func<TSource, TCapture, CancelationToken, Promise> _body;
             private readonly TCapture _capturedValue;
@@ -152,9 +140,7 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             Promise IParallelBody<TSource>.Invoke(TSource source, CancelationToken cancelationToken)
-            {
-                return _body.Invoke(source, _capturedValue, cancelationToken);
-            }
+                => _body.Invoke(source, _capturedValue, cancelationToken);
         }
 
         internal static Promise ParallelFor<TParallelBody>(int fromIndex, int toIndex, TParallelBody body, CancelationToken cancelationToken, SynchronizationContext synchronizationContext, int maxDegreeOfParallelism)
@@ -166,7 +152,7 @@ namespace Proto.Promises
             }
             else if (maxDegreeOfParallelism < 1)
             {
-                throw new ArgumentOutOfRangeException("maxDegreeOfParallelism", "maxDegreeOfParallelism must be positive, or -1 for default (Environment.ProcessorCount). Actual: " + maxDegreeOfParallelism, GetFormattedStacktrace(2));
+                throw new ArgumentOutOfRangeException(nameof(maxDegreeOfParallelism), "maxDegreeOfParallelism must be positive, or -1 for default (Environment.ProcessorCount). Actual: " + maxDegreeOfParallelism, GetFormattedStacktrace(2));
             }
 
             // Just return immediately if from >= to.
@@ -184,7 +170,7 @@ namespace Proto.Promises
             var promise = PromiseRefBase.PromiseParallelForEach<ForLoopEnumerator, TParallelBody, int>.GetOrCreate(
                 new ForLoopEnumerator(fromIndex, toIndex), body, cancelationToken, synchronizationContext, maxDegreeOfParallelism);
             promise.MaybeLaunchWorker(true);
-            return new Promise(promise, promise.Id, 0);
+            return new Promise(promise, promise.Id);
         }
 
         internal static Promise ParallelForEach<TEnumerator, TParallelBody, TSource>(TEnumerator enumerator, TParallelBody body, CancelationToken cancelationToken, SynchronizationContext synchronizationContext, int maxDegreeOfParallelism)
@@ -198,7 +184,7 @@ namespace Proto.Promises
             else if (maxDegreeOfParallelism < 1)
             {
                 enumerator.Dispose();
-                throw new ArgumentOutOfRangeException("maxDegreeOfParallelism", "maxDegreeOfParallelism must be positive, or -1 for default (Environment.ProcessorCount). Actual: " + maxDegreeOfParallelism, GetFormattedStacktrace(2));
+                throw new ArgumentOutOfRangeException(nameof(maxDegreeOfParallelism), "maxDegreeOfParallelism must be positive, or -1 for default (Environment.ProcessorCount). Actual: " + maxDegreeOfParallelism, GetFormattedStacktrace(2));
             }
 
             // One fast up-front check for cancelation before we start the whole operation.
@@ -211,21 +197,21 @@ namespace Proto.Promises
             var promise = PromiseRefBase.PromiseParallelForEach<GenericEnumerator<TEnumerator, TSource>, TParallelBody, TSource>.GetOrCreate(
                 new GenericEnumerator<TEnumerator, TSource>(enumerator), body, cancelationToken, synchronizationContext, maxDegreeOfParallelism);
             promise.MaybeLaunchWorker(true);
-            return new Promise(promise, promise.Id, 0);
+            return new Promise(promise, promise.Id);
         }
 
         partial class PromiseRefBase
         {
-            // Inheriting PromiseSingleAwait<TEnumerator> instead of PromiseRefBase so we can take advantage of the already implemented methods.
-            // We store the enumerator in the _result field to save space, because this type is only used in `Promise`, not `Promise<T>`, so the result doesn't matter.
+            // Inheriting PromiseSingleAwait<VoidResult> instead of PromiseRefBase so we can take advantage of the already implemented methods.
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class PromiseParallelForEach<TEnumerator, TParallelBody, TSource> : PromiseSingleAwait<TEnumerator>, ICancelable
+            internal sealed partial class PromiseParallelForEach<TEnumerator, TParallelBody, TSource> : PromiseSingleAwait<VoidResult>, ICancelable
                 where TEnumerator : IParallelEnumerator<TSource>
                 where TParallelBody : IParallelBody<TSource>
             {
                 private TParallelBody _body;
+                private TEnumerator _enumerator;
                 private CancelationRegistration _externalCancelationRegistration;
                 // Use the CancelationRef directly instead of CancelationSource struct to save memory.
                 private CancelationRef _cancelationRef;
@@ -251,7 +237,7 @@ namespace Proto.Promises
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
-                    promise._result = enumerator;
+                    promise._enumerator = enumerator;
                     promise._body = body;
                     promise._synchronizationContext = synchronizationContext ?? BackgroundSynchronizationContextSentinel.s_instance;
                     promise._remainingAvailableWorkers = maxDegreeOfParallelism;
@@ -267,8 +253,9 @@ namespace Proto.Promises
 
                 internal override void MaybeDispose()
                 {
+                    ValidateNoPending();
                     Dispose();
-                    _body = default(TParallelBody);
+                    _body = default;
                     _synchronizationContext = null;
                     _executionContext = null;
                     ObjectPool.MaybeRepool(this);
@@ -325,9 +312,6 @@ namespace Proto.Promises
 
                 private void ExecuteWorker(bool launchNext)
                 {
-                    var currentContext = ts_currentContext;
-                    ts_currentContext = _synchronizationContext;
-                    
                     SetCurrentInvoker(this);
                     try
                     {
@@ -346,8 +330,6 @@ namespace Proto.Promises
                         MaybeComplete();
                     }
                     ClearCurrentInvoker();
-
-                    ts_currentContext = currentContext;
                 }
 
                 private void WorkerBody(bool launchNext)
@@ -355,8 +337,7 @@ namespace Proto.Promises
                     // The worker body. Each worker will execute this same body.
                     while (true)
                     {
-                        TSource element;
-                        if (!_result.TryMoveNext(this, _cancelationRef, out element))
+                        if (!_enumerator.TryMoveNext(this, _cancelationRef, out var element))
                         {
                             MaybeComplete();
                             return;
@@ -386,10 +367,12 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
-                    RemovePending(handler);
-                    handler.SetCompletionState(rejectContainer, state);
+                    RemoveComplete(handler);
+                    var rejectContainer = handler._rejectContainer;
+                    handler.SuppressRejection = true;
+                    handler.SetCompletionState(state);
                     handler.MaybeDispose();
 
                     if (state == Promise.State.Resolved)
@@ -408,7 +391,7 @@ namespace Proto.Promises
                     else
                     {
                         // Record the failure. The last worker to complete will propagate exceptions as is appropriate to the top-level promise.
-                        var container = rejectContainer.UnsafeAs<IRejectContainer>();
+                        var container = rejectContainer;
                         var exception = container.Value as Exception
                             // If the reason was not an exception, get the reason wrapped in an exception.
                             ?? container.GetExceptionDispatchInfo().SourceException;
@@ -435,13 +418,13 @@ namespace Proto.Promises
                     if (InterlockedAddWithUnsignedOverflowCheck(ref _waitCounter, -1) == 0)
                     {
                         _externalCancelationRegistration.Dispose();
-                        _externalCancelationRegistration = default(CancelationRegistration);
+                        _externalCancelationRegistration = default;
                         _cancelationRef.TryDispose(_cancelationRef.SourceId);
                         _cancelationRef = null;
 
                         try
                         {
-                            _result.Dispose();
+                            _enumerator.Dispose();
                         }
                         catch (Exception e)
                         {
@@ -452,19 +435,20 @@ namespace Proto.Promises
                         // This must be the very last thing done.
                         if (_exceptions != null)
                         {
-                            var rejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
+                            _rejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
                             _exceptions = null;
-                            HandleNextInternal(rejectContainer, Promise.State.Rejected);
+                            HandleNextInternal(Promise.State.Rejected);
                         }
                         else
                         {
-                            HandleNextInternal(null, _completionState);
+                            HandleNextInternal(_completionState);
                         }
                     }
                 }
 
+                partial void ValidateNoPending();
                 partial void AddPending(PromiseRefBase pendingPromise);
-                partial void RemovePending(PromiseRefBase completePromise);
+                partial void RemoveComplete(PromiseRefBase completePromise);
             } // class PromiseParallelForEach
         } // class PromiseRefBase
     } // class Internal

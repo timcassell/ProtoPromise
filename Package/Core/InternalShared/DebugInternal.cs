@@ -1,14 +1,9 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0031 // Use null propagation
 #pragma warning disable IDE0074 // Use compound assignment
 #pragma warning disable IDE0090 // Use 'new(...)'
 
@@ -17,7 +12,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-#if PROMISE_DEBUG && !NET_LEGACY
+#if PROMISE_DEBUG
 using System.Linq;
 #endif
 
@@ -42,7 +37,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
         internal const MethodImplOptions InlineOption = MethodImplOptions.NoInlining;
 #else
-        internal const MethodImplOptions InlineOption = (MethodImplOptions) 256; // AggressiveInlining
+        internal const MethodImplOptions InlineOption = MethodImplOptions.AggressiveInlining;
 #endif
 
         internal static void ValidateProgressValue(double value, string argName, int skipFrames)
@@ -96,10 +91,7 @@ namespace Proto.Promises
             }
         }
 
-        private static ITraceable SynchronousTraceable
-        {
-            get { return SyncTrace.GetCurrent(2); }
-        }
+        private static ITraceable SynchronousTraceable => SyncTrace.GetCurrent(2);
 #else
         private const ITraceable SynchronousTraceable = null;
 #endif
@@ -109,6 +101,9 @@ namespace Proto.Promises
         static partial void ClearCurrentInvoker();
 #if PROMISE_DEBUG
         static partial void SetCreatedStacktrace(ITraceable traceable, int skipFrames)
+            => SetCreatedStacktraceImpl(traceable, skipFrames);
+
+        internal static void SetCreatedStacktraceImpl(ITraceable traceable, int skipFrames)
         {
             StackTrace stackTrace = Promise.Config.DebugCausalityTracer == Promise.TraceLevel.All
                 ? GetStackTrace(skipFrames + 1)
@@ -135,24 +130,16 @@ namespace Proto.Promises
         }
 
         static partial void ClearCurrentInvoker()
-        {
-            ts_currentTrace = ts_traces.Pop();
-        }
+            => ts_currentTrace = ts_traces.Pop();
 
         private static StackTrace GetStackTrace(int skipFrames)
-        {
-            return new StackTrace(skipFrames + 1, true);
-        }
+            => new StackTrace(skipFrames + 1, true);
 
         internal static string GetFormattedStacktrace(ITraceable traceable)
-        {
-            return traceable != null ? traceable.Trace.ToString() : null;
-        }
+            => traceable?.Trace.ToString();
 
         internal static string GetFormattedStacktrace(int skipFrames)
-        {
-            return FormatStackTrace(new StackTrace[1] { GetStackTrace(skipFrames + 1) });
-        }
+            => FormatStackTrace(new StackTrace[1] { GetStackTrace(skipFrames + 1) });
 
         internal static void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
         {
@@ -166,50 +153,6 @@ namespace Proto.Promises
         {
             const string CausalitySplitMessage = "--- End of stack trace from the previous location where the exception was thrown ---";
 
-#if NET_LEGACY
-            // Format stack trace to match "throw exception" so that double-clicking log in Unity console will go to the proper line.
-            var _stackTraces = new List<string>();
-            var separator = new string[1] { Environment.NewLine + " " };
-            var sb = new System.Text.StringBuilder();
-            foreach (StackTrace st in stackTraces)
-            {
-                string stackTrace = st.ToString();
-                if (string.IsNullOrEmpty(stackTrace))
-                {
-                    continue;
-                }
-                foreach (var trace in stackTrace.Substring(1).Split(separator, StringSplitOptions.RemoveEmptyEntries))
-                {
-                    if (!trace.Contains("Proto.Promises"))
-                    {
-                        sb.AppendLine(trace);
-                    }
-                }
-                sb.Replace(":line ", ":")
-                    .Replace("(", " (")
-                    .Replace(") in", ") [0x00000] in"); // Not sure what "[0x00000]" is, but it's necessary for Unity's parsing.
-                _stackTraces.Add(sb.ToString());
-                sb.Length = 0;
-            }
-            if (_stackTraces.Count == 0)
-            {
-                return " ";
-            }
-            if (_stackTraces.Count == 1)
-            {
-                return _stackTraces[0] + " ";
-            }
-            for (int i = 0, max = _stackTraces.Count - 1; i < max ; ++i)
-            {
-                sb.Append(_stackTraces[i]).Append(" ")
-                    .AppendLine()
-                    .Append(CausalitySplitMessage).Append(" ")
-                    .AppendLine();
-
-            }
-            sb.Append(_stackTraces[_stackTraces.Count - 1]).Append(" ");
-            return sb.ToString();
-#else // NET_LEGACY
             // StackTrace.ToString() format issue was fixed in the new runtime.
             var causalityTrace = stackTraces
                 .Select(stackTrace => stackTrace.GetFrames()
@@ -233,10 +176,8 @@ namespace Proto.Promises
             return string.Join(
                 Environment.NewLine + CausalitySplitMessage + Environment.NewLine,
                 causalityTrace);
-#endif // NET_LEGACY
         }
 
-#if !NET_LEGACY
         private static bool IsNonUserCode(System.Reflection.MemberInfo memberInfo)
         {
             if (memberInfo == null)
@@ -246,7 +187,6 @@ namespace Proto.Promises
             return memberInfo.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
                 || IsNonUserCode(memberInfo.DeclaringType);
         }
-#endif // !NET_LEGACY
 
         partial interface ITraceable
         {
@@ -303,18 +243,14 @@ namespace Proto.Promises
         partial class PromiseRefBase
         {
             partial void ValidateReturn(Promise other)
-            {
-                ValidateAwait(other._ref, other._id, false);
-            }
+                => ValidateAwait(other._ref, other._id, false);
 
             partial void ValidateAwait(PromiseRefBase other, short promiseId)
-            {
-                ValidateAwait(other, promiseId, true);
-            }
+                => ValidateAwait(other, promiseId, true);
 
             private void ValidateAwait(PromiseRefBase other, short promiseId, bool awaited)
             {
-                if (new Promise(other, promiseId, 0).IsValid == false)
+                if (new Promise(other, promiseId).IsValid == false)
                 {
                     // Awaiting or returning an invalid from the callback is not allowed.
                     if (awaited)
@@ -376,33 +312,50 @@ namespace Proto.Promises
 
             partial class MultiHandleablePromiseBase<TResult>
             {
-                private readonly Stack<PromiseRefBase> _previousPromises = new Stack<PromiseRefBase>();
+                private readonly HashSet<PromiseRefBase> _pendingPromises = new HashSet<PromiseRefBase>();
 
                 protected override void BorrowPreviousPromises(Stack<PromiseRefBase> borrower)
                 {
-                    lock (_previousPromises)
+                    lock (_pendingPromises)
                     {
-                        foreach (var promiseRef in _previousPromises)
+                        foreach (var promiseRef in _pendingPromises)
                         {
                             borrower.Push(promiseRef);
                         }
                     }
                 }
 
-                partial void AddPending(PromiseRefBase pendingPromise)
+                private void ValidateNoPending()
                 {
-                    lock (_previousPromises)
+                    lock (_pendingPromises)
                     {
-                        _previousPromises.Push(pendingPromise);
+                        if (_pendingPromises.Count != 0)
+                        {
+                            throw new System.InvalidOperationException("MultiHandleablePromiseBase disposed with pending promises.");
+                        }
                     }
                 }
 
-                partial void ClearPending()
+                partial void AddPending(PromiseRefBase pendingPromise)
                 {
-                    lock (_previousPromises)
+                    lock (_pendingPromises)
                     {
-                        _previousPromises.Clear();
+                        _pendingPromises.Add(pendingPromise);
                     }
+                }
+
+                partial void RemoveComplete(PromiseRefBase completePromise)
+                {
+                    lock (_pendingPromises)
+                    {
+                        _pendingPromises.Remove(completePromise);
+                    }
+                }
+
+                new protected void Dispose()
+                {
+                    ValidateNoPending();
+                    base.Dispose();
                 }
             }
 
@@ -421,6 +374,17 @@ namespace Proto.Promises
                     }
                 }
 
+                partial void ValidateNoPending()
+                {
+                    lock (_pendingPromises)
+                    {
+                        if (_pendingPromises.Count != 0)
+                        {
+                            throw new System.InvalidOperationException("PromiseParallelForEach disposed with pending promises.");
+                        }
+                    }
+                }
+
                 partial void AddPending(PromiseRefBase pendingPromise)
                 {
                     lock (_pendingPromises)
@@ -429,7 +393,7 @@ namespace Proto.Promises
                     }
                 }
 
-                partial void RemovePending(PromiseRefBase completePromise)
+                partial void RemoveComplete(PromiseRefBase completePromise)
                 {
                     lock (_pendingPromises)
                     {
@@ -438,7 +402,6 @@ namespace Proto.Promises
                 }
             }
 
-#if CSHARP_7_3_OR_NEWER
             partial class PromiseParallelForEachAsync<TParallelBody, TSource>
             {
                 private readonly HashSet<PromiseRefBase> _pendingPromises = new HashSet<PromiseRefBase>();
@@ -454,6 +417,17 @@ namespace Proto.Promises
                     }
                 }
 
+                partial void ValidateNoPending()
+                {
+                    lock (_pendingPromises)
+                    {
+                        if (_pendingPromises.Count != 0)
+                        {
+                            throw new System.InvalidOperationException("PromiseParallelForEachAsync disposed with pending promises.");
+                        }
+                    }
+                }
+
                 partial void AddPending(PromiseRefBase pendingPromise)
                 {
                     lock (_pendingPromises)
@@ -462,7 +436,7 @@ namespace Proto.Promises
                     }
                 }
 
-                partial void RemovePending(PromiseRefBase completePromise)
+                partial void RemoveComplete(PromiseRefBase completePromise)
                 {
                     lock (_pendingPromises)
                     {
@@ -470,18 +444,11 @@ namespace Proto.Promises
                     }
                 }
             }
-#endif // CSHARP_7_3_OR_NEWER
         }
 #else // PROMISE_DEBUG
-        internal static string GetFormattedStacktrace(int skipFrames)
-        {
-            return null;
-        }
+        internal static string GetFormattedStacktrace(int skipFrames) => null;
 
-        internal static string GetFormattedStacktrace(ITraceable traceable)
-        {
-            return null;
-        }
+        internal static string GetFormattedStacktrace(ITraceable traceable) => null;
 #endif // PROMISE_DEBUG
     } // class Internal
 
@@ -495,14 +462,10 @@ namespace Proto.Promises
 
 #if PROMISE_DEBUG
         partial void ValidateOperation(int skipFrames)
-        {
-            Internal.ValidateOperation(this, skipFrames + 1);
-        }
+            => Internal.ValidateOperation(this, skipFrames + 1);
 
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-        {
-            Internal.ValidateArgument(arg, argName, skipFrames + 1);
-        }
+            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
 
         static partial void ValidateArgument(Promise arg, string argName, int skipFrames)
         {
@@ -539,14 +502,10 @@ namespace Proto.Promises
         static partial void ValidateElement(Promise<T> promise, string argName, int skipFrames);
 #if PROMISE_DEBUG
         partial void ValidateOperation(int skipFrames)
-        {
-            Internal.ValidateOperation(this, skipFrames + 1);
-        }
+            => Internal.ValidateOperation(this, skipFrames + 1);
 
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-        {
-            Internal.ValidateArgument(arg, argName, skipFrames + 1);
-        }
+            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
 
         static partial void ValidateArgument(Promise<T> arg, string argName, int skipFrames)
         {

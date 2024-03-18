@@ -1,19 +1,9 @@
-#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
 #if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 using System;
@@ -37,12 +27,6 @@ namespace Proto.Promises
                 protected CancelationRegistration _cancelationRegistration;
                 // We have to store the state in a separate field until the next awaiter is ready to be invoked on the proper context.
                 protected Promise.State _tempState;
-                // This will only ever be rejected in DEBUG mode.
-#if PROMISE_DEBUG
-                protected object _tempRejectContainer;
-#else
-                private const object _tempRejectContainer = null;
-#endif
 
                 [MethodImpl(InlineOption)]
                 protected void Reset(SynchronizationContext callerContext)
@@ -57,7 +41,7 @@ namespace Proto.Promises
                 {
                     base.Dispose();
                     _callerContext = null;
-                    _cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default;
                 }
 
                 protected void Continue()
@@ -65,7 +49,7 @@ namespace Proto.Promises
                     if (_callerContext == null)
                     {
                         // It was a synchronous lock or wait, handle next continuation synchronously so that the PromiseSynchronousWaiter will be pulsed to wake the waiting thread.
-                        HandleNextInternal(_tempRejectContainer, _tempState);
+                        HandleNextInternal(_tempState);
                         return;
                     }
                     // Post the continuation to the caller's context. This prevents blocking the current thread and avoids StackOverflowException.
@@ -77,29 +61,34 @@ namespace Proto.Promises
 
                 private void HandleFromContext()
                 {
-                    var currentContext = ts_currentContext;
-                    ts_currentContext = _callerContext;
-
-                    HandleNextInternal(_tempRejectContainer, _tempState);
-
-                    ts_currentContext = currentContext;
+                    HandleNextInternal(_tempState);
                 }
 
-                internal void MaybeHookupCancelation(CancelationToken cancelationToken)
+                [MethodImpl(InlineOption)]
+                internal bool HookupAndGetIsCanceled(CancelationToken cancelationToken)
                 {
                     ThrowIfInPool(this);
-                    cancelationToken.TryRegister(this, out _cancelationRegistration);
+                    // We register without immediate invoke because we hold a spin lock here, and we don't want to cause a deadlock from it trying to re-enter from the invoke.
+                    cancelationToken.TryRegisterWithoutImmediateInvoke<ICancelable>(this, out _cancelationRegistration, out var alreadyCanceled);
+                    return alreadyCanceled;
+                }
+
+                [MethodImpl(InlineOption)]
+                internal void SetCanceledImmediate()
+                {
+                    SetCompletionState(Promise.State.Canceled);
+                    _next = PromiseCompletionSentinel.s_instance;
                 }
 
                 public abstract void Cancel();
 
-                internal override sealed void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state) { throw new System.InvalidOperationException(); }
+                internal override sealed void Handle(PromiseRefBase handler, Promise.State state) => throw new System.InvalidOperationException();
 
 #if PROMISE_DEBUG
                 internal void Reject(IRejectContainer rejectContainer)
                 {
                     _cancelationRegistration.Dispose();
-                    _tempRejectContainer = rejectContainer;
+                    _rejectContainer = rejectContainer;
                     _tempState = Promise.State.Rejected;
                     Continue();
                 }
@@ -115,8 +104,8 @@ namespace Proto.Promises
             protected AsyncEventPromiseBase _nextEventPromise;
             AsyncEventPromiseBase ILinked<AsyncEventPromiseBase>.Next
             {
-                get { return _nextEventPromise; }
-                set { _nextEventPromise = value; }
+                get => _nextEventPromise;
+                set => _nextEventPromise = value;
             }
 
             internal void Resolve()
@@ -146,8 +135,8 @@ namespace Proto.Promises
             protected TOwner _owner
 #pragma warning restore IDE1006 // Naming Styles
             {
-                get { return _ownerReference.Target as TOwner; }
-                set { _ownerReference.Target = value; }
+                get => _ownerReference.Target as TOwner;
+                set => _ownerReference.Target = value;
             }
 #else
             protected TOwner _owner;

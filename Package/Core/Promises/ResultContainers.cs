@@ -4,72 +4,13 @@
 #undef PROMISE_DEBUG
 # endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
+#pragma warning disable IDE0090 // Use 'new(...)'
 
-using System;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
-    /// <summary>
-    /// Used to get the value of a rejection or cancelation.
-    /// An instance of <see cref="ReasonContainer"/> is only valid during the invocation of the delegate it is passed into.
-    /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode, StackTraceHidden]
-#endif
-    [Obsolete("Promise.ResultContainer.RejectContainer is deprecated, use RejectReason instead (returns object)", false), EditorBrowsable(EditorBrowsableState.Never)]
-    public
-#if CSHARP_7_3_OR_NEWER
-        readonly ref
-#endif
-        partial struct ReasonContainer
-    {
-        private readonly Internal.IRejectContainer _rejectContainer;
-
-        /// <summary>
-        /// FOR INTERNAL USE ONLY!
-        /// </summary>
-        internal ReasonContainer(Internal.IRejectContainer valueContainer)
-        {
-            _rejectContainer = valueContainer;
-        }
-
-        /// <summary>
-        /// Get the type of the value.
-        /// </summary>
-        public Type ValueType
-        {
-            get
-            {
-                return _rejectContainer.Value.GetType();
-            }
-        }
-
-        /// <summary>
-        /// Get the value.
-        /// </summary>
-        public object Value
-        {
-            get
-            {
-                return _rejectContainer.Value;
-            }
-        }
-
-        /// <summary>
-        /// Try to get the value casted to <typeparamref name="T"/>.
-        /// Returns true if successful, false otherwise.
-        /// </summary>
-        public bool TryGetValueAs<T>(out T value)
-        {
-            return _rejectContainer.TryGetValue(out value);
-        }
-    }
-
     partial struct Promise
     {
         /// <summary>
@@ -78,41 +19,24 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            struct ResultContainer
+        public readonly struct ResultContainer
         {
             internal static ResultContainer Resolved
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return new ResultContainer(null, State.Resolved); }
+                get => new ResultContainer(null, State.Resolved);
             }
 
-            /// <summary>
-            /// FOR INTERNAL USE ONLY!
-            /// </summary>
             internal readonly Promise<Internal.VoidResult>.ResultContainer _target;
 
-            /// <summary>
-            /// FOR INTERNAL USE ONLY!
-            /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal ResultContainer(object rejectContainer, State state)
+            internal ResultContainer(Internal.IRejectContainer rejectContainer, State state)
             {
-                _target = new Promise<Internal.VoidResult>.ResultContainer(default(Internal.VoidResult), rejectContainer, state);
+                _target = new Promise<Internal.VoidResult>.ResultContainer(default, rejectContainer, state);
             }
 
-            /// <summary>
-            /// FOR INTERNAL USE ONLY!
-            /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal ResultContainer(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                Promise<Internal.VoidResult>.ResultContainer target)
+            internal ResultContainer(in Promise<Internal.VoidResult>.ResultContainer target)
             {
                 _target = target;
             }
@@ -122,27 +46,21 @@ namespace Proto.Promises
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public void RethrowIfRejectedOrCanceled()
-            {
-                _target.RethrowIfRejectedOrCanceled();
-            }
+                => _target.RethrowIfRejectedOrCanceled();
 
             /// <summary>
             /// If the <see cref="Promise"/> is rejected, rethrow the rejection.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public void RethrowIfRejected()
-            {
-                _target.RethrowIfRejected();
-            }
+                => _target.RethrowIfRejected();
 
             /// <summary>
             /// If the <see cref="Promise"/> is canceled, rethrow the cancelation.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public void RethrowIfCanceled()
-            {
-                _target.RethrowIfCanceled();
-            }
+                => _target.RethrowIfCanceled();
 
             /// <summary>
             /// Get the state of the <see cref="Promise"/>.
@@ -150,7 +68,7 @@ namespace Proto.Promises
             public State State
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return _target.State; }
+                get => _target.State;
             }
 
             /// <summary>
@@ -159,25 +77,7 @@ namespace Proto.Promises
             public object Reason
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return _target.Reason; }
-            }
-
-            [Obsolete("Prefer Reason", false), EditorBrowsable(EditorBrowsableState.Never)]
-            public object RejectReason
-            {
-                get { return Reason; }
-            }
-
-            [Obsolete("Prefer Reason", false), EditorBrowsable(EditorBrowsableState.Never)]
-            public ReasonContainer RejectContainer
-            {
-                get { return _target.RejectContainer; }
-            }
-
-            [Obsolete("Cancelation reasons are no longer supported.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public ReasonContainer CancelContainer
-            {
-                get { return _target.CancelContainer; }
+                get => _target.Reason;
             }
         }
     }
@@ -190,28 +90,14 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public
-#if CSHARP_7_3_OR_NEWER
-            readonly
-#endif
-            partial struct ResultContainer
+        public readonly partial struct ResultContainer
         {
-            /// <summary>
-            /// FOR INTERNAL USE ONLY!
-            /// </summary>
-            internal readonly object _rejectContainer;
+            internal readonly Internal.IRejectContainer _rejectContainer;
             private readonly Promise.State _state;
             private readonly T _result;
 
-            /// <summary>
-            /// FOR INTERNAL USE ONLY!
-            /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            internal ResultContainer(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                T result, object rejectContainer, Promise.State state)
+            internal ResultContainer(in T result, Internal.IRejectContainer rejectContainer, Promise.State state)
             {
                 _rejectContainer = rejectContainer;
                 _state = state;
@@ -219,8 +105,8 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            private ResultContainer(object rejectContainer, Promise.State state)
-                : this(default(T), rejectContainer, state)
+            private ResultContainer(Internal.IRejectContainer rejectContainer, Promise.State state)
+                : this(default, rejectContainer, state)
             {
             }
 
@@ -235,7 +121,7 @@ namespace Proto.Promises
                     {
                         throw Promise.CancelException();
                     }
-                    _rejectContainer.UnsafeAs<Internal.IRejectContainer>().GetExceptionDispatchInfo().Throw();
+                    _rejectContainer.GetExceptionDispatchInfo().Throw();
                 }
             }
 
@@ -246,7 +132,7 @@ namespace Proto.Promises
             {
                 if (State == Promise.State.Rejected)
                 {
-                    _rejectContainer.UnsafeAs<Internal.IRejectContainer>().GetExceptionDispatchInfo().Throw();
+                    _rejectContainer.GetExceptionDispatchInfo().Throw();
                 }
             }
 
@@ -267,7 +153,7 @@ namespace Proto.Promises
             public Promise.State State
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return _state; }
+                get => _state;
             }
 
             /// <summary>
@@ -276,43 +162,13 @@ namespace Proto.Promises
             public T Value
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return _result; }
+                get => _result;
             }
 
             /// <summary>
             /// Gets the reason of the rejected <see cref="Promise{T}"/>.
             /// </summary>
-            public object Reason
-            {
-                get
-                {
-                    return _state == Promise.State.Rejected
-                        ? _rejectContainer.UnsafeAs<Internal.IRejectContainer>().Value
-                        : null;
-                }
-            }
-
-            [Obsolete("Prefer Value", false), EditorBrowsable(EditorBrowsableState.Never)]
-            public T Result
-            {
-                get { return Value; }
-            }
-
-            [Obsolete("Prefer Reason", false), EditorBrowsable(EditorBrowsableState.Never)]
-            public object RejectReason
-            {
-                get { return Reason; }
-            }
-
-            [Obsolete("Prefer Reason", false), EditorBrowsable(EditorBrowsableState.Never)]
-            public ReasonContainer RejectContainer
-            {
-                get
-                {
-                    ValidateRejected();
-                    return new ReasonContainer(_rejectContainer.UnsafeAs<Internal.IRejectContainer>());
-                }
-            }
+            public object Reason => _state == Promise.State.Rejected ? _rejectContainer.Value : null;
 
             /// <summary>
             /// Cast to <see cref="Promise.ResultContainer"/>.
@@ -328,31 +184,8 @@ namespace Proto.Promises
             /// Wrap the value in <see cref="ResultContainer"/>.
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
-            public static implicit operator ResultContainer(T value)
-            {
-                return new ResultContainer(value, null, Promise.State.Resolved);
-            }
-
-            partial void ValidateRejected();
-#if PROMISE_DEBUG
-            partial void ValidateRejected()
-            {
-                if (State != Promise.State.Rejected)
-                {
-                    throw new InvalidOperationException("Promise must be rejected in order to access RejectContainer.", Internal.GetFormattedStacktrace(2));
-                }
-            }
-#endif
-
-            [Obsolete("Cancelation reasons are no longer supported.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public ReasonContainer CancelContainer
-            {
-                [MethodImpl(Internal.InlineOption)]
-                get
-                {
-                    throw new InvalidOperationException("Cancelation reasons are no longer supported.", Internal.GetFormattedStacktrace(1));
-                }
-            }
+            public static implicit operator ResultContainer(in T value)
+                => new ResultContainer(value, null, Promise.State.Resolved);
         }
     }
 }

@@ -16,19 +16,6 @@
     <tags>promise promises task tasks csharp unity dotnet mono coroutine coroutines concurrency concurrent parallel asynchronous async await thread threads threading then thenable callback callbacks</tags>
 
     <dependencies>
-      <group targetFramework="net35" />
-      <group targetFramework="net40" />
-      <group targetFramework="net45">
-        <dependency id="System.ValueTuple" version="4.5.0" exclude="Build,Analyzers" />
-        <dependency id="System.Threading.Tasks.Extensions" version="4.5.4" exclude="Build,Analyzers" />
-      </group>
-      <group targetFramework="net47">
-        <dependency id="Microsoft.Bcl.AsyncInterfaces" version="5.0.0" exclude="Build,Analyzers" />
-        <dependency id="System.Buffers" version="4.5.1" exclude="Build,Analyzers" />
-        <dependency id="System.Memory" version="4.5.5" exclude="Build,Analyzers" />
-        <dependency id="System.Threading.Tasks.Extensions" version="4.5.4" exclude="Build,Analyzers" />
-        <dependency id="ProtoPromise.Analyzer" version="1.0.0" exclude="Build" />
-      </group>
       <group targetFramework="netstandard2.0">
         <dependency id="Microsoft.Bcl.AsyncInterfaces" version="5.0.0" exclude="Build,Analyzers" />
         <dependency id="System.Buffers" version="4.5.1" exclude="Build,Analyzers" />
@@ -37,13 +24,6 @@
         <dependency id="ProtoPromise.Analyzer" version="1.0.0" exclude="Build" />
       </group>
       <group targetFramework="netstandard2.1">
-        <dependency id="ProtoPromise.Analyzer" version="1.0.0" exclude="Build" />
-      </group>
-      <group targetFramework="netcoreapp2.1">
-        <dependency id="Microsoft.Bcl.AsyncInterfaces" version="5.0.0" exclude="Build,Analyzers" />
-        <dependency id="ProtoPromise.Analyzer" version="1.0.0" exclude="Build" />
-      </group>
-      <group targetFramework="net5.0">
         <dependency id="ProtoPromise.Analyzer" version="1.0.0" exclude="Build" />
       </group>
       <group targetFramework="net6.0">
@@ -57,30 +37,12 @@
   <files>
     <file src="targets\**" target="build" />
     
-    <file src="..\bin\Release\net35\**" target="lib/net35/Release" />
-    <file src="..\bin\Debug\net35\**" target="lib/net35/Debug" />
-    
-    <file src="..\bin\Release\net40\**" target="lib/net40/Release" />
-    <file src="..\bin\Debug\net40\**" target="lib/net40/Debug" />
-    
-    <file src="..\bin\Release\net45\**" target="lib/net45/Release" />
-    <file src="..\bin\Debug\net45\**" target="lib/net45/Debug" />
-    
-    <file src="..\bin\Release\net47\**" target="lib/net47/Release" />
-    <file src="..\bin\Debug\net47\**" target="lib/net47/Debug" />
-    
     <file src="..\bin\Release\netstandard2.0\**" target="lib/netstandard2.0/Release" />
     <file src="..\bin\Debug\netstandard2.0\**" target="lib/netstandard2.0/Debug" />
 
     <file src="..\bin\Release\netstandard2.1\**" target="lib/netstandard2.1/Release" />
     <file src="..\bin\Debug\netstandard2.1\**" target="lib/netstandard2.1/Debug" />
     
-    <file src="..\bin\Release\netcoreapp2.1\**" target="lib/netcoreapp2.1/Release" />
-    <file src="..\bin\Debug\netcoreapp2.1\**" target="lib/netcoreapp2.1/Debug" />
-    
-    <file src="..\bin\Release\net5.0\**" target="lib/net5.0/Release" />
-    <file src="..\bin\Debug\net5.0\**" target="lib/net5.0/Debug" />
-
     <file src="..\bin\Release\net6.0\**" target="lib/net6.0/Release" />
     <file src="..\bin\Debug\net6.0\**" target="lib/net6.0/Debug" />
     

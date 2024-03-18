@@ -137,7 +137,9 @@ namespace ProtoPromiseTests.APIs.Utilities
             Thread foregroundThread = Thread.CurrentThread;
             ThreadHelper threadHelper = new ThreadHelper();
 
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationCallbackType, v => TestHelper.AssertCallbackContext(synchronizationCallbackType, synchronizationReportType, foregroundThread));
+            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationCallbackType,
+                v => TestHelper.AssertCallbackContext(synchronizationCallbackType, synchronizationReportType, foregroundThread),
+                forceAsync: true);
             var progress = progressHelper.ToProgress();
             var progressToken = progress.Token;
 
@@ -329,7 +331,7 @@ namespace ProtoPromiseTests.APIs.Utilities
 
             for (int i = 0; i < MultiProgressCount; ++i)
             {
-                progressHelpers[i] = new ProgressHelper(progressType, synchronizationType);
+                progressHelpers[i] = new ProgressHelper(progressType, synchronizationType, forceAsync: true);
                 progresses[i] = progressHelpers[i].ToProgress();
                 multiProgress.Add(progresses[i].Token);
                 progressHelpers[i].AssertCurrentProgress(double.NaN, false, false);

@@ -1,11 +1,10 @@
-﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
 #else
-#undef PROMISE_PROGRESS
+#undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable 0420 // A reference to a volatile field will not be treated as volatile
+#pragma warning disable IDE0074 // Use compound assignment
 
 using System;
 using System.Diagnostics;
@@ -19,61 +18,22 @@ namespace Proto.Promises
         internal interface IDeferredPromise : ITraceable
         {
             int DeferredId { get; }
-            bool TryIncrementDeferredIdAndUnregisterCancelation(int deferredId);
+            bool TryIncrementDeferredId(int deferredId);
             void RejectDirect(IRejectContainer reasonContainer);
             void CancelDirect();
-#if PROMISE_PROGRESS
-            bool TryReportProgress(int deferredId, float progress);
-#endif
         }
 
         internal static class DeferredPromiseHelper
         {
             internal static bool GetIsValidAndPending(IDeferredPromise _this, int deferredId)
-            {
-                return _this != null && _this.DeferredId == deferredId;
-            }
+                => _this?.DeferredId == deferredId;
 
-            internal static bool TryIncrementDeferredIdAndUnregisterCancelation(IDeferredPromise _this, int deferredId)
-            {
-                return _this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(deferredId);
-            }
-
-            internal static bool TryReportProgress(IDeferredPromise _this, int deferredId, float progress)
-            {
-                ValidateProgressValue(progress, "progress", 1);
-#if !PROMISE_PROGRESS
-                return GetIsValidAndPending(_this, deferredId);
-#else
-                return _this != null && _this.TryReportProgress(deferredId, progress);
-#endif
-            }
+            internal static bool TryIncrementDeferredId(IDeferredPromise _this, int deferredId)
+                => _this?.TryIncrementDeferredId(deferredId) == true;
         }
 
         partial class PromiseRefBase
         {
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            internal partial struct DeferredIdAndProgress
-            {
-                [MethodImpl(InlineOption)]
-                internal bool TryIncrementId(int deferredId)
-                {
-                    unchecked
-                    {
-                        return Interlocked.CompareExchange(ref _id, deferredId + 1, deferredId) == deferredId;
-                    }
-                }
-
-                [MethodImpl(InlineOption)]
-                internal void IncrementId()
-                {
-                    // Used when canceled from the token.
-                    Interlocked.Increment(ref _id);
-                }
-            }
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
@@ -82,47 +42,39 @@ namespace Proto.Promises
                 public int DeferredId
                 {
                     [MethodImpl(InlineOption)]
-                    get { return _idAndProgress._id; }
+                    get => _deferredId;
                 }
 
                 protected DeferredPromiseBase() { }
 
                 ~DeferredPromiseBase()
                 {
-                    try
+                    if (State == Promise.State.Pending)
                     {
-                        if (State == Promise.State.Pending)
-                        {
-                            // Deferred wasn't handled.
-                            ReportRejection(UnhandledDeferredException.instance, this);
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        // This should never happen.
-                        ReportRejection(e, this);
+                        // Deferred wasn't handled.
+                        ReportRejection(UnhandledDeferredException.instance, this);
                     }
                 }
 
-
                 [MethodImpl(InlineOption)]
-                public virtual bool TryIncrementDeferredIdAndUnregisterCancelation(int deferredId)
+                public bool TryIncrementDeferredId(int deferredId)
                 {
-                    bool success = _idAndProgress.TryIncrementId(deferredId);
+                    bool success = Interlocked.CompareExchange(ref _deferredId, unchecked(deferredId + 1), deferredId) == deferredId;
                     MaybeThrowIfInPool(this, success);
                     return success;
                 }
 
                 public void RejectDirect(IRejectContainer reasonContainer)
                 {
-                    HandleNextInternal(reasonContainer, Promise.State.Rejected);
+                    _rejectContainer = reasonContainer;
+                    HandleNextInternal(Promise.State.Rejected);
                 }
 
                 [MethodImpl(InlineOption)]
                 public void CancelDirect()
                 {
                     ThrowIfInPool(this);
-                    HandleNextInternal(null, Promise.State.Canceled);
+                    HandleNextInternal(Promise.State.Canceled);
                 }
             }
 
@@ -158,13 +110,9 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static bool TryResolve(DeferredPromise<TResult> _this, int deferredId,
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TResult value)
+                internal static bool TryResolve(DeferredPromise<TResult> _this, int deferredId, in TResult value)
                 {
-                    if (_this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
+                    if (_this?.TryIncrementDeferredId(deferredId) == true)
                     {
                         _this.ResolveDirect(value);
                         return true;
@@ -175,7 +123,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static bool TryResolveVoid(DeferredPromise<TResult> _this, int deferredId)
                 {
-                    if (_this != null && _this.TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
+                    if (_this?.TryIncrementDeferredId(deferredId) == true)
                     {
                         _this.ResolveDirectVoid();
                         return true;
@@ -184,73 +132,18 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal void ResolveDirect(
-#if CSHARP_7_3_OR_NEWER
-                    in
-#endif
-                    TResult value)
+                internal void ResolveDirect(in TResult value)
                 {
+                    ThrowIfInPool(this);
                     _result = value;
-                    HandleNextInternal(null, Promise.State.Resolved);
+                    HandleNextInternal(Promise.State.Resolved);
                 }
 
                 [MethodImpl(InlineOption)]
                 internal void ResolveDirectVoid()
                 {
                     ThrowIfInPool(this);
-                    HandleNextInternal(null, Promise.State.Resolved);
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            internal sealed partial class DeferredPromiseCancel<TResult> : DeferredPromise<TResult>, ICancelable
-            {
-                private DeferredPromiseCancel() { }
-
-                internal override void MaybeDispose()
-                {
-                    Dispose();
-                    _cancelationRegistration = default(CancelationRegistration);
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                [MethodImpl(InlineOption)]
-                new private static DeferredPromiseCancel<TResult> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<DeferredPromiseCancel<TResult>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new DeferredPromiseCancel<TResult>()
-                        : obj.UnsafeAs<DeferredPromiseCancel<TResult>>();
-                }
-
-                internal static DeferredPromiseCancel<TResult> GetOrCreate(CancelationToken cancelationToken)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    cancelationToken.TryRegister(promise, out promise._cancelationRegistration);
-                    return promise;
-                }
-
-                private bool TryUnregisterCancelation()
-                {
-                    return TryUnregisterAndIsNotCanceling(ref _cancelationRegistration);
-                }
-
-                public override bool TryIncrementDeferredIdAndUnregisterCancelation(int deferredId)
-                {
-                    return base.TryIncrementDeferredIdAndUnregisterCancelation(deferredId)
-                        && TryUnregisterCancelation(); // If TryUnregisterCancelation returns false, it means the CancelationSource was canceled.
-                }
-
-                void ICancelable.Cancel()
-                {
-                    ThrowIfInPool(this);
-                    // A simple increment is sufficient.
-                    // If the CancelationSource was canceled before the Deferred was completed, even if the Deferred was completed before the cancelation was invoked, the cancelation takes precedence.
-                    _idAndProgress.IncrementId();
-                    CancelDirect();
+                    HandleNextInternal(Promise.State.Resolved);
                 }
             }
 
@@ -323,13 +216,12 @@ namespace Proto.Promises
                         }
                     }
 
-                    if (!forceAsync & context == ts_currentContext)
+                    if (!forceAsync & context == Promise.Manager.ThreadStaticSynchronizationContext)
                     {
                         Run();
                         return;
                     }
 
-                    _synchronizationContext = context;
                     ScheduleContextCallback(context, this,
                         obj => obj.UnsafeAs<DeferredNewPromise<TResult, TDelegate>>().Run(),
                         obj => obj.UnsafeAs<DeferredNewPromise<TResult, TDelegate>>().Run()
@@ -342,11 +234,7 @@ namespace Proto.Promises
 
                     var deferredId = DeferredId;
                     var runner = _runner;
-                    _runner = default(TDelegate);
-
-                    var currentContext = ts_currentContext;
-                    ts_currentContext = _synchronizationContext;
-                    _synchronizationContext = null;
+                    _runner = default;
 
                     SetCurrentInvoker(this);
                     try
@@ -356,16 +244,16 @@ namespace Proto.Promises
                     catch (OperationCanceledException)
                     {
                         // Don't do anything if the deferred was already completed.
-                        if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
+                        if (TryIncrementDeferredId(deferredId))
                         {
                             CancelDirect();
                         }
                     }
                     catch (Exception e)
                     {
-                        if (TryIncrementDeferredIdAndUnregisterCancelation(deferredId))
+                        if (TryIncrementDeferredId(deferredId))
                         {
-                            RejectDirect(Internal.CreateRejectContainer(e, int.MinValue, null, this));
+                            RejectDirect(CreateRejectContainer(e, int.MinValue, null, this));
                         }
                         else
                         {
@@ -374,7 +262,6 @@ namespace Proto.Promises
                         }
                     }
                     ClearCurrentInvoker();
-                    ts_currentContext = currentContext;
                 }
             }
         } // class PromiseRef

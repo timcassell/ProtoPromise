@@ -3,18 +3,8 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
-
-#pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable IDE0074 // Use compound assignment
-#pragma warning disable CA1507 // Use nameof to express symbol names
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -22,7 +12,6 @@ using System.Threading;
 
 namespace Proto.Promises
 {
-#if CSHARP_7_3_OR_NEWER
     partial class Internal
     {
         internal static Promise ParallelForEachAsync<TParallelBody, TSource>(Linq.AsyncEnumerable<TSource> enumerable, TParallelBody body, CancelationToken cancelationToken, SynchronizationContext synchronizationContext, int maxDegreeOfParallelism)
@@ -35,7 +24,7 @@ namespace Proto.Promises
             else if (maxDegreeOfParallelism < 1)
             {
                 enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
-                throw new ArgumentOutOfRangeException("maxDegreeOfParallelism", "maxDegreeOfParallelism must be positive, or -1 for default (Environment.ProcessorCount). Actual: " + maxDegreeOfParallelism, GetFormattedStacktrace(2));
+                throw new ArgumentOutOfRangeException(nameof(maxDegreeOfParallelism), "maxDegreeOfParallelism must be positive, or -1 for default (Environment.ProcessorCount). Actual: " + maxDegreeOfParallelism, GetFormattedStacktrace(2));
             }
 
             // One fast up-front check for cancelation before we start the whole operation.
@@ -48,20 +37,20 @@ namespace Proto.Promises
             var promise = PromiseRefBase.PromiseParallelForEachAsync<TParallelBody, TSource>.GetOrCreate(
                 enumerable, body, cancelationToken, synchronizationContext, maxDegreeOfParallelism);
             promise.MaybeLaunchWorker(true);
-            return new Promise(promise, promise.Id, 0);
+            return new Promise(promise, promise.Id);
         }
 
         partial class PromiseRefBase
         {
-            // Inheriting PromiseSingleAwait<AsyncEnumerator<TSource>> instead of PromiseRefBase so we can take advantage of the already implemented methods.
-            // We store the enumerator in the _result field to save space, because this type is only used in `Promise`, not `Promise<T>`, so the result doesn't matter.
+            // Inheriting PromiseSingleAwait<VoidResult> instead of PromiseRefBase so we can take advantage of the already implemented methods.
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class PromiseParallelForEachAsync<TParallelBody, TSource> : PromiseSingleAwait<Linq.AsyncEnumerator<TSource>>, ICancelable, IDelegateContinue
+            internal sealed partial class PromiseParallelForEachAsync<TParallelBody, TSource> : PromiseSingleAwait<VoidResult>, ICancelable
                 where TParallelBody : IParallelBody<TSource>
             {
                 private TParallelBody _body;
+                private Linq.AsyncEnumerator<TSource> _asyncEnumerator;
                 private CancelationRegistration _externalCancelationRegistration;
                 // Use the CancelationRef directly instead of CancelationSource struct to save memory.
                 private CancelationRef _cancelationRef;
@@ -102,7 +91,7 @@ namespace Proto.Promises
                     var cancelRef = CancelationRef.GetOrCreate();
                     promise._cancelationRef = cancelRef;
                     cancelationToken.TryRegister(promise, out promise._externalCancelationRegistration);
-                    promise._result = enumerable.GetAsyncEnumerator(new CancelationToken(cancelRef, cancelRef.TokenId));
+                    promise._asyncEnumerator = enumerable.GetAsyncEnumerator(new CancelationToken(cancelRef, cancelRef.TokenId));
                     if (Promise.Config.AsyncFlowExecutionContextEnabled)
                     {
                         promise._executionContext = ExecutionContext.Capture();
@@ -112,8 +101,9 @@ namespace Proto.Promises
 
                 internal override void MaybeDispose()
                 {
+                    ValidateNoPending();
                     Dispose();
-                    _body = default(TParallelBody);
+                    _body = default;
                     _synchronizationContext = null;
                     _executionContext = null;
                     ObjectPool.MaybeRepool(this);
@@ -256,9 +246,6 @@ namespace Proto.Promises
 
                 private void ExecuteWorker(bool fromMoveNext)
                 {
-                    var currentContext = ts_currentContext;
-                    ts_currentContext = _synchronizationContext;
-                    
                     SetCurrentInvoker(this);
                     try
                     {
@@ -277,8 +264,6 @@ namespace Proto.Promises
                         MaybeComplete(1);
                     }
                     ClearCurrentInvoker();
-
-                    ts_currentContext = currentContext;
                 }
 
                 private void WorkerBody(bool fromMoveNext)
@@ -300,7 +285,7 @@ namespace Proto.Promises
                         return;
                     }
 
-                    var moveNextPromise = _result.MoveNextAsync();
+                    var moveNextPromise = _asyncEnumerator.MoveNextAsync();
                     bool hasValue;
                     if (moveNextPromise._ref == null)
                     {
@@ -328,7 +313,7 @@ namespace Proto.Promises
                     }
 
                 AfterMoveNext:
-                    var element = _result.Current;
+                    var element = _asyncEnumerator.Current;
                     bool launchNext = ExitLockAndGetLaunchNext();
 
                     // If the available workers allows it and we've not yet queued the next worker, do so now.  We wait
@@ -363,15 +348,17 @@ namespace Proto.Promises
                     goto LoopStart;
                 }
 
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state)
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
-                    RemovePending(handler);
-                    handler.SetCompletionState(rejectContainer, state);
+                    RemoveComplete(handler);
+                    var rejectContainer = handler._rejectContainer;
+                    handler.SuppressRejection = true;
+                    handler.SetCompletionState(state);
                     handler.MaybeDispose();
 
                     // We hook this up to the MoveNextAsync promise and the parallel body promise,
                     // so we need to check which one completed.
-                    bool isMoveNextAsyncContinuation = handler == _result._target;
+                    bool isMoveNextAsyncContinuation = handler == _asyncEnumerator._target;
 
                     if (state == Promise.State.Resolved)
                     {
@@ -416,9 +403,9 @@ namespace Proto.Promises
                     }
                 }
 
-                private void RecordRejection(object rejectContainer)
+                private void RecordRejection(IRejectContainer rejectContainer)
                 {
-                    var container = rejectContainer.UnsafeAs<IRejectContainer>();
+                    var container = rejectContainer;
                     var exception = container.Value as Exception
                         // If the reason was not an exception, get the reason wrapped in an exception.
                         ?? container.GetExceptionDispatchInfo().SourceException;
@@ -443,14 +430,14 @@ namespace Proto.Promises
                     if (InterlockedAddWithUnsignedOverflowCheck(ref _waitCounter, -completeCount) == 0)
                     {
                         _externalCancelationRegistration.Dispose();
-                        _externalCancelationRegistration = default(CancelationRegistration);
+                        _externalCancelationRegistration = default;
                         _cancelationRef.TryDispose(_cancelationRef.SourceId);
                         _cancelationRef = null;
 
                         Promise disposePromise;
                         try
                         {
-                            disposePromise = _result.DisposeAsync();
+                            disposePromise = _asyncEnumerator.DisposeAsync();
                         }
                         catch (Exception e)
                         {
@@ -469,13 +456,13 @@ namespace Proto.Promises
                     // This must be the very last thing done.
                     if (_exceptions != null)
                     {
-                        var rejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
+                        _rejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
                         _exceptions = null;
-                        HandleNextInternal(rejectContainer, Promise.State.Rejected);
+                        HandleNextInternal(Promise.State.Rejected);
                     }
                     else
                     {
-                        HandleNextInternal(null, _completionState);
+                        HandleNextInternal(_completionState);
                     }
                 }
 
@@ -500,33 +487,32 @@ namespace Proto.Promises
 
                     // We're already hooking this up directly to the MoveNextAsync promise and the loop body promise,
                     // Adding a 3rd direct hookup for DisposeAsync which is only called once would add extra overhead to the others that are called multiple times.
-                    // Instead, we use a more traditional ContinueWith. But we use it directly with IDelegateContinue to avoid creating a delegate.
+                    // Instead, we use a PromisePassThrough.
 
-                    // TODO: We could use a PromisePassThrough instead of PromiseContinue to reduce memory.
-                    var continuePromise = PromiseContinue<VoidResult, IDelegateContinue>.GetOrCreate(this, disposePromise.Depth);
-                    AddPending(continuePromise);
-                    disposePromise._ref.HookupNewPromise(disposePromise._id, continuePromise);
-                    continuePromise.Forget(continuePromise.Id);
+                    AddPending(disposePromise._ref);
+                    var passthrough = PromisePassThrough.GetOrCreate(disposePromise._ref, this, 0);
+                    disposePromise._ref.HookupNewWaiter(disposePromise._id, passthrough);
                 }
 
-                void IDelegateContinue.Invoke(PromiseRefBase handler, object rejectContainer, Promise.State state, PromiseRefBase owner)
+                internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
-                    RemovePending(handler);
-                    handler.MaybeDispose();
-                    owner.HandleNextInternal(null, Promise.State.Resolved);
+                    RemoveComplete(handler);
+                    handler.SetCompletionState(state);
                     if (state == Promise.State.Rejected)
                     {
-                        RecordRejection(rejectContainer);
+                        RecordRejection(handler._rejectContainer);
+                        handler.SuppressRejection = true;
                     }
+                    handler.MaybeDispose();
                     // Canceled = 3 and Resolved = 1, this happens to work with | to not overwrite the canceled state if this state is resolved.
                     _completionState |= state;
                     OnComplete();
                 }
 
+                partial void ValidateNoPending();
                 partial void AddPending(PromiseRefBase pendingPromise);
-                partial void RemovePending(PromiseRefBase completePromise);
+                partial void RemoveComplete(PromiseRefBase completePromise);
             } // class PromiseParallelForEach
         } // class PromiseRefBase
     } // class Internal
-#endif // CSHARP_7_3_OR_NEWER
 }

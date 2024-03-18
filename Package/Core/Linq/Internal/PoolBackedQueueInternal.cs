@@ -4,23 +4,20 @@
 #undef PROMISE_DEBUG
 #endif
 
-#if CSHARP_7_3_OR_NEWER
 using System;
 // ArrayPool for old runtime is in Proto.Promises.Collections namespace.
-#if (NET47 || NETCOREAPP || NETSTANDARD2_0_OR_GREATER || UNITY_2021_2_OR_NEWER)
+#if (NETCOREAPP || NETSTANDARD2_0_OR_GREATER || UNITY_2021_2_OR_NEWER)
 using System.Buffers;
 #else
 using Proto.Promises.Collections;
 #endif
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-#endif // CSHARP_7_3_OR_NEWER
 
 #pragma warning disable IDE0251 // Make member 'readonly'
 
 namespace Proto.Promises
 {
-#if CSHARP_7_3_OR_NEWER
     partial class Internal
     {
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -190,5 +187,4 @@ namespace Proto.Promises
             }
         }
     } // class Internal
-#endif
 } // namespace Proto.Promises

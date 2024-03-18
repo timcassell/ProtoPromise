@@ -1,9 +1,9 @@
 ﻿#if !UNITY_WEBGL
 
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
 #else
-#undef PROMISE_PROGRESS
+#undef PROMISE_DEBUG
 #endif
 
 using NUnit.Framework;
@@ -41,7 +41,7 @@ namespace ProtoPromiseTests.Concurrency.Utilities
                 // Setup
                 () =>
                 {
-                    progressHelper = new ProgressHelper(progressType, synchronizationType);
+                    progressHelper = new ProgressHelper(progressType, synchronizationType, forceAsync: true);
                     progress = progressHelper.ToProgress();
                     progressToken = progress.Token;
 
@@ -83,7 +83,7 @@ namespace ProtoPromiseTests.Concurrency.Utilities
                 // Setup
                 () =>
                 {
-                    progressHelper = new ProgressHelper(progressType, synchronizationType);
+                    progressHelper = new ProgressHelper(progressType, synchronizationType, forceAsync: true);
                     progress = progressHelper.ToProgress();
                     progressToken = progress.Token;
 
@@ -132,7 +132,7 @@ namespace ProtoPromiseTests.Concurrency.Utilities
                 {
                     cancelationSource = CancelationSource.New();
                     cancelationToken = cancelationSource.Token;
-                    progressHelper = new ProgressHelper(progressType, synchronizationType);
+                    progressHelper = new ProgressHelper(progressType, synchronizationType, forceAsync: true);
                     progress = progressHelper.ToProgress(cancelationToken);
                     progressToken = progress.Token;
 
@@ -185,7 +185,7 @@ namespace ProtoPromiseTests.Concurrency.Utilities
                 // Setup
                 () =>
                 {
-                    progressHelper = new ProgressHelper(progressType, synchronizationType);
+                    progressHelper = new ProgressHelper(progressType, synchronizationType, forceAsync: true);
                     progress = progressHelper.ToProgress();
                     var progressToken = progress.Token;
                     progressMerger = Progress.NewMergeBuilder(progressToken.Slice(0d, 0.3d));

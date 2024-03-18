@@ -1,21 +1,10 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
 #pragma warning disable IDE0034 // Simplify 'default' expression
-#pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
-#pragma warning disable CS0618 // Type or member is obsolete
 
 using NUnit.Framework;
 using Proto.Promises;
@@ -133,7 +122,7 @@ namespace ProtoPromiseTests
 
         public static void AssertRejection(object expected, object actual)
         {
-#if ENABLE_IL2CPP && !NET_LEGACY && !UNITY_2022_1_OR_NEWER
+#if ENABLE_IL2CPP && !UNITY_2022_1_OR_NEWER
             // ExceptionDispatchInfo.Throw() generates a new Exception object instead of throwing the original object in IL2CPP, causing the Assert to fail.
             // This was fixed in Unity 2022. To avoid the tests failing, we instead have to check the object's type and message.
             if (expected is Exception)
@@ -303,24 +292,26 @@ namespace ProtoPromiseTests
 
         public static Promise.Deferred GetNewDeferredVoid(CompleteType completeType, out CancelationSource cancelationSource)
         {
+            cancelationSource = default(CancelationSource);
+            var deferred = Promise.NewDeferred();
             if (completeType == CompleteType.CancelFromToken)
             {
                 cancelationSource = CancelationSource.New();
-                return Promise.NewDeferred(cancelationSource.Token);
+                cancelationSource.Token.Register(deferred);
             }
-            cancelationSource = default(CancelationSource);
-            return Promise.NewDeferred();
+            return deferred;
         }
 
         public static Promise<T>.Deferred GetNewDeferredT<T>(CompleteType completeType, out CancelationSource cancelationSource)
         {
+            cancelationSource = default(CancelationSource);
+            var deferred = Promise<T>.NewDeferred();
             if (completeType == CompleteType.CancelFromToken)
             {
                 cancelationSource = CancelationSource.New();
-                return Promise<T>.NewDeferred(cancelationSource.Token);
+                cancelationSource.Token.Register(deferred);
             }
-            cancelationSource = default(CancelationSource);
-            return Promise<T>.NewDeferred();
+            return deferred;
         }
 
         public static Promise BuildPromise<TReject>(CompleteType completeType, bool isAlreadyComplete, TReject reason, out Promise.Deferred deferred, out CancelationSource cancelationSource)
@@ -387,26 +378,6 @@ namespace ProtoPromiseTests
             return promise.Then(v => v, cancelationToken);
         }
 
-        public static Promise SubscribeProgress(this Promise promise, ProgressHelper progressHelper, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return progressHelper.Subscribe(promise, cancelationToken);
-        }
-
-        public static Promise<T> SubscribeProgress<T>(this Promise<T> promise, ProgressHelper progressHelper, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            return progressHelper.Subscribe(promise, cancelationToken);
-        }
-
-        public static Promise SubscribeProgressAndAssert(this Promise promise, ProgressHelper progressHelper, float expectedValue, CancelationToken cancelationToken = default(CancelationToken), TimeSpan timeout = default(TimeSpan))
-        {
-            return progressHelper.SubscribeAndAssertCurrentProgress(promise, expectedValue, cancelationToken, timeout);
-        }
-
-        public static Promise<T> SubscribeProgressAndAssert<T>(this Promise<T> promise, ProgressHelper progressHelper, float expectedValue, CancelationToken cancelationToken = default(CancelationToken), TimeSpan timeout = default(TimeSpan))
-        {
-            return progressHelper.SubscribeAndAssertCurrentProgress(promise, expectedValue, cancelationToken, timeout);
-        }
-
         public static Promise ConfigureAwait(this Promise promise, ConfigureAwaitType configureType, bool forceAsync = false, CancelationToken cancelationToken = default(CancelationToken))
         {
             if (configureType == ConfigureAwaitType.None)
@@ -435,18 +406,18 @@ namespace ProtoPromiseTests
 
         public static void WaitWithTimeout(this Promise promise, TimeSpan timeout)
         {
-            if (!promise.Wait(timeout))
+            if (!promise.TryWait(timeout))
             {
-                throw new TimeoutException("Promise.Wait timed out after " + timeout);
+                throw new TimeoutException("Promise.TryWait timed out after " + timeout);
             }
         }
 
         public static T WaitWithTimeout<T>(this Promise<T> promise, TimeSpan timeout)
         {
             T result;
-            if (!promise.WaitForResult(timeout, out result))
+            if (!promise.TryWaitForResult(timeout, out result))
             {
-                throw new TimeoutException("Promise.Wait timed out after " + timeout);
+                throw new TimeoutException("Promise.TryWaitForResult timed out after " + timeout);
             }
             return result;
         }
@@ -517,16 +488,10 @@ namespace ProtoPromiseTests
             throw new Exception("Unexpected callback contexts, expectedContext: " + expectedContext + ", invokeContext: " + invokeContext);
         }
 
-        public static readonly float progressEpsilon = Promise.Config.ProgressPrecision;
+        // The distance between 1 and the largest value smaller than 1.
+        public static readonly float progressEpsilon = 1f - 0.99999994f;
 
-        public const int callbacksMultiplier = 3
-#if CSHARP_7_3_OR_NEWER
-            + 1
-#endif
-#if PROMISE_PROGRESS
-            + 1
-#endif
-            ;
+        public const int callbacksMultiplier = 4;
 
         public const int resolveVoidCallbacks = 72 * callbacksMultiplier;
         public const int resolveTCallbacks = 72 * callbacksMultiplier;
@@ -600,12 +565,7 @@ namespace ProtoPromiseTests
                 })
                 .Forget();
             yield return deferred.Promise;
-#if CSHARP_7_3_OR_NEWER
             yield return Await(preservedPromise);
-#endif
-#if PROMISE_PROGRESS
-            yield return preservedPromise.Progress(v => { }, SynchronizationOption.Synchronous);
-#endif
         }
 
         public static IEnumerable<Promise<T>> GetTestablePromises<T>(Promise<T> preservedPromise)
@@ -632,15 +592,9 @@ namespace ProtoPromiseTests
                 })
                 .Forget();
             yield return deferred.Promise;
-#if CSHARP_7_3_OR_NEWER
             yield return Await(preservedPromise);
-#endif
-#if PROMISE_PROGRESS
-            yield return preservedPromise.Progress(v => { }, SynchronizationOption.Synchronous);
-#endif
         }
 
-#if CSHARP_7_3_OR_NEWER
         private static async Promise Await(Promise promise)
         {
             await promise;
@@ -650,7 +604,6 @@ namespace ProtoPromiseTests
         {
             return await promise;
         }
-#endif
 
         public static void AddResolveCallbacks<TConvert, TCapture>(Promise promise,
             Action onResolve = null, TConvert convertValue = default(TConvert),
@@ -2536,8 +2489,8 @@ namespace ProtoPromiseTests
         }
 
         public static void AddContinueCallbacks<TConvert, TCapture>(Promise promise,
-            Promise.ContinueAction onContinue = null, TConvert convertValue = default(TConvert),
-            Promise.ContinueAction<TCapture> onContinueCapture = null, TCapture captureValue = default(TCapture),
+            Action<Promise.ResultContainer> onContinue = null, TConvert convertValue = default(TConvert),
+            Action<TCapture, Promise.ResultContainer> onContinueCapture = null, TCapture captureValue = default(TCapture),
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
             Action onCancel = null,
@@ -2577,8 +2530,8 @@ namespace ProtoPromiseTests
         }
 
         public static void AddContinueCallbacksWithCancelation<TConvert, TCapture>(Promise promise,
-            Promise.ContinueAction onContinue = null, TConvert convertValue = default(TConvert),
-            Promise.ContinueAction<TCapture> onContinueCapture = null, TCapture captureValue = default(TCapture),
+            Action<Promise.ResultContainer> onContinue = null, TConvert convertValue = default(TConvert),
+            Action<TCapture, Promise.ResultContainer> onContinueCapture = null, TCapture captureValue = default(TCapture),
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
             CancelationToken cancelationToken = default(CancelationToken), CancelationToken waitAsyncCancelationToken = default(CancelationToken),
@@ -2692,8 +2645,8 @@ namespace ProtoPromiseTests
         }
 
         public static void AddContinueCallbacks<T, TConvert, TCapture>(Promise<T> promise,
-            Promise<T>.ContinueAction onContinue = null, TConvert convertValue = default(TConvert),
-            Promise<T>.ContinueAction<TCapture> onContinueCapture = null, TCapture captureValue = default(TCapture),
+            Action<Promise<T>.ResultContainer> onContinue = null, TConvert convertValue = default(TConvert),
+            Action<TCapture, Promise<T>.ResultContainer> onContinueCapture = null, TCapture captureValue = default(TCapture),
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
             Action onCancel = null,
@@ -2733,8 +2686,8 @@ namespace ProtoPromiseTests
         }
 
         public static void AddContinueCallbacksWithCancelation<T, TConvert, TCapture>(Promise<T> promise,
-            Promise<T>.ContinueAction onContinue = null, TConvert convertValue = default(TConvert),
-            Promise<T>.ContinueAction<TCapture> onContinueCapture = null, TCapture captureValue = default(TCapture),
+            Action<Promise<T>.ResultContainer> onContinue = null, TConvert convertValue = default(TConvert),
+            Action<TCapture, Promise<T>.ResultContainer> onContinueCapture = null, TCapture captureValue = default(TCapture),
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
             CancelationToken cancelationToken = default(CancelationToken), CancelationToken waitAsyncCancelationToken = default(CancelationToken),
@@ -2778,7 +2731,7 @@ namespace ProtoPromiseTests
             {
                 Promise p1 = default(Promise);
                 p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(new Promise<T>.ContinueAction(r => { onContinue(r); }), cancelationToken)
+                    .ContinueWith(r => { onContinue(r); }, cancelationToken)
                     .CatchCancelation(onCancel);
                 onCallbackAdded(ref p1);
             }
@@ -2786,7 +2739,7 @@ namespace ProtoPromiseTests
             {
                 Promise<TConvert> p2 = default(Promise<TConvert>);
                 p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(new Promise<T>.ContinueFunc<TConvert>(r => { onContinue(r); return convertValue; }), cancelationToken)
+                    .ContinueWith(r => { onContinue(r); return convertValue; }, cancelationToken)
                     .CatchCancelation(() => { onCancel(); return convertValue; });
                 onCallbackAddedConvert(ref p2);
             }
@@ -2794,7 +2747,7 @@ namespace ProtoPromiseTests
             {
                 Promise p3 = default(Promise);
                 p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(new Promise<T>.ContinueFunc<Promise>(r => { onContinue(r); return promiseToPromise(p3); }), cancelationToken)
+                    .ContinueWith(r => { onContinue(r); return promiseToPromise(p3); }, cancelationToken)
                     .CatchCancelation(onCancel);
                 onAdoptCallbackAdded(ref p3);
                 onCallbackAdded(ref p3);
@@ -2803,7 +2756,7 @@ namespace ProtoPromiseTests
             {
                 Promise<TConvert> p4 = default(Promise<TConvert>);
                 p4 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(new Promise<T>.ContinueFunc<Promise<TConvert>>(r => { onContinue(r); return promiseToPromiseConvert(p4); }), cancelationToken)
+                    .ContinueWith(r => { onContinue(r); return promiseToPromiseConvert(p4); }, cancelationToken)
                     .CatchCancelation(() => { onCancel(); return convertValue; });
                 onAdoptCallbackAddedConvert(ref p4);
                 onCallbackAddedConvert(ref p4);
@@ -2813,7 +2766,7 @@ namespace ProtoPromiseTests
             {
                 Promise p5 = default(Promise);
                 p5 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(captureValue, new Promise<T>.ContinueAction<TCapture>((cv, r) => { onContinueCapture(cv, r); onContinue(r); }), cancelationToken)
+                    .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); }, cancelationToken)
                     .CatchCancelation(onCancel);
                 onCallbackAdded(ref p5);
             }
@@ -2821,7 +2774,7 @@ namespace ProtoPromiseTests
             {
                 Promise<TConvert> p6 = default(Promise<TConvert>);
                 p6 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(captureValue, new Promise<T>.ContinueFunc<TCapture, TConvert>((cv, r) => { onContinueCapture(cv, r); onContinue(r); return convertValue; }), cancelationToken)
+                    .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return convertValue; }, cancelationToken)
                     .CatchCancelation(() => { onCancel(); return convertValue; });
                 onCallbackAddedConvert(ref p6);
             }
@@ -2829,7 +2782,7 @@ namespace ProtoPromiseTests
             {
                 Promise p7 = default(Promise);
                 p7 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(captureValue, new Promise<T>.ContinueFunc<TCapture, Promise>((cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromise(p7); }), cancelationToken)
+                    .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromise(p7); }, cancelationToken)
                     .CatchCancelation(onCancel);
                 onAdoptCallbackAdded(ref p7);
                 onCallbackAdded(ref p7);
@@ -2838,7 +2791,7 @@ namespace ProtoPromiseTests
             {
                 Promise<TConvert> p8 = default(Promise<TConvert>);
                 p8 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(captureValue, new Promise<T>.ContinueFunc<TCapture, Promise<TConvert>>((cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromiseConvert(p8); }), cancelationToken)
+                    .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromiseConvert(p8); }, cancelationToken)
                     .CatchCancelation(() => { onCancel(); return convertValue; });
                 onAdoptCallbackAddedConvert(ref p8);
                 onCallbackAddedConvert(ref p8);
@@ -3297,8 +3250,8 @@ namespace ProtoPromiseTests
 
                 promise => promise.ContinueWith(1, (int cv, Promise.ResultContainer _) => onContinue()).Forget(),
                 promise => promise.ContinueWith(1, (int cv, Promise.ResultContainer _) => { onContinue(); return Promise.Resolved(); }).Forget(),
-                promise => promise.ContinueWith(1, (Promise.ContinueFunc<int, int>)((cv, _) => { onContinue(); return 1; })).Forget(),
-                promise => promise.ContinueWith(1, (Promise.ContinueFunc<int, Promise<int>>)((cv, _) => { onContinue(); return Promise.Resolved(1); })).Forget()
+                promise => promise.ContinueWith(1, (cv, _) => { onContinue(); return 1; }).Forget(),
+                promise => promise.ContinueWith(1, (cv, _) => { onContinue(); return Promise.Resolved(1); }).Forget()
             };
         }
 
@@ -3314,8 +3267,8 @@ namespace ProtoPromiseTests
 
                 promise => promise.ContinueWith(1, (int cv, Promise<T>.ResultContainer _) => onContinue()).Forget(),
                 promise => promise.ContinueWith(1, (int cv, Promise<T>.ResultContainer _) => { onContinue(); return Promise.Resolved(); }).Forget(),
-                promise => promise.ContinueWith(1, (Promise<T>.ContinueFunc<int, int>)((cv, _) => { onContinue(); return 1; })).Forget(),
-                promise => promise.ContinueWith(1, (Promise<T>.ContinueFunc<int, Promise<int>>)((cv, _) => { onContinue(); return Promise.Resolved(1); })).Forget()
+                promise => promise.ContinueWith(1, (cv, _) => { onContinue(); return 1; }).Forget(),
+                promise => promise.ContinueWith(1, (cv, _) => { onContinue(); return Promise.Resolved(1); }).Forget()
             };
         }
         public static Func<Promise, CancelationToken, Promise>[] ResolveActionsVoidWithCancelation(Action onResolved = null)
@@ -3558,8 +3511,8 @@ namespace ProtoPromiseTests
 
                 (promise, cancelationToken) => promise.ContinueWith(1, (int cv, Promise.ResultContainer _) => onContinue(), cancelationToken),
                 (promise, cancelationToken) => promise.ContinueWith(1, (int cv, Promise.ResultContainer _) => { onContinue(); return Promise.Resolved(); }, cancelationToken),
-                (promise, cancelationToken) => promise.ContinueWith(1, new Promise.ContinueFunc<int, int>((cv, _) => { onContinue(); return 1; }), cancelationToken),
-                (promise, cancelationToken) => promise.ContinueWith(1, new Promise.ContinueFunc<int, Promise<int>>((cv, _) => { onContinue(); return Promise.Resolved(1); }), cancelationToken)
+                (promise, cancelationToken) => promise.ContinueWith(1, (cv, _) => { onContinue(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.ContinueWith(1, (cv, _) => { onContinue(); return Promise.Resolved(1); }, cancelationToken)
             };
         }
 
@@ -3575,8 +3528,8 @@ namespace ProtoPromiseTests
 
                 (promise, cancelationToken) => promise.ContinueWith(1, (int cv, Promise<T>.ResultContainer _) => onContinue(), cancelationToken),
                 (promise, cancelationToken) => promise.ContinueWith(1, (int cv, Promise<T>.ResultContainer _) => { onContinue(); return Promise.Resolved(); }, cancelationToken),
-                (promise, cancelationToken) => promise.ContinueWith(1, new Promise<T>.ContinueFunc<int, int>((cv, _) => { onContinue(); return 1; }), cancelationToken),
-                (promise, cancelationToken) => promise.ContinueWith(1, new Promise<T>.ContinueFunc<int, Promise<int>>((cv, _) => { onContinue(); return Promise.Resolved(1); }), cancelationToken)
+                (promise, cancelationToken) => promise.ContinueWith(1, (cv, _) => { onContinue(); return 1; }, cancelationToken),
+                (promise, cancelationToken) => promise.ContinueWith(1, (cv, _) => { onContinue(); return Promise.Resolved(1); }, cancelationToken)
             };
         }
 
@@ -3734,9 +3687,9 @@ namespace ProtoPromiseTests
 
 
                 () => Promise.Resolved().ContinueWith(_ => returnProvider()),
-                () => Promise.Resolved().ContinueWith(1, (Promise.ContinueFunc<int, Promise<T>>)((cv, _) => returnProvider())),
+                () => Promise.Resolved().ContinueWith(1, (cv, _) => returnProvider()),
                 () => Promise.Resolved(1).ContinueWith(_ => returnProvider()),
-                () => Promise.Resolved(1).ContinueWith(1, (Promise<int>.ContinueFunc<int, Promise<T>>)((cv, _) => returnProvider())),
+                () => Promise.Resolved(1).ContinueWith(1, (cv, _) => returnProvider()),
             };
         }
     }

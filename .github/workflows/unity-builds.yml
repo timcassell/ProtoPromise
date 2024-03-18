@@ -14,23 +14,12 @@ concurrency:
 
 jobs:
   build:
-    name: Build (${{ matrix.scriptingRuntime.name }}, ${{ matrix.mode.name }}, ${{ matrix.progress.name }})
+    name: Build ${{ matrix.mode.name }}
     runs-on: ubuntu-latest
     
     strategy:
       fail-fast: false
       matrix:
-        scriptingRuntime:
-          - {
-              name: Net3.5,
-              version: 0,
-              apiCompatibilityLevel: 2
-            }
-          - {
-              name: Net4.x,
-              version: 1,
-              apiCompatibilityLevel: 6
-            }
         mode:
           - {
               name: Release,
@@ -40,15 +29,6 @@ jobs:
               name: Debug,
               symbol: PROTO_PROMISE_DEBUG_ENABLE
             }
-        progress:
-          - {
-              name: Progress_Enabled,
-              symbol: PROTO_PROMISE_PROGRESS_ENABLE
-            }
-          - {
-              name: Progress_Disabled,
-              symbol: PROTO_PROMISE_PROGRESS_DISABLE
-            }
 
     steps:
       - name: Checkout
@@ -56,18 +36,10 @@ jobs:
 
       - name: Rewrite ProjectSettings
         run: |
-          DefineSymbols="${{ matrix.mode.symbol }};${{ matrix.progress.symbol }}"
+          DefineSymbols="${{ matrix.mode.symbol }}"
           DefineOriginal="  scriptingDefineSymbols: {}"
           DefineReplace="  scriptingDefineSymbols: \\n    13: $DefineSymbols"
           sed -i "{s/$DefineOriginal/$DefineReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
-
-          RuntimeOriginal="  scriptingRuntimeVersion: 0"
-          RuntimeReplace="  scriptingRuntimeVersion: ${{ matrix.scriptingRuntime.version }}"
-          sed -i "{s/$RuntimeOriginal/$RuntimeReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
-
-          ApiOriginal="  apiCompatibilityLevel: 2"
-          ApiReplace="  apiCompatibilityLevel: ${{ matrix.scriptingRuntime.apiCompatibilityLevel }}"
-          sed -i "{s/$ApiOriginal/$ApiReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
 
       - name: Build Project
         uses: game-ci/unity-builder@v3
@@ -76,6 +48,5 @@ jobs:
         with:
           projectPath: ProtoPromise_Unity
           targetPlatform: WebGL
-          buildMethod: UnityBuilderAction.BuildScript.Build
           allowDirtyBuild: true
         timeout-minutes: 90

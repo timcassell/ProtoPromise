@@ -1,19 +1,9 @@
-#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
 #if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
-#pragma warning disable IDE0018 // Inline variable declaration
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 using System;
@@ -28,7 +18,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class AsyncManualResetEventPromise : AsyncEventPromise<AsyncManualResetEventInternal>
+        internal sealed class AsyncManualResetEventPromise : AsyncEventPromise<Threading.AsyncManualResetEvent>
         {
             [MethodImpl(InlineOption)]
             private static AsyncManualResetEventPromise GetOrCreate()
@@ -40,7 +30,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static AsyncManualResetEventPromise GetOrCreate(AsyncManualResetEventInternal owner, SynchronizationContext callerContext)
+            internal static AsyncManualResetEventPromise GetOrCreate(Threading.AsyncManualResetEvent owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
                 promise.Reset(callerContext);
@@ -53,6 +43,13 @@ namespace Proto.Promises
                 Dispose();
                 _owner = null;
                 ObjectPool.MaybeRepool(this);
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void DisposeImmediate()
+            {
+                SetCompletionState(Promise.State.Resolved);
+                MaybeDispose();
             }
 
             public override void Cancel()
@@ -73,38 +70,35 @@ namespace Proto.Promises
                 Continue();
             }
         }
+    } // class Internal
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal sealed class AsyncManualResetEventInternal : ITraceable
+    namespace Threading
+    {
+        partial class AsyncManualResetEvent : Internal.ITraceable
         {
-            // This must not be readonly.
-            private ValueLinkedQueue<AsyncEventPromiseBase> _waiters = new ValueLinkedQueue<AsyncEventPromiseBase>();
+            // These must not be readonly.
+            private Internal.ValueLinkedQueue<Internal.AsyncEventPromiseBase> _waiters = new Internal.ValueLinkedQueue<Internal.AsyncEventPromiseBase>();
+            private Internal.SpinLocker _locker = new Internal.SpinLocker();
             volatile internal bool _isSet;
 
-            internal AsyncManualResetEventInternal(bool initialState)
-            {
-                _isSet = initialState;
-                SetCreatedStacktrace(this, 2);
-            }
-
 #if PROMISE_DEBUG
-            CausalityTrace ITraceable.Trace { get; set; }
+            partial void SetCreatedStacktrace() => Internal.SetCreatedStacktraceImpl(this, 2);
 
-            ~AsyncManualResetEventInternal()
+            Internal.CausalityTrace Internal.ITraceable.Trace { get; set; }
+
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+            ~AsyncManualResetEvent()
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
             {
-                ValueLinkedStack<AsyncEventPromiseBase> waiters;
-                lock (this)
-                {
-                    waiters = _waiters.MoveElementsToStack();
-                }
+                _locker.Enter();
+                var waiters = _waiters.MoveElementsToStack();
+                _locker.Exit();
                 if (waiters.IsEmpty)
                 {
                     return;
                 }
 
-                var rejectContainer = CreateRejectContainer(new Threading.AbandonedResetEventException("An AsyncManualResetEvent was collected with waiters still pending."), int.MinValue, null, this);
+                var rejectContainer = Internal.CreateRejectContainer(new AbandonedResetEventException("An AsyncManualResetEvent was collected with waiters still pending."), int.MinValue, null, this);
                 do
                 {
                     waiters.Pop().Reject(rejectContainer);
@@ -113,7 +107,7 @@ namespace Proto.Promises
             }
 #endif // PROMISE_DEBUG
 
-            internal Promise WaitAsync()
+            private Promise WaitAsyncImpl()
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 if (_isSet)
@@ -121,21 +115,23 @@ namespace Proto.Promises
                     return Promise.Resolved();
                 }
 
-                AsyncManualResetEventPromise promise;
-                lock (this)
+                Internal.AsyncManualResetEventPromise promise;
+                _locker.Enter();
                 {
                     // Check the flag again inside the lock to resolve race condition with Set().
                     if (_isSet)
                     {
+                        _locker.Exit();
                         return Promise.Resolved();
                     }
-                    promise = AsyncManualResetEventPromise.GetOrCreate(this, CaptureContext());
+                    promise = Internal.AsyncManualResetEventPromise.GetOrCreate(this, Internal.CaptureContext());
                     _waiters.Enqueue(promise);
                 }
-                return new Promise(promise, promise.Id, 0);
+                _locker.Exit();
+                return new Promise(promise, promise.Id);
             }
 
-            internal Promise<bool> TryWaitAsync(CancelationToken cancelationToken)
+            private Promise<bool> TryWaitAsyncImpl(CancelationToken cancelationToken)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 bool isSet = _isSet;
@@ -144,22 +140,29 @@ namespace Proto.Promises
                     return Promise.Resolved(isSet);
                 }
 
-                AsyncManualResetEventPromise promise;
-                lock (this)
+                Internal.AsyncManualResetEventPromise promise;
+                _locker.Enter();
                 {
                     // Check the flag again inside the lock to resolve race condition with Set().
                     if (_isSet)
                     {
+                        _locker.Exit();
                         return Promise.Resolved(true);
                     }
-                    promise = AsyncManualResetEventPromise.GetOrCreate(this, CaptureContext());
+                    promise = Internal.AsyncManualResetEventPromise.GetOrCreate(this, Internal.CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        _locker.Exit();
+                        promise.DisposeImmediate();
+                        return Promise.Resolved(false);
+                    }
                     _waiters.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
-                return new Promise<bool>(promise, promise.Id, 0);
+                _locker.Exit();
+                return new Promise<bool>(promise, promise.Id);
             }
 
-            internal void Wait()
+            private void WaitImpl()
             {
                 // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
@@ -175,23 +178,24 @@ namespace Proto.Promises
                     return;
                 }
 
-                AsyncManualResetEventPromise promise;
-                lock (this)
+                Internal.AsyncManualResetEventPromise promise;
+                _locker.Enter();
                 {
                     // Check the flag again inside the lock to resolve race condition with Set().
                     if (_isSet)
                     {
+                        _locker.Exit();
                         return;
                     }
-                    promise = AsyncManualResetEventPromise.GetOrCreate(this, null);
+                    promise = Internal.AsyncManualResetEventPromise.GetOrCreate(this, null);
                     _waiters.Enqueue(promise);
                 }
-                Promise.ResultContainer resultContainer;
-                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
+                _locker.Exit();
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
                 resultContainer.RethrowIfRejected();
             }
 
-            internal bool TryWait(CancelationToken cancelationToken)
+            private bool TryWaitImpl(CancelationToken cancelationToken)
             {
                 // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
@@ -209,53 +213,51 @@ namespace Proto.Promises
                     return isSet;
                 }
 
-                AsyncManualResetEventPromise promise;
-                lock (this)
+                Internal.AsyncManualResetEventPromise promise;
+                _locker.Enter();
                 {
                     // Check the flag again inside the lock to resolve race condition with Set().
                     if (_isSet)
                     {
+                        _locker.Exit();
                         return true;
                     }
-                    promise = AsyncManualResetEventPromise.GetOrCreate(this, null);
+                    promise = Internal.AsyncManualResetEventPromise.GetOrCreate(this, null);
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        _locker.Exit();
+                        promise.DisposeImmediate();
+                        return false;
+                    }
                     _waiters.Enqueue(promise);
-                    promise.MaybeHookupCancelation(cancelationToken);
                 }
-                Promise<bool>.ResultContainer resultContainer;
-                PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out resultContainer);
+                _locker.Exit();
+                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
                 resultContainer.RethrowIfRejected();
                 return resultContainer.Value;
             }
 
-            internal void Set()
+            private void SetImpl()
             {
                 // Set the field before lock.
                 _isSet = true;
 
-                ValueLinkedStack<AsyncEventPromiseBase> waiters;
-                lock (this)
-                {
-                    waiters = _waiters.MoveElementsToStack();
-                }
+                _locker.Enter();
+                var waiters = _waiters.MoveElementsToStack();
+                _locker.Exit();
                 while (waiters.IsNotEmpty)
                 {
                     waiters.Pop().Resolve();
                 }
             }
 
-            [MethodImpl(InlineOption)]
-            internal void Reset()
+            internal bool TryRemoveWaiter(Internal.AsyncManualResetEventPromise waiter)
             {
-                _isSet = false;
+                _locker.Enter();
+                var removed = _waiters.TryRemove(waiter);
+                _locker.Exit();
+                return removed;
             }
-
-            internal bool TryRemoveWaiter(AsyncManualResetEventPromise waiter)
-            {
-                lock (this)
-                {
-                    return _waiters.TryRemove(waiter);
-                }
-            }
-        } // class AsyncManualResetEventInternal
-    } // class Internal
+        } // class AsyncManualResetEvent
+    } // namespace Threading
 } // namespace Proto.Promises

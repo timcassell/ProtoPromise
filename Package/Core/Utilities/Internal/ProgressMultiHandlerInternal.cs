@@ -1,10 +1,8 @@
+using Proto.Promises.Collections;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
-
-#pragma warning disable IDE0090 // Use 'new(...)'
-#pragma warning disable IDE0180 // Use tuple to swap values
 
 namespace Proto.Promises
 {
@@ -15,7 +13,7 @@ namespace Proto.Promises
 #endif
         internal sealed class ProgressMultiHandler : ProgressBase
         {
-            private ValueList<ProgressToken> _tokens = new ValueList<ProgressToken>(8);
+            private TempCollectionBuilder<ProgressToken> _tokens;
             private bool _disposed;
 
             private ProgressMultiHandler() { }
@@ -41,6 +39,7 @@ namespace Proto.Promises
             {
                 var instance = GetOrCreateCore();
                 instance._next = null;
+                instance._tokens = new TempCollectionBuilder<ProgressToken>(0);
                 instance._disposed = false;
                 SetCreatedStacktrace(instance, 2);
                 return instance;
@@ -49,15 +48,11 @@ namespace Proto.Promises
             // We use Monitor instead of SpinLocker since the lock could be held for a longer period of time when reporting.
             [MethodImpl(InlineOption)]
             private void EnterLock()
-            {
-                Monitor.Enter(this);
-            }
+                => Monitor.Enter(this);
 
             [MethodImpl(InlineOption)]
             internal override void ExitLock()
-            {
-                Monitor.Exit(this);
-            }
+                => Monitor.Exit(this);
 
             internal void Add(ProgressToken progressToken, int id)
             {
@@ -106,7 +101,7 @@ namespace Proto.Promises
                 ThrowIfInPool(this);
 
                 var reportedProgress = reportValues._value;
-                for (int i = 0, max = _tokens.Count; i < max; ++i)
+                for (int i = 0, max = _tokens._count; i < max; ++i)
                 {
                     var token = _tokens[i];
                     // We have to hold the lock until all tokens have been reported.
@@ -139,7 +134,7 @@ namespace Proto.Promises
                     {
                         ++_smallFields._id;
                     }
-                    _tokens.Clear();
+                    _tokens.Dispose();
                 }
 
                 ObjectPool.MaybeRepool(this);

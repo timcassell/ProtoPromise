@@ -1,6 +1,4 @@
-﻿#if CSHARP_7_3_OR_NEWER
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -122,7 +120,7 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void AsyncEnumerableMerge_MergesConcurrently_Sync()
+        public void AsyncEnumerableMerge_MergesConcurrently_Array_Sync()
         {
             var deferred = Promise.NewDeferred();
             var yieldPromise = deferred.Promise.Preserve();
@@ -193,6 +191,83 @@ namespace ProtoPromiseTests.APIs.Linq
 
             yieldPromise.Forget();
         }
+
+        // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
+        // so we only include this in the nuget package and netstandard2.1+.
+#if !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+        [Test]
+        public void AsyncEnumerableMerge_MergesConcurrently_Span_Sync()
+        {
+            var deferred = Promise.NewDeferred();
+            var yieldPromise = deferred.Promise.Preserve();
+
+            Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsync = (int start, int count) =>
+            {
+                return AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
+                {
+                    for (int i = start; i < start + count; i++)
+                    {
+                        if (i > start)
+                        {
+                            await yieldPromise;
+                        }
+
+                        await writer.YieldAsync(i);
+                    }
+                });
+            };
+
+            ReadOnlySpan<AsyncEnumerable<int>> enumerables = new AsyncEnumerable<int>[4]
+            {
+                EnumerableRangeAsync(0, 1),
+                EnumerableRangeAsync(0, 2),
+                EnumerableRangeAsync(0, 3),
+                EnumerableRangeAsync(0, 4)
+            };
+
+            int totalCount = 0;
+            int zeroCount = 0;
+            int oneCount = 0;
+            int twoCount = 0;
+            int threeCount = 0;
+
+            var runPromise = AsyncEnumerable.Merge(enumerables)
+                .ForEachAsync(num =>
+                {
+                    ++totalCount;
+                    if (totalCount <= 4)
+                    {
+                        Assert.AreEqual(0, num);
+                        ++zeroCount;
+                    }
+                    else if (totalCount <= 4 + 3)
+                    {
+                        ++oneCount;
+                    }
+                    else if (totalCount <= 4 + 3 + 2)
+                    {
+                        ++twoCount;
+                    }
+                    else
+                    {
+                        ++threeCount;
+                    }
+                });
+
+            Assert.AreEqual(4, totalCount);
+            deferred.Resolve();
+
+            runPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            Assert.AreEqual(zeroCount, 4);
+            Assert.AreEqual(oneCount, 3);
+            Assert.AreEqual(twoCount, 2);
+            Assert.AreEqual(threeCount, 1);
+            Assert.AreEqual(4 + 3 + 2 + 1, totalCount);
+
+            yieldPromise.Forget();
+        }
+#endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
 
         [Test]
         public void AsyncEnumerableMerge_MergesConcurrently_2()
@@ -710,5 +785,3 @@ namespace ProtoPromiseTests.APIs.Linq
         }
     }
 }
-
-#endif

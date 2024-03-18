@@ -4,10 +4,8 @@
 #undef PROMISE_DEBUG
 #endif
 
-#if CSHARP_7_3_OR_NEWER
-
 using System;
-#if (NET47 || NETCOREAPP || NETSTANDARD2_0_OR_GREATER || UNITY_2021_2_OR_NEWER)
+#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
 using System.Buffers;
 #endif
 using System.Collections;
@@ -18,11 +16,8 @@ using System.Runtime.CompilerServices;
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0251 // Make member 'readonly'
 
-#endif // CSHARP_7_3_OR_NEWER
-
 namespace Proto.Promises.Collections
 {
-#if CSHARP_7_3_OR_NEWER // This is only used for async Linq, so we don't need to expose it in older runtimes.
     /// <summary>
     /// Exposes a readonly collection of items using temporary storage.
     /// </summary>
@@ -130,7 +125,7 @@ namespace Proto.Promises.Collections
             return list;
         }
 
-#if NETCOREAPP || NETSTANDARD2_0_OR_GREATER || UNITY_2021_2_OR_NEWER || NET47_OR_GREATER
+#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
         /// <summary>
         /// Gets a readonly view of the elements.
         /// </summary>
@@ -143,7 +138,7 @@ namespace Proto.Promises.Collections
                 return _target.ReadOnlySpan;
             }
         }
-#endif // NETCOREAPP || NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NET47_OR_GREATER
+#endif // UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
         private void ValidateIndex(int index)
@@ -352,5 +347,4 @@ namespace Proto.Promises.Collections
             get => new ReadOnlySpan<T>(_items, 0, _count);
         }
     }
-#endif // CSHARP_7_3_OR_NEWER
 } // namespace Proto.Promises.Collections

@@ -9,11 +9,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-#pragma warning disable IDE0031 // Use null propagation
-#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0090 // Use 'new(...)'
-#pragma warning disable IDE0250 // Make struct 'readonly'
-#pragma warning disable IDE0251 // Make member 'readonly'
 
 namespace Proto.Promises
 {
@@ -21,14 +17,12 @@ namespace Proto.Promises
     {
         [MethodImpl(InlineOption)]
         internal static double Lerp(double a, double b, double t)
-        {
-            return a + (b - a) * t;
-        }
+            => a + (b - a) * t;
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal struct DelegateProgress : IProgress<double>
+        internal readonly struct DelegateProgress : IProgress<double>
         {
             private readonly Action<double> _callback;
 
@@ -40,25 +34,19 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             public void Report(double value)
-            {
-                _callback.Invoke(value);
-            }
+                => _callback.Invoke(value);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal struct DelegateCaptureProgress<TCapture> : IProgress<double>
+        internal readonly struct DelegateCaptureProgress<TCapture> : IProgress<double>
         {
             private readonly Action<TCapture, double> _callback;
             private readonly TCapture _capturedValue;
 
             [MethodImpl(InlineOption)]
-            public DelegateCaptureProgress(
-#if CSHARP_7_3_OR_NEWER
-                in
-#endif
-                TCapture capturedValue, Action<TCapture, double> callback)
+            public DelegateCaptureProgress(in TCapture capturedValue, Action<TCapture, double> callback)
             {
                 _capturedValue = capturedValue;
                 _callback = callback;
@@ -66,19 +54,13 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             public void Report(double value)
-            {
-                _callback.Invoke(_capturedValue, value);
-            }
+                => _callback.Invoke(_capturedValue, value);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal
-#if CSHARP_7_3_OR_NEWER
-            ref // Don't allow on the heap.
-# endif
-            struct NewProgressReportValues
+        internal ref struct NewProgressReportValues
         {
             internal ProgressBase _reporter;
             internal ProgressBase _next;
@@ -129,13 +111,11 @@ namespace Proto.Promises
             internal int Id
             {
                 [MethodImpl(InlineOption)]
-                get { return _smallFields._id; }
+                get => _smallFields._id;
             }
 
             internal virtual void ExitLock()
-            {
-                _smallFields._locker.Exit();
-            }
+                => _smallFields._locker.Exit();
 
             internal abstract void Report(double value, int id);
             internal abstract void Report(ref NewProgressReportValues reportValues);
@@ -153,9 +133,7 @@ namespace Proto.Promises
         [MethodImpl(InlineOption)]
         internal static ProgressListener GetOrCreateProgress<TProgress>(TProgress progress, SynchronizationContext invokeContext, bool forceAsync, CancelationToken cancelationToken)
             where TProgress : IProgress<double>
-        {
-            return Progress<TProgress>.GetOrCreate(progress, invokeContext, forceAsync, cancelationToken);
-        }
+            => Progress<TProgress>.GetOrCreate(progress, invokeContext, forceAsync, cancelationToken);
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
@@ -213,16 +191,14 @@ namespace Proto.Promises
 
             private void DisposeAndRepool()
             {
-                _progress = default(TProgress);
+                _progress = default;
                 _invokeContext = null;
                 ObjectPool.MaybeRepool(this);
             }
 
             [MethodImpl(InlineOption)]
             private bool ShouldInvokeSynchronous()
-            {
-                return _invokeContext == null | (_invokeContext == ts_currentContext & !_forceAsync);
-            }
+                => _invokeContext == null | (!_forceAsync & _invokeContext == Promise.Manager.ThreadStaticSynchronizationContext);
 
             [MethodImpl(InlineOption)]
             private void Retain()
@@ -319,10 +295,7 @@ namespace Proto.Promises
                     {
                         DisposeAndRepool();
                         // _next is used to store the deferred promise used for DisposeAsync.
-                        if (next != null)
-                        {
-                            next.UnsafeAs<PromiseRefBase.DeferredPromise<VoidResult>>().ResolveDirectVoid();
-                        }
+                        next?.UnsafeAs<PromiseRefBase.DeferredPromise<VoidResult>>().ResolveDirectVoid();
                     }
                 }
             }
@@ -338,17 +311,12 @@ namespace Proto.Promises
                 // Exit the lock before invoking so we're not holding the lock while user code runs.
                 _smallFields._locker.Exit();
 
-                var currentContext = ts_currentContext;
-                ts_currentContext = _invokeContext;
-
                 if (!_canceled & !cancelationToken.IsCancelationRequested)
                 {
                     InvokeAndCatch(progress);
                 }
 
                 AfterInvoke();
-
-                ts_currentContext = currentContext;
             }
 
             void ICancelable.Cancel()
@@ -374,7 +342,7 @@ namespace Proto.Promises
                     ++_smallFields._id;
 
                     var registration = _cancelationRegistration;
-                    _cancelationRegistration = default(CancelationRegistration);
+                    _cancelationRegistration = default;
 
                     if (--_retainCounter == 0)
                     {
@@ -390,7 +358,7 @@ namespace Proto.Promises
                     _next = deferredPromise;
                     registration.Dispose();
                     _smallFields._locker.Exit();
-                    return new Promise(deferredPromise, deferredPromise.Id, 0);
+                    return new Promise(deferredPromise, deferredPromise.Id);
                 }
             }
         }

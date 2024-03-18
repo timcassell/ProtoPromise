@@ -9,7 +9,6 @@ using System;
 
 namespace Proto.Promises.Linq
 {
-#if CSHARP_7_3_OR_NEWER
     partial class AsyncEnumerable
     {
         /// <summary>
@@ -284,5 +283,4 @@ namespace Proto.Promises.Linq
             return Internal.SelectHelper<TResult>.SelectWithIndexAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, selector));
         }
     }
-#endif // CSHARP_7_3_OR_NEWER
 }

@@ -4,7 +4,7 @@
 // Modified to work in Unity/netstandard2.0 without using the nuget package.
 // Hooks up to Promise.Manager.ClearObjectPool() event instead of using Gen2GC callbacks.
 
-#if CSHARP_7_3_OR_NEWER && !(NET47 || NETCOREAPP || NETSTANDARD2_0_OR_GREATER || UNITY_2021_2_OR_NEWER)
+#if UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -14,7 +14,7 @@ using System.Threading;
 
 namespace Proto.Promises.Collections
 {
-#if CSHARP_7_3_OR_NEWER && !(NET47 || NETCOREAPP || NETSTANDARD2_0_OR_GREATER || UNITY_2021_2_OR_NEWER)
+#if UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
 
     /// <summary>
     /// Provides an ArrayPool implementation meant to be used as the singleton returned from ArrayPool.Shared.
@@ -28,13 +28,6 @@ namespace Proto.Promises.Collections
     /// </remarks>
     internal sealed partial class TlsOverPerCoreLockedStacksArrayPool<T> : ArrayPool<T>
     {
-        // TODO https://github.com/dotnet/coreclr/pull/7747: "Investigate optimizing ArrayPool heuristics"
-        // - Explore caching in TLS more than one array per size per thread, and moving stale buffers to the global queue.
-        // - Explore changing the size of each per-core bucket, potentially dynamically or based on other factors like array size.
-        // - Explore changing number of buckets and what sizes of arrays are cached.
-        // - Investigate whether false sharing is causing any issues, in particular on LockedStack's count and the contents of its array.
-        // ...
-
         /// <summary>The number of buckets (array sizes) in the pool, one for each array length, starting from length 16.</summary>
         private const int NumBuckets = 17; // Utilities.SelectBucketIndex(2*1024*1024)
         /// <summary>Maximum number of per-core stacks to use per array size.</summary>
@@ -279,5 +272,5 @@ namespace Proto.Promises.Collections
         }
     }
 
-#endif // CSHARP_7_3_OR_NEWER && !(NET47 || NETCOREAPP || NETSTANDARD2_0_OR_GREATER || UNITY_2021_2_OR_NEWER)
+#endif // UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
 }

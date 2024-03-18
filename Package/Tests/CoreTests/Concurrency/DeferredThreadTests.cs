@@ -1,15 +1,13 @@
 ﻿#if !UNITY_WEBGL
 
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
 #else
-#undef PROMISE_PROGRESS
+#undef PROMISE_DEBUG
 #endif
 
 using NUnit.Framework;
 using Proto.Promises;
-
-#pragma warning disable 0618 // Type or member is obsolete
 
 namespace ProtoPromiseTests.Concurrency
 {
@@ -26,52 +24,6 @@ namespace ProtoPromiseTests.Concurrency
         {
             TestHelper.Cleanup();
         }
-
-#if PROMISE_PROGRESS
-        [Test]
-        public void DeferredMayReportProgressOnSeparateThread_void(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            var deferred = Promise.NewDeferred();
-
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-
-            deferred.Promise
-                .SubscribeProgress(progressHelper)
-                .Forget();
-
-            progressHelper.AssertCurrentProgress(0f);
-
-            progressHelper.PrepareForInvoke();
-            new ThreadHelper().ExecuteSingleAction(() => deferred.ReportProgress(0.1f));
-            progressHelper.AssertCurrentProgress(0.1f);
-
-            deferred.Resolve();
-        }
-
-        [Test]
-        public void DeferredMayReportProgressOnSeparateThread_T(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            var deferred = Promise.NewDeferred<int>();
-
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-
-            deferred.Promise
-                .SubscribeProgress(progressHelper)
-                .Forget();
-
-            progressHelper.AssertCurrentProgress(0f);
-
-            progressHelper.PrepareForInvoke();
-            new ThreadHelper().ExecuteSingleAction(() => deferred.ReportProgress(0.1f));
-            progressHelper.AssertCurrentProgress(0.1f);
-
-            deferred.Resolve(1);
-        }
-#endif
 
         [Test]
         public void DeferredMayResolveOnSeparateThread_void0()

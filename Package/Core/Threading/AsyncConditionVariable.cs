@@ -1,21 +1,11 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
 #pragma warning disable IDE0090 // Use 'new(...)'
 
-using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -35,7 +25,7 @@ namespace Proto.Promises.Threading
     {
         // These must not be readonly.
         internal Internal.ValueLinkedQueue<Internal.IAsyncLockPromise> _queue = new Internal.ValueLinkedQueue<Internal.IAsyncLockPromise>();
-        volatile internal Internal.AsyncLockInternal _lock;
+        volatile internal AsyncLock _lock;
 
         /// <summary>
         /// Creates a new async-compatible condition variable.
@@ -92,9 +82,7 @@ namespace Proto.Promises.Threading
         /// </returns>
         [MethodImpl(Internal.InlineOption)]
         public Promise WaitAsync(AsyncLock.Key asyncLockKey)
-        {
-            return asyncLockKey.WaitAsync(this);
-        }
+            => asyncLockKey.WaitAsync(this);
 
         /// <summary>
         /// Release the lock and asynchronously wait for a notify signal on the <see cref="AsyncLock"/> associated with the <paramref name="asyncLockKey"/>, while observing a <see cref="CancelationToken"/>.
@@ -109,9 +97,7 @@ namespace Proto.Promises.Threading
         /// </returns>
         [MethodImpl(Internal.InlineOption)]
         public Promise<bool> TryWaitAsync(AsyncLock.Key asyncLockKey, CancelationToken cancelationToken)
-        {
-            return asyncLockKey.TryWaitAsync(this, cancelationToken);
-        }
+            => asyncLockKey.TryWaitAsync(this, cancelationToken);
 
         /// <summary>
         /// Release the lock and synchronously wait for a notify signal on the <see cref="AsyncLock"/> associated with the <paramref name="asyncLockKey"/>.
@@ -120,9 +106,7 @@ namespace Proto.Promises.Threading
         /// <param name="asyncLockKey">The key to the <see cref="AsyncLock"/> that is currently acquired.</param>
         [MethodImpl(Internal.InlineOption)]
         public void Wait(AsyncLock.Key asyncLockKey)
-        {
-            asyncLockKey.Wait(this);
-        }
+            => asyncLockKey.Wait(this);
 
         /// <summary>
         /// Release the lock and synchronously wait for a notify signal on the <see cref="AsyncLock"/> associated with the <paramref name="asyncLockKey"/>, while observing a <see cref="CancelationToken"/>.
@@ -136,9 +120,7 @@ namespace Proto.Promises.Threading
         /// </returns>
         [MethodImpl(Internal.InlineOption)]
         public bool TryWait(AsyncLock.Key asyncLockKey, CancelationToken cancelationToken)
-        {
-            return asyncLockKey.TryWait(this, cancelationToken);
-        }
+            => asyncLockKey.TryWait(this, cancelationToken);
 
         /// <summary>
         /// Send a signal to a single waiter on the <see cref="AsyncLock"/> associated with the <paramref name="asyncLockKey"/>.
@@ -146,9 +128,7 @@ namespace Proto.Promises.Threading
         /// <param name="asyncLockKey">The key to the <see cref="AsyncLock"/> that is currently acquired.</param>
         [MethodImpl(Internal.InlineOption)]
         public void Notify(AsyncLock.Key asyncLockKey)
-        {
-            asyncLockKey.Pulse(this);
-        }
+            => asyncLockKey.Pulse(this);
 
         /// <summary>
         /// Send a signal to all waiters on the <see cref="AsyncLock"/> associated with the <paramref name="asyncLockKey"/>.
@@ -156,9 +136,7 @@ namespace Proto.Promises.Threading
         /// <param name="asyncLockKey">The key to the <see cref="AsyncLock"/> that is currently acquired.</param>
         [MethodImpl(Internal.InlineOption)]
         public void NotifyAll(AsyncLock.Key asyncLockKey)
-        {
-            asyncLockKey.PulseAll(this);
-        }
+            => asyncLockKey.PulseAll(this);
     } // class AsyncConditionVariable
 
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP

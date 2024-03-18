@@ -1,7 +1,7 @@
-﻿#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
 #else
-#undef PROMISE_PROGRESS
+#undef PROMISE_DEBUG
 #endif
 
 using NUnit.Framework;
@@ -24,38 +24,40 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void FirstIsResolvedWhenFirstPromiseIsResolvedFirst_void()
+        public void FirstIsResolvedWhenFirstPromiseIsResolvedFirst_void(
+            [Values] bool alreadyResolved)
         {
-            var deferred1 = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
+            var resolvedPromise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved, "Error", out var deferred1, out _);
+            var resolvedPromise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved, "Error", out var deferred2, out _);
 
             bool resolved = false;
 
-            Promise.First(deferred1.Promise, deferred2.Promise)
+            Promise.First(resolvedPromise1, resolvedPromise2)
                 .Then(() =>
                 {
                     resolved = true;
                 })
                 .Forget();
 
-            deferred1.Resolve();
+            deferred1.TryResolve();
 
             Assert.IsTrue(resolved);
 
-            deferred2.Resolve();
+            deferred2.TryResolve();
 
             Assert.IsTrue(resolved);
         }
 
         [Test]
-        public void FirstIsResolvedWhenFirstPromiseIsResolvedFirst_T()
+        public void FirstIsResolvedWhenFirstPromiseIsResolvedFirst_T(
+            [Values] bool alreadyResolved)
         {
-            var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
+            var resolvedPromise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved, 5, "Error", out var deferred1, out _);
+            var resolvedPromise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved, 2, "Error", out var deferred2, out _);
 
             bool resolved = false;
 
-            Promise<int>.First(deferred1.Promise, deferred2.Promise)
+            Promise<int>.First(resolvedPromise1, resolvedPromise2)
                 .Then(i =>
                 {
                     Assert.AreEqual(5, i);
@@ -63,31 +65,32 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            deferred1.Resolve(5);
+            deferred1.TryResolve(5);
 
             Assert.IsTrue(resolved);
 
-            deferred2.Resolve(1);
+            deferred2.TryResolve(1);
 
             Assert.IsTrue(resolved);
         }
 
         [Test]
-        public void FirstIsResolvedWhenSecondPromiseIsResolvedFirst_void()
+        public void FirstIsResolvedWhenSecondPromiseIsResolvedFirst_void(
+            [Values] bool alreadyResolved)
         {
             var deferred1 = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
+            var resolvedPromise = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved, "Error", out var deferred2, out _);
 
             bool resolved = false;
 
-            Promise.First(deferred1.Promise, deferred2.Promise)
+            Promise.First(deferred1.Promise, resolvedPromise)
                 .Then(() =>
                 {
                     resolved = true;
                 })
                 .Forget();
 
-            deferred2.Resolve();
+            deferred2.TryResolve();
 
             Assert.IsTrue(resolved);
 
@@ -97,14 +100,15 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void FirstIsResolvedWhenSecondPromiseIsResolvedFirst_T()
+        public void FirstIsResolvedWhenSecondPromiseIsResolvedFirst_T(
+            [Values] bool alreadyResolved)
         {
             var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
+            var resolvedPromise = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved, 5, "Error", out var deferred2, out _);
 
             bool resolved = false;
 
-            Promise<int>.First(deferred1.Promise, deferred2.Promise)
+            Promise<int>.First(deferred1.Promise, resolvedPromise)
                 .Then(i =>
                 {
                     Assert.AreEqual(5, i);
@@ -112,7 +116,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            deferred2.Resolve(5);
+            deferred2.TryResolve(5);
 
             Assert.IsTrue(resolved);
 
@@ -122,38 +126,42 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void FirstIsResolvedWhenFirstPromiseIsRejectedThenSecondPromiseIsResolved_void()
+        public void FirstIsResolvedWhenFirstPromiseIsRejectedThenSecondPromiseIsResolved_void(
+            [Values] bool alreadyRejected,
+            [Values] bool alreadyResolved)
         {
-            var deferred1 = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
+            var rejectPromise = TestHelper.BuildPromise(CompleteType.Reject, alreadyRejected, "Error", out var deferred1, out _);
+            var resolvedPromise = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved, "Error", out var deferred2, out _);
 
             bool resolved = false;
 
-            Promise.First(deferred1.Promise, deferred2.Promise)
+            Promise.First(rejectPromise, resolvedPromise)
                 .Then(() =>
                 {
                     resolved = true;
                 })
                 .Forget();
 
-            deferred1.Reject("Error");
+            deferred1.TryReject("Error");
 
-            Assert.IsFalse(resolved);
+            Assert.AreEqual(alreadyResolved, resolved);
 
-            deferred2.Resolve();
+            deferred2.TryResolve();
 
             Assert.IsTrue(resolved);
         }
 
         [Test]
-        public void FirstIsResolvedWhenFirstPromiseIsRejectedThenSecondPromiseIsResolved_T()
+        public void FirstIsResolvedWhenFirstPromiseIsRejectedThenSecondPromiseIsResolved_T(
+            [Values] bool alreadyRejected,
+            [Values] bool alreadyResolved)
         {
-            var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
+            var rejectPromise = TestHelper.BuildPromise(CompleteType.Reject, alreadyRejected, 5, "Error", out var deferred1, out _);
+            var resolvedPromise = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved, 5, "Error", out var deferred2, out _);
 
             bool resolved = false;
 
-            Promise<int>.First(deferred1.Promise, deferred2.Promise)
+            Promise<int>.First(rejectPromise, resolvedPromise)
                 .Then(i =>
                 {
                     Assert.AreEqual(5, i);
@@ -161,31 +169,32 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            deferred1.Reject("Error");
+            deferred1.TryReject("Error");
 
-            Assert.IsFalse(resolved);
+            Assert.AreEqual(alreadyResolved, resolved);
 
-            deferred2.Resolve(5);
+            deferred2.TryResolve(5);
 
             Assert.IsTrue(resolved);
         }
 
         [Test]
-        public void FirstIsResolvedWhenSecondPromiseIsRejectedThenFirstPromiseIsResolved_void()
+        public void FirstIsResolvedWhenSecondPromiseIsRejectedThenFirstPromiseIsResolved_void(
+            [Values] bool alreadyRejected)
         {
             var deferred1 = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
+            var rejectPromise = TestHelper.BuildPromise(CompleteType.Reject, alreadyRejected, "Error", out var deferred2, out _);
 
             bool resolved = false;
 
-            Promise.First(deferred1.Promise, deferred2.Promise)
+            Promise.First(deferred1.Promise, rejectPromise)
                 .Then(() =>
                 {
                     resolved = true;
                 })
                 .Forget();
 
-            deferred2.Reject("Error");
+            deferred2.TryReject("Error");
 
             Assert.IsFalse(resolved);
 
@@ -195,14 +204,15 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void FirstIsResolvedWhenSecondPromiseIsRejectedThenFirstPromiseIsResolved_T()
+        public void FirstIsResolvedWhenSecondPromiseIsRejectedThenFirstPromiseIsResolved_T(
+            [Values] bool alreadyRejected)
         {
             var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
+            var rejectPromise = TestHelper.BuildPromise(CompleteType.Reject, alreadyRejected, 5, "Error", out var deferred2, out _);
 
             bool resolved = false;
 
-            Promise<int>.First(deferred1.Promise, deferred2.Promise)
+            Promise<int>.First(deferred1.Promise, rejectPromise)
                 .Then(i =>
                 {
                     Assert.AreEqual(5, i);
@@ -210,7 +220,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            deferred2.Reject("Error");
+            deferred2.TryReject("Error");
 
             Assert.IsFalse(resolved);
 
@@ -220,15 +230,16 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void FirstIsRejectedWhenAllPromisesAreRejected_void()
+        public void FirstIsRejectedWhenAllPromisesAreRejected_void(
+            [Values] bool alreadyRejected)
         {
-            var deferred1 = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
-
             bool rejected = false;
             string expected = "Error";
 
-            Promise.First(deferred1.Promise, deferred2.Promise)
+            var rejectPromise1 = TestHelper.BuildPromise(CompleteType.Reject, alreadyRejected, "Different Error", out var deferred1, out _);
+            var rejectPromise2 = TestHelper.BuildPromise(CompleteType.Reject, alreadyRejected, expected, out var deferred2, out _);
+
+            Promise.First(rejectPromise1, rejectPromise2)
                 .Catch((string rej) =>
                 {
                     Assert.AreEqual(expected, rej);
@@ -236,25 +247,26 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            deferred1.Reject("Different Error");
+            deferred1.TryReject("Different Error");
 
-            Assert.IsFalse(rejected);
+            Assert.AreEqual(alreadyRejected, rejected);
 
-            deferred2.Reject(expected);
+            deferred2.TryReject(expected);
 
             Assert.IsTrue(rejected);
         }
 
         [Test]
-        public void FirstIsRejectedWhenAllPromisesAreRejected_T()
+        public void FirstIsRejectedWhenAllPromisesAreRejected_T(
+            [Values] bool alreadyRejected)
         {
-            var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
-
             bool rejected = false;
             string expected = "Error";
 
-            Promise<int>.First(deferred1.Promise, deferred2.Promise)
+            var rejectPromise1 = TestHelper.BuildPromise(CompleteType.Reject, alreadyRejected, 5, "Different Error", out var deferred1, out _);
+            var rejectPromise2 = TestHelper.BuildPromise(CompleteType.Reject, alreadyRejected, 5, expected, out var deferred2, out _);
+
+            Promise<int>.First(rejectPromise1, rejectPromise2)
                 .Catch((string rej) =>
                 {
                     Assert.AreEqual(expected, rej);
@@ -262,54 +274,52 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            deferred1.Reject("Different Error");
+            deferred1.TryReject("Different Error");
 
-            Assert.IsFalse(rejected);
+            Assert.AreEqual(alreadyRejected, rejected);
 
-            deferred2.Reject(expected);
+            deferred2.TryReject(expected);
 
             Assert.IsTrue(rejected);
         }
 
         [Test]
-        public void FirstIsResolvedWhenFirstPromiseIsCanceledThenSecondPromiseIsResolved_void()
+        public void FirstIsResolvedWhenFirstPromiseIsCanceledThenSecondPromiseIsResolved_void(
+            [Values] bool alreadyCanceled,
+            [Values] bool alreadyResolved)
         {
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred1 = Promise.NewDeferred();
-            cancelationSource.Token.Register(deferred1);
-            var deferred2 = Promise.NewDeferred();
+            var cancelPromise = TestHelper.BuildPromise(CompleteType.Cancel, alreadyCanceled, "Error", out var deferred1, out _);
+            var resolvedPromise = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved, "Error", out var deferred2, out _);
 
             bool resolved = false;
 
-            Promise.First(deferred1.Promise, deferred2.Promise)
+            Promise.First(cancelPromise, resolvedPromise)
                 .Then(() =>
                 {
                     resolved = true;
                 })
                 .Forget();
 
-            cancelationSource.Cancel();
+            deferred1.TryCancel();
 
-            Assert.IsFalse(resolved);
+            Assert.AreEqual(alreadyResolved, resolved);
 
-            deferred2.Resolve();
+            deferred2.TryResolve();
 
             Assert.IsTrue(resolved);
-
-            cancelationSource.Dispose();
         }
 
         [Test]
-        public void FirstIsResolvedWhenFirstPromiseIsCanceledThenSecondPromiseIsResolved_T()
+        public void FirstIsResolvedWhenFirstPromiseIsCanceledThenSecondPromiseIsResolved_T(
+            [Values] bool alreadyCanceled,
+            [Values] bool alreadyResolved)
         {
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred1 = Promise.NewDeferred<int>();
-            cancelationSource.Token.Register(deferred1);
-            var deferred2 = Promise.NewDeferred<int>();
+            var cancelPromise = TestHelper.BuildPromise(CompleteType.Cancel, alreadyCanceled, 2, "Error", out var deferred1, out _);
+            var resolvedPromise = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved, 5, "Error", out var deferred2, out _);
 
             bool resolved = false;
 
-            Promise<int>.First(deferred1.Promise, deferred2.Promise)
+            Promise<int>.First(cancelPromise, resolvedPromise)
                 .Then(i =>
                 {
                     Assert.AreEqual(5, i);
@@ -317,56 +327,50 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            cancelationSource.Cancel();
+            deferred1.TryCancel();
 
-            Assert.IsFalse(resolved);
+            Assert.AreEqual(alreadyResolved, resolved);
 
-            deferred2.Resolve(5);
+            deferred2.TryResolve(5);
 
             Assert.IsTrue(resolved);
-
-            cancelationSource.Dispose();
         }
 
         [Test]
-        public void FirstIsResolvedWhenSecondPromiseIsCanceledThenFirstPromiseIsResolved_void()
+        public void FirstIsResolvedWhenSecondPromiseIsCanceledThenFirstPromiseIsResolved_void(
+            [Values] bool alreadyCanceled)
         {
             var deferred1 = Promise.NewDeferred();
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred();
-            cancelationSource.Token.Register(deferred2);
+            var cancelPromise = TestHelper.BuildPromise(CompleteType.Cancel, alreadyCanceled, "Error", out var deferred2, out _);
 
             bool resolved = false;
 
-            Promise.First(deferred1.Promise, deferred2.Promise)
+            Promise.First(deferred1.Promise, cancelPromise)
                 .Then(() =>
                 {
                     resolved = true;
                 })
                 .Forget();
 
-            cancelationSource.Cancel();
+            deferred2.TryCancel();
 
             Assert.IsFalse(resolved);
 
-            deferred1.Resolve();
+            deferred1.TryResolve();
 
             Assert.IsTrue(resolved);
-
-            cancelationSource.Dispose();
         }
 
         [Test]
-        public void FirstIsResolvedWhenSecondPromiseIsCanceledThenFirstPromiseIsResolved_T()
+        public void FirstIsResolvedWhenSecondPromiseIsCanceledThenFirstPromiseIsResolved_T(
+            [Values] bool alreadyCanceled)
         {
             var deferred1 = Promise.NewDeferred<int>();
-            CancelationSource cancelationSource = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred<int>();
-            cancelationSource.Token.Register(deferred2);
+            var cancelPromise = TestHelper.BuildPromise(CompleteType.Cancel, alreadyCanceled, 5, "Error", out var deferred2, out _);
 
             bool resolved = false;
 
-            Promise<int>.First(deferred1.Promise, deferred2.Promise)
+            Promise<int>.First(deferred1.Promise, cancelPromise)
                 .Then(i =>
                 {
                     Assert.AreEqual(5, i);
@@ -374,73 +378,59 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            cancelationSource.Cancel();
+            deferred2.TryCancel();
 
             Assert.IsFalse(resolved);
 
-            deferred1.Resolve(5);
+            deferred1.TryResolve(5);
 
             Assert.IsTrue(resolved);
-
-            cancelationSource.Dispose();
         }
 
         [Test]
-        public void FirstIsCanceledWhenAllPromisesAreCanceled_void()
+        public void FirstIsCanceledWhenAllPromisesAreCanceled_void(
+            [Values] bool alreadyCanceled)
         {
-            CancelationSource cancelationSource1 = CancelationSource.New();
-            var deferred1 = Promise.NewDeferred();
-            cancelationSource1.Token.Register(deferred1);
-            CancelationSource cancelationSource2 = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred();
-            cancelationSource2.Token.Register(deferred2);
+            var cancelPromise1 = TestHelper.BuildPromise(CompleteType.Cancel, alreadyCanceled, "Error", out var deferred1, out _);
+            var cancelPromise2 = TestHelper.BuildPromise(CompleteType.Cancel, alreadyCanceled, "Error", out var deferred2, out _);
 
             bool canceled = false;
 
-            Promise.First(deferred1.Promise, deferred2.Promise)
+            Promise.First(cancelPromise1, cancelPromise2)
                 .CatchCancelation(() =>
                 {
                     canceled = true;
                 })
                 .Forget();
 
-            cancelationSource1.Cancel();
-            Assert.IsFalse(canceled);
+            deferred1.TryCancel();
+            Assert.AreEqual(alreadyCanceled, canceled);
 
-            cancelationSource2.Cancel();
+            deferred2.TryCancel();
             Assert.IsTrue(canceled);
-
-            cancelationSource1.Dispose();
-            cancelationSource2.Dispose();
         }
 
         [Test]
-        public void FirstIsCanceledWhenAllPromisesAreCanceled_T()
+        public void FirstIsCanceledWhenAllPromisesAreCanceled_T(
+            [Values] bool alreadyCanceled)
         {
-            CancelationSource cancelationSource1 = CancelationSource.New();
-            var deferred1 = Promise.NewDeferred<int>();
-            cancelationSource1.Token.Register(deferred1);
-            CancelationSource cancelationSource2 = CancelationSource.New();
-            var deferred2 = Promise.NewDeferred<int>();
-            cancelationSource2.Token.Register(deferred2);
+            var cancelPromise1 = TestHelper.BuildPromise(CompleteType.Cancel, alreadyCanceled, 5, "Error", out var deferred1, out _);
+            var cancelPromise2 = TestHelper.BuildPromise(CompleteType.Cancel, alreadyCanceled, 5, "Error", out var deferred2, out _);
 
             bool canceled = false;
 
-            Promise<int>.First(deferred1.Promise, deferred2.Promise)
+            Promise<int>.First(cancelPromise1, cancelPromise2)
                 .CatchCancelation(() =>
                 {
                     canceled = true;
                 })
                 .Forget();
 
-            cancelationSource1.Cancel();
-            Assert.IsFalse(canceled);
+            deferred1.TryCancel();
+            Assert.AreEqual(alreadyCanceled, canceled);
 
-            cancelationSource2.Cancel();
+            deferred2.TryCancel();
             Assert.IsTrue(canceled);
-
-            cancelationSource1.Dispose();
-            cancelationSource2.Dispose();
         }
 
         [Test]
@@ -675,22 +665,24 @@ namespace ProtoPromiseTests.APIs
             cancelationSource.Dispose();
         }
 
-        private static void Swap(ref Promise.Deferred deferred1, ref Promise.Deferred deferred2)
+        private static void Swap<T>(ref T a, ref T b)
         {
-            var temp = deferred1;
-            deferred1 = deferred2;
-            deferred2 = temp;
+            var temp = a;
+            a = b;
+            b = temp;
         }
 
         [Test]
-        public void FirstWithIndex_2_void([Values(0, 1)] int winIndex)
+        public void FirstWithIndex_2_void(
+            [Values(0, 1)] int winIndex,
+            [Values] bool alreadyResolved)
         {
-            var deferred1 = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
+            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, "Error", out var deferred1, out _);
+            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, "Error", out var deferred2, out _);
 
             int resultIndex = -1;
 
-            Promise.FirstWithIndex(deferred1.Promise, deferred2.Promise)
+            Promise.FirstWithIndex(promise1, promise2)
                 .Then(index => resultIndex = index)
                 .Forget();
 
@@ -698,51 +690,24 @@ namespace ProtoPromiseTests.APIs
             {
                 Swap(ref deferred1, ref deferred2);
             }
-            deferred1.Resolve();
-            deferred2.Resolve();
+            deferred1.TryResolve();
+            deferred2.TryResolve();
 
             Assert.AreEqual(winIndex, resultIndex);
         }
 
         [Test]
-        public void FirstWithIndex_3_void([Values(0, 1, 2)] int winIndex)
+        public void FirstWithIndex_3_void(
+            [Values(0, 1, 2)] int winIndex,
+            [Values] bool alreadyResolved)
         {
-            var deferred1 = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
-            var deferred3 = Promise.NewDeferred();
+            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, "Error", out var deferred1, out _);
+            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, "Error", out var deferred2, out _);
+            var promise3 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 2, "Error", out var deferred3, out _);
 
             int resultIndex = -1;
 
-            Promise.FirstWithIndex(deferred1.Promise, deferred2.Promise, deferred3.Promise)
-                .Then(index => resultIndex = index)
-                .Forget();
-
-            if (winIndex == 1)
-            {
-                Swap(ref deferred1, ref deferred2);
-            }
-            else if (winIndex == 2)
-            {
-                Swap(ref deferred1, ref deferred3);
-            }
-            deferred1.Resolve();
-            deferred2.Resolve();
-            deferred3.Resolve();
-
-            Assert.AreEqual(winIndex, resultIndex);
-        }
-
-        [Test]
-        public void FirstWithIndex_4_void([Values(0, 1, 2, 3)] int winIndex)
-        {
-            var deferred1 = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
-            var deferred3 = Promise.NewDeferred();
-            var deferred4 = Promise.NewDeferred();
-
-            int resultIndex = -1;
-
-            Promise.FirstWithIndex(deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise)
+            Promise.FirstWithIndex(promise1, promise2, promise3)
                 .Then(index => resultIndex = index)
                 .Forget();
 
@@ -754,29 +719,26 @@ namespace ProtoPromiseTests.APIs
             {
                 Swap(ref deferred1, ref deferred3);
             }
-            else if (winIndex == 3)
-            {
-                Swap(ref deferred1, ref deferred4);
-            }
-            deferred1.Resolve();
-            deferred2.Resolve();
-            deferred3.Resolve();
-            deferred4.Resolve();
+            deferred1.TryResolve();
+            deferred2.TryResolve();
+            deferred3.TryResolve();
 
             Assert.AreEqual(winIndex, resultIndex);
         }
 
         [Test]
-        public void FirstWithIndex_array_void([Values(0, 1, 2, 3)] int winIndex)
+        public void FirstWithIndex_4_void(
+            [Values(0, 1, 2, 3)] int winIndex,
+            [Values] bool alreadyResolved)
         {
-            var deferred1 = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
-            var deferred3 = Promise.NewDeferred();
-            var deferred4 = Promise.NewDeferred();
+            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, "Error", out var deferred1, out _);
+            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, "Error", out var deferred2, out _);
+            var promise3 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 2, "Error", out var deferred3, out _);
+            var promise4 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 3, "Error", out var deferred4, out _);
 
             int resultIndex = -1;
 
-            Promise.FirstWithIndex(new Promise[] { deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise })
+            Promise.FirstWithIndex(promise1, promise2, promise3, promise4)
                 .Then(index => resultIndex = index)
                 .Forget();
 
@@ -792,100 +754,28 @@ namespace ProtoPromiseTests.APIs
             {
                 Swap(ref deferred1, ref deferred4);
             }
-            deferred1.Resolve();
-            deferred2.Resolve();
-            deferred3.Resolve();
-            deferred4.Resolve();
+            deferred1.TryResolve();
+            deferred2.TryResolve();
+            deferred3.TryResolve();
+            deferred4.TryResolve();
 
             Assert.AreEqual(winIndex, resultIndex);
         }
 
-        private static void Swap(ref Promise<int>.Deferred deferred1, ref Promise<int>.Deferred deferred2)
-        {
-            var temp = deferred1;
-            deferred1 = deferred2;
-            deferred2 = temp;
-        }
-
         [Test]
-        public void FirstWithIndex_2_T([Values(0, 1)] int winIndex)
+        public void FirstWithIndex_array_void(
+            [Values(0, 1, 2, 3)] int winIndex,
+            [Values] bool alreadyResolved)
         {
-            var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
+            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, "Error", out var deferred1, out _);
+            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, "Error", out var deferred2, out _);
+            var promise3 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 2, "Error", out var deferred3, out _);
+            var promise4 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 3, "Error", out var deferred4, out _);
 
             int resultIndex = -1;
-            int result = -1;
 
-            Promise.FirstWithIndex(deferred1.Promise, deferred2.Promise)
-                .Then(cv =>
-                {
-                    resultIndex = cv.Item1;
-                    result = cv.Item2;
-                })
-                .Forget();
-
-            if (winIndex == 1)
-            {
-                Swap(ref deferred1, ref deferred2);
-            }
-            deferred1.Resolve(1);
-            deferred2.Resolve(2);
-
-            Assert.AreEqual(winIndex, resultIndex);
-            Assert.AreEqual(1, result);
-        }
-
-        [Test]
-        public void FirstWithIndex_3_T([Values(0, 1, 2)] int winIndex)
-        {
-            var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
-            var deferred3 = Promise.NewDeferred<int>();
-
-            int resultIndex = -1;
-            int result = -1;
-
-            Promise.FirstWithIndex(deferred1.Promise, deferred2.Promise, deferred3.Promise)
-                .Then(cv =>
-                {
-                    resultIndex = cv.Item1;
-                    result = cv.Item2;
-                })
-                .Forget();
-
-            if (winIndex == 1)
-            {
-                Swap(ref deferred1, ref deferred2);
-            }
-            else if (winIndex == 2)
-            {
-                Swap(ref deferred1, ref deferred3);
-            }
-            deferred1.Resolve(1);
-            deferred2.Resolve(2);
-            deferred3.Resolve(3);
-
-            Assert.AreEqual(winIndex, resultIndex);
-            Assert.AreEqual(1, result);
-        }
-
-        [Test]
-        public void FirstWithIndex_4_T([Values(0, 1, 2, 3)] int winIndex)
-        {
-            var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
-            var deferred3 = Promise.NewDeferred<int>();
-            var deferred4 = Promise.NewDeferred<int>();
-
-            int resultIndex = -1;
-            int result = -1;
-
-            Promise.FirstWithIndex(deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise)
-                .Then(cv =>
-                {
-                    resultIndex = cv.Item1;
-                    result = cv.Item2;
-                })
+            Promise.FirstWithIndex(new Promise[] { promise1, promise2, promise3, promise4 })
+                .Then(index => resultIndex = index)
                 .Forget();
 
             if (winIndex == 1)
@@ -900,27 +790,94 @@ namespace ProtoPromiseTests.APIs
             {
                 Swap(ref deferred1, ref deferred4);
             }
-            deferred1.Resolve(1);
-            deferred2.Resolve(2);
-            deferred3.Resolve(3);
-            deferred4.Resolve(4);
+            deferred1.TryResolve();
+            deferred2.TryResolve();
+            deferred3.TryResolve();
+            deferred4.TryResolve();
+
+            Assert.AreEqual(winIndex, resultIndex);
+        }
+
+        [Test]
+        public void FirstWithIndex_2_T(
+            [Values(0, 1)] int winIndex,
+            [Values] bool alreadyResolved)
+        {
+            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, alreadyResolved && winIndex == 0 ? 1 : 0, "Error", out var deferred1, out _);
+            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, alreadyResolved && winIndex == 1 ? 1 : 2, "Error", out var deferred2, out _);
+
+            int resultIndex = -1;
+            int result = -1;
+
+            Promise.FirstWithIndex(promise1, promise2)
+                .Then(cv =>
+                {
+                    resultIndex = cv.Item1;
+                    result = cv.Item2;
+                })
+                .Forget();
+
+            if (winIndex == 1)
+            {
+                Swap(ref deferred1, ref deferred2);
+            }
+            deferred1.TryResolve(1);
+            deferred2.TryResolve(2);
 
             Assert.AreEqual(winIndex, resultIndex);
             Assert.AreEqual(1, result);
         }
 
         [Test]
-        public void FirstWithIndex_array_T([Values(0, 1, 2, 3)] int winIndex)
+        public void FirstWithIndex_3_T(
+            [Values(0, 1, 2)] int winIndex,
+            [Values] bool alreadyResolved)
         {
-            var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
-            var deferred3 = Promise.NewDeferred<int>();
-            var deferred4 = Promise.NewDeferred<int>();
+            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, alreadyResolved && winIndex == 0 ? 1 : 0, "Error", out var deferred1, out _);
+            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, alreadyResolved && winIndex == 1 ? 1 : 2, "Error", out var deferred2, out _);
+            var promise3 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 2, alreadyResolved && winIndex == 2 ? 1 : 3, "Error", out var deferred3, out _);
 
             int resultIndex = -1;
             int result = -1;
 
-            Promise.FirstWithIndex(new Promise<int>[] { deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise })
+            Promise.FirstWithIndex(promise1, promise2, promise3)
+                .Then(cv =>
+                {
+                    resultIndex = cv.Item1;
+                    result = cv.Item2;
+                })
+                .Forget();
+
+            if (winIndex == 1)
+            {
+                Swap(ref deferred1, ref deferred2);
+            }
+            else if (winIndex == 2)
+            {
+                Swap(ref deferred1, ref deferred3);
+            }
+            deferred1.TryResolve(1);
+            deferred2.TryResolve(2);
+            deferred3.TryResolve(3);
+
+            Assert.AreEqual(winIndex, resultIndex);
+            Assert.AreEqual(1, result);
+        }
+
+        [Test]
+        public void FirstWithIndex_4_T(
+            [Values(0, 1, 2, 3)] int winIndex,
+            [Values] bool alreadyResolved)
+        {
+            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, alreadyResolved && winIndex == 0 ? 1 : 0, "Error", out var deferred1, out _);
+            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, alreadyResolved && winIndex == 1 ? 1 : 2, "Error", out var deferred2, out _);
+            var promise3 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 2, alreadyResolved && winIndex == 2 ? 1 : 3, "Error", out var deferred3, out _);
+            var promise4 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 3, alreadyResolved && winIndex == 3 ? 1 : 4, "Error", out var deferred4, out _);
+
+            int resultIndex = -1;
+            int result = -1;
+
+            Promise.FirstWithIndex(promise1, promise2, promise3, promise4)
                 .Then(cv =>
                 {
                     resultIndex = cv.Item1;
@@ -940,655 +897,55 @@ namespace ProtoPromiseTests.APIs
             {
                 Swap(ref deferred1, ref deferred4);
             }
-            deferred1.Resolve(1);
-            deferred2.Resolve(2);
-            deferred3.Resolve(3);
-            deferred4.Resolve(4);
+            deferred1.TryResolve(1);
+            deferred2.TryResolve(2);
+            deferred3.TryResolve(3);
+            deferred4.TryResolve(4);
 
             Assert.AreEqual(winIndex, resultIndex);
             Assert.AreEqual(1, result);
         }
 
-#if PROMISE_PROGRESS
         [Test]
-        public void FirstProgressReportsTheMaximumProgress_void0(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
+        public void FirstWithIndex_array_T(
+            [Values(0, 1, 2, 3)] int winIndex,
+            [Values] bool alreadyResolved)
         {
-            var deferred1 = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
+            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, alreadyResolved && winIndex == 0 ? 1 : 0, "Error", out var deferred1, out _);
+            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, alreadyResolved && winIndex == 1 ? 1 : 2, "Error", out var deferred2, out _);
+            var promise3 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 2, alreadyResolved && winIndex == 2 ? 1 : 3, "Error", out var deferred3, out _);
+            var promise4 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 3, alreadyResolved && winIndex == 3 ? 1 : 4, "Error", out var deferred4, out _);
 
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.First(deferred1.Promise, deferred2.Promise)
-                .SubscribeProgressAndAssert(progressHelper, 0f)
+            int resultIndex = -1;
+            int result = -1;
+
+            Promise.FirstWithIndex(new Promise<int>[] { promise1, promise2, promise3, promise4 })
+                .Then(cv =>
+                {
+                    resultIndex = cv.Item1;
+                    result = cv.Item2;
+                })
                 .Forget();
 
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.3f, 0.5f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.7f, 0.7f);
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.6f, 0.7f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.8f, 0.8f);
+            if (winIndex == 1)
+            {
+                Swap(ref deferred1, ref deferred2);
+            }
+            else if (winIndex == 2)
+            {
+                Swap(ref deferred1, ref deferred3);
+            }
+            else if (winIndex == 3)
+            {
+                Swap(ref deferred1, ref deferred4);
+            }
+            deferred1.TryResolve(1);
+            deferred2.TryResolve(2);
+            deferred3.TryResolve(3);
+            deferred4.TryResolve(4);
 
-            progressHelper.ResolveAndAssertResult(deferred1, 1f);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.9f, 1f, false);
-            progressHelper.ResolveAndAssertResult(deferred2, 1f, false);
+            Assert.AreEqual(winIndex, resultIndex);
+            Assert.AreEqual(1, result);
         }
-
-        [Test]
-        public void FirstProgressReportsTheMaximumProgress_T0(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
-
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise<int>.First(deferred1.Promise, deferred2.Promise)
-                .SubscribeProgressAndAssert(progressHelper, 0f)
-                .Forget();
-
-            progressHelper.AssertCurrentProgress(0f);
-
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.3f, 0.5f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.7f, 0.7f);
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.6f, 0.7f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.8f, 0.8f);
-
-            progressHelper.ResolveAndAssertResult(deferred1, 1, 1f);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.9f, 1f, false);
-            progressHelper.ResolveAndAssertResult(deferred2, 1, 1f, false);
-        }
-
-        [Test]
-        public void FirstProgressReportsTheMaximumProgress_void1(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            var deferred1 = Promise.NewDeferred();
-
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.First(deferred1.Promise, Promise.Resolved())
-                .SubscribeProgressAndAssert(progressHelper, 1f)
-                .Forget();
-
-            progressHelper.ResolveAndAssertResult(deferred1, 1f, false);
-        }
-
-        [Test]
-        public void FirstProgressReportsTheMaximumProgress_T1(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            var deferred1 = Promise.NewDeferred<int>();
-
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise<int>.First(deferred1.Promise, Promise.Resolved(1))
-                .SubscribeProgressAndAssert(progressHelper, 1f)
-                .Forget();
-
-            progressHelper.ResolveAndAssertResult(deferred1, 1, 1f, false);
-        }
-
-        [Test]
-        public void FirstProgressReportsTheMaximumProgress_void2(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            var deferred1 = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
-
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.First(
-                deferred1.Promise.ThenDuplicate(),
-                deferred2.Promise.ThenDuplicate()
-            )
-                .SubscribeProgressAndAssert(progressHelper, 0f)
-                .Forget();
-
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.3f, 0.5f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.7f, 0.7f);
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.6f, 0.7f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.8f, 0.8f);
-
-            progressHelper.ResolveAndAssertResult(deferred1, 1f);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.9f, 1f, false);
-            progressHelper.ResolveAndAssertResult(deferred2, 1f, false);
-        }
-
-        [Test]
-        public void FirstProgressReportsTheMaximumProgress_T2(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
-
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise<int>.First(
-                deferred1.Promise.ThenDuplicate(),
-                deferred2.Promise.ThenDuplicate()
-            )
-                .SubscribeProgressAndAssert(progressHelper, 0f)
-                .Forget();
-
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.3f, 0.5f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.7f, 0.7f);
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.6f, 0.7f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.8f, 0.8f);
-
-            progressHelper.ResolveAndAssertResult(deferred1, 1, 1f);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.9f, 1f, false);
-            progressHelper.ResolveAndAssertResult(deferred2, 1, 1f, false);
-        }
-
-        [Test]
-        public void FirstProgressReportsTheMaximumProgress_void3(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            var deferred1 = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
-            var deferred3 = Promise.NewDeferred();
-            var deferred4 = Promise.NewDeferred();
-
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.First(
-                deferred1.Promise
-                    .Then(() => deferred3.Promise),
-                deferred2.Promise
-                    .Then(() => deferred4.Promise)
-            )
-                .SubscribeProgressAndAssert(progressHelper, 0f)
-                .Forget();
-
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 2f);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.3f, 0.5f / 2f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.7f, 0.7f / 2f);
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.6f, 0.7f / 2f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.8f, 0.8f / 2f);
-
-            progressHelper.ResolveAndAssertResult(deferred1, 1f / 2f);
-
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.9f, 1f / 2f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred3, 0.5f, 1.5f / 2f);
-
-            progressHelper.ResolveAndAssertResult(deferred2, 1.5f / 2f, false);
-
-            progressHelper.ReportProgressAndAssertResult(deferred4, 0.3f, 1.5f / 2f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred4, 0.7f, 1.7f / 2f);
-
-            progressHelper.ResolveAndAssertResult(deferred3, 2f / 2f);
-
-            progressHelper.ReportProgressAndAssertResult(deferred4, 0.9f, 2f / 2f, false);
-
-            progressHelper.ResolveAndAssertResult(deferred4, 2f / 2f, false);
-        }
-
-        [Test]
-        public void FirstProgressReportsTheMaximumProgress_T3(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
-            var deferred3 = Promise.NewDeferred<int>();
-            var deferred4 = Promise.NewDeferred<int>();
-
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise<int>.First(
-                deferred1.Promise
-                    .Then(() => deferred3.Promise),
-                deferred2.Promise
-                    .Then(() => deferred4.Promise)
-            )
-                .SubscribeProgressAndAssert(progressHelper, 0f)
-                .Forget();
-
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 2f);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.3f, 0.5f / 2f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.7f, 0.7f / 2f);
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.6f, 0.7f / 2f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.8f, 0.8f / 2f);
-
-            progressHelper.ResolveAndAssertResult(deferred1, 1, 1f / 2f);
-
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.9f, 1f / 2f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred3, 0.5f, 1.5f / 2f);
-
-            progressHelper.ResolveAndAssertResult(deferred2, 1, 1.5f / 2f, false);
-
-            progressHelper.ReportProgressAndAssertResult(deferred4, 0.3f, 1.5f / 2f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred4, 0.7f, 1.7f / 2f);
-
-            progressHelper.ResolveAndAssertResult(deferred3, 1, 2f / 2f);
-
-            progressHelper.ReportProgressAndAssertResult(deferred4, 0.9f, 2f / 2f, false);
-
-            progressHelper.ResolveAndAssertResult(deferred4, 1, 2f / 2f, false);
-        }
-
-        [Test]
-        public void FirstProgressReportsTheMaximumProgress_void4(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            var deferred1 = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
-
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.First(
-                deferred1.Promise
-                    .Then(() => Promise.Resolved()),
-                deferred2.Promise
-                    .Then(() => Promise.Resolved())
-            )
-                .SubscribeProgressAndAssert(progressHelper, 0f)
-                .Forget();
-
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 2f);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.3f, 0.5f / 2f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.7f, 0.7f / 2f);
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.6f, 0.7f / 2f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.8f, 0.8f / 2f);
-
-            progressHelper.ResolveAndAssertResult(deferred1, 2f / 2f);
-
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.9f, 2f / 2f, false);
-
-            progressHelper.ResolveAndAssertResult(deferred2, 2f / 2f, false);
-        }
-
-        [Test]
-        public void FirstProgressReportsTheMaximumProgress_T4(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
-
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise<int>.First(
-                deferred1.Promise
-                    .Then(x => Promise.Resolved(x)),
-                deferred2.Promise
-                    .Then(x => Promise.Resolved(x))
-            )
-                .SubscribeProgressAndAssert(progressHelper, 0f)
-                .Forget();
-
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 2f);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.3f, 0.5f / 2f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.7f, 0.7f / 2f);
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.6f, 0.7f / 2f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.8f, 0.8f / 2f);
-
-            progressHelper.ResolveAndAssertResult(deferred1, 1, 2f / 2f);
-
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.9f, 2f / 2f, false);
-
-            progressHelper.ResolveAndAssertResult(deferred2, 1, 2f / 2f, false);
-        }
-
-        [Test]
-        public void FirstProgressIsNoLongerReportedFromRejected_void(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            var deferred1 = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
-
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.First(deferred1.Promise, deferred2.Promise)
-                .SubscribeProgressAndAssert(progressHelper, 0f)
-                .Catch(() => { })
-                .Forget();
-
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.7f, 0.7f);
-
-            progressHelper.RejectAndAssertResult(deferred2, "Reject", 0.7f, false);
-            progressHelper.RejectAndAssertResult(deferred1, "Reject", 0.7f, false);
-        }
-
-        [Test]
-        public void FirstProgressIsNoLongerReportedFromRejected_T(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
-
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise<int>.First(deferred1.Promise, deferred2.Promise)
-                .SubscribeProgressAndAssert(progressHelper, 0f)
-                .Catch(() => { })
-                .Forget();
-
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.7f, 0.7f);
-
-            progressHelper.RejectAndAssertResult(deferred2, "Reject", 0.7f, false);
-            progressHelper.RejectAndAssertResult(deferred1, "Reject", 0.7f, false);
-        }
-
-        [Test]
-        public void FirstProgressIsNoLongerReportedFromCanceled_void(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            var cancelationSource1 = CancelationSource.New();
-            var cancelationSource2 = CancelationSource.New();
-            var deferred1 = Promise.NewDeferred();
-            cancelationSource1.Token.Register(deferred1);
-            var deferred2 = Promise.NewDeferred();
-            cancelationSource2.Token.Register(deferred2);
-
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.First(deferred1.Promise, deferred2.Promise)
-                .SubscribeProgressAndAssert(progressHelper, 0f)
-                .Forget();
-
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.7f, 0.7f);
-
-            progressHelper.CancelAndAssertResult(cancelationSource2, 0.7f, false);
-            progressHelper.CancelAndAssertResult(cancelationSource1, 0.7f, false);
-
-            cancelationSource1.Dispose();
-            cancelationSource2.Dispose();
-        }
-
-        [Test]
-        public void FirstProgressIsNoLongerReportedFromCanceled_T(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            var cancelationSource1 = CancelationSource.New();
-            var cancelationSource2 = CancelationSource.New();
-            var deferred1 = Promise.NewDeferred<int>();
-            cancelationSource1.Token.Register(deferred1);
-            var deferred2 = Promise.NewDeferred<int>();
-            cancelationSource2.Token.Register(deferred2);
-
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise<int>.First(deferred1.Promise, deferred2.Promise)
-                .SubscribeProgressAndAssert(progressHelper, 0f)
-                .Forget();
-
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.7f, 0.7f);
-
-            progressHelper.CancelAndAssertResult(cancelationSource2, 0.7f, false);
-            progressHelper.CancelAndAssertResult(cancelationSource1, 0.7f, false);
-
-            cancelationSource1.Dispose();
-            cancelationSource2.Dispose();
-        }
-
-        [Test]
-        public void FirstProgressWillBeInvokedProperlyFromARecoveredPromise_void(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            var deferred1 = Promise.NewDeferred();
-            var deferred2 = Promise.NewDeferred();
-            var deferred3 = Promise.NewDeferred();
-            var deferred4 = Promise.NewDeferred();
-            var cancelationSource = CancelationSource.New();
-
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise.First(
-                // Make first and second promise chains the same length
-                deferred1.Promise
-                    .Then(() => Promise.Resolved())
-                    .Then(() => Promise.Resolved()),
-                deferred2.Promise
-                    .Then(() => deferred3.Promise, cancelationSource.Token)
-                    .ContinueWith(_ => deferred4.Promise)
-            )
-                .SubscribeProgressAndAssert(progressHelper, 0f / 3f)
-                .Forget();
-
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 3f);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.2f, 0.5f / 3f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.6f, 0.6f / 3f);
-
-            progressHelper.CancelAndAssertResult(cancelationSource, 2f / 3f);
-
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.7f, 2f / 3f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred3, 0.5f, 2f / 3f, false);
-            progressHelper.ResolveAndAssertResult(deferred3, 2f / 3f, false);
-
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.8f, 2f / 3f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.9f, 2f / 3f, false);
-
-            progressHelper.ReportProgressAndAssertResult(deferred4, 0.5f, 2.5f / 3f);
-            progressHelper.ResolveAndAssertResult(deferred4, 3f / 3f);
-
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.8f, 3f / 3f, false);
-            progressHelper.ResolveAndAssertResult(deferred2, 3f / 3f, false);
-            progressHelper.ResolveAndAssertResult(deferred1, 3f / 3f, false);
-
-            cancelationSource.Dispose();
-            deferred3.Promise.Forget(); // Need to forget this promise because it was never awaited due to the cancelation.
-        }
-
-        [Test]
-        public void FirstProgressWillBeInvokedProperlyFromARecoveredPromise_T(
-            [Values] ProgressType progressType,
-            [Values] SynchronizationType synchronizationType)
-        {
-            var deferred1 = Promise.NewDeferred<int>();
-            var deferred2 = Promise.NewDeferred<int>();
-            var deferred3 = Promise.NewDeferred<int>();
-            var deferred4 = Promise.NewDeferred<int>();
-            var cancelationSource = CancelationSource.New();
-
-            ProgressHelper progressHelper = new ProgressHelper(progressType, synchronizationType);
-            Promise<int>.First(
-                // Make first and second promise chains the same length
-                deferred1.Promise
-                    .Then(x => Promise.Resolved(x))
-                    .Then(x => Promise.Resolved(x)),
-                deferred2.Promise
-                    .Then(() => deferred3.Promise, cancelationSource.Token)
-                    .ContinueWith(_ => deferred4.Promise)
-            )
-                .SubscribeProgressAndAssert(progressHelper, 0f / 3f)
-                .Forget();
-
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.5f, 0.5f / 3f);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.2f, 0.5f / 3f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.6f, 0.6f / 3f);
-
-            progressHelper.CancelAndAssertResult(cancelationSource, 2f / 3f);
-
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.7f, 2f / 3f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred3, 0.5f, 2f / 3f, false);
-            progressHelper.ResolveAndAssertResult(deferred3, 1, 2f / 3f, false);
-
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.8f, 2f / 3f, false);
-            progressHelper.ReportProgressAndAssertResult(deferred1, 0.9f, 2f / 3f, false);
-
-            progressHelper.ReportProgressAndAssertResult(deferred4, 0.5f, 2.5f / 3f);
-            progressHelper.ResolveAndAssertResult(deferred4, 1, 3f / 3f);
-
-            progressHelper.ReportProgressAndAssertResult(deferred2, 0.8f, 3f / 3f, false);
-            progressHelper.ResolveAndAssertResult(deferred2, 1, 3f / 3f, false);
-            progressHelper.ResolveAndAssertResult(deferred1, 1, 3f / 3f, false);
-
-            cancelationSource.Dispose();
-            deferred3.Promise.Forget(); // Need to forget this promise because it was never awaited due to the cancelation.
-        }
-
-        [Test]
-        public void FirstProgressWillBeInvokedProperlyFromChainedPromise_FlatDepth_void([Values] bool isPending)
-        {
-            // Testing an implementation detail, not guaranteed by the API - Promise.First's depth is set to the shortest promise chain's depth.
-            // We test if all promises are already resolved to make sure progress reports remain consistent.
-            var maybePendingDeferred = isPending
-                ? Promise.NewDeferred()
-                : default(Promise.Deferred);
-            var deferred2 = Promise.NewDeferred();
-            var deferred3 = Promise.NewDeferred();
-            var deferred4 = Promise.NewDeferred();
-
-            // .Then waiting on another promise increases the depth of the promise chain from 0 to 1.
-            var promise1 = (isPending ? maybePendingDeferred.Promise : Promise.Resolved())
-                .Then(() => Promise.Resolved());
-            var promise2 = deferred2.Promise
-                .Then(() => Promise.Resolved());
-            var promise3 = deferred3.Promise
-                .Then(() => Promise.Resolved());
-            var promise4 = deferred4.Promise
-                .Then(() => Promise.Resolved());
-
-            var deferredForProgress = Promise.NewDeferred();
-
-            ProgressHelper progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
-            Promise.First(promise1, promise2, promise3, promise4)
-                .Then(() => deferredForProgress.Promise) // Increases the depth to 2.
-                .SubscribeProgressAndAssert(progressHelper, isPending ? 0f : 2f / 3f)
-                .Forget();
-
-            maybePendingDeferred.TryResolve();
-
-            progressHelper.AssertCurrentProgress(2f / 3f);
-
-            progressHelper.ReportProgressAndAssertResult(deferredForProgress, 0.5f, 2.5f / 3f);
-            progressHelper.ResolveAndAssertResult(deferredForProgress, 3f / 3f);
-
-            deferred2.Resolve();
-            deferred3.Resolve();
-            deferred4.Resolve();
-        }
-
-        [Test]
-        public void FirstProgressWillBeInvokedProperlyFromChainedPromise_FlatDepth_T([Values] bool isPending)
-        {
-            // Testing an implementation detail, not guaranteed by the API - Promise.First's depth is set to the shortest promise chain's depth.
-            // We test if all promises are already resolved to make sure progress reports remain consistent.
-            var maybePendingDeferred = isPending
-                ? Promise.NewDeferred()
-                : default(Promise.Deferred);
-            var deferred2 = Promise.NewDeferred();
-            var deferred3 = Promise.NewDeferred();
-            var deferred4 = Promise.NewDeferred();
-
-            // .Then waiting on another promise increases the depth of the promise chain from 0 to 1.
-            var promise1 = (isPending ? maybePendingDeferred.Promise : Promise.Resolved())
-                .Then(() => Promise.Resolved(1));
-            var promise2 = deferred2.Promise
-                .Then(() => Promise.Resolved(2));
-            var promise3 = deferred3.Promise
-                .Then(() => Promise.Resolved(3));
-            var promise4 = deferred4.Promise
-                .Then(() => Promise.Resolved(4));
-
-            var deferredForProgress = Promise.NewDeferred();
-
-            ProgressHelper progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
-            Promise<int>.First(promise1, promise2, promise3, promise4)
-                .Then(() => deferredForProgress.Promise) // Increases the depth to 2.
-                .SubscribeProgressAndAssert(progressHelper, isPending ? 0f : 2f / 3f)
-                .Forget();
-
-            maybePendingDeferred.TryResolve();
-
-            progressHelper.AssertCurrentProgress(2f / 3f);
-
-            progressHelper.ReportProgressAndAssertResult(deferredForProgress, 0.5f, 2.5f / 3f);
-            progressHelper.ResolveAndAssertResult(deferredForProgress, 3f / 3f);
-
-            deferred2.Resolve();
-            deferred3.Resolve();
-            deferred4.Resolve();
-        }
-
-        [Test]
-        public void FirstProgressWillBeInvokedProperlyFromChainedPromise_StaggeredDepth_void([Values] bool isPending)
-        {
-            // Testing an implementation detail, not guaranteed by the API - Promise.First's depth is set to the shortest promise chain's depth.
-            // We test if all promises are already resolved to make sure progress reports remain consistent.
-            var maybePendingDeferred = isPending
-                ? Promise.NewDeferred()
-                : default(Promise.Deferred);
-            var deferred2 = Promise.NewDeferred();
-            var deferred3 = Promise.NewDeferred();
-            var deferred4 = Promise.NewDeferred();
-
-            var promise1 = isPending ? maybePendingDeferred.Promise : Promise.Resolved();
-            // .Then waiting on another promise increases the depth of the promise chain from 0 to 1.
-            var promise2 = deferred2.Promise
-                .Then(() => Promise.Resolved());
-            var promise3 = deferred3.Promise
-                .Then(() => Promise.Resolved());
-            var promise4 = deferred4.Promise
-                .Then(() => Promise.Resolved());
-
-            var deferredForProgress = Promise.NewDeferred();
-
-            ProgressHelper progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
-            Promise.First(promise1, promise2, promise3, promise4)
-                .Then(() => deferredForProgress.Promise) // Increases the depth to 2.
-                .SubscribeProgressAndAssert(progressHelper, isPending ? 0f : 1f / 2f)
-                .Forget();
-
-            maybePendingDeferred.TryResolve();
-
-            progressHelper.AssertCurrentProgress(1f / 2f);
-
-            progressHelper.ReportProgressAndAssertResult(deferredForProgress, 0.5f, 1.5f / 2f);
-            progressHelper.ResolveAndAssertResult(deferredForProgress, 2f / 2f);
-
-            deferred2.Resolve();
-            deferred3.Resolve();
-            deferred4.Resolve();
-        }
-
-        [Test]
-        public void FirstProgressWillBeInvokedProperlyFromChainedPromise_StaggeredDepth_T([Values] bool isPending)
-        {
-            // Testing an implementation detail, not guaranteed by the API - Promise.First's depth is set to the shortest promise chain's depth.
-            // We test if all promises are already resolved to make sure progress reports remain consistent.
-            var maybePendingDeferred = isPending
-                ? Promise.NewDeferred<int>()
-                : default(Promise<int>.Deferred);
-            var deferred2 = Promise.NewDeferred();
-            var deferred3 = Promise.NewDeferred();
-            var deferred4 = Promise.NewDeferred();
-
-            var promise1 = isPending ? maybePendingDeferred.Promise : Promise.Resolved(1);
-            // .Then waiting on another promise increases the depth of the promise chain from 0 to 1.
-            var promise2 = deferred2.Promise
-                .Then(() => Promise.Resolved(2));
-            var promise3 = deferred3.Promise
-                .Then(() => Promise.Resolved(3));
-            var promise4 = deferred4.Promise
-                .Then(() => Promise.Resolved(4));
-
-            var deferredForProgress = Promise.NewDeferred();
-
-            ProgressHelper progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
-            Promise<int>.First(promise1, promise2, promise3, promise4)
-                .Then(() => deferredForProgress.Promise) // Increases the depth to 2.
-                .SubscribeProgressAndAssert(progressHelper, isPending ? 0f : 1f / 2f)
-                .Forget();
-
-            maybePendingDeferred.TryResolve(1);
-
-            progressHelper.AssertCurrentProgress(1f / 2f);
-
-            progressHelper.ReportProgressAndAssertResult(deferredForProgress, 0.5f, 1.5f / 2f);
-            progressHelper.ResolveAndAssertResult(deferredForProgress, 2f / 2f);
-
-            deferred2.Resolve();
-            deferred3.Resolve();
-            deferred4.Resolve();
-        }
-#endif // PROMISE_PROGRESS
     }
 }

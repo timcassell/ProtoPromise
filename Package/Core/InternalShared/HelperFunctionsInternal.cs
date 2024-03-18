@@ -1,21 +1,9 @@
-﻿#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
-#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
 
-#pragma warning disable IDE0018 // Inline variable declaration
-#pragma warning disable IDE0019 // Use pattern matching
-#pragma warning disable IDE0034 // Simplify 'default' expression
 #pragma warning disable IDE0074 // Use compound assignment
 
 using System;
@@ -26,19 +14,11 @@ using System.Threading;
 
 namespace Proto.Promises
 {
-    /// <summary>
-    /// Members of this type are meant for INTERNAL USE ONLY! Do not use in user code! Use the documented public APIs.
-    /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
     internal static partial class Internal
     {
-        // This is used to detect if we're currently executing on the context we're going to schedule to, so we can just invoke synchronously instead.
-        // TODO: If we ever drop support for .Net Framework/old Mono, this can be replaced with `SynchronizationContext.Current`.
-        [ThreadStatic]
-        internal static SynchronizationContext ts_currentContext;
-
         private static void ScheduleContextCallback(SynchronizationContext context, object state, SendOrPostCallback contextCallback, WaitCallback threadpoolCallback)
         {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -91,14 +71,11 @@ namespace Proto.Promises
         }
 
         internal static IRejectContainer CreateRejectContainer(object reason, int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable)
-        {
-            return RejectContainer.Create(reason, rejectSkipFrames, exceptionWithStacktrace, traceable);
-        }
+            => RejectContainer.Create(reason, rejectSkipFrames, exceptionWithStacktrace, traceable);
 
         internal static void ReportRejection(object unhandledValue, ITraceable traceable)
         {
-            ICantHandleException ex = unhandledValue as ICantHandleException;
-            if (ex != null)
+            if (unhandledValue is ICantHandleException ex)
             {
                 ex.ReportUnhandled(traceable);
                 return;
@@ -156,8 +133,7 @@ namespace Proto.Promises
                 int initialValue, newValue;
                 do
                 {
-                    Thread.MemoryBarrier();
-                    initialValue = location;
+                    initialValue = Volatile.Read(ref location);
                     uint uValue = (uint) initialValue;
                     checked
                     {
@@ -169,8 +145,8 @@ namespace Proto.Promises
                         {
                             uValue -= addOrSubtract;
                         }
-                        newValue = (int) uValue;
                     }
+                    newValue = (int) uValue;
                 } while (Interlocked.CompareExchange(ref location, newValue, initialValue) != initialValue);
                 return newValue;
             }
@@ -180,43 +156,10 @@ namespace Proto.Promises
         }
 
         [MethodImpl(InlineOption)]
-        internal static T InterlockedExchange<T>(ref T location, T value) where T : class
-        {
-#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. So use CompareExchange loop instead.
-            T current;
-            do
-            {
-                Thread.MemoryBarrier(); // Force fresh read. Necessary since Volatile.Read isn't available on old runtimes.
-                current = location;
-            } while (Interlocked.CompareExchange(ref location, value, current) != current);
-            return current;
-#else
-            return Interlocked.Exchange(ref location, value);
-#endif
-        }
-
-        [MethodImpl(InlineOption)]
-        internal static int InterlockedExchange(ref int location, int value)
-        {
-#if NET_LEGACY // Interlocked.Exchange doesn't seem to work properly in Unity's old runtime. So use CompareExchange loop instead.
-            int current;
-            do
-            {
-                Thread.MemoryBarrier(); // Force fresh read. Necessary since Volatile.Read isn't available on old runtimes.
-                current = location;
-            } while (Interlocked.CompareExchange(ref location, value, current) != current);
-            return current;
-#else
-            return Interlocked.Exchange(ref location, value);
-#endif
-        }
-
-        [MethodImpl(InlineOption)]
         internal static bool TryUnregisterAndIsNotCanceling(ref CancelationRegistration cancelationRegistration)
         {
             // We check isCanceling in case the token is not cancelable (in which case TryUnregister returns false).
-            bool isCanceling;
-            bool unregistered = cancelationRegistration.TryUnregister(out isCanceling);
+            bool unregistered = cancelationRegistration.TryUnregister(out bool isCanceling);
             return unregistered | !isCanceling;
         }
 
@@ -257,23 +200,15 @@ namespace Proto.Promises
 
 #if !(NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER)
         internal static bool Remove<TKey, TValue>(this Dictionary<TKey, TValue> dict, TKey key, out TValue value)
-        {
-            if (dict.TryGetValue(key, out value))
-            {
-                return dict.Remove(key);
-            }
-            return false;
-        }
+            => dict.TryGetValue(key, out value) && dict.Remove(key);
 #endif
 
         internal static SynchronizationContext CaptureContext()
         {
             // We capture the current context to post the continuation. If it's null, we use the background context.
-            return ts_currentContext
-                // TODO: Unity hasn't adopted .Net Core yet, and they most certainly will not use the NETCOREAPP compilation symbol, so we'll have to update the compilation symbols here once Unity finally does adopt it.
-#if NETCOREAPP
-                ?? SynchronizationContext.Current
-#else
+            return Promise.Manager.ThreadStaticSynchronizationContext
+                // TODO: update compilation symbol when Unity adopts .Net Core.
+#if !NETCOREAPP
                 // Old .Net Framework/Mono includes `SynchronizationContext.Current` in the `ExecutionContext`, so it may not be null on a background thread.
                 // We check for that case to not unnecessarily invoke continuations on a foreground thread when they can continue on a background thread.
                 ?? (Thread.CurrentThread.IsBackground ? null : SynchronizationContext.Current)
@@ -287,17 +222,17 @@ namespace Proto.Promises
             if (first == second | !first.CanBeCanceled)
             {
                 maybeJoinedToken = second;
-                return default(CancelationSource);
+                return default;
             }
             if (!second.CanBeCanceled)
             {
                 maybeJoinedToken = first;
-                return default(CancelationSource);
+                return default;
             }
             if (first.IsCancelationRequested | second.IsCancelationRequested)
             {
                 maybeJoinedToken = CancelationToken.Canceled();
-                return default(CancelationSource);
+                return default;
             }
             var source = CancelationSource.New(first, second);
             maybeJoinedToken = source.Token;

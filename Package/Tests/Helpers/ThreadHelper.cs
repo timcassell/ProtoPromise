@@ -1,6 +1,4 @@
-﻿#pragma warning disable CS0420 // A reference to a volatile field will not be treated as volatile
-
-using Proto.Promises;
+﻿using Proto.Promises;
 using System;
 using System.Collections.Generic;
 using System.Threading;

@@ -1,8 +1,8 @@
+using System;
 using System.Collections.Generic;
 
 namespace Proto.Promises.Linq
 {
-#if CSHARP_7_3_OR_NEWER
     partial class AsyncEnumerable
     {
         /// <summary>
@@ -25,6 +25,19 @@ namespace Proto.Promises.Linq
         /// <returns>The async-enumerable sequence that merges the elements of the async-enumerable sequences.</returns>
         public static AsyncEnumerable<T> Merge<T>(params AsyncEnumerable<T>[] sources)
             => Merge<T, Internal.ArrayEnumerator<AsyncEnumerable<T>>>(sources.GetGenericEnumerator());
+
+        // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
+        // so we only include this in the nuget package and netstandard2.1+.
+#if !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+        /// <summary>
+        /// Merges elements from all of the specified async-enumerable sequences into a single async-enumerable sequence.
+        /// </summary>
+        /// <typeparam name="T">The type of the elements in the source sequence.</typeparam>
+        /// <param name="sources">Async-enumerable sequences.</param>
+        /// <returns>The async-enumerable sequence that merges the elements of the async-enumerable sequences.</returns>
+        public static AsyncEnumerable<T> Merge<T>(ReadOnlySpan<AsyncEnumerable<T>> sources)
+            => Merge<T, Internal.PersistedSpanEnumerator<AsyncEnumerable<T>>>(sources.GetPersistedEnumerator());
+#endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
 
         /// <summary>
         /// Merges elements from all of the specified async-enumerable sequences into a single async-enumerable sequence.
@@ -112,6 +125,14 @@ namespace Proto.Promises.Linq
         /// </summary>
         /// <param name="sources">Async-enumerable sequences.</param>
         /// <returns>The async-enumerable sequence that merges the elements of the async-enumerable sequences.</returns>
+        public static AsyncEnumerable<T> Merge(ReadOnlySpan<AsyncEnumerable<T>> sources)
+            => AsyncEnumerable.Merge(sources);
+
+        /// <summary>
+        /// Merges elements from all of the specified async-enumerable sequences into a single async-enumerable sequence.
+        /// </summary>
+        /// <param name="sources">Async-enumerable sequences.</param>
+        /// <returns>The async-enumerable sequence that merges the elements of the async-enumerable sequences.</returns>
         public static AsyncEnumerable<T> Merge(IEnumerable<AsyncEnumerable<T>> sources)
             => AsyncEnumerable.Merge(sources);
 
@@ -156,5 +177,4 @@ namespace Proto.Promises.Linq
             => AsyncEnumerable.Merge(source1, source2, source3, source4);
     }
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
-#endif // CSHARP_7_3_OR_NEWER
 }

@@ -1,12 +1,12 @@
-#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#define PROMISE_DEBUG
+#else
+#undef PROMISE_DEBUG
 #endif
 
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-
-#pragma warning disable IDE0034 // Simplify 'default' expression
 
 namespace Proto.Promises
 {
@@ -42,13 +42,7 @@ namespace Proto.Promises
         /// </summary>
         /// <remarks>This reverts to <c>false</c> if the factory does not complete successfully.</remarks>
         public bool IsStarted
-        {
-            get
-            {
-                var lazyFields = _lazyFields;
-                return lazyFields == null || lazyFields.IsStarted;
-            }
-        }
+            => _lazyFields?.IsStarted != false;
 
         /// <summary>
         /// Starts the asynchronous factory method, if it has not already started, and returns the resulting <see cref="Promise{T}"/>.
@@ -56,14 +50,14 @@ namespace Proto.Promises
         public Promise<T> Promise
         {
             [MethodImpl(Internal.InlineOption)]
-            get { return GetResultAsync(); }
+            get => GetResultAsync();
         }
 
         /// <summary>
         /// Starts the asynchronous factory method, if it has not already started, and returns the resulting <see cref="Promise{T}"/>.
         /// </summary>
         /// <param name="progressToken">The progress token that will be reported to if this instance was created with progress support.</param>
-        public Promise<T> GetResultAsync(ProgressToken progressToken = default(ProgressToken))
+        public Promise<T> GetResultAsync(ProgressToken progressToken = default)
         {
             // This is a volatile read, so we don't need a full memory barrier to prevent the result read from moving before it.
             var lazyFields = _lazyFields;
@@ -79,9 +73,7 @@ namespace Proto.Promises
         /// Asynchronous infrastructure support. This method permits instances of <see cref="AsyncLazy{T}"/> to be awaited.
         /// </summary>
         [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
-        public Async.CompilerServices.PromiseAwaiter<T> GetAwaiter()
-        {
-            return Promise.GetAwaiter();
-        }
+        public CompilerServices.PromiseAwaiter<T> GetAwaiter()
+            => Promise.GetAwaiter();
     } // class AsyncLazy<T>
 }

@@ -4,11 +4,11 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
-
 using System;
-using System.ComponentModel;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
+
+#pragma warning disable IDE0090 // Use 'new(...)'
 
 namespace Proto.Promises
 {
@@ -18,11 +18,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public
-#if CSHARP_7_3_OR_NEWER
-        readonly
-#endif
-        struct CancelationSource : ICancelable, IDisposable, IEquatable<CancelationSource>
+    public readonly struct CancelationSource : ICancelable, IDisposable, IEquatable<CancelationSource>
     {
         private readonly Internal.CancelationRef _ref;
         private readonly int _sourceId;
@@ -33,9 +29,7 @@ namespace Proto.Promises
         /// <para/>Note: the new <see cref="CancelationSource"/> must be disposed when you are finished with it.
         /// </summary>
         public static CancelationSource New()
-        {
-            return new CancelationSource(Internal.CancelationRef.GetOrCreate());
-        }
+            => new CancelationSource(Internal.CancelationRef.GetOrCreate());
 
         private CancelationSource(Internal.CancelationRef cancelationRef)
         {
@@ -45,7 +39,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Create a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when the given token is canceled (with the same value), whichever is first.
+        /// Create a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when the given token is canceled, whichever is first.
         /// <para/>Note: the new <see cref="CancelationSource"/> still must be disposed when you are finished with it.
         /// </summary>
         /// <param name="token">The cancelation token to observe.</param>
@@ -58,7 +52,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Create a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when any of the given tokens are canceled (with the same value), whichever is first.
+        /// Create a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when any of the given tokens are canceled, whichever is first.
         /// <para/>Note: the new <see cref="CancelationSource"/> still must be disposed when you are finished with it.
         /// </summary>
         /// <param name="token1">The first cancelation token to observe.</param>
@@ -73,7 +67,7 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Create a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when any of the given tokens are canceled (with the same value), whichever is first.
+        /// Create a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when any of the given tokens are canceled, whichever is first.
         /// <para/>Note: the new <see cref="CancelationSource"/> still must be disposed when you are finished with it.
         /// </summary>
         /// <param name="tokens">An array that contains the cancelation token instances to observe.</param>
@@ -88,15 +82,33 @@ namespace Proto.Promises
             return newCancelationSource;
         }
 
+        // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
+        // so we only include this in the nuget package and netstandard2.1+.
+#if !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+        /// <summary>
+        /// Create a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when any of the given tokens are canceled, whichever is first.
+        /// <para/>Note: the new <see cref="CancelationSource"/> still must be disposed when you are finished with it.
+        /// </summary>
+        /// <param name="tokens">A <see cref="ReadOnlySpan{T}"/> that contains the cancelation token instances to observe.</param>
+        /// <returns>A new <see cref="CancelationSource"/> that is linked to the source token.</returns>
+        public static CancelationSource New(ReadOnlySpan<CancelationToken> tokens)
+        {
+            CancelationSource newCancelationSource = New();
+            for (int i = 0, max = tokens.Length; i < max; ++i)
+            {
+                newCancelationSource._ref.MaybeLinkToken(tokens[i]);
+            }
+            return newCancelationSource;
+        }
+#endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
+
         /// <summary>
         /// Get the <see cref="CancelationToken"/> associated with this <see cref="CancelationSource"/>.
         /// </summary>
         public CancelationToken Token
         {
-            get
-            {
-                return new CancelationToken(_ref, _tokenId);
-            }
+            [MethodImpl(Internal.InlineOption)]
+            get => new CancelationToken(_ref, _tokenId);
         }
 
         /// <summary>
@@ -104,32 +116,20 @@ namespace Proto.Promises
         /// <para/>A <see cref="CancelationSource"/> is valid if it was created from <see cref="New()"/> and was not disposed.
         /// </summary>
         public bool IsValid
-        {
-            get
-            {
-                return Internal.CancelationRef.IsValidSource(_ref, _sourceId);
-            }
-        }
+            => Internal.CancelationRef.IsValidSource(_ref, _sourceId);
 
         /// <summary>
         /// Gets whether cancelation has been requested for this source.
         /// </summary>
         public bool IsCancelationRequested
-        {
-            get
-            {
-                return Internal.CancelationRef.IsSourceCanceled(_ref, _sourceId);
-            }
-        }
+            => Internal.CancelationRef.IsSourceCanceled(_ref, _sourceId);
 
         /// <summary>
         /// Try to communicate a request for cancelation, and invoke all callbacks that are registered to the associated <see cref="Token"/>. Returns true if successful, false otherwise.
         /// </summary>
         /// <returns>True if this is valid and was not already canceled, false otherwise.</returns>
         public bool TryCancel()
-        {
-            return Internal.CancelationRef.TrySetCanceled(_ref, _sourceId);
-        }
+            => Internal.CancelationRef.TrySetCanceled(_ref, _sourceId);
 
         /// <summary>
         /// Communicate a request for cancelation, and invoke all callbacks that are registered to the associated <see cref="Token"/>.
@@ -148,9 +148,7 @@ namespace Proto.Promises
         /// </summary>
         /// <returns>True if this is valid and was not already disposed, false otherwise.</returns>
         public bool TryDispose()
-        {
-            return Internal.CancelationRef.TryDispose(_ref, _sourceId);
-        }
+            => Internal.CancelationRef.TryDispose(_ref, _sourceId);
 
         /// <summary>
         /// Release all resources used by this <see cref="CancelationSource"/>. This instance will no longer be valid.
@@ -166,48 +164,23 @@ namespace Proto.Promises
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="CancelationSource"/>.</summary>
         public bool Equals(CancelationSource other)
-        {
-            return this == other;
-        }
+            => this == other;
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
         public override bool Equals(object obj)
-        {
-#if CSHARP_7_3_OR_NEWER
-            return obj is CancelationSource source && Equals(source);
-#else
-            return obj is CancelationSource && Equals((CancelationSource) obj);
-#endif
-        }
+            => obj is CancelationSource source && Equals(source);
 
         /// <summary>Returns the hash code for this instance.</summary>
         public override int GetHashCode()
-        {
-            return Internal.BuildHashCode(_ref, _sourceId.GetHashCode(), 0);
-        }
+            => Internal.BuildHashCode(_ref, _sourceId.GetHashCode(), 0);
 
         /// <summary>Returns a value indicating whether two <see cref="CancelationSource"/> values are equal.</summary>
         public static bool operator ==(CancelationSource c1, CancelationSource c2)
-        {
-            return c1._ref == c2._ref & c1._sourceId == c2._sourceId;
-        }
+            => c1._ref == c2._ref
+            & c1._sourceId == c2._sourceId;
 
         /// <summary>Returns a value indicating whether two <see cref="CancelationSource"/> values are not equal.</summary>
         public static bool operator !=(CancelationSource c1, CancelationSource c2)
-        {
-            return !(c1 == c2);
-        }
-
-        [Obsolete("Cancelation reasons are no longer supported. Use TryCancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
-        public bool TryCancel<TCancel>(TCancel reason)
-        {
-            throw new InvalidOperationException("Cancelation reasons are no longer supported. Use TryCancel() instead.", Internal.GetFormattedStacktrace(1));
-        }
-
-        [Obsolete("Cancelation reasons are no longer supported. Use Cancel() instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
-        public void Cancel<TCancel>(TCancel reason)
-        {
-            throw new InvalidOperationException("Cancelation reasons are no longer supported. Use Cancel() instead.", Internal.GetFormattedStacktrace(1));
-        }
+            => !(c1 == c2);
     }
 }

@@ -7,7 +7,6 @@ using System.Threading;
 
 namespace Proto.Promises.CompilerServices
 {
-#if CSHARP_7_3_OR_NEWER
     /// <summary>
     /// Provides an awaitable async enumerable that enables cancelable iteration and configured awaits.
     /// </summary>
@@ -138,14 +137,14 @@ namespace Proto.Promises.CompilerServices
                 Internal.PromiseRefBase.PromiseConfigured<bool> promise;
                 if (moveNextPromise._ref == null)
                 {
-                    promise = Internal.PromiseRefBase.PromiseConfigured<bool>.GetOrCreateFromResolved(synchronizationContext, moveNextPromise._result, moveNextPromise.Depth, _forceAsync);
+                    promise = Internal.PromiseRefBase.PromiseConfigured<bool>.GetOrCreateFromResolved(synchronizationContext, moveNextPromise._result, _forceAsync);
                 }
                 else
                 {
-                    promise = Internal.PromiseRefBase.PromiseConfigured<bool>.GetOrCreate(synchronizationContext, moveNextPromise.Depth, _forceAsync);
+                    promise = Internal.PromiseRefBase.PromiseConfigured<bool>.GetOrCreate(synchronizationContext, _forceAsync);
                     moveNextPromise._ref.HookupNewPromise(moveNextPromise._id, promise);
                 }
-                return new Promise<bool>(promise, promise.Id, moveNextPromise.Depth, moveNextPromise._result);
+                return new Promise<bool>(promise, promise.Id, moveNextPromise._result);
             }
 
             /// <summary>
@@ -193,14 +192,14 @@ namespace Proto.Promises.CompilerServices
                 Internal.PromiseRefBase.PromiseConfigured<Internal.VoidResult> promise;
                 if (moveNextPromise._ref == null)
                 {
-                    promise = Internal.PromiseRefBase.PromiseConfigured<Internal.VoidResult>.GetOrCreateFromResolved(synchronizationContext, default, moveNextPromise.Depth, _forceAsync);
+                    promise = Internal.PromiseRefBase.PromiseConfigured<Internal.VoidResult>.GetOrCreateFromResolved(synchronizationContext, default, _forceAsync);
                 }
                 else
                 {
-                    promise = Internal.PromiseRefBase.PromiseConfigured<Internal.VoidResult>.GetOrCreate(synchronizationContext, moveNextPromise.Depth, _forceAsync);
+                    promise = Internal.PromiseRefBase.PromiseConfigured<Internal.VoidResult>.GetOrCreate(synchronizationContext, _forceAsync);
                     moveNextPromise._ref.HookupNewPromise(moveNextPromise._id, promise);
                 }
-                return new Promise(promise, promise.Id, moveNextPromise.Depth);
+                return new Promise(promise, promise.Id);
             }
 
             internal SwitchToConfiguredContextAwaiter SwitchToContext()
@@ -223,7 +222,7 @@ namespace Proto.Promises.CompilerServices
                                 Internal.GetFormattedStacktrace(2));
                         }
                         // We ignore the _forceAsync flag here.
-                        return synchronizationContext == Internal.ts_currentContext
+                        return synchronizationContext == Promise.Manager.ThreadStaticSynchronizationContext
                             ? default
                             : new SwitchToConfiguredContextAwaiter(synchronizationContext);
                     }
@@ -244,7 +243,7 @@ namespace Proto.Promises.CompilerServices
                     synchronizationContext = Internal.BackgroundSynchronizationContextSentinel.s_instance;
                 }
                 // We ignore the _forceAsync flag here.
-                return synchronizationContext == Internal.ts_currentContext
+                return synchronizationContext == Promise.Manager.ThreadStaticSynchronizationContext
                     ? default
                     : new SwitchToConfiguredContextAwaiter(synchronizationContext);
             }
@@ -349,7 +348,7 @@ namespace Proto.Promises.CompilerServices
         public bool IsCompleted
         {
             [MethodImpl(Internal.InlineOption)]
-            get => _context == null | _context == Internal.ts_currentContext;
+            get => _context == null | _context == Promise.Manager.ThreadStaticSynchronizationContext;
         }
 
         [MethodImpl(Internal.InlineOption)]
@@ -375,5 +374,4 @@ namespace Proto.Promises.CompilerServices
             }
         }
     }
-#endif
 }

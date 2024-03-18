@@ -10,7 +10,6 @@ using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
-#if CSHARP_7_3_OR_NEWER
     partial class Internal
     {
         partial class PromiseRefBase
@@ -64,7 +63,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IPromiseAwaiter.AwaitOnCompletedInternal(PromiseRefBase asyncPromiseRef, ref AsyncPromiseFields asyncFields)
+                void IPromiseAwaiter.AwaitOnCompletedInternal(PromiseRefBase asyncPromiseRef)
                     => _target.AwaitOnCompletedForAsyncStreamYielder(asyncPromiseRef, _enumerableId, hasValue: false);
 
                 void INotifyCompletion.OnCompleted(Action continuation) => throw new System.InvalidOperationException("Must only be used in async Linq extension methods.");
@@ -72,5 +71,4 @@ namespace Proto.Promises
             }
         }
     }
-#endif // CSHARP_7_3_OR_NEWER
 }

@@ -1,9 +1,4 @@
-﻿#pragma warning disable IDE0031 // Use null propagation
-#pragma warning disable IDE1005 // Delegate invocation can be simplified.
-#pragma warning disable CA1041 // Provide ObsoleteAttribute message
-#pragma warning disable 1591 // Missing XML comment for publicly visible type or member
-
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -21,24 +16,6 @@ namespace Proto.Promises
 #endif
         public static class Manager
         {
-            [Obsolete("Promise.Manager.HandleCompletes is no longer valid. Set Promise.Config.ForegroundContext instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public static void HandleCompletes()
-            {
-                throw new System.InvalidOperationException("Promise.Manager.HandleCompletes is no longer valid. Set Promise.Config.ForegroundContext instead.");
-            }
-
-            [Obsolete("Promise.Manager.HandleCompletesAndProgress is no longer valid. Set Promise.Config.ForegroundContext instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public static void HandleCompletesAndProgress()
-            {
-                throw new System.InvalidOperationException("Promise.Manager.HandleCompletesAndProgress is no longer valid. Set Promise.Config.ForegroundContext instead.");
-            }
-
-            [Obsolete("Promise.Manager.HandleProgress is no longer valid. Set Promise.Config.ForegroundContext instead.", true), EditorBrowsable(EditorBrowsableState.Never)]
-            public static void HandleProgress()
-            {
-                throw new System.InvalidOperationException("Promise.Manager.HandleProgress is no longer valid. Set Promise.Config.ForegroundContext instead.");
-            }
-
             /// <summary>
             /// Clears all currently pooled objects. Does not affect pending or preserved promises.
             /// </summary>
@@ -51,23 +28,30 @@ namespace Proto.Promises
             /// The <see cref="SynchronizationContext"/> for the current thread, used internally to execute continuations synchronously if the supplied context matches this.
             /// </summary>
             /// <remarks>It is recommended to set this at application startup, at the same as you set <see cref="Config.ForegroundContext"/>.</remarks>
+            // TODO: update compilation symbol when Unity adopts .Net Core.
+#if NETCOREAPP
+            // .Net Core stores the SynchronizationContext.Current only in the thread, not the ExecutionContext like .Net Framework does, so we can just use it directly.
+            [EditorBrowsable(EditorBrowsableState.Never)]
             public static SynchronizationContext ThreadStaticSynchronizationContext
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return Internal.ts_currentContext; }
+                get => SynchronizationContext.Current;
                 [MethodImpl(Internal.InlineOption)]
-                set { Internal.ts_currentContext = value; }
+                set => SynchronizationContext.SetSynchronizationContext(value);
             }
-
-            [Obsolete, EditorBrowsable(EditorBrowsableState.Never)]
-            public static void LogWarning(string message)
+#else
+            // .Net Framework flows the SynchronizationContext.Current through the ExecutionContext, causing it to be set even on background threads.
+            // To avoid needlessly posting background workers to the foreground context, we only store it on the thread and use this instead of SynchronizationContext.Current.
+            public static SynchronizationContext ThreadStaticSynchronizationContext
             {
-                var temp = Config.WarningHandler;
-                if (temp != null)
-                {
-                    temp.Invoke(message);
-                }
+                [MethodImpl(Internal.InlineOption)]
+                get => ts_currentContext;
+                [MethodImpl(Internal.InlineOption)]
+                set => ts_currentContext = value;
             }
+            [ThreadStatic]
+            private static SynchronizationContext ts_currentContext;
+#endif
         }
     }
 }

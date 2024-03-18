@@ -5,7 +5,6 @@ using System.Runtime.CompilerServices;
 
 namespace Proto.Promises.Linq
 {
-#if CSHARP_7_3_OR_NEWER
     /// <summary>
     /// Type that enables writing to the async stream created from <see cref="AsyncEnumerable{T}.Create(Func{AsyncStreamWriter{T}, CancelationToken, AsyncIteratorMethod})"/>.
     /// </summary>
@@ -32,5 +31,4 @@ namespace Proto.Promises.Linq
         public AsyncStreamYielder<T> YieldAsync(T value)
             => _target.YieldAsync(value, _id);
     }
-#endif // CSHARP_7_3_OR_NEWER
 }

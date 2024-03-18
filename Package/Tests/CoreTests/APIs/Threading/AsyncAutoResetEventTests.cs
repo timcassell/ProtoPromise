@@ -245,7 +245,6 @@ namespace ProtoPromiseTests.APIs.Threading
             cs.Dispose();
         }
 
-#if CSHARP_7_3_OR_NEWER
         [Test]
         public void AsyncAutoResetEvent_AsyncCoordination_Async()
         {
@@ -301,7 +300,6 @@ namespace ProtoPromiseTests.APIs.Threading
             Assert.True(second);
             Assert.True(third);
         }
-#endif // CSHARP_7_3_OR_NEWER
 
         [Test]
         public void AsyncAutoResetEvent_WaitAsync_AfterSet_IsCompleted()

@@ -10,7 +10,6 @@ using System.Collections.Generic;
 
 namespace Proto.Promises.Linq
 {
-#if CSHARP_7_3_OR_NEWER
     partial class AsyncEnumerable
     {
         #region KeySelector
@@ -1403,5 +1402,4 @@ namespace Proto.Promises.Linq
         }
         #endregion KeyElementSelector
     }
-#endif // CSHARP_7_3_OR_NEWER
 }

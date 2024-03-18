@@ -11,7 +11,6 @@ using System;
 
 namespace Proto.Promises.Linq
 {
-#if CSHARP_7_3_OR_NEWER
     partial class AsyncEnumerable
     {
         /// <summary>
@@ -304,5 +303,4 @@ namespace Proto.Promises.Linq
             throw new InvalidOperationException("source must contain 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
         }
     }
-#endif // CSHARP_7_3_OR_NEWER
 }

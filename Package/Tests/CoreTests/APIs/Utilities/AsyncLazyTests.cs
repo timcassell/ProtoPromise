@@ -1,26 +1,14 @@
-#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
 #if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
 #endif
 
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
-
 using NUnit.Framework;
 using Proto.Promises;
 using System;
 using System.Threading;
-#if CSHARP_7_3_OR_NEWER
 using System.Threading.Tasks;
-#endif
 
 namespace ProtoPromiseTests.APIs.Utilities
 {
@@ -37,26 +25,6 @@ namespace ProtoPromiseTests.APIs.Utilities
         {
             TestHelper.Cleanup();
         }
-
-#if PROMISE_PROGRESS
-        [Test]
-        public void AsyncLazy_ProgressIsReportedProperly()
-        {
-            var deferred = Promise.NewDeferred<int>();
-            var lazy = new AsyncLazy<int>(() => deferred.Promise);
-
-            ProgressHelper progressHelper = new ProgressHelper(ProgressType.Interface, SynchronizationType.Synchronous);
-
-            lazy.Promise
-                .SubscribeProgress(progressHelper)
-                .Forget();
-
-            progressHelper.AssertCurrentProgress(0f);
-
-            progressHelper.ReportProgressAndAssertResult(deferred, 0.5f, 0.5f);
-            progressHelper.ResolveAndAssertResult(deferred, 1, 1f);
-        }
-#endif
 
         [Test]
         public void AsyncLazy_NeverAwaited_DoesNotCallFunc()
@@ -282,7 +250,6 @@ namespace ProtoPromiseTests.APIs.Utilities
         }
 #endif // !UNITY_WEBGL
 
-#if CSHARP_7_3_OR_NEWER
         [Test]
         public void AsyncLazy_CallsFuncDirectly_Async()
         {
@@ -507,7 +474,5 @@ namespace ProtoPromiseTests.APIs.Utilities
             Assert.AreNotEqual(testThread, funcThread);
         }
 #endif // !UNITY_WEBGL
-
-#endif // CSHARP_7_3_OR_NEWER
     }
 }

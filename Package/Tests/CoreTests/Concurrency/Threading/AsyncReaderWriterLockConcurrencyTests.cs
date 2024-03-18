@@ -114,7 +114,7 @@ namespace ProtoPromiseTests.Concurrency.Threading
                 }
                 else
                 {
-                    AsyncReaderWriterLock.WriterKey writerKey = default;
+                    AsyncReaderWriterLock.UpgradedWriterKey writerKey = default;
                     SpinWait.SpinUntil(() => rwl.TryUpgradeToWriterLock(key, out writerKey));
                     using (writerKey)
                     {

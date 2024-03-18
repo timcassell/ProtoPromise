@@ -1,21 +1,17 @@
-#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
 #if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Promises.Collections;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-#pragma warning disable IDE0066 // Convert switch statement to expression
-#pragma warning disable IDE0250 // Make struct 'readonly'
+#pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0251 // Make member 'readonly'
 
 namespace Proto.Promises
@@ -53,22 +49,17 @@ namespace Proto.Promises
             public T Current
             {
                 [MethodImpl(InlineOption)]
-                get { return _list[_index]; }
+                get => _list[_index];
             }
 
             object IEnumerator.Current { get { return Current; } }
 
             void IDisposable.Dispose() { }
 
-            void IEnumerator.Reset()
-            {
-#pragma warning disable RECS0083 // Shows NotImplementedException throws in the quick task bar
-                throw new NotImplementedException();
-#pragma warning restore RECS0083 // Shows NotImplementedException throws in the quick task bar
-            }
+            void IEnumerator.Reset() => throw new NotImplementedException();
         }
 
-        internal struct TwoItems<T> : IReadonlyIndexableCollection<T>
+        internal readonly struct TwoItems<T> : IReadonlyIndexableCollection<T>
         {
             private readonly T _item1;
             private readonly T _item2;
@@ -83,17 +74,17 @@ namespace Proto.Promises
             T IReadonlyIndexableCollection<T>.this[int index]
             {
                 [MethodImpl(InlineOption)]
-                get { return index == 0 ? _item1 : _item2; }
+                get => index == 0 ? _item1 : _item2;
             }
 
             int IReadonlyIndexableCollection<T>.Count
             {
                 [MethodImpl(InlineOption)]
-                get { return 2; }
+                get => 2;
             }
         }
 
-        internal struct ThreeItems<T> : IReadonlyIndexableCollection<T>
+        internal readonly struct ThreeItems<T> : IReadonlyIndexableCollection<T>
         {
             private readonly T _item1;
             private readonly T _item2;
@@ -124,11 +115,11 @@ namespace Proto.Promises
             int IReadonlyIndexableCollection<T>.Count
             {
                 [MethodImpl(InlineOption)]
-                get { return 3; }
+                get => 3;
             }
         }
 
-        internal struct FourItems<T> : IReadonlyIndexableCollection<T>
+        internal readonly struct FourItems<T> : IReadonlyIndexableCollection<T>
         {
             private readonly T _item1;
             private readonly T _item2;
@@ -162,7 +153,7 @@ namespace Proto.Promises
             int IReadonlyIndexableCollection<T>.Count
             {
                 [MethodImpl(InlineOption)]
-                get { return 4; }
+                get => 4;
             }
         }
 
@@ -201,32 +192,67 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             public bool MoveNext()
-            {
-                return ++_index < _collection.Length;
-            }
+                => ++_index < _collection.Length;
 
             public T Current
             {
                 [MethodImpl(InlineOption)]
-                get { return _collection[_index]; }
+                get => _collection[_index];
             }
 
-            object IEnumerator.Current { get { return Current; } }
+            object IEnumerator.Current => Current;
 
             void IDisposable.Dispose() { }
 
-            void IEnumerator.Reset()
-            {
-#pragma warning disable RECS0083 // Shows NotImplementedException throws in the quick task bar
-                throw new NotImplementedException();
-#pragma warning restore RECS0083 // Shows NotImplementedException throws in the quick task bar
-            }
+            void IEnumerator.Reset() => throw new NotImplementedException();
         }
 
         [MethodImpl(InlineOption)]
         internal static ArrayEnumerator<T> GetGenericEnumerator<T>(this T[] array)
+            => new ArrayEnumerator<T>(array);
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal struct PersistedSpanEnumerator<T> : IEnumerator<T>
         {
-            return new ArrayEnumerator<T>(array);
+            private TempCollectionBuilder<T> _tempCollection;
+            private int _index;
+
+            [MethodImpl(InlineOption)]
+            internal PersistedSpanEnumerator(ReadOnlySpan<T> span)
+            {
+                _index = -1;
+                // Span can only live on the stack, so we copy the elements to a temp collection,
+                // then dispose it when this enumerator is disposed.
+                _tempCollection = new TempCollectionBuilder<T>(span.Length, span.Length);
+                for (int i = 0; i < span.Length; ++i)
+                {
+                    _tempCollection[i] = span[i];
+                }
+            }
+
+            [MethodImpl(InlineOption)]
+            public bool MoveNext()
+                => ++_index < _tempCollection._count;
+
+            public T Current
+            {
+                [MethodImpl(InlineOption)]
+                get => _tempCollection[_index];
+            }
+
+            object IEnumerator.Current => Current;
+
+            [MethodImpl(InlineOption)]
+            void IDisposable.Dispose() => _tempCollection.Dispose();
+
+            void IEnumerator.Reset() => throw new NotImplementedException();
         }
+
+        // This is used to pass the span to methods accepting a generic enumerator. (C# doesn't support passing ref structs into generics currently.)
+        [MethodImpl(InlineOption)]
+        internal static PersistedSpanEnumerator<T> GetPersistedEnumerator<T>(this ReadOnlySpan<T> span)
+            => new PersistedSpanEnumerator<T>(span);
     }
 } // namespace Proto.Promises

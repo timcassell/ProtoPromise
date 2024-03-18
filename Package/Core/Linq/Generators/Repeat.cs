@@ -11,7 +11,6 @@ using System.Threading;
 
 namespace Proto.Promises.Linq
 {
-#if CSHARP_7_3_OR_NEWER // We only expose AsyncEnumerable where custom async method builders are supported.
     partial class AsyncEnumerable
     {
         /// <summary>
@@ -61,12 +60,11 @@ namespace Proto.Promises.Linq
 #endif
         }
     }
-#endif // CSHARP_7_3_OR_NEWER
 }
 
 namespace Proto.Promises
 {
-#if CSHARP_7_3_OR_NEWER && !PROMISE_DEBUG
+#if !PROMISE_DEBUG
     partial class Internal
     {
         internal sealed class AsyncEnumerableRepeat<T> : PromiseRefBase.AsyncEnumerableBase<T>
@@ -123,7 +121,7 @@ namespace Proto.Promises
             new private void Dispose()
             {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                SetCompletionState(null, Promise.State.Resolved);
+                SetCompletionState(Promise.State.Resolved);
 #endif
                 base.Dispose();
                 _current = default;
@@ -134,5 +132,5 @@ namespace Proto.Promises
             internal override void MaybeDispose() { throw new System.InvalidOperationException(); }
         }
     }
-#endif // CSHARP_7_3_OR_NEWER && !PROMISE_DEBUG
+#endif // !PROMISE_DEBUG
 }

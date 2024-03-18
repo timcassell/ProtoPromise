@@ -1,20 +1,8 @@
-#if UNITY_5_5 || NET_2_0 || NET_2_0_SUBSET
-#define NET_LEGACY
-#endif
-
 #if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-#endif
-
-#pragma warning disable IDE0250 // Make struct 'readonly'
-#pragma warning disable IDE0251 // Make member 'readonly'
 
 using System;
 using System.Diagnostics;
@@ -40,7 +28,7 @@ namespace Proto.Promises
             internal bool IsStarted
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return _lazyPromise != null; }
+                get => _lazyPromise != null;
             }
 
             internal abstract Promise<T> GetOrStartPromise(AsyncLazy<T> owner, ProgressToken progressToken);
@@ -56,7 +44,7 @@ namespace Proto.Promises
             internal bool IsComplete
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return _factory == null; }
+                get => _factory == null;
             }
 
             internal LazyFieldsNoProgress(Func<Promise<T>> factory)
@@ -65,9 +53,7 @@ namespace Proto.Promises
             }
 
             internal override Promise<T> GetOrStartPromise(AsyncLazy<T> owner, ProgressToken progressToken)
-            {
-                return LazyPromiseNoProgress.GetOrStartPromise(owner, this);
-            }
+                => LazyPromiseNoProgress.GetOrStartPromise(owner, this);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -80,7 +66,7 @@ namespace Proto.Promises
             internal bool IsComplete
             {
                 [MethodImpl(Internal.InlineOption)]
-                get { return _factory == null; }
+                get => _factory == null;
             }
 
             internal LazyFieldsWithProgress(Func<ProgressToken, Promise<T>> factory)
@@ -89,9 +75,7 @@ namespace Proto.Promises
             }
 
             internal override Promise<T> GetOrStartPromise(AsyncLazy<T> owner, ProgressToken progressToken)
-            {
-                return LazyWithProgressPromise.GetOrStartPromise(owner, this, progressToken);
-            }
+                => LazyWithProgressPromise.GetOrStartPromise(owner, this, progressToken);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -116,7 +100,7 @@ namespace Proto.Promises
             {
                 var promise = GetOrCreate();
                 promise._owner = owner;
-                promise.Reset(0);
+                promise.Reset();
                 return promise;
             }
 
@@ -145,8 +129,7 @@ namespace Proto.Promises
                     lazyPromise = GetOrCreate(owner);
                     lazyFields._lazyPromise = lazyPromise;
                     // Same thing as Promise.Preserve(), but more direct.
-                    lazyPromise._preservedPromise = preservedPromise = PromiseMultiAwait<T>.GetOrCreate(0);
-                    lazyPromise.HookupNewPromise(lazyPromise.Id, preservedPromise);
+                    lazyPromise._preservedPromise = preservedPromise = PromiseMultiAwait<T>.GetOrCreateAndHookup(lazyPromise, lazyPromise.Id);
                     // Exit the lock before invoking the factory.
                 }
                 var promise = GetDuplicate(preservedPromise);
@@ -154,15 +137,17 @@ namespace Proto.Promises
                 return promise;
             }
 
-            internal override void Handle(Internal.PromiseRefBase handler, object rejectContainer, Promise.State state)
+            internal override void Handle(Internal.PromiseRefBase handler, Promise.State state)
             {
-                handler.SetCompletionState(rejectContainer, state);
+                handler.SetCompletionState(state);
                 _result = handler.GetResult<T>();
+                _rejectContainer = handler._rejectContainer;
+                handler.SuppressRejection = true;
                 handler.MaybeDispose();
-                OnComplete(rejectContainer, state);
+                OnComplete(state);
             }
 
-            protected override void OnComplete(object rejectContainer, Promise.State state)
+            protected override void OnComplete(Promise.State state)
             {
                 var lazyFields = _owner._lazyFields;
                 PromiseMultiAwait<T> preservedPromise;
@@ -177,7 +162,7 @@ namespace Proto.Promises
                     }
 
                     preservedPromise.Forget(preservedPromise.Id);
-                    HandleNextInternal(rejectContainer, state);
+                    HandleNextInternal(state);
                     return;
                 }
 
@@ -194,7 +179,7 @@ namespace Proto.Promises
                 }
 
                 preservedPromise.Forget(preservedPromise.Id);
-                HandleNextInternal(rejectContainer, state);
+                HandleNextInternal(state);
             }
         } // class LazyPromiseNoProgress
 
@@ -221,7 +206,7 @@ namespace Proto.Promises
             {
                 var promise = GetOrCreate();
                 promise._owner = owner;
-                promise.Reset(0);
+                promise.Reset();
                 return promise;
             }
 
@@ -255,8 +240,7 @@ namespace Proto.Promises
                     // Same thing as Progress.NewMultiHandler(), but more direct.
                     lazyPromise._progressHandler = Internal.ProgressMultiHandler.GetOrCreate();
                     // Same thing as Promise.Preserve(), but more direct.
-                    lazyPromise._preservedPromise = preservedPromise = PromiseMultiAwait<T>.GetOrCreate(0);
-                    lazyPromise.HookupNewPromise(lazyPromise.Id, preservedPromise);
+                    lazyPromise._preservedPromise = preservedPromise = PromiseMultiAwait<T>.GetOrCreateAndHookup(lazyPromise, lazyPromise.Id);
                     // Exit the lock before invoking the factory.
                 }
                 var promise = GetDuplicate(preservedPromise);
@@ -269,15 +253,17 @@ namespace Proto.Promises
                 return Promise<T>.Resolved(owner._result);
             }
 
-            internal override void Handle(Internal.PromiseRefBase handler, object rejectContainer, Promise.State state)
+            internal override void Handle(Internal.PromiseRefBase handler, Promise.State state)
             {
-                handler.SetCompletionState(rejectContainer, state);
+                handler.SetCompletionState(state);
                 _result = handler.GetResult<T>();
+                _rejectContainer = handler._rejectContainer;
+                handler.SuppressRejection = true;
                 handler.MaybeDispose();
-                OnComplete(rejectContainer, state);
+                OnComplete(state);
             }
 
-            protected override void OnComplete(object rejectContainer, Promise.State state)
+            protected override void OnComplete(Promise.State state)
             {
                 var lazyFields = _owner._lazyFields;
                 PromiseMultiAwait<T> preservedPromise;
@@ -296,7 +282,7 @@ namespace Proto.Promises
 
                     progressHandler.Dispose(progressHandler.Id);
                     preservedPromise.Forget(preservedPromise.Id);
-                    HandleNextInternal(rejectContainer, state);
+                    HandleNextInternal(state);
                     return;
                 }
 
@@ -317,7 +303,7 @@ namespace Proto.Promises
                 progressHandler.Report(1d, progressHandler.Id);
                 progressHandler.Dispose(progressHandler.Id);
                 preservedPromise.Forget(preservedPromise.Id);
-                HandleNextInternal(rejectContainer, state);
+                HandleNextInternal(state);
             }
         } // class LazyWithProgressPromise
     } // class AsyncLazy<T>
@@ -335,8 +321,8 @@ namespace Proto.Promises
                 {
                     // Same thing as Promise.Duplicate(), but more direct.
                     var p = preservedPromise;
-                    var duplicate = p.GetDuplicateT(p.Id, 0);
-                    return new Promise<TResult>(duplicate, duplicate.Id, 0);
+                    var duplicate = p.GetDuplicateT(p.Id);
+                    return new Promise<TResult>(duplicate, duplicate.Id);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -350,12 +336,12 @@ namespace Proto.Promises
                     }
                     catch (OperationCanceledException)
                     {
-                        OnComplete(null, Promise.State.Canceled);
+                        OnComplete(Promise.State.Canceled);
                     }
                     catch (Exception e)
                     {
-                        var rejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
-                        OnComplete(rejectContainer, Promise.State.Rejected);
+                        _rejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        OnComplete(Promise.State.Rejected);
                     }
                     ClearCurrentInvoker();
                 }
@@ -371,22 +357,22 @@ namespace Proto.Promises
                     }
                     catch (OperationCanceledException)
                     {
-                        OnComplete(null, Promise.State.Canceled);
+                        OnComplete(Promise.State.Canceled);
                     }
                     catch (Exception e)
                     {
-                        var rejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
-                        OnComplete(rejectContainer, Promise.State.Rejected);
+                        _rejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        OnComplete(Promise.State.Rejected);
                     }
                     ClearCurrentInvoker();
                 }
 
-                protected abstract void OnComplete(object rejectContainer, Promise.State state);
+                protected abstract void OnComplete(Promise.State state);
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
                 [DebuggerNonUserCode, StackTraceHidden]
 #endif
-                private struct CompleteHandler : IWaitForCompleteHandler
+                private readonly struct CompleteHandler : IWaitForCompleteHandler
                 {
                     private readonly LazyPromise<TResult> _owner;
 
@@ -399,18 +385,17 @@ namespace Proto.Promises
                     [MethodImpl(InlineOption)]
                     void IWaitForCompleteHandler.HandleHookup(PromiseRefBase handler)
                     {
-                        var rejectContainer = handler._rejectContainerOrPreviousOrLink;
                         var state = handler.State;
                         _owner._result = handler.GetResult<TResult>();
+                        _owner._rejectContainer = handler._rejectContainer;
+                        _owner.SuppressRejection = true;
                         handler.MaybeDispose();
-                        _owner.OnComplete(rejectContainer, state);
+                        _owner.OnComplete(state);
                     }
 
                     [MethodImpl(InlineOption)]
                     void IWaitForCompleteHandler.HandleNull()
-                    {
-                        _owner.OnComplete(null, Promise.State.Resolved);
-                    }
+                        => _owner.OnComplete(Promise.State.Resolved);
                 }
             }
         } // class PromiseRefBase

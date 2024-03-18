@@ -4,7 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -36,7 +35,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private static RacePromise<TResult> GetOrCreate()
+                private static RacePromise<TResult> GetOrCreateInstance()
                 {
                     var obj = ObjectPool.TryTakeOrInvalid<RacePromise<TResult>>();
                     return obj == InvalidAwaitSentinel.s_instance
@@ -44,24 +43,27 @@ namespace Proto.Promises
                         : obj.UnsafeAs<RacePromise<TResult>>();
                 }
 
-                internal static RacePromise<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
+                internal static RacePromise<TResult> GetOrCreate()
                 {
-                    var promise = GetOrCreate();
-                    promise.Setup(promisePassThroughs, pendingAwaits, depth);
+                    var promise = GetOrCreateInstance();
+                    promise.Reset();
                     return promise;
                 }
 
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
-                    if (TrySetComplete())
+                    handler.SetCompletionState(state);
+                    if (TrySetComplete(handler))
                     {
                         _result = handler.GetResult<TResult>();
+                        _rejectContainer = handler._rejectContainer;
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
-                        HandleNextInternal(rejectContainer, state);
+                        InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1);
+                        HandleNextInternal(state);
                         return;
                     }
-                    handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
+                    handler.MaybeReportUnhandledAndDispose(state);
                     MaybeDispose();
                 }
             }
@@ -88,7 +90,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private static RacePromiseWithIndexVoid GetOrCreate()
+                private static RacePromiseWithIndexVoid GetOrCreateInstance()
                 {
                     var obj = ObjectPool.TryTakeOrInvalid<RacePromiseWithIndexVoid>();
                     return obj == InvalidAwaitSentinel.s_instance
@@ -96,24 +98,27 @@ namespace Proto.Promises
                         : obj.UnsafeAs<RacePromiseWithIndexVoid>();
                 }
 
-                new internal static RacePromiseWithIndexVoid GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
+                new internal static RacePromiseWithIndexVoid GetOrCreate()
                 {
-                    var promise = GetOrCreate();
-                    promise.Setup(promisePassThroughs, pendingAwaits, depth);
+                    var promise = GetOrCreateInstance();
+                    promise.Reset();
                     return promise;
                 }
 
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
+                internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
-                    if (TrySetComplete())
+                    handler.SetCompletionState(state);
+                    if (TrySetComplete(handler))
                     {
                         _result = index;
+                        _rejectContainer = handler._rejectContainer;
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
-                        HandleNextInternal(rejectContainer, state);
+                        InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1);
+                        HandleNextInternal(state);
                         return;
                     }
-                    handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
+                    handler.MaybeReportUnhandledAndDispose(state);
                     MaybeDispose();
                 }
             }
@@ -121,7 +126,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class RacePromiseWithIndex<TResult> : RacePromise<ValueTuple<int, TResult>>
+            internal sealed partial class RacePromiseWithIndex<TResult> : RacePromise<(int, TResult)>
             {
                 private RacePromiseWithIndex() { }
 
@@ -140,7 +145,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private static RacePromiseWithIndex<TResult> GetOrCreate()
+                private static RacePromiseWithIndex<TResult> GetOrCreateInstance()
                 {
                     var obj = ObjectPool.TryTakeOrInvalid<RacePromiseWithIndex<TResult>>();
                     return obj == InvalidAwaitSentinel.s_instance
@@ -148,24 +153,27 @@ namespace Proto.Promises
                         : obj.UnsafeAs<RacePromiseWithIndex<TResult>>();
                 }
 
-                new internal static RacePromiseWithIndex<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
+                new internal static RacePromiseWithIndex<TResult> GetOrCreate()
                 {
-                    var promise = GetOrCreate();
-                    promise.Setup(promisePassThroughs, pendingAwaits, depth);
+                    var promise = GetOrCreateInstance();
+                    promise.Reset();
                     return promise;
                 }
 
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
+                internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
-                    if (TrySetComplete())
+                    handler.SetCompletionState(state);
+                    if (TrySetComplete(handler))
                     {
-                        _result = new ValueTuple<int, TResult>(index, handler.GetResult<TResult>());
+                        _result = (index, handler.GetResult<TResult>());
+                        _rejectContainer = handler._rejectContainer;
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
-                        HandleNextInternal(rejectContainer, state);
+                        InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1);
+                        HandleNextInternal(state);
                         return;
                     }
-                    handler.MaybeReportUnhandledAndDispose(rejectContainer, state);
+                    handler.MaybeReportUnhandledAndDispose(state);
                     MaybeDispose();
                 }
             }
@@ -192,7 +200,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private static FirstPromise<TResult> GetOrCreate()
+                private static FirstPromise<TResult> GetOrCreateInstance()
                 {
                     var obj = ObjectPool.TryTakeOrInvalid<FirstPromise<TResult>>();
                     return obj == InvalidAwaitSentinel.s_instance
@@ -200,27 +208,44 @@ namespace Proto.Promises
                         : obj.UnsafeAs<FirstPromise<TResult>>();
                 }
 
-                new internal static FirstPromise<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
+                new internal static FirstPromise<TResult> GetOrCreate()
                 {
-                    var promise = GetOrCreate();
-                    promise.Setup(promisePassThroughs, pendingAwaits, depth);
+                    var promise = GetOrCreateInstance();
+                    promise.Reset();
                     return promise;
                 }
 
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
+                [MethodImpl(InlineOption)]
+                new protected void Reset()
                 {
-                    bool isComplete = handler.State == Promise.State.Resolved
-                        ? TrySetComplete()
-                        : RemoveWaiterAndGetIsComplete();
+                    _waitCount = -1; // uint.MaxValue
+                    base.Reset();
+                }
+
+                [MethodImpl(InlineOption)]
+                protected bool RemoveWaiterAndGetIsComplete(PromiseRefBase completePromise)
+                    => RemoveWaiterAndGetIsComplete(completePromise, ref _waitCount);
+
+                [MethodImpl(InlineOption)]
+                internal void MarkReady(uint totalWaiters)
+                    => MarkReady(totalWaiters, ref _waitCount, Promise.State.Canceled);
+
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                {
+                    handler.SetCompletionState(state);
+                    bool isComplete = state == Promise.State.Resolved
+                        ? TrySetComplete(handler)
+                        : RemoveWaiterAndGetIsComplete(handler);
+                    _rejectContainer = handler._rejectContainer;
+                    handler.SuppressRejection = true;
                     if (isComplete)
                     {
                         _result = handler.GetResult<TResult>();
-                        handler.SuppressRejection = true;
                         handler.MaybeDispose();
-                        HandleNextInternal(rejectContainer, state);
+                        InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1);
+                        HandleNextInternal(state);
                         return;
                     }
-                    handler.SuppressRejection = true;
                     handler.MaybeDispose();
                     MaybeDispose();
                 }
@@ -248,7 +273,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private static FirstPromiseWithIndexVoid GetOrCreate()
+                private static FirstPromiseWithIndexVoid GetOrCreateInstance()
                 {
                     var obj = ObjectPool.TryTakeOrInvalid<FirstPromiseWithIndexVoid>();
                     return obj == InvalidAwaitSentinel.s_instance
@@ -256,27 +281,29 @@ namespace Proto.Promises
                         : obj.UnsafeAs<FirstPromiseWithIndexVoid>();
                 }
 
-                new internal static FirstPromiseWithIndexVoid GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
+                new internal static FirstPromiseWithIndexVoid GetOrCreate()
                 {
-                    var promise = GetOrCreate();
-                    promise.Setup(promisePassThroughs, pendingAwaits, depth);
+                    var promise = GetOrCreateInstance();
+                    promise.Reset();
                     return promise;
                 }
 
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
+                internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
+                    handler.SetCompletionState(state);
                     bool isComplete = handler.State == Promise.State.Resolved
-                        ? TrySetComplete()
-                        : RemoveWaiterAndGetIsComplete();
+                        ? TrySetComplete(handler)
+                        : RemoveWaiterAndGetIsComplete(handler);
+                    _rejectContainer = handler._rejectContainer;
+                    handler.SuppressRejection = true;
                     if (isComplete)
                     {
                         _result = index;
-                        handler.SuppressRejection = true;
                         handler.MaybeDispose();
-                        HandleNextInternal(rejectContainer, state);
+                        InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1);
+                        HandleNextInternal(state);
                         return;
                     }
-                    handler.SuppressRejection = true;
                     handler.MaybeDispose();
                     MaybeDispose();
                 }
@@ -285,7 +312,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class FirstPromiseWithIndex<TResult> : FirstPromise<ValueTuple<int, TResult>>
+            internal sealed partial class FirstPromiseWithIndex<TResult> : FirstPromise<(int, TResult)>
             {
                 private FirstPromiseWithIndex() { }
 
@@ -304,7 +331,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private static FirstPromiseWithIndex<TResult> GetOrCreate()
+                private static FirstPromiseWithIndex<TResult> GetOrCreateInstance()
                 {
                     var obj = ObjectPool.TryTakeOrInvalid<FirstPromiseWithIndex<TResult>>();
                     return obj == InvalidAwaitSentinel.s_instance
@@ -312,27 +339,29 @@ namespace Proto.Promises
                         : obj.UnsafeAs<FirstPromiseWithIndex<TResult>>();
                 }
 
-                new internal static FirstPromiseWithIndex<TResult> GetOrCreate(ValueLinkedStack<PromisePassThrough> promisePassThroughs, int pendingAwaits, ushort depth)
+                new internal static FirstPromiseWithIndex<TResult> GetOrCreate()
                 {
-                    var promise = GetOrCreate();
-                    promise.Setup(promisePassThroughs, pendingAwaits, depth);
+                    var promise = GetOrCreateInstance();
+                    promise.Reset();
                     return promise;
                 }
 
-                internal override void Handle(PromiseRefBase handler, object rejectContainer, Promise.State state, int index)
+                internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
+                    handler.SetCompletionState(state);
                     bool isComplete = handler.State == Promise.State.Resolved
-                        ? TrySetComplete()
-                        : RemoveWaiterAndGetIsComplete();
+                        ? TrySetComplete(handler)
+                        : RemoveWaiterAndGetIsComplete(handler);
+                    _rejectContainer = handler._rejectContainer;
+                    handler.SuppressRejection = true;
                     if (isComplete)
                     {
-                        _result = new ValueTuple<int, TResult>(index, handler.GetResult<TResult>());
-                        handler.SuppressRejection = true;
+                        _result = (index, handler.GetResult<TResult>());
                         handler.MaybeDispose();
-                        HandleNextInternal(rejectContainer, state);
+                        InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1);
+                        HandleNextInternal(state);
                         return;
                     }
-                    handler.SuppressRejection = true;
                     handler.MaybeDispose();
                     MaybeDispose();
                 }

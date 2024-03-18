@@ -3,11 +3,6 @@
 #else
 #undef PROMISE_DEBUG
 #endif
-#if !PROTO_PROMISE_PROGRESS_DISABLE
-#define PROMISE_PROGRESS
-#else
-#undef PROMISE_PROGRESS
-# endif
 
 using NUnit.Framework;
 using Proto.Promises;
@@ -15,8 +10,6 @@ using ProtoPromiseTests.Concurrency;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-
-#pragma warning disable 0618 // Type or member is obsolete
 
 namespace ProtoPromiseTests.APIs
 {
@@ -48,17 +41,13 @@ namespace ProtoPromiseTests.APIs
 
             Assert.IsFalse(promise.IsValid);
 
-#if CSHARP_7_3_OR_NEWER && PROMISE_DEBUG
+#if PROMISE_DEBUG
             Assert.Throws<InvalidOperationException>(() => promise.GetAwaiter());
 #endif
             Assert.Throws<InvalidOperationException>(() => promise.Preserve());
             Assert.Throws<InvalidOperationException>(() => promise.Forget());
             Assert.Throws<InvalidOperationException>(() => promise.Duplicate());
 
-#if PROMISE_PROGRESS
-            Assert.Throws<InvalidOperationException>(() => promise.Progress(v => { }));
-            Assert.Throws<InvalidOperationException>(() => promise.Progress(1, (cv, v) => { }));
-#endif
             Assert.Throws<InvalidOperationException>(() => promise.CatchCancelation(() => { }));
             Assert.Throws<InvalidOperationException>(() => promise.CatchCancelation(1, cv => { }));
 
@@ -179,17 +168,13 @@ namespace ProtoPromiseTests.APIs
 
             Assert.IsFalse(promise.IsValid);
 
-#if CSHARP_7_3_OR_NEWER && PROMISE_DEBUG
+#if PROMISE_DEBUG
             Assert.Throws<InvalidOperationException>(() => promise.GetAwaiter());
 #endif
             Assert.Throws<InvalidOperationException>(() => promise.Preserve());
             Assert.Throws<InvalidOperationException>(() => promise.Forget());
             Assert.Throws<InvalidOperationException>(() => promise.Duplicate());
 
-#if PROMISE_PROGRESS
-            Assert.Throws<InvalidOperationException>(() => promise.Progress(v => { }));
-            Assert.Throws<InvalidOperationException>(() => promise.Progress(1, (cv, v) => { }));
-#endif
             Assert.Throws<InvalidOperationException>(() => promise.CatchCancelation(() => { }));
             Assert.Throws<InvalidOperationException>(() => promise.CatchCancelation(1, cv => { }));
 
@@ -688,11 +673,15 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void ThrowingRethrowInOnRejectedRejectsThePromiseWithTheSameReason_void()
+        public void ThrowingRethrowInOnRejectedRejectsThePromiseWithTheSameReason_void(
+            [Values] bool alreadyComplete)
         {
             string expected = "Reject!";
 
-            var promise = Promise.Rejected(expected).Preserve();
+            CancelationSource cancelationSource;
+            Promise.Deferred deferred;
+            var promise = TestHelper.BuildPromise(CompleteType.Reject, alreadyComplete, expected, out deferred, out cancelationSource)
+                .Preserve();
 
             int rejectCount = 0;
 
@@ -716,6 +705,8 @@ namespace ProtoPromiseTests.APIs
                 onCallbackAddedConvert: onCallbackAddedConvert
             );
 
+            deferred.TryReject(expected);
+
             Assert.AreEqual(
                 TestHelper.rejectVoidCallbacks * 2,
                 rejectCount
@@ -725,11 +716,15 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void ThrowingRethrowInOnRejectedRejectsThePromiseWithTheSameReason_T()
+        public void ThrowingRethrowInOnRejectedRejectsThePromiseWithTheSameReason_T(
+            [Values] bool alreadyComplete)
         {
             string expected = "Reject!";
 
-            var promise = Promise<int>.Rejected(expected).Preserve();
+            CancelationSource cancelationSource;
+            Promise<int>.Deferred deferred;
+            var promise = TestHelper.BuildPromise(CompleteType.Reject, alreadyComplete, 0, expected, out deferred, out cancelationSource)
+                .Preserve();
 
             int rejectCount = 0;
 
@@ -753,6 +748,8 @@ namespace ProtoPromiseTests.APIs
                 onCallbackAddedConvert: onCallbackAddedConvert,
                 onCallbackAddedT: onCallbackAddedConvert
             );
+
+            deferred.TryReject(expected);
 
             Assert.AreEqual(
                 TestHelper.rejectTCallbacks * 2,
@@ -899,7 +896,6 @@ namespace ProtoPromiseTests.APIs
             Assert.True(invoked);
         }
 
-#if CSHARP_7_3_OR_NEWER
         [Test]
         public void PromiseSwitchToContextWorksProperly_Await(
             [Values(SynchronizationType.Foreground,
@@ -928,7 +924,7 @@ namespace ProtoPromiseTests.APIs
                         : synchronizationType == TestHelper.backgroundType
                         ? Promise.SwitchToBackgroundAwait(forceAsync)
                         : Promise.SwitchToContextAwait(TestHelper._foregroundContext, forceAsync);
-                    
+
                     await contextSwitcher;
 
                     TestHelper.AssertCallbackContext(synchronizationType, invokeContext, foregroundThread);
@@ -939,7 +935,6 @@ namespace ProtoPromiseTests.APIs
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
             Assert.True(invoked);
         }
-#endif // CSHARP_7_3_OR_NEWER
 
         [Test]
         public void PromiseMayBeResolvedWithNullable(
@@ -1454,12 +1449,9 @@ namespace ProtoPromiseTests.APIs
             var deferred = Promise.NewDeferred();
             var promise = deferred.Promise.Preserve();
 
-#pragma warning disable CS0618 // Type or member is obsolete
             promise
-                .Progress(v => { }, SynchronizationOption.Synchronous)
                 .Then(() => { })
                 .Forget();
-#pragma warning restore CS0618 // Type or member is obsolete
 
             deferred.Resolve();
             promise.Forget();

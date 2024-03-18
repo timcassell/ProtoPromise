@@ -6,9 +6,9 @@ using System.Runtime.CompilerServices;
 
 namespace System
 {
-    // Span is part of netstandard2.1, and we use the Span nuget package in netstandard2.0 and net472,
+    // Span is part of netstandard2.1, and we use the Span nuget package in netstandard2.0,
     // but we don't use nuget packages in Unity, so we have to implement it ourselves.
-#if CSHARP_7_3_OR_NEWER && UNITY_5_5_OR_NEWER && !UNITY_2021_2_OR_NEWER
+#if UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
     internal readonly ref struct Span<T>
     {
         // We only use it as a view over an array, not using pointers.
@@ -133,5 +133,5 @@ namespace System
             }
         }
     }
-#endif // CSHARP_7_3_OR_NEWER && UNITY_5_5_OR_NEWER && !UNITY_2021_2_OR_NEWER
+#endif // UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
 }

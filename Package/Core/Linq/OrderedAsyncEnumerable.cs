@@ -15,7 +15,6 @@ using System.Threading;
 
 namespace Proto.Promises.Linq
 {
-#if CSHARP_7_3_OR_NEWER // We only expose OrderedAsyncEnumerable where custom async method builders are supported.
     /// <summary>
     /// Exposes an enumerator that provides asynchronous iteration over ordered values of a specified type.
     /// An instance of this type may only be consumed once.
@@ -25,7 +24,7 @@ namespace Proto.Promises.Linq
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
     public readonly partial struct OrderedAsyncEnumerable<T>
-#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
         : IAsyncEnumerable<T>
 #endif
     {
@@ -58,7 +57,7 @@ namespace Proto.Promises.Linq
         [MethodImpl(Internal.InlineOption)]
         public AsyncEnumerator<T> GetAsyncEnumerator() => GetAsyncEnumerator(CancelationToken.None);
 
-#if NET47_OR_GREATER || NETSTANDARD2_0_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
         IAsyncEnumerator<T> IAsyncEnumerable<T>.GetAsyncEnumerator(CancellationToken cancellationToken) => GetAsyncEnumerator(cancellationToken.ToCancelationToken());
 #endif
 
@@ -114,5 +113,4 @@ namespace Proto.Promises.Linq
         public static implicit operator AsyncEnumerable<T>(OrderedAsyncEnumerable<T> oae)
             => oae.AsAsyncEnumerable();
     }
-#endif // CSHARP_7_3_OR_NEWER
 }
