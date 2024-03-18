@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.1</TargetFrameworks>
-    <Version>2.7.0</Version>
+    <Version>3.0.0</Version>
     <!-- The language version Unity supports in 2023.1. -->
     <LangVersion>9</LangVersion>
     <!--In case any IL2CPP issues need to be resolved like in the core library.-->
