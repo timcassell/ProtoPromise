@@ -49,7 +49,7 @@ See the [C# Asynchronous Benchmarks Repo](https://github.com/timcassell/CSharpAs
 
 ## Latest Updates
 
-### v3.0.0 - March 18, 2020
+### v3.0.0 - March 18, 2024
 
 - Added `UnityEngine.Awaitable` extensions to convert to `Promise`.
 - Added API overloads accepting `ReadOnlySpan<T>` parameter.
