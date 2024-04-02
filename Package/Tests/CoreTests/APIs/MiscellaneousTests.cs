@@ -30,6 +30,22 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
+        public void PromiseIsValidBeforeAwaited_void()
+        {
+            var promise = Promise.Resolved();
+            Assert.IsTrue(promise.IsValid);
+            promise.Forget();
+        }
+
+        [Test]
+        public void PromiseIsValidBeforeAwaited_T()
+        {
+            var promise = Promise.Resolved(42);
+            Assert.IsTrue(promise.IsValid);
+            promise.Forget();
+        }
+
+        [Test]
         public void PromiseIsInvalidAfterAwaited_void()
         {
             var deferred = Promise.NewDeferred();

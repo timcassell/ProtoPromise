@@ -47,15 +47,8 @@ namespace Proto.Promises
         /// Gets whether this instance is valid to be awaited.
         /// </summary>
         public bool IsValid
-        {
-            [MethodImpl(Internal.InlineOption)]
-            get
-            {
-                // I would prefer to have a null ref only valid if the promise was created from Promise.Resolved, but it's more efficient to allow default values to be valid.
-                var r = _ref;
-                return r == null || r.GetIsValid(_id);
-            }
-        }
+            // I would prefer to have a null ref only valid if the promise was created from Promise.Resolved, but it's more efficient to allow default values to be valid.
+            => _ref?.GetIsValid(_id) != false;
 
         /// <summary>
         /// Mark this as awaited and get a new <see cref="Promise"/> that inherits the state of this and can be awaited multiple times until <see cref="Forget"/> is called on it.
