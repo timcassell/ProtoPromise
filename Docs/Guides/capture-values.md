@@ -2,7 +2,7 @@
 
 The C# compiler allows capturing variables inside delegates, known as closures. This involves creating a new object and a new delegate for every closure. These objects will eventually need to be garbage collected when the delegate is no longer reachable.
 
-To solve this issue, capture values was added to the library. Every method that accepts a delegate can optionally take any value as a parameter, and pass that value as the first argument to the delegate. To capture multiple values, you should pass a `System.ValueTuple<>` that contains the values you wish to capture. The error retry example can be rewritten to reduce allocations:
+To solve this issue, capture values was added to the library. Every method that accepts a delegate can optionally take any value as a parameter, and pass that value as the first argument to the delegate. To capture multiple values, you should pass a `System.ValueTuple<>` that contains the values you wish to capture. The [error retry example](retries-recursion.md) can be rewritten to reduce allocations:
 
 ```cs
 public Promise<string> Download(string url, int maxRetries = 0)
