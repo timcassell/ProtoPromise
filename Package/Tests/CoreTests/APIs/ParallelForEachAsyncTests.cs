@@ -548,8 +548,10 @@ namespace ProtoPromiseTests.APIs
             {
                 await Promise.SwitchToForegroundAwait(forceAsync: true);
                 Assert.AreEqual(42, al.Value);
-            })
+                al.Value = 43;
+            }, context)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
+            Assert.AreEqual(42, al.Value);
         }
 
 #if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER

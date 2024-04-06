@@ -1,7 +1,5 @@
 ﻿For each new release:
 
-Before releasing, test the demo scene in Unity 5.5 to make sure it works (no need to run tests as the test runner didn't exist back then).
-
 Update the version in `ProtoPromise.csproj`, `ProtoPromise.UnityHelpers/**.csproj`s, and `package.json`.
 
 

@@ -547,8 +547,10 @@ namespace ProtoPromiseTests.APIs
             {
                 await Promise.SwitchToForegroundAwait(forceAsync: true);
                 Assert.AreEqual(42, al.Value);
-            })
+                al.Value = 43;
+            }, context)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
+            Assert.AreEqual(42, al.Value);
         }
 
         private static IEnumerable<int> Iterate100()
@@ -574,8 +576,10 @@ namespace ProtoPromiseTests.APIs
             {
                 await Promise.SwitchToForegroundAwait(forceAsync: true);
                 Assert.AreEqual(42, al.Value);
-            })
+                al.Value = 43;
+            }, context)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
+            Assert.AreEqual(42, al.Value);
         }
     }
 #endif // !UNITY_WEBGL

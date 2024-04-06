@@ -49,13 +49,9 @@ See the [C# Asynchronous Benchmarks Repo](https://github.com/timcassell/CSharpAs
 
 ## Latest Updates
 
-### v3.0.0 - March 18, 2024
+### v3.0.1 - April 6, 2024
 
-- Added `UnityEngine.Awaitable` extensions to convert to `Promise`.
-- Added API overloads accepting `ReadOnlySpan<T>` parameter.
-- Improved performance and reduced memory.
-- Removed support for runtimes older than .Net Standard 2.0.
-- Removed deprecated and useless APIs.
+- `Fixed Promise<T>.IsValid` when it was completed synchronously.
 
 See [ChangeLog](https://github.com/timcassell/ProtoPromise/tree/master/Docs/Changelog) for the full changelog.
 

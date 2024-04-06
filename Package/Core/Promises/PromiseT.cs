@@ -68,7 +68,7 @@ namespace Proto.Promises
         /// </summary>
         public bool IsValid
             // I would prefer to have a null ref only valid if the promise was created from Promise.Resolved, but it's more efficient to allow default values to be valid.
-            => _ref?.GetIsValid(_id) == true;
+            => _ref?.GetIsValid(_id) != false;
 
         /// <summary>
         /// Cast to <see cref="Promise"/>.
