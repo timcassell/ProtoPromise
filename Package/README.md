@@ -51,7 +51,7 @@ See the [C# Asynchronous Benchmarks Repo](https://github.com/timcassell/CSharpAs
 
 ### v3.0.1 - April 6, 2024
 
-- `Fixed Promise<T>.IsValid` when it was completed synchronously.
+- Fixed `Promise<T>.IsValid` when it was completed synchronously.
 
 See [ChangeLog](https://github.com/timcassell/ProtoPromise/tree/master/Docs/Changelog) for the full changelog.
 
