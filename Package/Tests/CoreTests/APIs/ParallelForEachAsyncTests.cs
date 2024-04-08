@@ -51,10 +51,10 @@ namespace ProtoPromiseTests.APIs
             Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(default(AsyncEnumerable<int>), 1, null, SynchronizationContext.Current); });
 
 #if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
-            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync((IAsyncEnumerable<int>) null, (item, cancellationToken) => Promise.Resolved()); });
-            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync((IAsyncEnumerable<int>) null, (item, cancellationToken) => Promise.Resolved(), SynchronizationContext.Current); });
-            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync((IAsyncEnumerable<int>) null, 1, (item, num, cancellationToken) => Promise.Resolved()); });
-            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync((IAsyncEnumerable<int>) null, 1, (item, num, cancellationToken) => Promise.Resolved(), SynchronizationContext.Current); });
+            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync((IAsyncEnumerable<int>) null, (item, cancelationToken) => Promise.Resolved()); });
+            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync((IAsyncEnumerable<int>) null, (item, cancelationToken) => Promise.Resolved(), SynchronizationContext.Current); });
+            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync((IAsyncEnumerable<int>) null, 1, (item, num, cancelationToken) => Promise.Resolved()); });
+            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync((IAsyncEnumerable<int>) null, 1, (item, num, cancelationToken) => Promise.Resolved(), SynchronizationContext.Current); });
 
             Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(EnumerableRangeIAsync(1, 10), null); });
             Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(EnumerableRangeIAsync(1, 10), null, SynchronizationContext.Current); });
@@ -107,7 +107,7 @@ namespace ProtoPromiseTests.APIs
 
             bool completed = false;
             bool canceled = false;
-            var promise = Promise.ParallelForEachAsync(asyncEnumerable, (item, cancellationToken) => Promise.Resolved(), cts.Token)
+            var promise = Promise.ParallelForEachAsync(asyncEnumerable, (item, cancelationToken) => Promise.Resolved(), cts.Token)
                 .Finally(() => completed = true)
                 .CatchCancelation(() => canceled = true);
             Assert.False(completed);
@@ -544,7 +544,7 @@ namespace ProtoPromiseTests.APIs
                 }
             });
 
-            Promise.ParallelForEachAsync(asyncEnumerable, async (item, cancellationToken) =>
+            Promise.ParallelForEachAsync(asyncEnumerable, async (item, cancelationToken) =>
             {
                 await Promise.SwitchToForegroundAwait(forceAsync: true);
                 Assert.AreEqual(42, al.Value);
@@ -552,6 +552,26 @@ namespace ProtoPromiseTests.APIs
             }, context)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
             Assert.AreEqual(42, al.Value);
+        }
+
+        [Test]
+        public void ParallelForEachAsync_NotCanceledTooEarly(
+            [Values] bool foregroundContext,
+            [Values] bool yieldEnumerable)
+        {
+            var context = foregroundContext
+                ? (SynchronizationContext) TestHelper._foregroundContext
+                : TestHelper._backgroundContext;
+
+            Promise.ParallelForEachAsync(EnumerableRangeAsync(0, Environment.ProcessorCount, yieldEnumerable), async (index, cancelationToken) =>
+            {
+                if (index % 2 == 0)
+                {
+                    await System.Threading.Tasks.Task.Delay(100);
+                }
+                Assert.False(cancelationToken.IsCancelationRequested);
+            }, context)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
         }
 
 #if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER

@@ -60,6 +60,7 @@ namespace Proto.Promises
                 private int _waitCounter;
                 private List<Exception> _exceptions;
                 private Promise.State _completionState;
+                private bool _stopExecuting;
                 // We need an async lock to lock around MoveNextAsync.
                 // We just use a counter instead of AsyncLock, and implement the locking algorithm directly.
                 // This is possible because we only use the lock once in a single code path.
@@ -87,6 +88,7 @@ namespace Proto.Promises
                     promise._synchronizationContext = synchronizationContext ?? BackgroundSynchronizationContextSentinel.s_instance;
                     promise._remainingAvailableWorkers = maxDegreeOfParallelism;
                     promise._completionState = Promise.State.Resolved;
+                    promise._stopExecuting = false;
                     promise._lockAndLaunchNext = 0;
                     var cancelRef = CancelationRef.GetOrCreate();
                     promise._cancelationRef = cancelRef;
@@ -112,7 +114,7 @@ namespace Proto.Promises
                 public void Cancel()
                 {
                     _completionState = Promise.State.Canceled;
-                    _cancelationRef.Cancel();
+                    CancelWorkers();
                 }
 
                 private bool TryEnterLockAndStoreLaunchNext()
@@ -254,10 +256,11 @@ namespace Proto.Promises
                     catch (OperationCanceledException)
                     {
                         _completionState = Promise.State.Canceled;
-                        MaybeComplete(1);
+                        CancelWorkersAndMaybeComplete(1);
                     }
                     catch (Exception e)
                     {
+                        CancelWorkers();
                         // Record the failure and then don't let the exception propagate. The last worker to complete
                         // will propagate exceptions as is appropriate to the top-level promise.
                         RecordException(e);
@@ -279,7 +282,7 @@ namespace Proto.Promises
                 LoopStart:
                     // Get the next element from the enumerator. This requires locking around MoveNextAsync/Current.
                     // We already have acquired the lock at this point, either from the caller, or from the end of the loop.
-                    if (_cancelationRef._state >= CancelationRef.State.Canceled)
+                    if (_stopExecuting)
                     {
                         ExitLockComplete();
                         return;
@@ -384,11 +387,9 @@ namespace Proto.Promises
                         return;
                     }
 
-                    if (state == Promise.State.Canceled)
-                    {
-                        _completionState = Promise.State.Canceled;
-                    }
-                    else
+                    _completionState = state;
+                    CancelWorkers();
+                    if (state == Promise.State.Rejected)
                     {
                         // Record the failure. The last worker to complete will propagate exceptions as is appropriate to the top-level promise.
                         RecordRejection(rejectContainer);
@@ -420,34 +421,46 @@ namespace Proto.Promises
                     }
                 }
 
-                private void MaybeComplete(int completeCount)
+                private void CancelWorkers()
                 {
-                    // We cancel the source to notify completion to other threads.
+                    _stopExecuting = true;
+                    // We cancel the source to notify the workers that they don't need to continue processing.
                     // This may be called multiple times. It's fine because it checks internally if it's already canceled.
                     _cancelationRef.Cancel();
+                }
 
+                private void CancelWorkersAndMaybeComplete(int completeCount)
+                {
+                    CancelWorkers();
+                    MaybeComplete(completeCount);
+                }
+
+                private void MaybeComplete(int completeCount)
+                {
                     // If we're the last worker to complete, clean up and complete the operation.
-                    if (InterlockedAddWithUnsignedOverflowCheck(ref _waitCounter, -completeCount) == 0)
+                    if (InterlockedAddWithUnsignedOverflowCheck(ref _waitCounter, -completeCount) != 0)
                     {
-                        _externalCancelationRegistration.Dispose();
-                        _externalCancelationRegistration = default;
-                        _cancelationRef.TryDispose(_cancelationRef.SourceId);
-                        _cancelationRef = null;
-
-                        Promise disposePromise;
-                        try
-                        {
-                            disposePromise = _asyncEnumerator.DisposeAsync();
-                        }
-                        catch (Exception e)
-                        {
-                            RecordException(e);
-                            OnComplete();
-                            return;
-                        }
-
-                        HookUpDisposeAsync(disposePromise);
+                        return;
                     }
+
+                    _externalCancelationRegistration.Dispose();
+                    _externalCancelationRegistration = default;
+                    _cancelationRef.TryDispose(_cancelationRef.SourceId);
+                    _cancelationRef = null;
+
+                    Promise disposePromise;
+                    try
+                    {
+                        disposePromise = _asyncEnumerator.DisposeAsync();
+                    }
+                    catch (Exception e)
+                    {
+                        RecordException(e);
+                        OnComplete();
+                        return;
+                    }
+
+                    HookUpDisposeAsync(disposePromise);
                 }
 
                 private void OnComplete()
