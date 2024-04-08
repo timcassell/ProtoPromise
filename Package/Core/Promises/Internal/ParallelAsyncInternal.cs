@@ -426,7 +426,14 @@ namespace Proto.Promises
                     _stopExecuting = true;
                     // We cancel the source to notify the workers that they don't need to continue processing.
                     // This may be called multiple times. It's fine because it checks internally if it's already canceled.
-                    _cancelationRef.Cancel();
+                    try
+                    {
+                        _cancelationRef.Cancel();
+                    }
+                    catch (Exception e)
+                    {
+                        RecordException(e);
+                    }
                 }
 
                 private void CancelWorkersAndMaybeComplete(int completeCount)
