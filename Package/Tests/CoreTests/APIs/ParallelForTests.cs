@@ -543,7 +543,7 @@ namespace ProtoPromiseTests.APIs
 
             var al = new AsyncLocal<int>();
             al.Value = 42;
-            Promise.ParallelFor(0, 100, async (item, cancellationToken) =>
+            Promise.ParallelFor(0, 100, async (item, cancelationToken) =>
             {
                 await Promise.SwitchToForegroundAwait(forceAsync: true);
                 Assert.AreEqual(42, al.Value);
@@ -572,7 +572,7 @@ namespace ProtoPromiseTests.APIs
 
             var al = new AsyncLocal<int>();
             al.Value = 42;
-            Promise.ParallelForEach(Iterate100(), async (item, cancellationToken) =>
+            Promise.ParallelForEach(Iterate100(), async (item, cancelationToken) =>
             {
                 await Promise.SwitchToForegroundAwait(forceAsync: true);
                 Assert.AreEqual(42, al.Value);
@@ -580,6 +580,44 @@ namespace ProtoPromiseTests.APIs
             }, context)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
             Assert.AreEqual(42, al.Value);
+        }
+
+        [Test]
+        public void ParallelFor_NotCanceledTooEarly(
+            [Values] bool foregroundContext)
+        {
+            var context = foregroundContext
+                ? (SynchronizationContext) TestHelper._foregroundContext
+                : TestHelper._backgroundContext;
+
+            Promise.ParallelFor(0, Environment.ProcessorCount, async (index, cancelationToken) =>
+            {
+                if (index % 2 == 0)
+                {
+                    await System.Threading.Tasks.Task.Delay(100);
+                }
+                Assert.False(cancelationToken.IsCancelationRequested);
+            }, context)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
+        }
+
+        [Test]
+        public void ParallelForEach_NotCanceledTooEarly(
+            [Values] bool foregroundContext)
+        {
+            var context = foregroundContext
+                ? (SynchronizationContext) TestHelper._foregroundContext
+                : TestHelper._backgroundContext;
+
+            Promise.ParallelForEach(Enumerable.Range(0, Environment.ProcessorCount), async (index, cancelationToken) =>
+            {
+                if (index % 2 == 0)
+                {
+                    await System.Threading.Tasks.Task.Delay(100);
+                }
+                Assert.False(cancelationToken.IsCancelationRequested);
+            }, context)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
         }
     }
 #endif // !UNITY_WEBGL
