@@ -8,6 +8,7 @@ using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Threading;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -618,6 +619,70 @@ namespace ProtoPromiseTests.APIs
                 Assert.False(cancelationToken.IsCancelationRequested);
             }, context)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
+        }
+
+        [Test]
+        public void ParallelForEach_EnumeratorIsDisposedWhenComplete(
+            [Values] bool foregroundContext)
+        {
+            var context = foregroundContext
+                ? (SynchronizationContext) TestHelper._foregroundContext
+                : TestHelper._backgroundContext;
+
+            var enumerator = new EnumeratorDisposeChecker();
+            Promise<int>.ParallelForEach(enumerator, (index, cancelationToken) => Promise.Resolved(), context)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
+
+            Assert.True(enumerator.disposed);
+        }
+
+        private class EnumeratorDisposeChecker : IEnumerator<int>
+        {
+            public bool disposed;
+
+            public int Current => 0;
+            object IEnumerator.Current => null;
+            public bool MoveNext() => false;
+            public void Dispose() => disposed = true;
+            public void Reset() { }
+        }
+
+        [Test]
+        public void ParallelForEach_EnumeratorIsNotMovedNextAfterItReturnsFalse(
+            [Values] bool foregroundContext)
+        {
+            var context = foregroundContext
+                ? (SynchronizationContext) TestHelper._foregroundContext
+                : TestHelper._backgroundContext;
+
+            Promise<int>.ParallelForEach(new NoMoveNextEnumerator(), async (index, cancelationToken) =>
+            {
+                await System.Threading.Tasks.Task.Delay(10);
+            }, context)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
+        }
+
+        private class NoMoveNextEnumerator : IEnumerator<int>
+        {
+            private int _current;
+            private int _max = Environment.ProcessorCount;
+            private bool _isComplete;
+
+            public int Current => _current;
+            object IEnumerator.Current => Current;
+            public bool MoveNext()
+            {
+                Assert.False(_isComplete);
+                if (_current < _max)
+                {
+                    ++_current;
+                    return true;
+                }
+                _isComplete = true;
+                return false;
+            }
+            public void Dispose() { }
+            public void Reset() { }
         }
     }
 #endif // !UNITY_WEBGL

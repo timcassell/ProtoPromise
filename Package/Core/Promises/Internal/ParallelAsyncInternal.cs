@@ -173,6 +173,7 @@ namespace Proto.Promises
 
                 private void ExitLockComplete()
                 {
+                    _stopExecuting = true;
                     // There are no more iterations to execute. We have full control of the lock,
                     // so we don't need to schedule continuations, and we simply subtract all waiting workers.
                     unchecked
@@ -450,11 +451,6 @@ namespace Proto.Promises
                         return;
                     }
 
-                    _externalCancelationRegistration.Dispose();
-                    _externalCancelationRegistration = default;
-                    _cancelationRef.TryDispose(_cancelationRef.SourceId);
-                    _cancelationRef = null;
-
                     Promise disposePromise;
                     try
                     {
@@ -472,6 +468,11 @@ namespace Proto.Promises
 
                 private void OnComplete()
                 {
+                    _externalCancelationRegistration.Dispose();
+                    _externalCancelationRegistration = default;
+                    _cancelationRef.TryDispose(_cancelationRef.SourceId);
+                    _cancelationRef = null;
+
                     // Finally, complete the promise returned to the ParallelForEachAsync caller.
                     // This must be the very last thing done.
                     if (_exceptions != null)
