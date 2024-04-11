@@ -87,6 +87,7 @@ namespace Proto.Promises
                 {
                     if (stopExecuting || !_enumerator.MoveNext())
                     {
+                        stopExecuting = true;
                         // Exit the lock before writing the value.
                         goto ReturnFalse;
                     }
