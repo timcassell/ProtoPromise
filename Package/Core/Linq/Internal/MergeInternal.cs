@@ -25,7 +25,7 @@ namespace Proto.Promises
         {
             // These must not be readonly.
             // We queue the successful MoveNextAsync results instead of using Promise.RaceWithIndex, to avoid having to preserve each promise.
-            protected SingleConsumerAsyncQueueInternal<int> _readyQueue = new SingleConsumerAsyncQueueInternal<int>(0);
+            protected SingleConsumerAsyncQueueInternal<int> _readyQueue;
             protected TempCollectionBuilder<AsyncEnumerator<TValue>> _enumerators;
             protected TempCollectionBuilder<(IRejectContainer rejectContainer, Promise disposePromise)> _disposePromises;
             protected SpinLocker _locker = new SpinLocker();
@@ -322,6 +322,7 @@ namespace Proto.Promises
                         }
                     }
 
+                    _readyQueue.Dispose();
                     _enumerators.Dispose();
                     _disposePromises.Dispose();
                     // We stored the CancelationRef we created in the token field, so we extract it to dispose here.
@@ -342,7 +343,7 @@ namespace Proto.Promises
 
             private async Promise MergeSources()
             {
-                _readyQueue.AddProducer();
+                _readyQueue = new SingleConsumerAsyncQueueInternal<int>(0, 1);
                 try
                 {
                     while (await _sourcesEnumerator.MoveNextAsync())
@@ -557,6 +558,7 @@ namespace Proto.Promises
                         }
                     }
 
+                    _readyQueue.Dispose();
                     _enumerators.Dispose();
                     _disposePromises.Dispose();
                     // We stored the CancelationRef we created in the token field, so we extract it to dispose here.
@@ -579,7 +581,7 @@ namespace Proto.Promises
             {
                 try
                 {
-                    _readyQueue.AddProducer();
+                    _readyQueue = new SingleConsumerAsyncQueueInternal<int>(0, 1);
                     using (_sourcesEnumerator)
                     {
                         while (_sourcesEnumerator.MoveNext())

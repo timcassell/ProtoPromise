@@ -1,4 +1,6 @@
+using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
@@ -13,23 +15,31 @@ namespace Proto.Promises
         {
             internal int _producerCount;
             internal SpinLocker _locker;
+
+            [MethodImpl(InlineOption)]
+            internal SingleConsumerAsyncQueueSmallFields(int producerCount)
+            {
+                _producerCount = producerCount;
+                _locker = default;
+            }
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal struct SingleConsumerAsyncQueueInternal<T>
+        internal struct SingleConsumerAsyncQueueInternal<T> : IDisposable
         {
             private PromiseRefBase.DeferredPromise<(bool, T)> _waiter;
             // These must not be readonly.
             private PoolBackedQueue<T> _queue;
             private SingleConsumerAsyncQueueSmallFields _smallValues;
 
-            internal SingleConsumerAsyncQueueInternal(int capacity)
+            [MethodImpl(InlineOption)]
+            internal SingleConsumerAsyncQueueInternal(int capacity, int producerCount)
             {
                 _queue = new PoolBackedQueue<T>(capacity);
                 _waiter = null;
-                _smallValues = default;
+                _smallValues = new SingleConsumerAsyncQueueSmallFields(producerCount);
             }
 
             internal Promise<(bool hasValue, T value)> TryDequeueAsync()
@@ -100,6 +110,13 @@ namespace Proto.Promises
                 _smallValues._locker.Exit();
                 
                 promise?.ResolveDirect((false, default));
+            }
+
+            [MethodImpl(InlineOption)]
+            public void Dispose()
+            {
+                _queue.Dispose();
+                this = default;
             }
         } // class AsyncQueueInternal<T>
     } // class Internal
