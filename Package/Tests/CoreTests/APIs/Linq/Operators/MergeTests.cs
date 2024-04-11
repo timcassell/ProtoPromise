@@ -9,6 +9,7 @@ using Proto.Promises;
 using Proto.Promises.Linq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -779,6 +780,94 @@ namespace ProtoPromiseTests.APIs.Linq
                 var asyncEnumerator = AsyncEnumerable.Merge(enumerablesAsync).GetAsyncEnumerator();
                 Assert.True(await asyncEnumerator.MoveNextAsync());
                 Assert.AreEqual(0, asyncEnumerator.Current);
+                await asyncEnumerator.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        private static AsyncEnumerable<int> RangeWithCancelationTokenCallbackThrow(int count, bool throwInIterator) => AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
+        {
+            cancelationToken.Register(() => throw new Exception("Error in cancelation!"));
+            for (int i = 0; i < count; ++i)
+            {
+                await writer.YieldAsync(i);
+                if (throwInIterator)
+                {
+                    throw new System.InvalidOperationException("Error in async iterator body!");
+                }
+            }
+        });
+
+        [Test]
+        public void AsyncEnumerableMerge_Sync_CancelationCallbackExceptionsArePropagated()
+        {
+            Promise.Run(async () =>
+            {
+                var asyncEnumerator = AsyncEnumerable.Merge(
+                    RangeWithCancelationTokenCallbackThrow(2, false),
+                    RangeWithCancelationTokenCallbackThrow(3, false),
+                    RangeWithCancelationTokenCallbackThrow(4, true)
+                )
+                    .GetAsyncEnumerator();
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(0, asyncEnumerator.Current);
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(0, asyncEnumerator.Current);
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(0, asyncEnumerator.Current);
+
+                bool didThrow = false;
+                try
+                {
+                    await asyncEnumerator.MoveNextAsync();
+                }
+                catch (AggregateException e)
+                {
+                    didThrow = true;
+                    e = e.Flatten();
+                    Assert.AreEqual(4, e.InnerExceptions.Count);
+                    Assert.AreEqual(1, e.InnerExceptions.Count(x => x is System.InvalidOperationException));
+                }
+                Assert.True(didThrow);
+
+                await asyncEnumerator.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncEnumerableMerge_Async_CancelationCallbackExceptionsArePropagated()
+        {
+            Promise.Run(async () =>
+            {
+                var enumerablesAsync = AsyncEnumerable.Create<AsyncEnumerable<int>>(async (writer, cancelationToken) =>
+                {
+                    await writer.YieldAsync(RangeWithCancelationTokenCallbackThrow(2, false));
+                    await writer.YieldAsync(RangeWithCancelationTokenCallbackThrow(3, false));
+                    await writer.YieldAsync(RangeWithCancelationTokenCallbackThrow(4, true));
+                });
+                var asyncEnumerator = AsyncEnumerable.Merge(enumerablesAsync).GetAsyncEnumerator();
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(0, asyncEnumerator.Current);
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(0, asyncEnumerator.Current);
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(0, asyncEnumerator.Current);
+
+                bool didThrow = false;
+                try
+                {
+                    await asyncEnumerator.MoveNextAsync();
+                }
+                catch (AggregateException e)
+                {
+                    didThrow = true;
+                    e = e.Flatten();
+                    Assert.AreEqual(4, e.InnerExceptions.Count);
+                    Assert.AreEqual(1, e.InnerExceptions.Count(x => x is System.InvalidOperationException));
+                }
+                Assert.True(didThrow);
+
                 await asyncEnumerator.DisposeAsync();
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
