@@ -68,6 +68,7 @@ namespace Proto.Promises
 
             internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
             {
+                handler.SetCompletionState(state);
                 bool hasValue = state == Promise.State.Resolved & handler.GetResult<bool>();
                 if (hasValue)
                 {

@@ -467,99 +467,51 @@ namespace ProtoPromiseTests.APIs.Linq
 
             int notifiedCount = 0;
 
-            Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsync = (int start, int count) =>
+            Func<AsyncEnumerable<int>> ObserveCancelation = () => AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
             {
-                return AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
+                await yieldPromise;
+
+                if (cancelationToken.IsCancelationRequested)
                 {
-                    for (int i = start; i < start + count; i++)
-                    {
-                        if (cancelationToken.IsCancelationRequested)
-                        {
-                            ++notifiedCount;
-                            cancelationToken.ThrowIfCancelationRequested();
-                        }
+                    ++notifiedCount;
+                }
+            });
 
-                        if (i > start)
-                        {
-                            await yieldPromise;
-                        }
-
-                        await writer.YieldAsync(i);
-                    }
-                });
-            };
-
-            Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsyncWithCancelation = (int start, int count) =>
+            Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsyncWithCancelation = (int start, int count) => AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
             {
-                return AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
+                for (int i = start; i < start + count; i++)
                 {
-                    for (int i = start; i < start + count; i++)
+                    cancelationToken.ThrowIfCancelationRequested();
+
+                    if (i > start)
                     {
-                        cancelationToken.ThrowIfCancelationRequested();
-
-                        if (i > start)
-                        {
-                            throw Promise.CancelException();
-                        }
-
-                        await writer.YieldAsync(i);
+                        throw Promise.CancelException();
                     }
-                });
-            };
 
-            var enumerables = new AsyncEnumerable<int>[4]
+                    await writer.YieldAsync(i);
+                }
+            });
+
+            Promise.Run(async () =>
             {
-                EnumerableRangeAsync(0, 1),
-                EnumerableRangeAsyncWithCancelation(0, 2),
-                EnumerableRangeAsync(0, 3),
-                EnumerableRangeAsync(0, 4)
-            };
+                var asyncEnumerator = AsyncEnumerable.Merge(
+                    ObserveCancelation(),
+                    EnumerableRangeAsyncWithCancelation(0, 2),
+                    ObserveCancelation(),
+                    ObserveCancelation()
+                )
+                    .GetAsyncEnumerator();
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(0, asyncEnumerator.Current);
+                var moveNextPromise = asyncEnumerator.MoveNextAsync();
+                deferred.Resolve();
+                await TestHelper.AssertCanceledAsync(() => moveNextPromise);
 
-            int totalCount = 0;
-            int zeroCount = 0;
-            int oneCount = 0;
-            int twoCount = 0;
-            int threeCount = 0;
+                await asyncEnumerator.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
 
-            bool canceled = false;
-
-            var runPromise = AsyncEnumerable.Merge(enumerables)
-                .ForEachAsync(num =>
-                {
-                    ++totalCount;
-                    if (totalCount <= 4)
-                    {
-                        Assert.AreEqual(0, num);
-                        ++zeroCount;
-                    }
-                    else if (totalCount <= 4 + 3)
-                    {
-                        ++oneCount;
-                    }
-                    else if (totalCount <= 4 + 3 + 2)
-                    {
-                        ++twoCount;
-                    }
-                    else
-                    {
-                        ++threeCount;
-                    }
-                })
-                .CatchCancelation(() => canceled = true);
-
-            Assert.AreEqual(4, totalCount);
-            deferred.Resolve();
-
-            runPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-
-            Assert.True(canceled);
-            Assert.AreEqual(2, notifiedCount);
-
-            Assert.AreEqual(zeroCount, 4);
-            Assert.AreEqual(oneCount, 0);
-            Assert.AreEqual(twoCount, 0);
-            Assert.AreEqual(threeCount, 0);
-            Assert.AreEqual(4, totalCount);
+            Assert.AreEqual(3, notifiedCount);
 
             yieldPromise.Forget();
         }
@@ -573,104 +525,63 @@ namespace ProtoPromiseTests.APIs.Linq
             Exception expectedException = new Exception("expected");
             int notifiedCount = 0;
 
-            Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsync = (int start, int count) =>
+            Func<AsyncEnumerable<int>> ObserveCancelation = () => AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
             {
-                return AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
+                await yieldPromise;
+
+                if (cancelationToken.IsCancelationRequested)
                 {
-                    for (int i = start; i < start + count; i++)
-                    {
-                        if (cancelationToken.IsCancelationRequested)
-                        {
-                            ++notifiedCount;
-                            cancelationToken.ThrowIfCancelationRequested();
-                        }
+                    ++notifiedCount;
+                }
+            });
 
-                        if (i > start)
-                        {
-                            await yieldPromise;
-                        }
-
-                        await writer.YieldAsync(i);
-                    }
-                });
-            };
-
-            Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsyncWithException = (int start, int count) =>
+            Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsyncWithCancelation = (int start, int count) => AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
             {
-                return AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
+                for (int i = start; i < start + count; i++)
                 {
-                    for (int i = start; i < start + count; i++)
+                    cancelationToken.ThrowIfCancelationRequested();
+
+                    if (i > start)
                     {
-                        cancelationToken.ThrowIfCancelationRequested();
-
-                        if (i > start)
-                        {
-                            throw expectedException;
-                        }
-
-                        await writer.YieldAsync(i);
+                        throw expectedException;
                     }
-                });
-            };
 
-            var enumerables = new AsyncEnumerable<int>[4]
+                    await writer.YieldAsync(i);
+                }
+            });
+
+            Promise.Run(async () =>
             {
-                EnumerableRangeAsync(0, 1),
-                EnumerableRangeAsyncWithException(0, 2),
-                EnumerableRangeAsync(0, 3),
-                EnumerableRangeAsync(0, 4)
-            };
+                var asyncEnumerator = AsyncEnumerable.Merge(
+                    ObserveCancelation(),
+                    EnumerableRangeAsyncWithCancelation(0, 2),
+                    ObserveCancelation(),
+                    ObserveCancelation()
+                )
+                    .GetAsyncEnumerator();
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                Assert.AreEqual(0, asyncEnumerator.Current);
+                var moveNextPromise = asyncEnumerator.MoveNextAsync();
+                deferred.Resolve();
 
-            int totalCount = 0;
-            int zeroCount = 0;
-            int oneCount = 0;
-            int twoCount = 0;
-            int threeCount = 0;
-
-            bool rejected = false;
-
-            var runPromise = AsyncEnumerable.Merge(enumerables)
-                .ForEachAsync(num =>
+                bool rejected = false;
+                try
                 {
-                    ++totalCount;
-                    if (totalCount <= 4)
-                    {
-                        Assert.AreEqual(0, num);
-                        ++zeroCount;
-                    }
-                    else if (totalCount <= 4 + 3)
-                    {
-                        ++oneCount;
-                    }
-                    else if (totalCount <= 4 + 3 + 2)
-                    {
-                        ++twoCount;
-                    }
-                    else
-                    {
-                        ++threeCount;
-                    }
-                })
-                .Catch((System.AggregateException e) =>
+                    await moveNextPromise;
+                }
+                catch (System.AggregateException e)
                 {
                     Assert.AreEqual(1, e.InnerExceptions.Count);
                     Assert.AreEqual(expectedException, e.InnerException);
                     rejected = true;
-                });
+                }
+                Assert.True(rejected);
 
-            Assert.AreEqual(4, totalCount);
-            deferred.Resolve();
+                await asyncEnumerator.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
 
-            runPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-
-            Assert.True(rejected);
-            Assert.AreEqual(2, notifiedCount);
-
-            Assert.AreEqual(zeroCount, 4);
-            Assert.AreEqual(oneCount, 0);
-            Assert.AreEqual(twoCount, 0);
-            Assert.AreEqual(threeCount, 0);
-            Assert.AreEqual(4, totalCount);
+            Assert.AreEqual(3, notifiedCount);
 
             yieldPromise.Forget();
         }
@@ -703,11 +614,6 @@ namespace ProtoPromiseTests.APIs.Linq
                     Assert.True(await asyncEnumerator.MoveNextAsync());
                     Assert.AreEqual(0, asyncEnumerator.Current);
                     cancelationSource.Cancel();
-                    // The first MoveNextAsync pulls from every merged enumerable, so we need to move forward that many times before cancelation will be observed.
-                    Assert.True(await asyncEnumerator.MoveNextAsync());
-                    Assert.AreEqual(0, asyncEnumerator.Current);
-                    Assert.True(await asyncEnumerator.MoveNextAsync());
-                    Assert.AreEqual(0, asyncEnumerator.Current);
                     await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
                     await asyncEnumerator.DisposeAsync();
                 }
