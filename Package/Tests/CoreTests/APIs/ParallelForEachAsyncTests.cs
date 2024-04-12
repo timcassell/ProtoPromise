@@ -574,6 +574,55 @@ namespace ProtoPromiseTests.APIs
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
         }
 
+        [Test]
+        public void ParallelForEachAsync_CancelationCallbackExceptionsArePropagated(
+            [Values] bool foregroundContext)
+        {
+            var context = foregroundContext
+                ? (SynchronizationContext) TestHelper._foregroundContext
+                : TestHelper._backgroundContext;
+
+            var deferred = Promise.NewDeferred();
+            var blockPromise = deferred.Promise.Preserve();
+            int readyCount = 0;
+
+            var parallelPromise = Promise.ParallelForEachAsync(AsyncEnumerable.Range(0, 3), (index, cancelationToken) =>
+            {
+                cancelationToken.Register(() => throw new Exception("Error in cancelation!"));
+                if (index == 2)
+                {
+                    Interlocked.Increment(ref readyCount);
+                    throw new System.InvalidOperationException("Error in loop body!");
+                }
+                Interlocked.Increment(ref readyCount);
+                return blockPromise;
+            }, context);
+
+            SpinWait.SpinUntil(() =>
+            {
+                TestHelper.ExecuteForegroundCallbacks();
+                return readyCount == 3;
+            });
+
+            bool didThrow = false;
+            try
+            {
+                deferred.Resolve();
+                parallelPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
+            }
+            catch (AggregateException e)
+            {
+                didThrow = true;
+                Assert.AreEqual(2, e.InnerExceptions.Count);
+                Assert.IsInstanceOf<System.InvalidOperationException>(e.InnerExceptions[0]);
+                Assert.IsInstanceOf<AggregateException>(e.InnerExceptions[1]);
+                Assert.AreEqual(3, ((AggregateException) e.InnerExceptions[1]).InnerExceptions.Count);
+            }
+
+            Assert.True(didThrow);
+            blockPromise.Forget();
+        }
+
 #if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
         private static async IAsyncEnumerable<int> EnumerableRangeIAsync(int start, int count, bool yield = true)
         {

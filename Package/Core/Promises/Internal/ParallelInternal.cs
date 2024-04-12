@@ -328,11 +328,10 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        CancelWorkers();
                         // Record the failure and then don't let the exception propagate. The last worker to complete
                         // will propagate exceptions as is appropriate to the top-level promise.
                         RecordException(e);
-                        MaybeComplete();
+                        CancelWorkersAndMaybeComplete();
                     }
                     ClearCurrentInvoker();
                 }
