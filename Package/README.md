@@ -49,9 +49,11 @@ See the [C# Asynchronous Benchmarks Repo](https://github.com/timcassell/CSharpAs
 
 ## Latest Updates
 
-### v3.0.1 - April 6, 2024
+### v3.0.2 - April 12, 2024
 
-- Fixed `Promise<T>.IsValid` when it was completed synchronously.
+- Fixed `Promise.ParallelFor*` canceling workers too early.
+- `Promise.ParallelFor*` and `AsyncEnumerable.Merge` propagate exceptions from cancelation token callbacks instead of deadlocking.
+- `AsyncEnumerable.Merge` more eagerly stops iteration if a rejection or cancelation occurs.
 
 See [ChangeLog](https://github.com/timcassell/ProtoPromise/tree/master/Docs/Changelog) for the full changelog.
 

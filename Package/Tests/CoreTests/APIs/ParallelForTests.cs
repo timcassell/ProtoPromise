@@ -8,6 +8,7 @@ using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Threading;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -543,7 +544,7 @@ namespace ProtoPromiseTests.APIs
 
             var al = new AsyncLocal<int>();
             al.Value = 42;
-            Promise.ParallelFor(0, 100, async (item, cancellationToken) =>
+            Promise.ParallelFor(0, 100, async (item, cancelationToken) =>
             {
                 await Promise.SwitchToForegroundAwait(forceAsync: true);
                 Assert.AreEqual(42, al.Value);
@@ -572,7 +573,7 @@ namespace ProtoPromiseTests.APIs
 
             var al = new AsyncLocal<int>();
             al.Value = 42;
-            Promise.ParallelForEach(Iterate100(), async (item, cancellationToken) =>
+            Promise.ParallelForEach(Iterate100(), async (item, cancelationToken) =>
             {
                 await Promise.SwitchToForegroundAwait(forceAsync: true);
                 Assert.AreEqual(42, al.Value);
@@ -580,6 +581,206 @@ namespace ProtoPromiseTests.APIs
             }, context)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
             Assert.AreEqual(42, al.Value);
+        }
+
+        [Test]
+        public void ParallelFor_NotCanceledTooEarly(
+            [Values] bool foregroundContext)
+        {
+            var context = foregroundContext
+                ? (SynchronizationContext) TestHelper._foregroundContext
+                : TestHelper._backgroundContext;
+
+            Promise.ParallelFor(0, Environment.ProcessorCount, async (index, cancelationToken) =>
+            {
+                if (index % 2 == 0)
+                {
+                    await System.Threading.Tasks.Task.Delay(100);
+                }
+                Assert.False(cancelationToken.IsCancelationRequested);
+            }, context)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
+        }
+
+        [Test]
+        public void ParallelForEach_NotCanceledTooEarly(
+            [Values] bool foregroundContext)
+        {
+            var context = foregroundContext
+                ? (SynchronizationContext) TestHelper._foregroundContext
+                : TestHelper._backgroundContext;
+
+            Promise.ParallelForEach(Enumerable.Range(0, Environment.ProcessorCount), async (index, cancelationToken) =>
+            {
+                if (index % 2 == 0)
+                {
+                    await System.Threading.Tasks.Task.Delay(100);
+                }
+                Assert.False(cancelationToken.IsCancelationRequested);
+            }, context)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
+        }
+
+        [Test]
+        public void ParallelForEach_EnumeratorIsDisposedWhenComplete(
+            [Values] bool foregroundContext)
+        {
+            var context = foregroundContext
+                ? (SynchronizationContext) TestHelper._foregroundContext
+                : TestHelper._backgroundContext;
+
+            var enumerator = new EnumeratorDisposeChecker();
+            Promise<int>.ParallelForEach(enumerator, (index, cancelationToken) => Promise.Resolved(), context)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
+
+            Assert.True(enumerator.disposed);
+        }
+
+        private class EnumeratorDisposeChecker : IEnumerator<int>
+        {
+            public bool disposed;
+
+            public int Current => 0;
+            object IEnumerator.Current => null;
+            public bool MoveNext() => false;
+            public void Dispose() => disposed = true;
+            public void Reset() { }
+        }
+
+        [Test]
+        public void ParallelForEach_EnumeratorIsNotMovedNextAfterItReturnsFalse(
+            [Values] bool foregroundContext)
+        {
+            var context = foregroundContext
+                ? (SynchronizationContext) TestHelper._foregroundContext
+                : TestHelper._backgroundContext;
+
+            Promise<int>.ParallelForEach(new NoMoveNextEnumerator(), async (index, cancelationToken) =>
+            {
+                await System.Threading.Tasks.Task.Delay(10);
+            }, context)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
+        }
+
+        private class NoMoveNextEnumerator : IEnumerator<int>
+        {
+            private int _current;
+            private int _max = Environment.ProcessorCount;
+            private bool _isComplete;
+
+            public int Current => _current;
+            object IEnumerator.Current => Current;
+            public bool MoveNext()
+            {
+                Assert.False(_isComplete);
+                if (_current < _max)
+                {
+                    ++_current;
+                    return true;
+                }
+                _isComplete = true;
+                return false;
+            }
+            public void Dispose() { }
+            public void Reset() { }
+        }
+
+        [Test]
+        public void ParallelFor_CancelationCallbackExceptionsArePropagated(
+            [Values] bool foregroundContext)
+        {
+            var context = foregroundContext
+                ? (SynchronizationContext) TestHelper._foregroundContext
+                : TestHelper._backgroundContext;
+
+            var deferred = Promise.NewDeferred();
+            var blockPromise = deferred.Promise.Preserve();
+            int readyCount = 0;
+
+            var parallelPromise = Promise.ParallelFor(0, 3, (index, cancelationToken) =>
+            {
+                cancelationToken.Register(() => throw new Exception("Error in cancelation!"));
+                if (index == 2)
+                {
+                    Interlocked.Increment(ref readyCount);
+                    throw new System.InvalidOperationException("Error in loop body!");
+                }
+                Interlocked.Increment(ref readyCount);
+                return blockPromise;
+            }, context);
+
+            SpinWait.SpinUntil(() =>
+            {
+                TestHelper.ExecuteForegroundCallbacks();
+                return readyCount == 3;
+            });
+
+            bool didThrow = false;
+            try
+            {
+                deferred.Resolve();
+                parallelPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
+            }
+            catch (AggregateException e)
+            {
+                didThrow = true;
+                Assert.AreEqual(2, e.InnerExceptions.Count);
+                Assert.IsInstanceOf<System.InvalidOperationException>(e.InnerExceptions[0]);
+                Assert.IsInstanceOf<AggregateException>(e.InnerExceptions[1]);
+                Assert.AreEqual(3, ((AggregateException) e.InnerExceptions[1]).InnerExceptions.Count);
+            }
+
+            Assert.True(didThrow);
+            blockPromise.Forget();
+        }
+
+        [Test]
+        public void ParallelForEach_CancelationCallbackExceptionsArePropagated(
+            [Values] bool foregroundContext)
+        {
+            var context = foregroundContext
+                ? (SynchronizationContext) TestHelper._foregroundContext
+                : TestHelper._backgroundContext;
+
+            var deferred = Promise.NewDeferred();
+            var blockPromise = deferred.Promise.Preserve();
+            int readyCount = 0;
+
+            var parallelPromise = Promise.ParallelForEach(Enumerable.Range(0, 3), (index, cancelationToken) =>
+            {
+                cancelationToken.Register(() => throw new Exception("Error in cancelation!"));
+                if (index == 2)
+                {
+                    Interlocked.Increment(ref readyCount);
+                    throw new System.InvalidOperationException("Error in loop body!");
+                }
+                Interlocked.Increment(ref readyCount);
+                return blockPromise;
+            }, context);
+
+            SpinWait.SpinUntil(() =>
+            {
+                TestHelper.ExecuteForegroundCallbacks();
+                return readyCount == 3;
+            });
+
+            bool didThrow = false;
+            try
+            {
+                deferred.Resolve();
+                parallelPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
+            }
+            catch (AggregateException e)
+            {
+                didThrow = true;
+                Assert.AreEqual(2, e.InnerExceptions.Count);
+                Assert.IsInstanceOf<System.InvalidOperationException>(e.InnerExceptions[0]);
+                Assert.IsInstanceOf<AggregateException>(e.InnerExceptions[1]);
+                Assert.AreEqual(3, ((AggregateException) e.InnerExceptions[1]).InnerExceptions.Count);
+            }
+
+            Assert.True(didThrow);
+            blockPromise.Forget();
         }
     }
 #endif // !UNITY_WEBGL

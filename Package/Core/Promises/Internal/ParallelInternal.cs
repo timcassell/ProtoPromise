@@ -7,7 +7,6 @@
 #pragma warning disable IDE0251 // Make member 'readonly'
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -19,7 +18,7 @@ namespace Proto.Promises
     {
         internal interface IParallelEnumerator<T> : IDisposable
         {
-            bool TryMoveNext(object lockObj, CancelationRef cancelationRef, out T value);
+            bool TryMoveNext(object lockObj, ref bool stopExecuting, out T value);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -38,23 +37,25 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            public bool TryMoveNext(object lockObj, CancelationRef cancelationRef, out int value)
+            public bool TryMoveNext(object lockObj, ref bool stopExecuting, out int value)
             {
-                int current;
-                do
+                int current = _current;
+                while (true)
                 {
-                    // cancelationRef._state is a volatile read, so we don't need to volatile read _current.
-                    var canceled = cancelationRef._state >= CancelationRef.State.Canceled;
-                    current = _current;
-                    if (current >= _toIndex | canceled)
+                    // Interlocked.CompareExchange has an implicit memory barrier, so we can get away without volatile read of stopExecuting.
+                    if (current >= _toIndex | stopExecuting)
                     {
                         value = 0;
                         return false;
                     }
-                } while (Interlocked.CompareExchange(ref _current, current + 1, current) != current);
-
-                value = current;
-                return true;
+                    int oldValue = Interlocked.CompareExchange(ref _current, current + 1, current);
+                    if (oldValue == current)
+                    {
+                        value = current;
+                        return true;
+                    }
+                    current = oldValue;
+                }
             }
 
             [MethodImpl(InlineOption)]
@@ -79,13 +80,14 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            public bool TryMoveNext(object lockObj, CancelationRef cancelationRef, out T value)
+            public bool TryMoveNext(object lockObj, ref bool stopExecuting, out T value)
             {
                 // Get the next element from the enumerator. This requires locking around MoveNext/Current.
                 lock (lockObj)
                 {
-                    if (cancelationRef._state >= CancelationRef.State.Canceled || !_enumerator.MoveNext())
+                    if (stopExecuting || !_enumerator.MoveNext())
                     {
+                        stopExecuting = true;
                         // Exit the lock before writing the value.
                         goto ReturnFalse;
                     }
@@ -221,6 +223,7 @@ namespace Proto.Promises
                 private int _waitCounter;
                 private List<Exception> _exceptions;
                 private Promise.State _completionState;
+                private bool _stopExecuting;
 
                 private PromiseParallelForEach() { }
 
@@ -242,6 +245,7 @@ namespace Proto.Promises
                     promise._synchronizationContext = synchronizationContext ?? BackgroundSynchronizationContextSentinel.s_instance;
                     promise._remainingAvailableWorkers = maxDegreeOfParallelism;
                     promise._completionState = Promise.State.Resolved;
+                    promise._stopExecuting = false;
                     promise._cancelationRef = CancelationRef.GetOrCreate();
                     cancelationToken.TryRegister(promise, out promise._externalCancelationRegistration);
                     if (Promise.Config.AsyncFlowExecutionContextEnabled)
@@ -264,7 +268,7 @@ namespace Proto.Promises
                 public void Cancel()
                 {
                     _completionState = Promise.State.Canceled;
-                    _cancelationRef.Cancel();
+                    CancelWorkers();
                 }
 
                 internal void MaybeLaunchWorker(bool launchWorker)
@@ -320,14 +324,14 @@ namespace Proto.Promises
                     catch (OperationCanceledException)
                     {
                         _completionState = Promise.State.Canceled;
-                        MaybeComplete();
+                        CancelWorkersAndMaybeComplete();
                     }
                     catch (Exception e)
                     {
                         // Record the failure and then don't let the exception propagate. The last worker to complete
                         // will propagate exceptions as is appropriate to the top-level promise.
                         RecordException(e);
-                        MaybeComplete();
+                        CancelWorkersAndMaybeComplete();
                     }
                     ClearCurrentInvoker();
                 }
@@ -337,7 +341,7 @@ namespace Proto.Promises
                     // The worker body. Each worker will execute this same body.
                     while (true)
                     {
-                        if (!_enumerator.TryMoveNext(this, _cancelationRef, out var element))
+                        if (!_enumerator.TryMoveNext(this, ref _stopExecuting, out var element))
                         {
                             MaybeComplete();
                             return;
@@ -386,10 +390,11 @@ namespace Proto.Promises
                     else if (state == Promise.State.Canceled)
                     {
                         _completionState = Promise.State.Canceled;
-                        MaybeComplete();
+                        CancelWorkersAndMaybeComplete();
                     }
                     else
                     {
+                        CancelWorkers();
                         // Record the failure. The last worker to complete will propagate exceptions as is appropriate to the top-level promise.
                         var container = rejectContainer;
                         var exception = container.Value as Exception
@@ -408,41 +413,60 @@ namespace Proto.Promises
                     }
                 }
 
+                private void CancelWorkers()
+                {
+                    _stopExecuting = true;
+                    // We cancel the source to notify the workers that they don't need to continue processing.
+                    // This may be called multiple times. It's fine because it checks internally if it's already canceled.
+                    try
+                    {
+                        _cancelationRef.Cancel();
+                    }
+                    catch (Exception e)
+                    {
+                        RecordException(e);
+                    }
+                }
+
+                private void CancelWorkersAndMaybeComplete()
+                {
+                    CancelWorkers();
+                    MaybeComplete();
+                }
+
                 private void MaybeComplete()
                 {
-                    // We cancel the source to notify completion to other threads.
-                    // This may be called multiple times. It's fine because it checks internally if it's already canceled.
-                    _cancelationRef.Cancel();
-
                     // If we're the last worker to complete, clean up and complete the operation.
-                    if (InterlockedAddWithUnsignedOverflowCheck(ref _waitCounter, -1) == 0)
+                    if (InterlockedAddWithUnsignedOverflowCheck(ref _waitCounter, -1) != 0)
                     {
-                        _externalCancelationRegistration.Dispose();
-                        _externalCancelationRegistration = default;
-                        _cancelationRef.TryDispose(_cancelationRef.SourceId);
-                        _cancelationRef = null;
+                        return;
+                    }
 
-                        try
-                        {
-                            _enumerator.Dispose();
-                        }
-                        catch (Exception e)
-                        {
-                            RecordException(e);
-                        }
+                    _externalCancelationRegistration.Dispose();
+                    _externalCancelationRegistration = default;
+                    _cancelationRef.TryDispose(_cancelationRef.SourceId);
+                    _cancelationRef = null;
 
-                        // Finally, complete the promise returned to the ParallelForEach caller.
-                        // This must be the very last thing done.
-                        if (_exceptions != null)
-                        {
-                            _rejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
-                            _exceptions = null;
-                            HandleNextInternal(Promise.State.Rejected);
-                        }
-                        else
-                        {
-                            HandleNextInternal(_completionState);
-                        }
+                    try
+                    {
+                        _enumerator.Dispose();
+                    }
+                    catch (Exception e)
+                    {
+                        RecordException(e);
+                    }
+
+                    // Finally, complete the promise returned to the ParallelForEach caller.
+                    // This must be the very last thing done.
+                    if (_exceptions != null)
+                    {
+                        _rejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
+                        _exceptions = null;
+                        HandleNextInternal(Promise.State.Rejected);
+                    }
+                    else
+                    {
+                        HandleNextInternal(_completionState);
                     }
                 }
 
