@@ -21,7 +21,7 @@ While the syntax is nice, it's not as efficient as it could be. Every time the f
 Instead, you can use `AsyncEnumerable<T>` (in the `Proto.Promises.Linq` namespace).
 
 ```cs
-public async AsyncEnumerable<int> MyEveryUpdate() => AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
+public AsyncEnumerable<int> MyEveryUpdate() => AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
 {
     var frameCount = 0;
     await PromiseYielder.WaitForUpdate();
@@ -59,7 +59,7 @@ await MyEveryUpdate().ForEachAsync(frame =>
 Linq extensions exist for `AsyncEnumerable<T>` to filter and transform the results, just like regular `System.Linq` (`.Where`, `.Select`, `.GroupBy`, etc). All the same extensions were implemented with async support, so you can use the same extensions as you would on `IEnumerable<T>`. You can choose to use synchronous or asynchronous filter/transform functions, and optionally pass in a capture value to avoid closure allocations.
 
 ```cs
-public async AsyncEnumerable<int> MyEveryXUpdate(int skipFrameCount)
+public AsyncEnumerable<int> MyEveryXUpdate(int skipFrameCount)
     => MyEveryUpdate()
         .Where(skipFrameCount + 1, (cv, frame) => frame % cv == 0)
 ```
