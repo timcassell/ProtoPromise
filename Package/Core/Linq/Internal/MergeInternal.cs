@@ -314,11 +314,7 @@ namespace Proto.Promises
                         }
                         if (rejectContainer != null)
                         {
-                            var container = rejectContainer;
-                            var exception = container.Value as Exception
-                                // If the reason was not an exception, get the reason wrapped in an exception.
-                                ?? container.GetExceptionDispatchInfo().SourceException;
-                            RecordException(exception);
+                            RecordException(rejectContainer.GetValueAsException());
                         }
                     }
 
@@ -550,11 +546,7 @@ namespace Proto.Promises
                         }
                         if (rejectContainer != null)
                         {
-                            var container = rejectContainer;
-                            var exception = container.Value as Exception
-                                // If the reason was not an exception, get the reason wrapped in an exception.
-                                ?? container.GetExceptionDispatchInfo().SourceException;
-                            RecordException(exception);
+                            RecordException(rejectContainer.GetValueAsException());
                         }
                     }
 

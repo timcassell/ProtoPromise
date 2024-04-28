@@ -1,4 +1,5 @@
-﻿using System.Runtime.ExceptionServices;
+﻿using System;
+using System.Runtime.ExceptionServices;
 
 namespace Proto.Promises
 {
@@ -23,9 +24,10 @@ namespace Proto.Promises
 
         internal interface IRejectContainer
         {
+            object Value { get; }
+            Exception GetValueAsException();
             void ReportUnhandled();
             ExceptionDispatchInfo GetExceptionDispatchInfo();
-            object Value { get; }
         }
 
         internal interface INullable

@@ -17,29 +17,24 @@ namespace Proto.Promises
 #endif
         internal sealed class UnhandledExceptionInternal : UnhandledException, IRejectContainer, IRejectionToContainer, ICantHandleException
         {
-            internal UnhandledExceptionInternal(object value, string message, string stackTrace, Exception innerException) :
-                base(value, message, stackTrace, innerException)
+            internal UnhandledExceptionInternal(object value, string message, string stackTrace, Exception innerException)
+                : base(value, message, stackTrace, innerException)
             { }
 
             void ICantHandleException.ReportUnhandled(ITraceable traceable)
-            {
-                ReportUnhandledException(this);
-            }
+                => ReportUnhandledException(this);
 
             void IRejectContainer.ReportUnhandled()
-            {
-                ReportUnhandledException(this);
-            }
+                => ReportUnhandledException(this);
 
             ExceptionDispatchInfo IRejectContainer.GetExceptionDispatchInfo()
-            {
-                return ExceptionDispatchInfo.Capture(Value as Exception ?? this);
-            }
+                => ExceptionDispatchInfo.Capture(Value as Exception ?? this);
 
             IRejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
-            {
-                return this;
-            }
+                => this;
+
+            Exception IRejectContainer.GetValueAsException()
+                => this;
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -75,7 +70,7 @@ namespace Proto.Promises
                 _stackTrace = stackTrace;
             }
 
-            public override string StackTrace { get { return _stackTrace; } }
+            public override string StackTrace => _stackTrace;
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -91,14 +86,10 @@ namespace Proto.Promises
             }
 
             IRejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
-            {
-                return CreateRejectContainer(_value, int.MinValue, this, traceable);
-            }
+                => CreateRejectContainer(_value, int.MinValue, this, traceable);
 
             void ICantHandleException.ReportUnhandled(ITraceable traceable)
-            {
-                ReportRejection(_value, traceable);
-            }
+                => ReportRejection(_value, traceable);
         }
     }
 }
