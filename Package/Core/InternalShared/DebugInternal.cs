@@ -359,6 +359,55 @@ namespace Proto.Promises
                 }
             }
 
+            partial class PromiseGroupBase<TResult>
+            {
+                private readonly HashSet<PromiseRefBase> _pendingPromises = new HashSet<PromiseRefBase>();
+
+                protected override void BorrowPreviousPromises(Stack<PromiseRefBase> borrower)
+                {
+                    lock (_pendingPromises)
+                    {
+                        foreach (var promiseRef in _pendingPromises)
+                        {
+                            borrower.Push(promiseRef);
+                        }
+                    }
+                }
+
+                private void ValidateNoPending()
+                {
+                    lock (_pendingPromises)
+                    {
+                        if (_pendingPromises.Count != 0)
+                        {
+                            throw new System.InvalidOperationException("PromiseGroupBase disposed with pending promises.");
+                        }
+                    }
+                }
+
+                partial void AddPending(PromiseRefBase pendingPromise)
+                {
+                    lock (_pendingPromises)
+                    {
+                        _pendingPromises.Add(pendingPromise);
+                    }
+                }
+
+                partial void RemoveComplete(PromiseRefBase completePromise)
+                {
+                    lock (_pendingPromises)
+                    {
+                        _pendingPromises.Remove(completePromise);
+                    }
+                }
+
+                new protected void Dispose()
+                {
+                    ValidateNoPending();
+                    base.Dispose();
+                }
+            }
+
             partial class PromiseParallelForEach<TEnumerator, TParallelBody, TSource>
             {
                 private readonly HashSet<PromiseRefBase> _pendingPromises = new HashSet<PromiseRefBase>();

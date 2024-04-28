@@ -15,8 +15,11 @@
 #define OPTIMIZED_ASYNC_MODE
 #endif
 
+#pragma warning disable IDE0090 // Use 'new(...)'
+
 using Proto.Promises.Collections;
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -164,7 +167,7 @@ namespace Proto.Promises
                 protected int _deferredId = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
             }
 
-#region Non-cancelable Promises
+            #region Non-cancelable Promises
             partial class DeferredPromise<TResult> : DeferredPromiseBase<TResult>
             {
             }
@@ -239,9 +242,9 @@ namespace Proto.Promises
             {
                 private TCanceler _canceler;
             }
-#endregion
+            #endregion
 
-#region Cancelable Promises
+            #region Cancelable Promises
             partial struct CancelationHelper
             {
                 private CancelationRegistration _cancelationRegistration;
@@ -307,9 +310,9 @@ namespace Proto.Promises
                 internal CancelationHelper _cancelationHelper;
                 private TCanceler _canceler;
             }
-#endregion
+            #endregion
 
-#region Multi Promises
+            #region Multi Promises
             partial class MultiHandleablePromiseBase<TResult> : PromiseSingleAwait<TResult>
             {
                 protected int _retainCounter;
@@ -362,6 +365,26 @@ namespace Proto.Promises
 #endif
                 private short _id;
             }
+
+            partial class PromisePassThroughForMergeGroup : PromisePassThrough
+            {
+#if !(PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE)
+                private PromiseRefBase _owner;
+#endif
+            }
+
+            partial class PromiseGroupBase<TResult> : PromiseSingleAwait<TResult>
+            {
+                internal List<Exception> _exceptions;
+                protected CancelationRef _cancelationRef; // Store the reference directly instead of CancelationSource struct to reduce memory.
+                private int _waitCount; // int for Interlocked since it doesn't support uint on older runtimes.
+                protected Promise.State _completeState;
+            }
+
+            partial class MergePromiseGroupVoid : PromiseGroupBase<VoidResult>
+            {
+                internal ValueLinkedStack<PromisePassThroughForMergeGroup> _completedPassThroughs = new ValueLinkedStack<PromisePassThroughForMergeGroup>();
+            }
             #endregion
 
             partial class AsyncPromiseRef<TResult> : PromiseSingleAwait<TResult>
@@ -412,7 +435,9 @@ namespace Proto.Promises
 #if OPTIMIZED_ASYNC_MODE
             private T _result;
 #else
-            private T _result => default;
+#pragma warning disable IDE1006 // Naming Styles
+            private static T _result => default;
+#pragma warning restore IDE1006 // Naming Styles
 #endif
         }
     }

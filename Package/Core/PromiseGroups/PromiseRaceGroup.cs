@@ -114,11 +114,11 @@ namespace Proto.Promises
         {
 
         }
-        
+
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
         /// If any promise is resolved, the returned promise will be resolved with the value of the promise that resolved first.
-        /// If all promises are rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// If no promises are resolved and any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
         /// Otherwise, if any promise is canceled, the returned promise will be canceled.
         /// </summary>
         public Promise<T> WaitAsync()

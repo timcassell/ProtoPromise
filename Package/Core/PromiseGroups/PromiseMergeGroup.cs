@@ -4,11 +4,19 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0090 // Use 'new(...)'
+
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
+    // Promise merge groups use 1 backing reference if only void promises are merged,
+    // 2 backing references if a promise of any other type is merged.
+    // The first one is to merge the promises before the final type is known,
+    // the second one is to realize the actual type from WaitAsync.
+
     /// <summary>
     /// A structured concurrency group used to merge promises. Waits for all promises to resolve.
     /// </summary>
@@ -17,11 +25,33 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseMergeGroup
     {
-        private readonly CancelationSource _cancelationSource;
+        internal readonly Internal.CancelationRef _cancelationRef;
+        internal readonly Internal.PromiseRefBase.MergePromiseGroupVoid _group;
+        internal readonly uint _count;
+        internal readonly short _id;
 
-        internal PromiseMergeGroup(CancelationSource cancelationSource)
+        internal PromiseMergeGroup(Internal.CancelationRef cancelationRef)
         {
-            _cancelationSource = cancelationSource;
+            _cancelationRef = cancelationRef;
+            _count = 0;
+#if PROMISE_DEBUG
+            // We always create the promise backing reference in DEBUG mode to ensure the group is used properly.
+            _group = Internal.GetOrCreateMergePromiseGroupVoid(cancelationRef);
+            _id = _group.Id;
+#else
+            // In RELEASE mode, we only create the backing reference when it's needed.
+            _group = null;
+            _id = 0;
+#endif
+        }
+
+        [MethodImpl(Internal.InlineOption)]
+        internal PromiseMergeGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.MergePromiseGroupVoid group, uint count, short id)
+        {
+            _cancelationRef = cancelationRef;
+            _group = group;
+            _count = count;
+            _id = id;
         }
 
         /// <summary>
@@ -38,7 +68,10 @@ namespace Proto.Promises
         /// <param name="groupCancelationToken">The token that will be canceled if <paramref name="sourceCancelationToken"/> is canceled or any of the promises in the group are rejected or canceled.</param>
         public static PromiseMergeGroup New(CancelationToken sourceCancelationToken, out CancelationToken groupCancelationToken)
         {
-
+            var cancelationRef = Internal.CancelationRef.GetOrCreate();
+            cancelationRef.MaybeLinkToken(sourceCancelationToken);
+            groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
+            return new PromiseMergeGroup(cancelationRef);
         }
 
         /// <summary>
@@ -47,17 +80,45 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise"/> to add to this group.</param>
         public PromiseMergeGroup Add(Promise promise)
         {
+            if (_cancelationRef == null)
+            {
+                Internal.ThrowInvalidMergeGroup();
+            }
 
+            var group = _group;
+            uint count = _count;
+            if (group != null)
+            {
+                if (!group.TryIncrementId(_id))
+                {
+                    Internal.ThrowInvalidMergeGroup();
+                }
+
+                // We don't need to do anything if the ref is null.
+                if (promise._ref != null)
+                {
+                    checked { ++count; }
+                    group.AddPromise(promise._ref, promise._id);
+                }
+                return new PromiseMergeGroup(_cancelationRef, group, count, group.Id);
+            }
+
+            if (promise._ref != null)
+            {
+                group = Internal.GetOrCreateMergePromiseGroupVoid(_cancelationRef);
+                group.AddPromise(promise._ref, promise._id);
+                return new PromiseMergeGroup(_cancelationRef, group, 1, group.Id);
+            }
+
+            return this;
         }
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
         /// </summary>
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
-        public PromiseMergeGroup<T> Add<T>(Promise<T> promise)
-        {
-
-        }
+        public PromiseMergeGroup<T1> Add<T1>(Promise<T1> promise)
+            => new PromiseMergeGroup<T1>(Add(promise.AsPromise()), promise._result);
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
@@ -67,7 +128,24 @@ namespace Proto.Promises
         /// </summary>
         public Promise WaitAsync()
         {
+            if (_cancelationRef == null)
+            {
+                Internal.ThrowInvalidMergeGroup();
+            }
 
+            var group = _group;
+            if (group == null)
+            {
+                _cancelationRef.Dispose();
+                return Promise.Resolved();
+            }
+
+            if (!group.TryIncrementId(_id))
+            {
+                Internal.ThrowInvalidMergeGroup();
+            }
+            group.MarkReady(_count);
+            return new Promise(group, group.Id);
         }
     }
 
@@ -79,11 +157,14 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseMergeGroup<T1>
     {
-        private readonly CancelationSource _cancelationSource;
+        private readonly PromiseMergeGroup _mergeGroup;
+        private readonly T1 _value;
 
-        internal PromiseMergeGroup(CancelationSource cancelationSource)
+        [MethodImpl(Internal.InlineOption)]
+        internal PromiseMergeGroup(PromiseMergeGroup mergeGroup, in T1 value)
         {
-            _cancelationSource = cancelationSource;
+            _mergeGroup = mergeGroup;
+            _value = value;
         }
 
         /// <summary>
@@ -91,18 +172,14 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promise">The <see cref="Promise"/> to add to this group.</param>
         public PromiseMergeGroup<T1> Add(Promise promise)
-        {
-
-        }
+            => new PromiseMergeGroup<T1>(_mergeGroup.Add(promise), _value);
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
         /// </summary>
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeGroup<T1, T2> Add<T2>(Promise<T2> promise)
-        {
-
-        }
+            => new PromiseMergeGroup<T1, T2>(_mergeGroup.Add(promise.AsPromise()), (_value, promise._result));
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
@@ -112,7 +189,26 @@ namespace Proto.Promises
         /// </summary>
         public Promise<T1> WaitAsync()
         {
+            if (_mergeGroup._cancelationRef == null)
+            {
+                Internal.ThrowInvalidMergeGroup();
+            }
 
+            var group = _mergeGroup._group;
+            if (group == null)
+            {
+                _mergeGroup._cancelationRef.Dispose();
+                return Promise.Resolved(_value);
+            }
+
+            if (!group.TryIncrementId(_mergeGroup._id))
+            {
+                Internal.ThrowInvalidMergeGroup();
+            }
+            group.MarkReady(_mergeGroup._count);
+            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetOne<T1>());
+            group.HookupNewPromise(group.Id, promise);
+            return new Promise<T1>(promise, promise.Id);
         }
     }
 
@@ -124,11 +220,14 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseMergeGroup<T1, T2>
     {
-        private readonly CancelationSource _cancelationSource;
+        private readonly PromiseMergeGroup _mergeGroup;
+        private readonly (T1, T2) _value;
 
-        internal PromiseMergeGroup(CancelationSource cancelationSource)
+        [MethodImpl(Internal.InlineOption)]
+        internal PromiseMergeGroup(PromiseMergeGroup mergeGroup, in (T1, T2) value)
         {
-            _cancelationSource = cancelationSource;
+            _mergeGroup = mergeGroup;
+            _value = value;
         }
 
         /// <summary>
@@ -136,18 +235,14 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promise">The <see cref="Promise"/> to add to this group.</param>
         public PromiseMergeGroup<T1, T2> Add(Promise promise)
-        {
-
-        }
+            => new PromiseMergeGroup<T1, T2>(_mergeGroup.Add(promise), _value);
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
         /// </summary>
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeGroup<T1, T2, T3> Add<T3>(Promise<T3> promise)
-        {
-
-        }
+            => new PromiseMergeGroup<T1, T2, T3>(_mergeGroup.Add(promise.AsPromise()), (_value.Item1, _value.Item2, promise._result));
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
@@ -157,7 +252,26 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2)> WaitAsync()
         {
+            if (_mergeGroup._cancelationRef == null)
+            {
+                Internal.ThrowInvalidMergeGroup();
+            }
 
+            var group = _mergeGroup._group;
+            if (group == null)
+            {
+                _mergeGroup._cancelationRef.Dispose();
+                return Promise.Resolved(_value);
+            }
+
+            if (!group.TryIncrementId(_mergeGroup._id))
+            {
+                Internal.ThrowInvalidMergeGroup();
+            }
+            group.MarkReady(_mergeGroup._count);
+            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetTwo<T1, T2>());
+            group.HookupNewPromise(group.Id, promise);
+            return new Promise<(T1, T2)>(promise, promise.Id);
         }
     }
 
@@ -169,11 +283,14 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseMergeGroup<T1, T2, T3>
     {
-        private readonly CancelationSource _cancelationSource;
+        private readonly PromiseMergeGroup _mergeGroup;
+        private readonly (T1, T2, T3) _value;
 
-        internal PromiseMergeGroup(CancelationSource cancelationSource)
+        [MethodImpl(Internal.InlineOption)]
+        internal PromiseMergeGroup(PromiseMergeGroup mergeGroup, in (T1, T2, T3) value)
         {
-            _cancelationSource = cancelationSource;
+            _mergeGroup = mergeGroup;
+            _value = value;
         }
 
         /// <summary>
@@ -181,18 +298,14 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promise">The <see cref="Promise"/> to add to this group.</param>
         public PromiseMergeGroup<T1, T2, T3> Add(Promise promise)
-        {
-
-        }
+            => new PromiseMergeGroup<T1, T2, T3>(_mergeGroup.Add(promise), _value);
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
         /// </summary>
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeGroup<T1, T2, T3, T4> Add<T4>(Promise<T4> promise)
-        {
-
-        }
+            => new PromiseMergeGroup<T1, T2, T3, T4>(_mergeGroup.Add(promise.AsPromise()), (_value.Item1, _value.Item2, _value.Item3, promise._result));
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
@@ -202,7 +315,26 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2, T3)> WaitAsync()
         {
+            if (_mergeGroup._cancelationRef == null)
+            {
+                Internal.ThrowInvalidMergeGroup();
+            }
 
+            var group = _mergeGroup._group;
+            if (group == null)
+            {
+                _mergeGroup._cancelationRef.Dispose();
+                return Promise.Resolved(_value);
+            }
+
+            if (!group.TryIncrementId(_mergeGroup._id))
+            {
+                Internal.ThrowInvalidMergeGroup();
+            }
+            group.MarkReady(_mergeGroup._count);
+            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetThree<T1, T2, T3>());
+            group.HookupNewPromise(group.Id, promise);
+            return new Promise<(T1, T2, T3)>(promise, promise.Id);
         }
     }
 
@@ -214,11 +346,14 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseMergeGroup<T1, T2, T3, T4>
     {
-        private readonly CancelationSource _cancelationSource;
+        private readonly PromiseMergeGroup _mergeGroup;
+        private readonly (T1, T2, T3, T4) _value;
 
-        internal PromiseMergeGroup(CancelationSource cancelationSource)
+        [MethodImpl(Internal.InlineOption)]
+        internal PromiseMergeGroup(PromiseMergeGroup mergeGroup, in (T1, T2, T3, T4) value)
         {
-            _cancelationSource = cancelationSource;
+            _mergeGroup = mergeGroup;
+            _value = value;
         }
 
         /// <summary>
@@ -226,18 +361,14 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promise">The <see cref="Promise"/> to add to this group.</param>
         public PromiseMergeGroup<T1, T2, T3, T4> Add(Promise promise)
-        {
-
-        }
+            => new PromiseMergeGroup<T1, T2, T3, T4>(_mergeGroup.Add(promise), _value);
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
         /// </summary>
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeGroup<T1, T2, T3, T4, T5> Add<T5>(Promise<T5> promise)
-        {
-
-        }
+            => new PromiseMergeGroup<T1, T2, T3, T4, T5>(_mergeGroup.Add(promise.AsPromise()), (_value.Item1, _value.Item2, _value.Item3, _value.Item4, promise._result));
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
@@ -247,7 +378,26 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2, T3, T4)> WaitAsync()
         {
+            if (_mergeGroup._cancelationRef == null)
+            {
+                Internal.ThrowInvalidMergeGroup();
+            }
 
+            var group = _mergeGroup._group;
+            if (group == null)
+            {
+                _mergeGroup._cancelationRef.Dispose();
+                return Promise.Resolved(_value);
+            }
+
+            if (!group.TryIncrementId(_mergeGroup._id))
+            {
+                Internal.ThrowInvalidMergeGroup();
+            }
+            group.MarkReady(_mergeGroup._count);
+            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetFour<T1, T2, T3, T4>());
+            group.HookupNewPromise(group.Id, promise);
+            return new Promise<(T1, T2, T3, T4)>(promise, promise.Id);
         }
     }
 
@@ -259,11 +409,14 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseMergeGroup<T1, T2, T3, T4, T5>
     {
-        private readonly CancelationSource _cancelationSource;
+        private readonly PromiseMergeGroup _mergeGroup;
+        private readonly (T1, T2, T3, T4, T5) _value;
 
-        internal PromiseMergeGroup(CancelationSource cancelationSource)
+        [MethodImpl(Internal.InlineOption)]
+        internal PromiseMergeGroup(PromiseMergeGroup mergeGroup, in (T1, T2, T3, T4, T5) value)
         {
-            _cancelationSource = cancelationSource;
+            _mergeGroup = mergeGroup;
+            _value = value;
         }
 
         /// <summary>
@@ -271,18 +424,14 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promise">The <see cref="Promise"/> to add to this group.</param>
         public PromiseMergeGroup<T1, T2, T3, T4, T5> Add(Promise promise)
-        {
-
-        }
+            => new PromiseMergeGroup<T1, T2, T3, T4, T5>(_mergeGroup.Add(promise), _value);
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
         /// </summary>
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeGroup<T1, T2, T3, T4, T5, T6> Add<T6>(Promise<T6> promise)
-        {
-
-        }
+            => new PromiseMergeGroup<T1, T2, T3, T4, T5, T6>(_mergeGroup.Add(promise.AsPromise()), (_value.Item1, _value.Item2, _value.Item3, _value.Item4, _value.Item5, promise._result));
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
@@ -292,7 +441,26 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2, T3, T4, T5)> WaitAsync()
         {
+            if (_mergeGroup._cancelationRef == null)
+            {
+                Internal.ThrowInvalidMergeGroup();
+            }
 
+            var group = _mergeGroup._group;
+            if (group == null)
+            {
+                _mergeGroup._cancelationRef.Dispose();
+                return Promise.Resolved(_value);
+            }
+
+            if (!group.TryIncrementId(_mergeGroup._id))
+            {
+                Internal.ThrowInvalidMergeGroup();
+            }
+            group.MarkReady(_mergeGroup._count);
+            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>());
+            group.HookupNewPromise(group.Id, promise);
+            return new Promise<(T1, T2, T3, T4, T5)>(promise, promise.Id);
         }
     }
 
@@ -304,12 +472,14 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseMergeGroup<T1, T2, T3, T4, T5, T6>
     {
-        private readonly CancelationSource _cancelationSource;
-        private readonly Promise<T6> _promise6;
+        private readonly PromiseMergeGroup _mergeGroup;
+        private readonly (T1, T2, T3, T4, T5, T6) _value;
 
-        internal PromiseMergeGroup(CancelationSource cancelationSource)
+        [MethodImpl(Internal.InlineOption)]
+        internal PromiseMergeGroup(PromiseMergeGroup mergeGroup, in (T1, T2, T3, T4, T5, T6) value)
         {
-            _cancelationSource = cancelationSource;
+            _mergeGroup = mergeGroup;
+            _value = value;
         }
 
         /// <summary>
@@ -317,18 +487,14 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promise">The <see cref="Promise"/> to add to this group.</param>
         public PromiseMergeGroup<T1, T2, T3, T4, T5, T6> Add(Promise promise)
-        {
-
-        }
+            => new PromiseMergeGroup<T1, T2, T3, T4, T5, T6>(_mergeGroup.Add(promise), _value);
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
         /// </summary>
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeGroup<T1, T2, T3, T4, T5, T6, T7> Add<T7>(Promise<T7> promise)
-        {
-
-        }
+            => new PromiseMergeGroup<T1, T2, T3, T4, T5, T6, T7>(_mergeGroup.Add(promise.AsPromise()), (_value.Item1, _value.Item2, _value.Item3, _value.Item4, _value.Item5, _value.Item6, promise._result));
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
@@ -338,7 +504,26 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2, T3, T4, T5, T6)> WaitAsync()
         {
+            if (_mergeGroup._cancelationRef == null)
+            {
+                Internal.ThrowInvalidMergeGroup();
+            }
 
+            var group = _mergeGroup._group;
+            if (group == null)
+            {
+                _mergeGroup._cancelationRef.Dispose();
+                return Promise.Resolved(_value);
+            }
+
+            if (!group.TryIncrementId(_mergeGroup._id))
+            {
+                Internal.ThrowInvalidMergeGroup();
+            }
+            group.MarkReady(_mergeGroup._count);
+            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>());
+            group.HookupNewPromise(group.Id, promise);
+            return new Promise<(T1, T2, T3, T4, T5, T6)>(promise, promise.Id);
         }
     }
 
@@ -350,11 +535,14 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseMergeGroup<T1, T2, T3, T4, T5, T6, T7>
     {
-        private readonly CancelationSource _cancelationSource;
+        private readonly PromiseMergeGroup _mergeGroup;
+        private readonly (T1, T2, T3, T4, T5, T6, T7) _value;
 
-        internal PromiseMergeGroup(CancelationSource cancelationSource)
+        [MethodImpl(Internal.InlineOption)]
+        internal PromiseMergeGroup(PromiseMergeGroup mergeGroup, in (T1, T2, T3, T4, T5, T6, T7) value)
         {
-            _cancelationSource = cancelationSource;
+            _mergeGroup = mergeGroup;
+            _value = value;
         }
 
         /// <summary>
@@ -362,9 +550,7 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promise">The <see cref="Promise"/> to add to this group.</param>
         public PromiseMergeGroup<T1, T2, T3, T4, T5, T6, T7> Add(Promise promise)
-        {
-
-        }
+            => new PromiseMergeGroup<T1, T2, T3, T4, T5, T6, T7>(_mergeGroup.Add(promise), _value);
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
@@ -372,7 +558,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         // Merging more than 7 types should be fairly rare. To support N types greater than 7, we just wrap it in another group.
         public PromiseMergeGroup<(T1, T2, T3, T4, T5, T6, T7), T8> Add<T8>(Promise<T8> promise)
-            => new PromiseMergeGroup(_cancelationSource)
+            => new PromiseMergeGroup(_mergeGroup._cancelationRef)
             .Add(WaitAsync())
             .Add(promise);
 
@@ -384,7 +570,26 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2, T3, T4, T5, T6, T7)> WaitAsync()
         {
+            if (_mergeGroup._cancelationRef == null)
+            {
+                Internal.ThrowInvalidMergeGroup();
+            }
 
+            var group = _mergeGroup._group;
+            if (group == null)
+            {
+                _mergeGroup._cancelationRef.Dispose();
+                return Promise.Resolved(_value);
+            }
+
+            if (!group.TryIncrementId(_mergeGroup._id))
+            {
+                Internal.ThrowInvalidMergeGroup();
+            }
+            group.MarkReady(_mergeGroup._count);
+            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>());
+            group.HookupNewPromise(group.Id, promise);
+            return new Promise<(T1, T2, T3, T4, T5, T6, T7)>(promise, promise.Id);
         }
     }
 }

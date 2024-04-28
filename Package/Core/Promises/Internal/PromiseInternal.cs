@@ -407,6 +407,7 @@ namespace Proto.Promises
                 return promise;
             }
 
+            // TODO: Make this method partial, rename to SetPrevious.
             [MethodImpl(InlineOption)]
             internal void SetNewPrevious(PromiseRefBase previous)
             {
@@ -1389,6 +1390,7 @@ namespace Proto.Promises
                     }
                 }
 
+                // TODO: Clean this up, just use SetPrevious.
                 partial void SetSecondPrevious(PromiseRefBase secondPrevious, PromiseRefBase handler);
 
 #if PROMISE_DEBUG
@@ -1997,7 +1999,7 @@ namespace Proto.Promises
                     if (!_disposed)
                     {
                         // For debugging. This should never happen.
-                        string message = $"A PromisePassThrough was garbage collected without it being released. _index: {_index}, _owner: {_owner}, _next: {_next}";
+                        string message = $"A {GetType()} was garbage collected without it being released. _index: {_index}, _owner: {_owner}, _next: {_next}";
                         ReportRejection(new UnreleasedObjectException(message), _owner);
                     }
                 }
