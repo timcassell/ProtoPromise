@@ -16,7 +16,7 @@ namespace Proto.Promises
     // the second one is to realize the actual type from WaitAsync.
 
     /// <summary>
-    /// A structured concurrency group used to merge promises and yield their results. Waits for all promises to complete.
+    /// A structured concurrency group used to merge promises of one or more types and yield their results.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -68,7 +68,7 @@ namespace Proto.Promises
     }
 
     /// <summary>
-    /// A structured concurrency group used to merge promises and yield their results. Waits for all promises to complete.
+    /// A structured concurrency group used to merge promises of one or more types and yield their results.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -113,7 +113,7 @@ namespace Proto.Promises
     }
 
     /// <summary>
-    /// A structured concurrency group used to merge promises and yield their results. Waits for all promises to complete.
+    /// A structured concurrency group used to merge promises of one or more types and yield their results.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -167,23 +167,24 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2)> WaitAsync()
         {
-            if (_mergeGroup._cancelationRef == null)
+            var mergeGroup = _mergeGroup;
+            if (mergeGroup._cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup();
             }
 
-            var group = _mergeGroup._group;
+            var group = mergeGroup._group;
             if (group == null)
             {
-                _mergeGroup._cancelationRef.Dispose();
+                mergeGroup._cancelationRef.Dispose();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(_mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._id))
             {
                 Internal.ThrowInvalidMergeGroup();
             }
-            group.MarkReady(_mergeGroup._count);
+            group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     s_getResult1Delegate,
@@ -195,7 +196,7 @@ namespace Proto.Promises
     }
 
     /// <summary>
-    /// A structured concurrency group used to merge promises and yield their results. Waits for all promises to complete.
+    /// A structured concurrency group used to merge promises of one or more types and yield their results.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -254,23 +255,24 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2, T3)> WaitAsync()
         {
-            if (_mergeGroup._cancelationRef == null)
+            var mergeGroup = _mergeGroup;
+            if (mergeGroup._cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup();
             }
 
-            var group = _mergeGroup._group;
+            var group = mergeGroup._group;
             if (group == null)
             {
-                _mergeGroup._cancelationRef.Dispose();
+                mergeGroup._cancelationRef.Dispose();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(_mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._id))
             {
                 Internal.ThrowInvalidMergeGroup();
             }
-            group.MarkReady(_mergeGroup._count);
+            group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     s_getResult1Delegate,
@@ -283,7 +285,7 @@ namespace Proto.Promises
     }
 
     /// <summary>
-    /// A structured concurrency group used to merge promises and yield their results. Waits for all promises to complete.
+    /// A structured concurrency group used to merge promises of one or more types and yield their results.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -347,23 +349,24 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2, T3, T4)> WaitAsync()
         {
-            if (_mergeGroup._cancelationRef == null)
+            var mergeGroup = _mergeGroup;
+            if (mergeGroup._cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup();
             }
 
-            var group = _mergeGroup._group;
+            var group = mergeGroup._group;
             if (group == null)
             {
-                _mergeGroup._cancelationRef.Dispose();
+                mergeGroup._cancelationRef.Dispose();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(_mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._id))
             {
                 Internal.ThrowInvalidMergeGroup();
             }
-            group.MarkReady(_mergeGroup._count);
+            group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     s_getResult1Delegate,
@@ -377,7 +380,7 @@ namespace Proto.Promises
     }
 
     /// <summary>
-    /// A structured concurrency group used to merge promises and yield their results. Waits for all promises to complete.
+    /// A structured concurrency group used to merge promises of one or more types and yield their results.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -446,23 +449,24 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2, T3, T4, T5)> WaitAsync()
         {
-            if (_mergeGroup._cancelationRef == null)
+            var mergeGroup = _mergeGroup;
+            if (mergeGroup._cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup();
             }
 
-            var group = _mergeGroup._group;
+            var group = mergeGroup._group;
             if (group == null)
             {
-                _mergeGroup._cancelationRef.Dispose();
+                mergeGroup._cancelationRef.Dispose();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(_mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._id))
             {
                 Internal.ThrowInvalidMergeGroup();
             }
-            group.MarkReady(_mergeGroup._count);
+            group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     s_getResult1Delegate,
@@ -477,7 +481,7 @@ namespace Proto.Promises
     }
 
     /// <summary>
-    /// A structured concurrency group used to merge promises and yield their results. Waits for all promises to complete.
+    /// A structured concurrency group used to merge promises of one or more types and yield their results.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -551,23 +555,24 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2, T3, T4, T5, T6)> WaitAsync()
         {
-            if (_mergeGroup._cancelationRef == null)
+            var mergeGroup = _mergeGroup;
+            if (mergeGroup._cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup();
             }
 
-            var group = _mergeGroup._group;
+            var group = mergeGroup._group;
             if (group == null)
             {
-                _mergeGroup._cancelationRef.Dispose();
+                mergeGroup._cancelationRef.Dispose();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(_mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._id))
             {
                 Internal.ThrowInvalidMergeGroup();
             }
-            group.MarkReady(_mergeGroup._count);
+            group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     s_getResult1Delegate,
@@ -583,7 +588,7 @@ namespace Proto.Promises
     }
 
     /// <summary>
-    /// A structured concurrency group used to merge promises and yield their results. Waits for all promises to complete.
+    /// A structured concurrency group used to merge promises of one or more types and yield their results.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -640,7 +645,6 @@ namespace Proto.Promises
                     .Add(waitAsyncPromise.AsPromise())
                     .Add(promise),
                 (waitAsyncPromise._result, Promise.ResultContainer.Resolved),
-                Promise.MergeResultFuncs.GetMergeValue<(T1, T2, T3, T4, T5, T6, T7)>(),
                 Promise.MergeResultFuncs.GetMergeResultVoid()
             );
         }
@@ -658,7 +662,6 @@ namespace Proto.Promises
                     .Add(waitAsyncPromise.AsPromise())
                     .Add(promise.AsPromise()),
                 (waitAsyncPromise._result, promise._result),
-                Promise.MergeResultFuncs.GetMergeValue<(T1, T2, T3, T4, T5, T6, T7)>(),
                 Promise.MergeResultFuncs.GetMergeResult<T8>()
             );
         }
@@ -668,23 +671,24 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2, T3, T4, T5, T6, T7)> WaitAsync()
         {
-            if (_mergeGroup._cancelationRef == null)
+            var mergeGroup = _mergeGroup;
+            if (mergeGroup._cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup();
             }
 
-            var group = _mergeGroup._group;
+            var group = mergeGroup._group;
             if (group == null)
             {
-                _mergeGroup._cancelationRef.Dispose();
+                mergeGroup._cancelationRef.Dispose();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(_mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._id))
             {
                 Internal.ThrowInvalidMergeGroup();
             }
-            group.MarkReady(_mergeGroup._count);
+            group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     s_getResult1Delegate,
@@ -701,7 +705,7 @@ namespace Proto.Promises
     }
 
     /// <summary>
-    /// A structured concurrency group used to merge promises and yield their results. Waits for all promises to complete.
+    /// A structured concurrency group used to merge promises of one or more types and yield their results.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -712,17 +716,14 @@ namespace Proto.Promises
         private readonly (T1, T2) _value;
         // The generic types can be Promise<T>.ResultContainer, or Promise.ResultContainer.
         // In order to resolve the correct type, we have to store the GetResultContainerDelegates.
-        private static Internal.GetResultContainerDelegate<T1> s_getResult1Delegate;
         private static Internal.GetResultContainerDelegate<T2> s_getResult2Delegate;
 
         [MethodImpl(Internal.InlineOption)]
         internal PromiseMergeResultsGroupExtended(in PromiseMergeGroup mergeGroup, in (T1, T2) value,
-            Internal.GetResultContainerDelegate<T1> getResult1Delegate,
             Internal.GetResultContainerDelegate<T2> getResult2Delegate)
         {
             _mergeGroup = mergeGroup;
             _value = value;
-            s_getResult1Delegate = getResult1Delegate;
             s_getResult2Delegate = getResult2Delegate;
         }
 
@@ -734,7 +735,6 @@ namespace Proto.Promises
             => new PromiseMergeResultsGroupExtended<T1, T2, Promise.ResultContainer>(
                 _mergeGroup.Add(promise),
                 (_value.Item1, _value.Item2, Promise.ResultContainer.Resolved),
-                s_getResult1Delegate,
                 s_getResult2Delegate,
                 Promise.MergeResultFuncs.GetMergeResultVoid());
 
@@ -746,7 +746,6 @@ namespace Proto.Promises
             => new PromiseMergeResultsGroupExtended<T1, T2, Promise<T3>.ResultContainer>(
                 _mergeGroup.Add(promise.AsPromise()),
                 (_value.Item1, _value.Item2, promise._result),
-                s_getResult1Delegate,
                 s_getResult2Delegate,
                 Promise.MergeResultFuncs.GetMergeResult<T3>());
 
@@ -755,26 +754,27 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2)> WaitAsync()
         {
-            if (_mergeGroup._cancelationRef == null)
+            var mergeGroup = _mergeGroup;
+            if (mergeGroup._cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup();
             }
 
-            var group = _mergeGroup._group;
+            var group = mergeGroup._group;
             if (group == null)
             {
-                _mergeGroup._cancelationRef.Dispose();
+                mergeGroup._cancelationRef.Dispose();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(_mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._id))
             {
                 Internal.ThrowInvalidMergeGroup();
             }
-            group.MarkReady(_mergeGroup._count);
+            group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
-                    s_getResult1Delegate,
+                    Promise.MergeResultFuncs.GetMergeValue<T1>(),
                     s_getResult2Delegate)
                 );
             group.HookupNewPromise(group.Id, promise);
@@ -783,7 +783,7 @@ namespace Proto.Promises
     }
 
     /// <summary>
-    /// A structured concurrency group used to merge promises and yield their results. Waits for all promises to complete.
+    /// A structured concurrency group used to merge promises of one or more types and yield their results.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -794,19 +794,16 @@ namespace Proto.Promises
         private readonly (T1, T2, T3) _value;
         // The generic types can be Promise<T>.ResultContainer, or Promise.ResultContainer.
         // In order to resolve the correct type, we have to store the GetResultContainerDelegates.
-        private static Internal.GetResultContainerDelegate<T1> s_getResult1Delegate;
         private static Internal.GetResultContainerDelegate<T2> s_getResult2Delegate;
         private static Internal.GetResultContainerDelegate<T3> s_getResult3Delegate;
 
         [MethodImpl(Internal.InlineOption)]
         internal PromiseMergeResultsGroupExtended(in PromiseMergeGroup mergeGroup, in (T1, T2, T3) value,
-            Internal.GetResultContainerDelegate<T1> getResult1Delegate,
             Internal.GetResultContainerDelegate<T2> getResult2Delegate,
             Internal.GetResultContainerDelegate<T3> getResult3Delegate)
         {
             _mergeGroup = mergeGroup;
             _value = value;
-            s_getResult1Delegate = getResult1Delegate;
             s_getResult2Delegate = getResult2Delegate;
             s_getResult3Delegate = getResult3Delegate;
         }
@@ -819,7 +816,6 @@ namespace Proto.Promises
             => new PromiseMergeResultsGroupExtended<T1, T2, T3, Promise.ResultContainer>(
                 _mergeGroup.Add(promise),
                 (_value.Item1, _value.Item2, _value.Item3, Promise.ResultContainer.Resolved),
-                s_getResult1Delegate,
                 s_getResult2Delegate,
                 s_getResult3Delegate,
                 Promise.MergeResultFuncs.GetMergeResultVoid());
@@ -832,7 +828,6 @@ namespace Proto.Promises
             => new PromiseMergeResultsGroupExtended<T1, T2, T3, Promise<T4>.ResultContainer>(
                 _mergeGroup.Add(promise.AsPromise()),
                 (_value.Item1, _value.Item2, _value.Item3, promise._result),
-                s_getResult1Delegate,
                 s_getResult2Delegate,
                 s_getResult3Delegate,
                 Promise.MergeResultFuncs.GetMergeResult<T4>());
@@ -842,26 +837,27 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2, T3)> WaitAsync()
         {
-            if (_mergeGroup._cancelationRef == null)
+            var mergeGroup = _mergeGroup;
+            if (mergeGroup._cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup();
             }
 
-            var group = _mergeGroup._group;
+            var group = mergeGroup._group;
             if (group == null)
             {
-                _mergeGroup._cancelationRef.Dispose();
+                mergeGroup._cancelationRef.Dispose();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(_mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._id))
             {
                 Internal.ThrowInvalidMergeGroup();
             }
-            group.MarkReady(_mergeGroup._count);
+            group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
-                    s_getResult1Delegate,
+                    Promise.MergeResultFuncs.GetMergeValue<T1>(),
                     s_getResult2Delegate,
                     s_getResult3Delegate)
                 );
@@ -871,7 +867,7 @@ namespace Proto.Promises
     }
 
     /// <summary>
-    /// A structured concurrency group used to merge promises and yield their results. Waits for all promises to complete.
+    /// A structured concurrency group used to merge promises of one or more types and yield their results.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -882,21 +878,18 @@ namespace Proto.Promises
         private readonly (T1, T2, T3, T4) _value;
         // The generic types can be Promise<T>.ResultContainer, or Promise.ResultContainer.
         // In order to resolve the correct type, we have to store the GetResultContainerDelegates.
-        private static Internal.GetResultContainerDelegate<T1> s_getResult1Delegate;
         private static Internal.GetResultContainerDelegate<T2> s_getResult2Delegate;
         private static Internal.GetResultContainerDelegate<T3> s_getResult3Delegate;
         private static Internal.GetResultContainerDelegate<T4> s_getResult4Delegate;
 
         [MethodImpl(Internal.InlineOption)]
         internal PromiseMergeResultsGroupExtended(in PromiseMergeGroup mergeGroup, in (T1, T2, T3, T4) value,
-            Internal.GetResultContainerDelegate<T1> getResult1Delegate,
             Internal.GetResultContainerDelegate<T2> getResult2Delegate,
             Internal.GetResultContainerDelegate<T3> getResult3Delegate,
             Internal.GetResultContainerDelegate<T4> getResult4Delegate)
         {
             _mergeGroup = mergeGroup;
             _value = value;
-            s_getResult1Delegate = getResult1Delegate;
             s_getResult2Delegate = getResult2Delegate;
             s_getResult3Delegate = getResult3Delegate;
             s_getResult4Delegate = getResult4Delegate;
@@ -910,7 +903,6 @@ namespace Proto.Promises
             => new PromiseMergeResultsGroupExtended<T1, T2, T3, T4, Promise.ResultContainer>(
                 _mergeGroup.Add(promise),
                 (_value.Item1, _value.Item2, _value.Item3, _value.Item4, Promise.ResultContainer.Resolved),
-                s_getResult1Delegate,
                 s_getResult2Delegate,
                 s_getResult3Delegate,
                 s_getResult4Delegate,
@@ -924,7 +916,6 @@ namespace Proto.Promises
             => new PromiseMergeResultsGroupExtended<T1, T2, T3, T4, Promise<T5>.ResultContainer>(
                 _mergeGroup.Add(promise.AsPromise()),
                 (_value.Item1, _value.Item2, _value.Item3, _value.Item4, promise._result),
-                s_getResult1Delegate,
                 s_getResult2Delegate,
                 s_getResult3Delegate,
                 s_getResult4Delegate,
@@ -935,26 +926,27 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2, T3, T4)> WaitAsync()
         {
-            if (_mergeGroup._cancelationRef == null)
+            var mergeGroup = _mergeGroup;
+            if (mergeGroup._cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup();
             }
 
-            var group = _mergeGroup._group;
+            var group = mergeGroup._group;
             if (group == null)
             {
-                _mergeGroup._cancelationRef.Dispose();
+                mergeGroup._cancelationRef.Dispose();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(_mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._id))
             {
                 Internal.ThrowInvalidMergeGroup();
             }
-            group.MarkReady(_mergeGroup._count);
+            group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
-                    s_getResult1Delegate,
+                    Promise.MergeResultFuncs.GetMergeValue<T1>(),
                     s_getResult2Delegate,
                     s_getResult3Delegate,
                     s_getResult4Delegate)
@@ -965,7 +957,7 @@ namespace Proto.Promises
     }
 
     /// <summary>
-    /// A structured concurrency group used to merge promises and yield their results. Waits for all promises to complete.
+    /// A structured concurrency group used to merge promises of one or more types and yield their results.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -976,7 +968,6 @@ namespace Proto.Promises
         private readonly (T1, T2, T3, T4, T5) _value;
         // The generic types can be Promise<T>.ResultContainer, or Promise.ResultContainer.
         // In order to resolve the correct type, we have to store the GetResultContainerDelegates.
-        private static Internal.GetResultContainerDelegate<T1> s_getResult1Delegate;
         private static Internal.GetResultContainerDelegate<T2> s_getResult2Delegate;
         private static Internal.GetResultContainerDelegate<T3> s_getResult3Delegate;
         private static Internal.GetResultContainerDelegate<T4> s_getResult4Delegate;
@@ -984,7 +975,6 @@ namespace Proto.Promises
 
         [MethodImpl(Internal.InlineOption)]
         internal PromiseMergeResultsGroupExtended(in PromiseMergeGroup mergeGroup, in (T1, T2, T3, T4, T5) value,
-            Internal.GetResultContainerDelegate<T1> getResult1Delegate,
             Internal.GetResultContainerDelegate<T2> getResult2Delegate,
             Internal.GetResultContainerDelegate<T3> getResult3Delegate,
             Internal.GetResultContainerDelegate<T4> getResult4Delegate,
@@ -992,7 +982,6 @@ namespace Proto.Promises
         {
             _mergeGroup = mergeGroup;
             _value = value;
-            s_getResult1Delegate = getResult1Delegate;
             s_getResult2Delegate = getResult2Delegate;
             s_getResult3Delegate = getResult3Delegate;
             s_getResult4Delegate = getResult4Delegate;
@@ -1007,7 +996,6 @@ namespace Proto.Promises
             => new PromiseMergeResultsGroupExtended<T1, T2, T3, T4, T5, Promise.ResultContainer>(
                 _mergeGroup.Add(promise),
                 (_value.Item1, _value.Item2, _value.Item3, _value.Item4, _value.Item5, Promise.ResultContainer.Resolved),
-                s_getResult1Delegate,
                 s_getResult2Delegate,
                 s_getResult3Delegate,
                 s_getResult4Delegate,
@@ -1022,7 +1010,6 @@ namespace Proto.Promises
             => new PromiseMergeResultsGroupExtended<T1, T2, T3, T4, T5, Promise<T6>.ResultContainer>(
                 _mergeGroup.Add(promise.AsPromise()),
                 (_value.Item1, _value.Item2, _value.Item3, _value.Item4, _value.Item5, promise._result),
-                s_getResult1Delegate,
                 s_getResult2Delegate,
                 s_getResult3Delegate,
                 s_getResult4Delegate,
@@ -1034,26 +1021,27 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2, T3, T4, T5)> WaitAsync()
         {
-            if (_mergeGroup._cancelationRef == null)
+            var mergeGroup = _mergeGroup;
+            if (mergeGroup._cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup();
             }
 
-            var group = _mergeGroup._group;
+            var group = mergeGroup._group;
             if (group == null)
             {
-                _mergeGroup._cancelationRef.Dispose();
+                mergeGroup._cancelationRef.Dispose();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(_mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._id))
             {
                 Internal.ThrowInvalidMergeGroup();
             }
-            group.MarkReady(_mergeGroup._count);
+            group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
-                    s_getResult1Delegate,
+                    Promise.MergeResultFuncs.GetMergeValue<T1>(),
                     s_getResult2Delegate,
                     s_getResult3Delegate,
                     s_getResult4Delegate,
@@ -1065,7 +1053,7 @@ namespace Proto.Promises
     }
 
     /// <summary>
-    /// A structured concurrency group used to merge promises and yield their results. Waits for all promises to complete.
+    /// A structured concurrency group used to merge promises of one or more types and yield their results.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -1076,7 +1064,6 @@ namespace Proto.Promises
         private readonly (T1, T2, T3, T4, T5, T6) _value;
         // The generic types can be Promise<T>.ResultContainer, or Promise.ResultContainer.
         // In order to resolve the correct type, we have to store the GetResultContainerDelegates.
-        private static Internal.GetResultContainerDelegate<T1> s_getResult1Delegate;
         private static Internal.GetResultContainerDelegate<T2> s_getResult2Delegate;
         private static Internal.GetResultContainerDelegate<T3> s_getResult3Delegate;
         private static Internal.GetResultContainerDelegate<T4> s_getResult4Delegate;
@@ -1085,7 +1072,6 @@ namespace Proto.Promises
 
         [MethodImpl(Internal.InlineOption)]
         internal PromiseMergeResultsGroupExtended(in PromiseMergeGroup mergeGroup, in (T1, T2, T3, T4, T5, T6) value,
-            Internal.GetResultContainerDelegate<T1> getResult1Delegate,
             Internal.GetResultContainerDelegate<T2> getResult2Delegate,
             Internal.GetResultContainerDelegate<T3> getResult3Delegate,
             Internal.GetResultContainerDelegate<T4> getResult4Delegate,
@@ -1094,7 +1080,6 @@ namespace Proto.Promises
         {
             _mergeGroup = mergeGroup;
             _value = value;
-            s_getResult1Delegate = getResult1Delegate;
             s_getResult2Delegate = getResult2Delegate;
             s_getResult3Delegate = getResult3Delegate;
             s_getResult4Delegate = getResult4Delegate;
@@ -1110,7 +1095,6 @@ namespace Proto.Promises
             => new PromiseMergeResultsGroupExtended<T1, T2, T3, T4, T5, T6, Promise.ResultContainer>(
                 _mergeGroup.Add(promise),
                 (_value.Item1, _value.Item2, _value.Item3, _value.Item4, _value.Item5, _value.Item6, Promise.ResultContainer.Resolved),
-                s_getResult1Delegate,
                 s_getResult2Delegate,
                 s_getResult3Delegate,
                 s_getResult4Delegate,
@@ -1126,7 +1110,6 @@ namespace Proto.Promises
             => new PromiseMergeResultsGroupExtended<T1, T2, T3, T4, T5, T6, Promise<T7>.ResultContainer>(
                 _mergeGroup.Add(promise.AsPromise()),
                 (_value.Item1, _value.Item2, _value.Item3, _value.Item4, _value.Item5, _value.Item6, promise._result),
-                s_getResult1Delegate,
                 s_getResult2Delegate,
                 s_getResult3Delegate,
                 s_getResult4Delegate,
@@ -1139,26 +1122,27 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2, T3, T4, T5, T6)> WaitAsync()
         {
-            if (_mergeGroup._cancelationRef == null)
+            var mergeGroup = _mergeGroup;
+            if (mergeGroup._cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup();
             }
 
-            var group = _mergeGroup._group;
+            var group = mergeGroup._group;
             if (group == null)
             {
-                _mergeGroup._cancelationRef.Dispose();
+                mergeGroup._cancelationRef.Dispose();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(_mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._id))
             {
                 Internal.ThrowInvalidMergeGroup();
             }
-            group.MarkReady(_mergeGroup._count);
+            group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
-                    s_getResult1Delegate,
+                    Promise.MergeResultFuncs.GetMergeValue<T1>(),
                     s_getResult2Delegate,
                     s_getResult3Delegate,
                     s_getResult4Delegate,
@@ -1171,7 +1155,7 @@ namespace Proto.Promises
     }
 
     /// <summary>
-    /// A structured concurrency group used to merge promises and yield their results. Waits for all promises to complete.
+    /// A structured concurrency group used to merge promises of one or more types and yield their results.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -1182,7 +1166,6 @@ namespace Proto.Promises
         private readonly (T1, T2, T3, T4, T5, T6, T7) _value;
         // The generic types can be Promise<T>.ResultContainer, or Promise.ResultContainer.
         // In order to resolve the correct type, we have to store the GetResultContainerDelegates.
-        private static Internal.GetResultContainerDelegate<T1> s_getResult1Delegate;
         private static Internal.GetResultContainerDelegate<T2> s_getResult2Delegate;
         private static Internal.GetResultContainerDelegate<T3> s_getResult3Delegate;
         private static Internal.GetResultContainerDelegate<T4> s_getResult4Delegate;
@@ -1192,7 +1175,6 @@ namespace Proto.Promises
 
         [MethodImpl(Internal.InlineOption)]
         internal PromiseMergeResultsGroupExtended(in PromiseMergeGroup mergeGroup, in (T1, T2, T3, T4, T5, T6, T7) value,
-            Internal.GetResultContainerDelegate<T1> getResult1Delegate,
             Internal.GetResultContainerDelegate<T2> getResult2Delegate,
             Internal.GetResultContainerDelegate<T3> getResult3Delegate,
             Internal.GetResultContainerDelegate<T4> getResult4Delegate,
@@ -1202,7 +1184,6 @@ namespace Proto.Promises
         {
             _mergeGroup = mergeGroup;
             _value = value;
-            s_getResult1Delegate = getResult1Delegate;
             s_getResult2Delegate = getResult2Delegate;
             s_getResult3Delegate = getResult3Delegate;
             s_getResult4Delegate = getResult4Delegate;
@@ -1226,7 +1207,6 @@ namespace Proto.Promises
                     .Add(waitAsyncPromise.AsPromise())
                     .Add(promise),
                 (waitAsyncPromise._result, Promise.ResultContainer.Resolved),
-                Promise.MergeResultFuncs.GetMergeValue<(T1, T2, T3, T4, T5, T6, T7)>(),
                 Promise.MergeResultFuncs.GetMergeResultVoid()
             );
         }
@@ -1244,7 +1224,6 @@ namespace Proto.Promises
                     .Add(waitAsyncPromise.AsPromise())
                     .Add(promise.AsPromise()),
                 (waitAsyncPromise._result, promise._result),
-                Promise.MergeResultFuncs.GetMergeValue<(T1, T2, T3, T4, T5, T6, T7)>(),
                 Promise.MergeResultFuncs.GetMergeResult<T8>()
             );
         }
@@ -1254,26 +1233,27 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2, T3, T4, T5, T6, T7)> WaitAsync()
         {
-            if (_mergeGroup._cancelationRef == null)
+            var mergeGroup = _mergeGroup;
+            if (mergeGroup._cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup();
             }
 
-            var group = _mergeGroup._group;
+            var group = mergeGroup._group;
             if (group == null)
             {
-                _mergeGroup._cancelationRef.Dispose();
+                mergeGroup._cancelationRef.Dispose();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(_mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._id))
             {
                 Internal.ThrowInvalidMergeGroup();
             }
-            group.MarkReady(_mergeGroup._count);
+            group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
-                    s_getResult1Delegate,
+                    Promise.MergeResultFuncs.GetMergeValue<T1>(),
                     s_getResult2Delegate,
                     s_getResult3Delegate,
                     s_getResult4Delegate,

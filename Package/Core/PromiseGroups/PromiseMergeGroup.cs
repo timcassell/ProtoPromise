@@ -18,7 +18,7 @@ namespace Proto.Promises
     // the second one is to realize the actual type from WaitAsync.
 
     /// <summary>
-    /// A structured concurrency group used to merge promises. Waits for all promises to resolve.
+    /// A structured concurrency group used to merge promises of one or more types.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -80,13 +80,14 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise"/> to add to this group.</param>
         public PromiseMergeGroup Add(Promise promise)
         {
-            if (_cancelationRef == null)
+            var cancelationRef = _cancelationRef;
+            var group = _group;
+            uint count = _count;
+            if (cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup();
             }
 
-            var group = _group;
-            uint count = _count;
             if (group != null)
             {
                 if (!group.TryIncrementId(_id))
@@ -100,14 +101,14 @@ namespace Proto.Promises
                     checked { ++count; }
                     group.AddPromise(promise._ref, promise._id);
                 }
-                return new PromiseMergeGroup(_cancelationRef, group, count, group.Id);
+                return new PromiseMergeGroup(cancelationRef, group, count, group.Id);
             }
 
             if (promise._ref != null)
             {
-                group = Internal.GetOrCreateMergePromiseGroupVoid(_cancelationRef);
+                group = Internal.GetOrCreateMergePromiseGroupVoid(cancelationRef);
                 group.AddPromise(promise._ref, promise._id);
-                return new PromiseMergeGroup(_cancelationRef, group, 1, group.Id);
+                return new PromiseMergeGroup(cancelationRef, group, 1, group.Id);
             }
 
             return this;
@@ -128,15 +129,17 @@ namespace Proto.Promises
         /// </summary>
         public Promise WaitAsync()
         {
-            if (_cancelationRef == null)
+            var cancelationRef = _cancelationRef;
+            var group = _group;
+            var count = _count;
+            if (cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup();
             }
 
-            var group = _group;
             if (group == null)
             {
-                _cancelationRef.Dispose();
+                cancelationRef.Dispose();
                 return Promise.Resolved();
             }
 
@@ -144,13 +147,13 @@ namespace Proto.Promises
             {
                 Internal.ThrowInvalidMergeGroup();
             }
-            group.MarkReady(_count);
+            group.MarkReady(count);
             return new Promise(group, group.Id);
         }
     }
 
     /// <summary>
-    /// A structured concurrency group used to merge promises. Waits for all promises to resolve.
+    /// A structured concurrency group used to merge promises of one or more types.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -189,23 +192,24 @@ namespace Proto.Promises
         /// </summary>
         public Promise<T1> WaitAsync()
         {
-            if (_mergeGroup._cancelationRef == null)
+            var mergeGroup = _mergeGroup;
+            if (mergeGroup._cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup();
             }
 
-            var group = _mergeGroup._group;
+            var group = mergeGroup._group;
             if (group == null)
             {
-                _mergeGroup._cancelationRef.Dispose();
+                mergeGroup._cancelationRef.Dispose();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(_mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._id))
             {
                 Internal.ThrowInvalidMergeGroup();
             }
-            group.MarkReady(_mergeGroup._count);
+            group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetOne<T1>());
             group.HookupNewPromise(group.Id, promise);
             return new Promise<T1>(promise, promise.Id);
@@ -213,7 +217,7 @@ namespace Proto.Promises
     }
 
     /// <summary>
-    /// A structured concurrency group used to merge promises. Waits for all promises to resolve.
+    /// A structured concurrency group used to merge promises of one or more types.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -252,23 +256,24 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2)> WaitAsync()
         {
-            if (_mergeGroup._cancelationRef == null)
+            var mergeGroup = _mergeGroup;
+            if (mergeGroup._cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup();
             }
 
-            var group = _mergeGroup._group;
+            var group = mergeGroup._group;
             if (group == null)
             {
-                _mergeGroup._cancelationRef.Dispose();
+                mergeGroup._cancelationRef.Dispose();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(_mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._id))
             {
                 Internal.ThrowInvalidMergeGroup();
             }
-            group.MarkReady(_mergeGroup._count);
+            group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetTwo<T1, T2>());
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2)>(promise, promise.Id);
@@ -276,7 +281,7 @@ namespace Proto.Promises
     }
 
     /// <summary>
-    /// A structured concurrency group used to merge promises. Waits for all promises to resolve.
+    /// A structured concurrency group used to merge promises of one or more types.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -315,23 +320,24 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2, T3)> WaitAsync()
         {
-            if (_mergeGroup._cancelationRef == null)
+            var mergeGroup = _mergeGroup;
+            if (mergeGroup._cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup();
             }
 
-            var group = _mergeGroup._group;
+            var group = mergeGroup._group;
             if (group == null)
             {
-                _mergeGroup._cancelationRef.Dispose();
+                mergeGroup._cancelationRef.Dispose();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(_mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._id))
             {
                 Internal.ThrowInvalidMergeGroup();
             }
-            group.MarkReady(_mergeGroup._count);
+            group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetThree<T1, T2, T3>());
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2, T3)>(promise, promise.Id);
@@ -339,7 +345,7 @@ namespace Proto.Promises
     }
 
     /// <summary>
-    /// A structured concurrency group used to merge promises. Waits for all promises to resolve.
+    /// A structured concurrency group used to merge promises of one or more types.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -378,23 +384,24 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2, T3, T4)> WaitAsync()
         {
-            if (_mergeGroup._cancelationRef == null)
+            var mergeGroup = _mergeGroup;
+            if (mergeGroup._cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup();
             }
 
-            var group = _mergeGroup._group;
+            var group = mergeGroup._group;
             if (group == null)
             {
-                _mergeGroup._cancelationRef.Dispose();
+                mergeGroup._cancelationRef.Dispose();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(_mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._id))
             {
                 Internal.ThrowInvalidMergeGroup();
             }
-            group.MarkReady(_mergeGroup._count);
+            group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetFour<T1, T2, T3, T4>());
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2, T3, T4)>(promise, promise.Id);
@@ -402,7 +409,7 @@ namespace Proto.Promises
     }
 
     /// <summary>
-    /// A structured concurrency group used to merge promises. Waits for all promises to resolve.
+    /// A structured concurrency group used to merge promises of one or more types.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -441,23 +448,24 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2, T3, T4, T5)> WaitAsync()
         {
-            if (_mergeGroup._cancelationRef == null)
+            var mergeGroup = _mergeGroup;
+            if (mergeGroup._cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup();
             }
 
-            var group = _mergeGroup._group;
+            var group = mergeGroup._group;
             if (group == null)
             {
-                _mergeGroup._cancelationRef.Dispose();
+                mergeGroup._cancelationRef.Dispose();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(_mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._id))
             {
                 Internal.ThrowInvalidMergeGroup();
             }
-            group.MarkReady(_mergeGroup._count);
+            group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>());
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2, T3, T4, T5)>(promise, promise.Id);
@@ -465,7 +473,7 @@ namespace Proto.Promises
     }
 
     /// <summary>
-    /// A structured concurrency group used to merge promises. Waits for all promises to resolve.
+    /// A structured concurrency group used to merge promises of one or more types.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -504,23 +512,24 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2, T3, T4, T5, T6)> WaitAsync()
         {
-            if (_mergeGroup._cancelationRef == null)
+            var mergeGroup = _mergeGroup;
+            if (mergeGroup._cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup();
             }
 
-            var group = _mergeGroup._group;
+            var group = mergeGroup._group;
             if (group == null)
             {
-                _mergeGroup._cancelationRef.Dispose();
+                mergeGroup._cancelationRef.Dispose();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(_mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._id))
             {
                 Internal.ThrowInvalidMergeGroup();
             }
-            group.MarkReady(_mergeGroup._count);
+            group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>());
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2, T3, T4, T5, T6)>(promise, promise.Id);
@@ -528,7 +537,7 @@ namespace Proto.Promises
     }
 
     /// <summary>
-    /// A structured concurrency group used to merge promises. Waits for all promises to resolve.
+    /// A structured concurrency group used to merge promises of one or more types.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -570,23 +579,24 @@ namespace Proto.Promises
         /// </summary>
         public Promise<(T1, T2, T3, T4, T5, T6, T7)> WaitAsync()
         {
-            if (_mergeGroup._cancelationRef == null)
+            var mergeGroup = _mergeGroup;
+            if (mergeGroup._cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup();
             }
 
-            var group = _mergeGroup._group;
+            var group = mergeGroup._group;
             if (group == null)
             {
-                _mergeGroup._cancelationRef.Dispose();
+                mergeGroup._cancelationRef.Dispose();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(_mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._id))
             {
                 Internal.ThrowInvalidMergeGroup();
             }
-            group.MarkReady(_mergeGroup._count);
+            group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>());
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2, T3, T4, T5, T6, T7)>(promise, promise.Id);
