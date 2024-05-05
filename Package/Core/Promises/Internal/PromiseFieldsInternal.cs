@@ -381,9 +381,25 @@ namespace Proto.Promises
                 protected Promise.State _completeState;
             }
 
-            partial class MergePromiseGroupVoid : PromiseGroupBase<VoidResult>
+            partial class MergePromiseGroupBase<TResult> : PromiseGroupBase<TResult>
             {
                 internal ValueLinkedStack<PromisePassThroughForMergeGroup> _completedPassThroughs = new ValueLinkedStack<PromisePassThroughForMergeGroup>();
+            }
+
+            partial class MergePromiseGroupVoid : MergePromiseGroupBase<VoidResult>
+            {
+            }
+
+            partial class AllPromiseGroup<T> : MergePromiseGroupBase<IList<T>>
+            {
+            }
+
+            partial class AllPromiseResultsGroupVoid : MergePromiseGroupBase<IList<Promise.ResultContainer>>
+            {
+            }
+
+            partial class AllPromiseResultsGroup<T> : MergePromiseGroupBase<IList<Promise<T>.ResultContainer>>
+            {
             }
             #endregion
 

@@ -66,7 +66,7 @@ namespace Proto.Promises
                 internal override void Handle(PromiseRefBase handler, Promise.State state)
                     // Unlike regular PromisePassThrough, we don't dispose here. This gets stored in the merge group promise,
                     // so that the ultimate ValueTuple result will be filled with the proper type, and will be disposed when it's complete.
-                    => _next.UnsafeAs<MergePromiseGroupVoid>().Handle(this, handler, state);
+                    => _next.Handle(this, handler, state);
 
                 internal void Dispose()
                 {
@@ -130,12 +130,16 @@ namespace Proto.Promises
                     return true;
                 }
 
+                [MethodImpl(InlineOption)]
                 internal void MarkReady(uint totalPromises)
+                    => MarkReady(unchecked((int) totalPromises));
+
+                internal void MarkReady(int totalPromises)
                 {
                     // This method is called after all promises have been hooked up to this.
                     // _waitCount starts at 0 and is decremented every time an added promise completes.
                     // We add back the number of promises that were added, and when the count goes back to 0, all promises are complete.
-                    if (Interlocked.Add(ref _waitCount, unchecked((int) totalPromises)) == 0)
+                    if (Interlocked.Add(ref _waitCount, totalPromises) == 0)
                     {
                         // All promises already completed.
                         _next = PromiseCompletionSentinel.s_instance;
@@ -189,7 +193,14 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class MergePromiseGroupVoid : PromiseGroupBase<VoidResult>
+            internal abstract partial class MergePromiseGroupBase<TResult> : PromiseGroupBase<TResult>
+            {
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal sealed partial class MergePromiseGroupVoid : MergePromiseGroupBase<VoidResult>
             {
                 [MethodImpl(InlineOption)]
                 private static MergePromiseGroupVoid GetOrCreate()
@@ -239,7 +250,7 @@ namespace Proto.Promises
                     }
                 }
 
-                internal void Handle(PromisePassThroughForMergeGroup passthrough, PromiseRefBase handler, Promise.State state)
+                internal override void Handle(PromisePassThroughForMergeGroup passthrough, PromiseRefBase handler, Promise.State state)
                 {
                     // We store the passthrough until all promises are complete,
                     // so that the ultimate ValueTuple will be filled with the proper types.
@@ -315,6 +326,9 @@ namespace Proto.Promises
                 }
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             internal sealed partial class MergePromiseResultsGroup<TResult> : PromiseSingleAwait<TResult>
             {
                 private static GetResultContainerDelegate<TResult> s_getResult;
