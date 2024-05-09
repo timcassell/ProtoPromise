@@ -401,6 +401,24 @@ namespace Proto.Promises
             partial class AllPromiseResultsGroup<T> : MergePromiseGroupBase<IList<Promise<T>.ResultContainer>>
             {
             }
+
+            partial class RacePromiseGroupBase<TResult> : PromiseGroupBase<TResult>
+            {
+                protected int _isResolved; // Flag used to indicate that the promise has already been resolved. int for Interlocked.
+                protected bool _cancelOnNonResolved;
+            }
+
+            partial class RacePromiseGroup<TResult> : RacePromiseGroupBase<TResult>
+            {
+            }
+
+            partial class RacePromiseWithIndexGroupVoid : RacePromiseGroupBase<int>
+            {
+            }
+
+            partial class RacePromiseWithIndexGroup<TResult> : RacePromiseGroupBase<(int, TResult)>
+            {
+            }
             #endregion
 
             partial class AsyncPromiseRef<TResult> : PromiseSingleAwait<TResult>

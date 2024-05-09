@@ -166,7 +166,6 @@ namespace Proto.Promises
 
                 protected void CancelGroup()
                 {
-                    _completeState = Promise.State.Canceled;
                     // This may be called multiple times. It's fine because it checks internally if it's already canceled.
                     try
                     {
@@ -178,7 +177,7 @@ namespace Proto.Promises
                     }
                 }
 
-                protected void RecordException(Exception e)
+                internal void RecordException(Exception e)
                 {
                     Internal.RecordException(e, ref _exceptions);
                 }
@@ -203,6 +202,12 @@ namespace Proto.Promises
 #endif
             internal abstract partial class MergePromiseGroupBase<TResult> : PromiseGroupBase<TResult>
             {
+                [MethodImpl(InlineOption)]
+                new protected void CancelGroup()
+                {
+                    _completeState = Promise.State.Canceled;
+                    base.CancelGroup();
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
