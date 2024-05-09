@@ -25,7 +25,7 @@ namespace Proto.Promises
         internal readonly short _id;
 
         [MethodImpl(Internal.InlineOption)]
-        internal PromiseAllResultsGroup(IList<Promise.ResultContainer> valueContainer, Internal.CancelationRef cancelationRef)
+        private PromiseAllResultsGroup(IList<Promise.ResultContainer> valueContainer, Internal.CancelationRef cancelationRef)
         {
             _valueContainer = valueContainer ?? new List<Promise.ResultContainer>();
             _cancelationRef = cancelationRef;
@@ -85,14 +85,14 @@ namespace Proto.Promises
             int count = _count;
             if (cancelationRef == null | list == null)
             {
-                Internal.ThrowInvalidAllGroup();
+                Internal.ThrowInvalidAllGroup(1);
             }
 
             if (group != null)
             {
                 if (!group.TryIncrementId(_id))
                 {
-                    Internal.ThrowInvalidAllGroup();
+                    Internal.ThrowInvalidAllGroup(1);
                 }
 
                 AddOrSetResult(list, count);
@@ -140,7 +140,7 @@ namespace Proto.Promises
             int count = _count;
             if (cancelationRef == null | list == null)
             {
-                Internal.ThrowInvalidAllGroup();
+                Internal.ThrowInvalidAllGroup(1);
             }
 
             // Make sure list has the same count as promises.
@@ -158,7 +158,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(_id))
             {
-                Internal.ThrowInvalidAllGroup();
+                Internal.ThrowInvalidAllGroup(1);
             }
             group.MarkReady(count);
             return new Promise<IList<Promise.ResultContainer>>(group, group.Id);
@@ -180,7 +180,7 @@ namespace Proto.Promises
         internal readonly short _id;
 
         [MethodImpl(Internal.InlineOption)]
-        internal PromiseAllResultsGroup(IList<Promise<T>.ResultContainer> valueContainer, Internal.CancelationRef cancelationRef)
+        private PromiseAllResultsGroup(IList<Promise<T>.ResultContainer> valueContainer, Internal.CancelationRef cancelationRef)
         {
             _valueContainer = valueContainer ?? new List<Promise<T>.ResultContainer>();
             _cancelationRef = cancelationRef;
@@ -240,14 +240,14 @@ namespace Proto.Promises
             int count = _count;
             if (cancelationRef == null | list == null)
             {
-                Internal.ThrowInvalidAllGroup();
+                Internal.ThrowInvalidAllGroup(1);
             }
 
             if (group != null)
             {
                 if (!group.TryIncrementId(_id))
                 {
-                    Internal.ThrowInvalidAllGroup();
+                    Internal.ThrowInvalidAllGroup(1);
                 }
 
                 AddOrSetResult(list, promise._result, count);
@@ -295,7 +295,7 @@ namespace Proto.Promises
             int count = _count;
             if (cancelationRef == null | list == null)
             {
-                Internal.ThrowInvalidAllGroup();
+                Internal.ThrowInvalidAllGroup(1);
             }
 
             // Make sure list has the same count as promises.
@@ -313,7 +313,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(_id))
             {
-                Internal.ThrowInvalidAllGroup();
+                Internal.ThrowInvalidAllGroup(1);
             }
             group.MarkReady(count);
             return new Promise<IList<Promise<T>.ResultContainer>>(group, group.Id);

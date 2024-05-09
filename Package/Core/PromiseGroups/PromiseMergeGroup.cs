@@ -85,14 +85,14 @@ namespace Proto.Promises
             uint count = _count;
             if (cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup();
+                Internal.ThrowInvalidMergeGroup(1);
             }
 
             if (group != null)
             {
                 if (!group.TryIncrementId(_id))
                 {
-                    Internal.ThrowInvalidMergeGroup();
+                    Internal.ThrowInvalidMergeGroup(1);
                 }
 
                 // We don't need to do anything if the ref is null.
@@ -114,12 +114,48 @@ namespace Proto.Promises
             return this;
         }
 
+        internal PromiseMergeGroup Merge(Promise promise, int index)
+        {
+            var cancelationRef = _cancelationRef;
+            var group = _group;
+            uint count = _count;
+            if (cancelationRef == null)
+            {
+                Internal.ThrowInvalidMergeGroup(2);
+            }
+
+            if (group != null)
+            {
+                if (!group.TryIncrementId(_id))
+                {
+                    Internal.ThrowInvalidMergeGroup(2);
+                }
+
+                // We don't need to do anything if the ref is null.
+                if (promise._ref != null)
+                {
+                    checked { ++count; }
+                    group.AddPromiseForMerge(promise._ref, promise._id, index);
+                }
+                return new PromiseMergeGroup(cancelationRef, group, count, group.Id);
+            }
+
+            if (promise._ref != null)
+            {
+                group = Internal.GetOrCreateMergePromiseGroupVoid(cancelationRef);
+                group.AddPromiseForMerge(promise._ref, promise._id, index);
+                return new PromiseMergeGroup(cancelationRef, group, 1, group.Id);
+            }
+
+            return this;
+        }
+
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
         /// </summary>
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeGroup<T1> Add<T1>(Promise<T1> promise)
-            => new PromiseMergeGroup<T1>(Add(promise.AsPromise()), promise._result);
+            => new PromiseMergeGroup<T1>(Merge(promise, 0), promise._result);
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
@@ -134,7 +170,7 @@ namespace Proto.Promises
             var count = _count;
             if (cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup();
+                Internal.ThrowInvalidMergeGroup(1);
             }
 
             if (group == null)
@@ -145,7 +181,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(_id))
             {
-                Internal.ThrowInvalidMergeGroup();
+                Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(count);
             return new Promise(group, group.Id);
@@ -182,7 +218,7 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeGroup<T1, T2> Add<T2>(Promise<T2> promise)
-            => new PromiseMergeGroup<T1, T2>(_mergeGroup.Add(promise.AsPromise()), (_value, promise._result));
+            => new PromiseMergeGroup<T1, T2>(_mergeGroup.Merge(promise, 1), (_value, promise._result));
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
@@ -195,7 +231,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup();
+                Internal.ThrowInvalidMergeGroup(1);
             }
 
             var group = mergeGroup._group;
@@ -207,7 +243,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._id))
             {
-                Internal.ThrowInvalidMergeGroup();
+                Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetOne<T1>());
@@ -246,7 +282,7 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeGroup<T1, T2, T3> Add<T3>(Promise<T3> promise)
-            => new PromiseMergeGroup<T1, T2, T3>(_mergeGroup.Add(promise.AsPromise()), (_value.Item1, _value.Item2, promise._result));
+            => new PromiseMergeGroup<T1, T2, T3>(_mergeGroup.Merge(promise, 2), (_value.Item1, _value.Item2, promise._result));
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
@@ -259,7 +295,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup();
+                Internal.ThrowInvalidMergeGroup(1);
             }
 
             var group = mergeGroup._group;
@@ -271,7 +307,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._id))
             {
-                Internal.ThrowInvalidMergeGroup();
+                Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetTwo<T1, T2>());
@@ -310,7 +346,7 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeGroup<T1, T2, T3, T4> Add<T4>(Promise<T4> promise)
-            => new PromiseMergeGroup<T1, T2, T3, T4>(_mergeGroup.Add(promise.AsPromise()), (_value.Item1, _value.Item2, _value.Item3, promise._result));
+            => new PromiseMergeGroup<T1, T2, T3, T4>(_mergeGroup.Merge(promise, 3), (_value.Item1, _value.Item2, _value.Item3, promise._result));
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
@@ -323,7 +359,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup();
+                Internal.ThrowInvalidMergeGroup(1);
             }
 
             var group = mergeGroup._group;
@@ -335,7 +371,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._id))
             {
-                Internal.ThrowInvalidMergeGroup();
+                Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetThree<T1, T2, T3>());
@@ -374,7 +410,7 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeGroup<T1, T2, T3, T4, T5> Add<T5>(Promise<T5> promise)
-            => new PromiseMergeGroup<T1, T2, T3, T4, T5>(_mergeGroup.Add(promise.AsPromise()), (_value.Item1, _value.Item2, _value.Item3, _value.Item4, promise._result));
+            => new PromiseMergeGroup<T1, T2, T3, T4, T5>(_mergeGroup.Merge(promise, 4), (_value.Item1, _value.Item2, _value.Item3, _value.Item4, promise._result));
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
@@ -387,7 +423,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup();
+                Internal.ThrowInvalidMergeGroup(1);
             }
 
             var group = mergeGroup._group;
@@ -399,7 +435,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._id))
             {
-                Internal.ThrowInvalidMergeGroup();
+                Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetFour<T1, T2, T3, T4>());
@@ -438,7 +474,7 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeGroup<T1, T2, T3, T4, T5, T6> Add<T6>(Promise<T6> promise)
-            => new PromiseMergeGroup<T1, T2, T3, T4, T5, T6>(_mergeGroup.Add(promise.AsPromise()), (_value.Item1, _value.Item2, _value.Item3, _value.Item4, _value.Item5, promise._result));
+            => new PromiseMergeGroup<T1, T2, T3, T4, T5, T6>(_mergeGroup.Merge(promise, 5), (_value.Item1, _value.Item2, _value.Item3, _value.Item4, _value.Item5, promise._result));
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
@@ -451,7 +487,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup();
+                Internal.ThrowInvalidMergeGroup(1);
             }
 
             var group = mergeGroup._group;
@@ -463,7 +499,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._id))
             {
-                Internal.ThrowInvalidMergeGroup();
+                Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>());
@@ -502,7 +538,7 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeGroup<T1, T2, T3, T4, T5, T6, T7> Add<T7>(Promise<T7> promise)
-            => new PromiseMergeGroup<T1, T2, T3, T4, T5, T6, T7>(_mergeGroup.Add(promise.AsPromise()), (_value.Item1, _value.Item2, _value.Item3, _value.Item4, _value.Item5, _value.Item6, promise._result));
+            => new PromiseMergeGroup<T1, T2, T3, T4, T5, T6, T7>(_mergeGroup.Merge(promise, 6), (_value.Item1, _value.Item2, _value.Item3, _value.Item4, _value.Item5, _value.Item6, promise._result));
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
@@ -515,7 +551,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup();
+                Internal.ThrowInvalidMergeGroup(1);
             }
 
             var group = mergeGroup._group;
@@ -527,7 +563,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._id))
             {
-                Internal.ThrowInvalidMergeGroup();
+                Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>());
@@ -582,7 +618,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup();
+                Internal.ThrowInvalidMergeGroup(1);
             }
 
             var group = mergeGroup._group;
@@ -594,7 +630,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._id))
             {
-                Internal.ThrowInvalidMergeGroup();
+                Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>());

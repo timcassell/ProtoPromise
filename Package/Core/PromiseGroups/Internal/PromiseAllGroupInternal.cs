@@ -68,6 +68,20 @@ namespace Proto.Promises
 
                 private void Complete(Promise.State state)
                 {
+                    var passthroughs = _completedPassThroughs;
+                    _completedPassThroughs = default;
+                    do
+                    {
+                        var passthrough = passthroughs.Pop();
+                        var owner = passthrough.Owner;
+                        _result[passthrough.Index] = owner.GetResult<T>();
+                        if (owner.State == Promise.State.Rejected)
+                        {
+                            RecordException(owner._rejectContainer.GetValueAsException());
+                        }
+                        passthrough.Dispose();
+                    } while (passthroughs.IsNotEmpty);
+
                     if (_exceptions != null)
                     {
                         state = Promise.State.Rejected;
@@ -75,14 +89,6 @@ namespace Proto.Promises
                         _exceptions = null;
                     }
 
-                    var passthroughs = _completedPassThroughs;
-                    _completedPassThroughs = default;
-                    do
-                    {
-                        var passthrough = passthroughs.Pop();
-                        _result[passthrough.Index] = passthrough.Owner.GetResult<T>();
-                        passthrough.Dispose();
-                    } while (passthroughs.IsNotEmpty);
                     HandleNextInternal(state);
                 }
             }
@@ -150,6 +156,7 @@ namespace Proto.Promises
                         _result[passthrough.Index] = new Promise.ResultContainer(owner._rejectContainer, owner.State);
                         passthrough.Dispose();
                     } while (passthroughs.IsNotEmpty);
+
                     HandleNextInternal(state);
                 }
             }
@@ -217,6 +224,7 @@ namespace Proto.Promises
                         _result[passthrough.Index] = new Promise<T>.ResultContainer(owner.GetResult<T>(), owner._rejectContainer, owner.State);
                         passthrough.Dispose();
                     } while (passthroughs.IsNotEmpty);
+
                     HandleNextInternal(state);
                 }
             }
@@ -235,7 +243,7 @@ namespace Proto.Promises
             => PromiseRefBase.AllPromiseResultsGroup<T>.GetOrCreate(cancelationSource, value);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void ThrowInvalidAllGroup()
-            => throw new InvalidOperationException("The promise all group is invalid.");
+        internal static void ThrowInvalidAllGroup(int skipFrames)
+            => throw new InvalidOperationException("The promise all group is invalid.", GetFormattedStacktrace(skipFrames + 1));
     } // class Internal
 }

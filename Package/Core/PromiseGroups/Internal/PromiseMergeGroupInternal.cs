@@ -110,6 +110,14 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
+                internal void AddPromiseForMerge(PromiseRefBase promise, short id, int index)
+                {
+                    AddPending(promise);
+                    var passthrough = PromisePassThroughForMergeGroup.GetOrCreate(promise, this, index);
+                    promise.HookupNewWaiter(id, passthrough);
+                }
+
+                [MethodImpl(InlineOption)]
                 internal void AddPromise(PromiseRefBase promise, short id)
                 {
                     AddPending(promise);
@@ -254,6 +262,7 @@ namespace Proto.Promises
                 {
                     // We store the passthrough until all promises are complete,
                     // so that the ultimate ValueTuple will be filled with the proper types.
+                    // We don't handle the rejection here, it is handled in the attached promise.
                     RemovePromiseAndSetCompletionState(handler, state);
                     _completedPassThroughs.PushInterlocked(passthrough);
                     if (state != Promise.State.Resolved)
@@ -305,23 +314,30 @@ namespace Proto.Promises
                 internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
                     handler.SetCompletionState(state);
+
                     var group = handler.UnsafeAs<MergePromiseGroupVoid>();
+                    var passthroughs = group._completedPassThroughs;
+                    group._completedPassThroughs = default;
+                    do
+                    {
+                        var passthrough = passthroughs.Pop();
+                        var owner = passthrough.Owner;
+                        s_getResult.Invoke(owner, passthrough.Index, ref _result);
+                        if (owner.State == Promise.State.Rejected)
+                        {
+                            group.RecordException(owner._rejectContainer.GetValueAsException());
+                        }
+                        passthrough.Dispose();
+                    } while (passthroughs.IsNotEmpty);
+
                     if (group._exceptions != null)
                     {
                         state = Promise.State.Rejected;
                         _rejectContainer = CreateRejectContainer(new AggregateException(group._exceptions), int.MinValue, null, this);
                         group._exceptions = null;
                     }
-
-                    var passthroughs = group._completedPassThroughs;
-                    group._completedPassThroughs = default;
                     group.MaybeDispose();
-                    do
-                    {
-                        var passthrough = passthroughs.Pop();
-                        s_getResult.Invoke(passthrough.Owner, passthrough.Index, ref _result);
-                        passthrough.Dispose();
-                    } while (passthroughs.IsNotEmpty);
+
                     HandleNextInternal(state);
                 }
             }
@@ -401,7 +417,7 @@ namespace Proto.Promises
             => PromiseRefBase.MergePromiseResultsGroup<TResult>.GetOrCreate(value, getResultFunc);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void ThrowInvalidMergeGroup()
-            => throw new InvalidOperationException("The promise merge group is invalid.");
+        internal static void ThrowInvalidMergeGroup(int skipFrames)
+            => throw new InvalidOperationException("The promise merge group is invalid.", GetFormattedStacktrace(skipFrames + 1));
     } // class Internal
 }
