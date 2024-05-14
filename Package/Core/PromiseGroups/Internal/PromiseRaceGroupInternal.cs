@@ -80,9 +80,6 @@ namespace Proto.Promises
                 internal override void MaybeDispose()
                 {
                     Dispose();
-                    _exceptions = null;
-                    _cancelationRef.Dispose();
-                    _cancelationRef = null;
                     ObjectPool.MaybeRepool(this);
                 }
 

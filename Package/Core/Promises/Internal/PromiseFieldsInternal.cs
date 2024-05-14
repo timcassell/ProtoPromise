@@ -390,6 +390,15 @@ namespace Proto.Promises
             {
             }
 
+            partial class MergePromiseGroup<TResult> : PromiseSingleAwait<TResult>
+            {
+                private bool _isExtended;
+            }
+
+            partial class MergePromiseResultsGroup<TResult> : PromiseSingleAwait<TResult>
+            {
+            }
+
             partial class AllPromiseGroup<T> : MergePromiseGroupBase<IList<T>>
             {
             }

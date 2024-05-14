@@ -87,12 +87,23 @@ namespace Proto.Promises
             {
                 partial void AddPending(PromiseRefBase pendingPromise);
                 partial void RemoveComplete(PromiseRefBase completePromise);
+                partial void ValidateNoPending();
 
                 internal override void Handle(PromiseRefBase handler, Promise.State state) { throw new System.InvalidOperationException(); }
 
+                new protected void Dispose()
+                {
+                    ValidateNoPending();
+                    base.Dispose();
+                    _cancelationRef.TryDispose(_cancelationRef.SourceId);
+                    _cancelationRef = null;
+                }
+
                 [MethodImpl(InlineOption)]
                 protected bool TryComplete()
-                    => InterlockedAddWithUnsignedOverflowCheck(ref _waitCount, -1) == 0;
+                    // We don't do an overflow check here, because it starts at zero
+                    // and a promise may complete and decrement it before MarkReady() is called.
+                    => Interlocked.Decrement(ref _waitCount) == 0;
 
                 [MethodImpl(InlineOption)]
                 protected void RemovePromiseAndSetCompletionState(PromiseRefBase completePromise, Promise.State state)
@@ -178,23 +189,7 @@ namespace Proto.Promises
                 }
 
                 internal void RecordException(Exception e)
-                {
-                    Internal.RecordException(e, ref _exceptions);
-                }
-
-                protected void HandleCompletion()
-                {
-                    if (_exceptions != null)
-                    {
-                        _rejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
-                        _exceptions = null;
-                        HandleNextInternal(Promise.State.Rejected);
-                    }
-                    else
-                    {
-                        HandleNextInternal(_completeState);
-                    }
-                }
+                    => Internal.RecordException(e, ref _exceptions);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -237,9 +232,6 @@ namespace Proto.Promises
                 internal override void MaybeDispose()
                 {
                     Dispose();
-                    _exceptions = null;
-                    _cancelationRef.Dispose();
-                    _cancelationRef = null;
                     ObjectPool.MaybeRepool(this);
                 }
 
@@ -260,6 +252,20 @@ namespace Proto.Promises
                     {
                         // All promises are complete.
                         HandleCompletion();
+                    }
+                }
+
+                private void HandleCompletion()
+                {
+                    if (_exceptions != null)
+                    {
+                        _rejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
+                        _exceptions = null;
+                        HandleNextInternal(Promise.State.Rejected);
+                    }
+                    else
+                    {
+                        HandleNextInternal(_completeState);
                     }
                 }
 
@@ -301,12 +307,13 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static MergePromiseGroup<TResult> GetOrCreate(in TResult value, GetResultDelegate<TResult> getResultFunc)
+                internal static MergePromiseGroup<TResult> GetOrCreate(in TResult value, GetResultDelegate<TResult> getResultFunc, bool isExtended)
                 {
                     s_getResult = getResultFunc;
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._result = value;
+                    promise._isExtended = isExtended;
                     return promise;
                 }
 
@@ -321,25 +328,44 @@ namespace Proto.Promises
                     handler.SetCompletionState(state);
 
                     var group = handler.UnsafeAs<MergePromiseGroupVoid>();
-                    var passthroughs = group._completedPassThroughs;
-                    group._completedPassThroughs = default;
-                    do
+                    var passthroughs = group._completedPassThroughs.TakeAndClear();
+                    while (passthroughs.IsNotEmpty)
                     {
                         var passthrough = passthroughs.Pop();
                         var owner = passthrough.Owner;
-                        s_getResult.Invoke(owner, passthrough.Index, ref _result);
+                        var index = passthrough.Index;
+                        s_getResult.Invoke(owner, index, ref _result);
                         if (owner.State == Promise.State.Rejected)
                         {
-                            group.RecordException(owner._rejectContainer.GetValueAsException());
+                            var exception = owner._rejectContainer.GetValueAsException();
+                            if (_isExtended & index == 0)
+                            {
+                                // If this is an extended merge group, we need to extract the inner exceptions of the first cluster to make a flattened AggregateException.
+                                // We only do this for 1 layer instead of using the Flatten method of the AggregateException, because we only want to flatten the exceptions from the group,
+                                // and not any nested AggregateExceptions from the actual async work.
+                                foreach (var ex in exception.UnsafeAs<AggregateException>().InnerExceptions)
+                                {
+                                    group.RecordException(ex);
+                                }
+                            }
+                            else
+                            {
+                                group.RecordException(exception);
+                            }
                         }
                         passthrough.Dispose();
-                    } while (passthroughs.IsNotEmpty);
+                    }
 
                     if (group._exceptions != null)
                     {
                         state = Promise.State.Rejected;
                         _rejectContainer = CreateRejectContainer(new AggregateException(group._exceptions), int.MinValue, null, this);
                         group._exceptions = null;
+                    }
+                    else
+                    {
+                        // The group may have been completed by a void promise, in which case it already converted its exceptions to a reject container.
+                        _rejectContainer = handler._rejectContainer;
                     }
                     group.MaybeDispose();
 
@@ -394,15 +420,14 @@ namespace Proto.Promises
                         group._exceptions = null;
                     }
 
-                    var passthroughs = group._completedPassThroughs;
-                    group._completedPassThroughs = default;
+                    var passthroughs = group._completedPassThroughs.TakeAndClear();
                     group.MaybeDispose();
-                    do
+                    while (passthroughs.IsNotEmpty)
                     {
                         var passthrough = passthroughs.Pop();
                         s_getResult.Invoke(passthrough.Owner, passthrough.Owner._rejectContainer, passthrough.Owner.State, passthrough.Index, ref _result);
                         passthrough.Dispose();
-                    } while (passthroughs.IsNotEmpty);
+                    }
 
                     HandleNextInternal(state);
                 }
@@ -414,8 +439,8 @@ namespace Proto.Promises
             => PromiseRefBase.MergePromiseGroupVoid.GetOrCreate(cancelationSource);
 
         [MethodImpl(InlineOption)]
-        internal static PromiseRefBase.MergePromiseGroup<TResult> GetOrCreateMergePromiseGroup<TResult>(in TResult value, GetResultDelegate<TResult> getResultFunc)
-            => PromiseRefBase.MergePromiseGroup<TResult>.GetOrCreate(value, getResultFunc);
+        internal static PromiseRefBase.MergePromiseGroup<TResult> GetOrCreateMergePromiseGroup<TResult>(in TResult value, GetResultDelegate<TResult> getResultFunc, bool isExtended)
+            => PromiseRefBase.MergePromiseGroup<TResult>.GetOrCreate(value, getResultFunc, isExtended);
 
         [MethodImpl(InlineOption)]
         internal static PromiseRefBase.MergePromiseResultsGroup<TResult> GetOrCreateMergePromiseResultsGroup<TResult>(in TResult value, GetResultContainerDelegate<TResult> getResultFunc)

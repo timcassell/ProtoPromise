@@ -27,31 +27,25 @@ namespace Proto.Promises
     {
         internal readonly Internal.CancelationRef _cancelationRef;
         internal readonly Internal.PromiseRefBase.MergePromiseGroupVoid _group;
+        internal readonly int _cancelationId;
         internal readonly uint _count;
-        internal readonly short _id;
+        internal readonly short _groupId;
+        internal readonly bool _isExtended;
 
-        internal PromiseMergeGroup(Internal.CancelationRef cancelationRef)
+        [MethodImpl(Internal.InlineOption)]
+        internal PromiseMergeGroup(Internal.CancelationRef cancelationRef, bool isExtended = false) : this(cancelationRef, null, 0, 0, isExtended)
         {
-            _cancelationRef = cancelationRef;
-            _count = 0;
-#if PROMISE_DEBUG
-            // We always create the promise backing reference in DEBUG mode to ensure the group is used properly.
-            _group = Internal.GetOrCreateMergePromiseGroupVoid(cancelationRef);
-            _id = _group.Id;
-#else
-            // In RELEASE mode, we only create the backing reference when it's needed.
-            _group = null;
-            _id = 0;
-#endif
         }
 
         [MethodImpl(Internal.InlineOption)]
-        internal PromiseMergeGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.MergePromiseGroupVoid group, uint count, short id)
+        private PromiseMergeGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.MergePromiseGroupVoid group, uint count, short groupId, bool isExtended)
         {
             _cancelationRef = cancelationRef;
             _group = group;
+            _cancelationId = cancelationRef.SourceId;
             _count = count;
-            _id = id;
+            _groupId = groupId;
+            _isExtended = isExtended;
         }
 
         /// <summary>
@@ -83,6 +77,7 @@ namespace Proto.Promises
             var cancelationRef = _cancelationRef;
             var group = _group;
             uint count = _count;
+            var isExtended = _isExtended;
             if (cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup(1);
@@ -90,7 +85,7 @@ namespace Proto.Promises
 
             if (group != null)
             {
-                if (!group.TryIncrementId(_id))
+                if (!group.TryIncrementId(_groupId))
                 {
                     Internal.ThrowInvalidMergeGroup(1);
                 }
@@ -101,17 +96,22 @@ namespace Proto.Promises
                     checked { ++count; }
                     group.AddPromise(promise._ref, promise._id);
                 }
-                return new PromiseMergeGroup(cancelationRef, group, count, group.Id);
+                return new PromiseMergeGroup(cancelationRef, group, count, group.Id, isExtended);
+            }
+
+            if (!cancelationRef.TryIncrementSourceId(_cancelationId))
+            {
+                Internal.ThrowInvalidMergeGroup(1);
             }
 
             if (promise._ref != null)
             {
                 group = Internal.GetOrCreateMergePromiseGroupVoid(cancelationRef);
                 group.AddPromise(promise._ref, promise._id);
-                return new PromiseMergeGroup(cancelationRef, group, 1, group.Id);
+                return new PromiseMergeGroup(cancelationRef, group, 1, group.Id, isExtended);
             }
 
-            return this;
+            return new PromiseMergeGroup(cancelationRef, isExtended);
         }
 
         internal PromiseMergeGroup Merge(Promise promise, int index)
@@ -119,6 +119,7 @@ namespace Proto.Promises
             var cancelationRef = _cancelationRef;
             var group = _group;
             uint count = _count;
+            var isExtended = _isExtended;
             if (cancelationRef == null)
             {
                 Internal.ThrowInvalidMergeGroup(2);
@@ -126,7 +127,7 @@ namespace Proto.Promises
 
             if (group != null)
             {
-                if (!group.TryIncrementId(_id))
+                if (!group.TryIncrementId(_groupId))
                 {
                     Internal.ThrowInvalidMergeGroup(2);
                 }
@@ -137,17 +138,22 @@ namespace Proto.Promises
                     checked { ++count; }
                     group.AddPromiseForMerge(promise._ref, promise._id, index);
                 }
-                return new PromiseMergeGroup(cancelationRef, group, count, group.Id);
+                return new PromiseMergeGroup(cancelationRef, group, count, group.Id, isExtended);
+            }
+
+            if (!cancelationRef.TryIncrementSourceId(_cancelationId))
+            {
+                Internal.ThrowInvalidMergeGroup(2);
             }
 
             if (promise._ref != null)
             {
                 group = Internal.GetOrCreateMergePromiseGroupVoid(cancelationRef);
                 group.AddPromiseForMerge(promise._ref, promise._id, index);
-                return new PromiseMergeGroup(cancelationRef, group, 1, group.Id);
+                return new PromiseMergeGroup(cancelationRef, group, 1, group.Id, isExtended);
             }
 
-            return this;
+            return new PromiseMergeGroup(cancelationRef, isExtended);
         }
 
         /// <summary>
@@ -175,16 +181,36 @@ namespace Proto.Promises
 
             if (group == null)
             {
-                cancelationRef.Dispose();
+                if (!cancelationRef.TryDispose(_cancelationId))
+                {
+                    Internal.ThrowInvalidMergeGroup(1);
+                }
                 return Promise.Resolved();
             }
 
-            if (!group.TryIncrementId(_id))
+            if (!group.TryIncrementId(_groupId))
             {
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(count);
             return new Promise(group, group.Id);
+        }
+
+        [MethodImpl(Internal.InlineOption)]
+        internal void DisposeCancelationOrThrow()
+        {
+            if (!_cancelationRef.TryDispose(_cancelationId))
+            {
+                Internal.ThrowInvalidMergeGroup(2);
+            }
+        }
+
+        internal PromiseMergeGroup MergeForExtension(Internal.PromiseRefBase promise, short id)
+        {
+            // We don't do any validation checks here, because they were already done in the caller.
+            var group = Internal.GetOrCreateMergePromiseGroupVoid(_cancelationRef);
+            group.AddPromiseForMerge(promise, id, 0);
+            return new PromiseMergeGroup(_cancelationRef, group, 1, group.Id, true);
         }
     }
 
@@ -237,16 +263,16 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup._cancelationRef.Dispose();
+                mergeGroup.DisposeCancelationOrThrow();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._groupId))
             {
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetOne<T1>());
+            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetOne<T1>(), false);
             group.HookupNewPromise(group.Id, promise);
             return new Promise<T1>(promise, promise.Id);
         }
@@ -301,16 +327,16 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup._cancelationRef.Dispose();
+                mergeGroup.DisposeCancelationOrThrow();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._groupId))
             {
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetTwo<T1, T2>());
+            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetTwo<T1, T2>(), mergeGroup._isExtended);
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2)>(promise, promise.Id);
         }
@@ -365,16 +391,16 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup._cancelationRef.Dispose();
+                mergeGroup.DisposeCancelationOrThrow();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._groupId))
             {
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetThree<T1, T2, T3>());
+            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetThree<T1, T2, T3>(), mergeGroup._isExtended);
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2, T3)>(promise, promise.Id);
         }
@@ -429,16 +455,16 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup._cancelationRef.Dispose();
+                mergeGroup.DisposeCancelationOrThrow();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._groupId))
             {
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetFour<T1, T2, T3, T4>());
+            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetFour<T1, T2, T3, T4>(), mergeGroup._isExtended);
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2, T3, T4)>(promise, promise.Id);
         }
@@ -493,16 +519,16 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup._cancelationRef.Dispose();
+                mergeGroup.DisposeCancelationOrThrow();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._groupId))
             {
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>());
+            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>(), mergeGroup._isExtended);
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2, T3, T4, T5)>(promise, promise.Id);
         }
@@ -557,16 +583,16 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup._cancelationRef.Dispose();
+                mergeGroup.DisposeCancelationOrThrow();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._groupId))
             {
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>());
+            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>(), mergeGroup._isExtended);
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2, T3, T4, T5, T6)>(promise, promise.Id);
         }
@@ -603,9 +629,37 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         // Merging more than 7 types should be fairly rare. To support N types greater than 7, we just wrap it in another group.
         public PromiseMergeGroup<(T1, T2, T3, T4, T5, T6, T7), T8> Add<T8>(Promise<T8> promise)
-            => new PromiseMergeGroup(_mergeGroup._cancelationRef)
-            .Add(WaitAsync())
-            .Add(promise);
+            => new PromiseMergeGroup<(T1, T2, T3, T4, T5, T6, T7)>(SetupExtension(), _value).Add(promise);
+
+        private PromiseMergeGroup SetupExtension()
+        {
+            var mergeGroup = _mergeGroup;
+            if (mergeGroup._cancelationRef == null)
+            {
+                Internal.ThrowInvalidMergeGroup(2);
+            }
+
+            var group = mergeGroup._group;
+            if (group == null)
+            {
+                // We're wrapping this in another group, so we just increment its SourceId instead of disposing.
+                if (!mergeGroup._cancelationRef.TryIncrementSourceId(mergeGroup._cancelationId))
+                {
+                    Internal.ThrowInvalidMergeGroup(2);
+                }
+                return new PromiseMergeGroup(mergeGroup._cancelationRef, true);
+            }
+
+            if (!group.TryIncrementId(mergeGroup._groupId))
+            {
+                Internal.ThrowInvalidMergeGroup(2);
+            }
+            group.MarkReady(mergeGroup._count);
+            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>(), mergeGroup._isExtended);
+            group.HookupNewPromise(group.Id, promise);
+            return PromiseMergeGroup.New(new CancelationToken(mergeGroup._cancelationRef, mergeGroup._cancelationRef.TokenId), out _)
+                .MergeForExtension(promise, promise.Id);
+        }
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
@@ -624,16 +678,16 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup._cancelationRef.Dispose();
+                mergeGroup.DisposeCancelationOrThrow();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._groupId))
             {
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>());
+            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>(), mergeGroup._isExtended);
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2, T3, T4, T5, T6, T7)>(promise, promise.Id);
         }

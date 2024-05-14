@@ -19,36 +19,21 @@ namespace Proto.Promises
     public readonly struct PromiseAllResultsGroup
     {
         private readonly IList<Promise.ResultContainer> _valueContainer;
-        internal readonly Internal.CancelationRef _cancelationRef;
-        internal readonly Internal.PromiseRefBase.AllPromiseResultsGroupVoid _group;
-        internal readonly int _count;
-        internal readonly short _id;
+        private readonly Internal.CancelationRef _cancelationRef;
+        private readonly Internal.PromiseRefBase.AllPromiseResultsGroupVoid _group;
+        private readonly int _cancelationId;
+        private readonly int _count;
+        private readonly short _groupId;
 
         [MethodImpl(Internal.InlineOption)]
-        private PromiseAllResultsGroup(IList<Promise.ResultContainer> valueContainer, Internal.CancelationRef cancelationRef)
-        {
-            _valueContainer = valueContainer ?? new List<Promise.ResultContainer>();
-            _cancelationRef = cancelationRef;
-            _count = 0;
-#if PROMISE_DEBUG
-            // We always create the promise backing reference in DEBUG mode to ensure the group is used properly.
-            _group = Internal.GetOrCreateAllPromiseResultsGroup(cancelationRef, _valueContainer);
-            _id = _group.Id;
-#else
-            // In RELEASE mode, we only create the backing reference when it's needed.
-            _group = null;
-            _id = 0;
-#endif
-        }
-
-        [MethodImpl(Internal.InlineOption)]
-        private PromiseAllResultsGroup(IList<Promise.ResultContainer> valueContainer, Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.AllPromiseResultsGroupVoid group, int count, short id)
+        private PromiseAllResultsGroup(IList<Promise.ResultContainer> valueContainer, Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.AllPromiseResultsGroupVoid group, int count, short groupId)
         {
             _valueContainer = valueContainer;
             _cancelationRef = cancelationRef;
+            _cancelationId = cancelationRef.SourceId;
             _group = group;
             _count = count;
-            _id = id;
+            _groupId = groupId;
         }
 
         /// <summary>
@@ -70,7 +55,7 @@ namespace Proto.Promises
             var cancelationRef = Internal.CancelationRef.GetOrCreate();
             cancelationRef.MaybeLinkToken(sourceCancelationToken);
             groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseAllResultsGroup(valueContainer, cancelationRef);
+            return new PromiseAllResultsGroup(valueContainer ?? new List<Promise.ResultContainer>(), cancelationRef, null, 0, 0);
         }
 
         /// <summary>
@@ -90,7 +75,7 @@ namespace Proto.Promises
 
             if (group != null)
             {
-                if (!group.TryIncrementId(_id))
+                if (!group.TryIncrementId(_groupId))
                 {
                     Internal.ThrowInvalidAllGroup(1);
                 }
@@ -103,6 +88,11 @@ namespace Proto.Promises
                     group.AddPromise(promise._ref, promise._id);
                 }
                 return new PromiseAllResultsGroup(list, cancelationRef, group, count, group.Id);
+            }
+
+            if (!cancelationRef.TryIncrementSourceId(_cancelationId))
+            {
+                Internal.ThrowInvalidAllGroup(1);
             }
 
             AddOrSetResult(list, count);
@@ -152,11 +142,14 @@ namespace Proto.Promises
 
             if (group == null)
             {
-                cancelationRef.Dispose();
+                if (!cancelationRef.TryDispose(_cancelationId))
+                {
+                    Internal.ThrowInvalidAllGroup(1);
+                }
                 return Promise.Resolved(list);
             }
 
-            if (!group.TryIncrementId(_id))
+            if (!group.TryIncrementId(_groupId))
             {
                 Internal.ThrowInvalidAllGroup(1);
             }
@@ -174,36 +167,22 @@ namespace Proto.Promises
     public readonly struct PromiseAllResultsGroup<T>
     {
         private readonly IList<Promise<T>.ResultContainer> _valueContainer;
-        internal readonly Internal.CancelationRef _cancelationRef;
-        internal readonly Internal.PromiseRefBase.AllPromiseResultsGroup<T> _group;
-        internal readonly int _count;
-        internal readonly short _id;
+        private readonly Internal.CancelationRef _cancelationRef;
+        private readonly Internal.PromiseRefBase.AllPromiseResultsGroup<T> _group;
+        private readonly int _cancelationId;
+        private readonly int _count;
+        private readonly short _id;
 
         [MethodImpl(Internal.InlineOption)]
-        private PromiseAllResultsGroup(IList<Promise<T>.ResultContainer> valueContainer, Internal.CancelationRef cancelationRef)
-        {
-            _valueContainer = valueContainer ?? new List<Promise<T>.ResultContainer>();
-            _cancelationRef = cancelationRef;
-            _count = 0;
-#if PROMISE_DEBUG
-            // We always create the promise backing reference in DEBUG mode to ensure the group is used properly.
-            _group = Internal.GetOrCreateAllPromiseResultsGroup(cancelationRef, _valueContainer);
-            _id = _group.Id;
-#else
-            // In RELEASE mode, we only create the backing reference when it's needed.
-            _group = null;
-            _id = 0;
-#endif
-        }
-
-        [MethodImpl(Internal.InlineOption)]
-        private PromiseAllResultsGroup(IList<Promise<T>.ResultContainer> valueContainer, Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.AllPromiseResultsGroup<T> group, int count, short id)
+        private PromiseAllResultsGroup(IList<Promise<T>.ResultContainer> valueContainer, Internal.CancelationRef cancelationRef,
+            Internal.PromiseRefBase.AllPromiseResultsGroup<T> group, int count, short groupId)
         {
             _valueContainer = valueContainer;
             _cancelationRef = cancelationRef;
+            _cancelationId = cancelationRef.SourceId;
             _group = group;
             _count = count;
-            _id = id;
+            _id = groupId;
         }
 
         /// <summary>
@@ -225,7 +204,7 @@ namespace Proto.Promises
             var cancelationRef = Internal.CancelationRef.GetOrCreate();
             cancelationRef.MaybeLinkToken(sourceCancelationToken);
             groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseAllResultsGroup<T>(valueContainer, cancelationRef);
+            return new PromiseAllResultsGroup<T>(valueContainer ?? new List<Promise<T>.ResultContainer>(), cancelationRef, null, 0, 0);
         }
 
         /// <summary>
@@ -258,6 +237,11 @@ namespace Proto.Promises
                     group.AddPromise(promise._ref, promise._id);
                 }
                 return new PromiseAllResultsGroup<T>(list, cancelationRef, group, count, group.Id);
+            }
+
+            if (!cancelationRef.TryIncrementSourceId(_cancelationId))
+            {
+                Internal.ThrowInvalidAllGroup(1);
             }
 
             AddOrSetResult(list, promise._result, count);
@@ -307,7 +291,10 @@ namespace Proto.Promises
 
             if (group == null)
             {
-                cancelationRef.Dispose();
+                if (!cancelationRef.TryDispose(_cancelationId))
+                {
+                    Internal.ThrowInvalidAllGroup(1);
+                }
                 return Promise.Resolved(list);
             }
 

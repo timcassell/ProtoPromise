@@ -100,7 +100,7 @@ namespace Proto.Promises
                 if (_userRetainCounter > 0)
                 {
                     // CancelationToken wasn't released.
-                    string message = "A CancelationToken's resources were garbage collected without being released. You must release all IRetainable objects that you have retained.";
+                    string message = "A CancelationToken's resources were garbage collected without being released. You must release all CancelationTokens that you have retained.";
                     ReportRejection(new UnreleasedObjectException(message), this);
                 }
                 // We don't check the disposed state if this was linked to a System.Threading.CancellationToken.
@@ -510,6 +510,10 @@ namespace Proto.Promises
                 MaybeResetAndRepoolAlreadyLocked();
                 return true;
             }
+
+            [MethodImpl(InlineOption)]
+            internal bool TryIncrementSourceId(int sourceId)
+                => Interlocked.CompareExchange(ref _sourceId, unchecked(sourceId + 1), sourceId) == sourceId;
 
             private void UnregisterAll()
             {

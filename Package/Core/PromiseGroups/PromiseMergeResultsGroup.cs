@@ -75,11 +75,12 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseMergeResultsGroup<T1>
     {
-        private readonly PromiseMergeGroup _mergeGroup;
-        private readonly T1 _value;
         // The generic type can be Promise<T>.ResultContainer, or Promise.ResultContainer.
         // In order to resolve the correct type, we have to store the GetResultContainerDelegate.
         private static Internal.GetResultContainerDelegate<T1> s_getResult1Delegate;
+
+        private readonly PromiseMergeGroup _mergeGroup;
+        private readonly T1 _value;
 
         [MethodImpl(Internal.InlineOption)]
         internal PromiseMergeResultsGroup(in PromiseMergeGroup mergeGroup, in T1 value, Internal.GetResultContainerDelegate<T1> getResult1Delegate)
@@ -120,12 +121,13 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseMergeResultsGroup<T1, T2>
     {
-        private readonly PromiseMergeGroup _mergeGroup;
-        private readonly (T1, T2) _value;
         // The generic types can be Promise<T>.ResultContainer, or Promise.ResultContainer.
         // In order to resolve the correct type, we have to store the GetResultContainerDelegates.
         private static Internal.GetResultContainerDelegate<T1> s_getResult1Delegate;
         private static Internal.GetResultContainerDelegate<T2> s_getResult2Delegate;
+
+        private readonly PromiseMergeGroup _mergeGroup;
+        private readonly (T1, T2) _value;
 
         [MethodImpl(Internal.InlineOption)]
         internal PromiseMergeResultsGroup(in PromiseMergeGroup mergeGroup, in (T1, T2) value,
@@ -176,11 +178,11 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup._cancelationRef.Dispose();
+                mergeGroup.DisposeCancelationOrThrow();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._groupId))
             {
                 Internal.ThrowInvalidMergeGroup(1);
             }
@@ -203,13 +205,14 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseMergeResultsGroup<T1, T2, T3>
     {
-        private readonly PromiseMergeGroup _mergeGroup;
-        private readonly (T1, T2, T3) _value;
         // The generic types can be Promise<T>.ResultContainer, or Promise.ResultContainer.
         // In order to resolve the correct type, we have to store the GetResultContainerDelegates.
         private static Internal.GetResultContainerDelegate<T1> s_getResult1Delegate;
         private static Internal.GetResultContainerDelegate<T2> s_getResult2Delegate;
         private static Internal.GetResultContainerDelegate<T3> s_getResult3Delegate;
+
+        private readonly PromiseMergeGroup _mergeGroup;
+        private readonly (T1, T2, T3) _value;
 
         [MethodImpl(Internal.InlineOption)]
         internal PromiseMergeResultsGroup(in PromiseMergeGroup mergeGroup, in (T1, T2, T3) value,
@@ -264,11 +267,11 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup._cancelationRef.Dispose();
+                mergeGroup.DisposeCancelationOrThrow();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._groupId))
             {
                 Internal.ThrowInvalidMergeGroup(1);
             }
@@ -292,14 +295,15 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseMergeResultsGroup<T1, T2, T3, T4>
     {
-        private readonly PromiseMergeGroup _mergeGroup;
-        private readonly (T1, T2, T3, T4) _value;
         // The generic types can be Promise<T>.ResultContainer, or Promise.ResultContainer.
         // In order to resolve the correct type, we have to store the GetResultContainerDelegates.
         private static Internal.GetResultContainerDelegate<T1> s_getResult1Delegate;
         private static Internal.GetResultContainerDelegate<T2> s_getResult2Delegate;
         private static Internal.GetResultContainerDelegate<T3> s_getResult3Delegate;
         private static Internal.GetResultContainerDelegate<T4> s_getResult4Delegate;
+
+        private readonly PromiseMergeGroup _mergeGroup;
+        private readonly (T1, T2, T3, T4) _value;
 
         [MethodImpl(Internal.InlineOption)]
         internal PromiseMergeResultsGroup(in PromiseMergeGroup mergeGroup, in (T1, T2, T3, T4) value,
@@ -358,11 +362,11 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup._cancelationRef.Dispose();
+                mergeGroup.DisposeCancelationOrThrow();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._groupId))
             {
                 Internal.ThrowInvalidMergeGroup(1);
             }
@@ -387,8 +391,6 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseMergeResultsGroup<T1, T2, T3, T4, T5>
     {
-        private readonly PromiseMergeGroup _mergeGroup;
-        private readonly (T1, T2, T3, T4, T5) _value;
         // The generic types can be Promise<T>.ResultContainer, or Promise.ResultContainer.
         // In order to resolve the correct type, we have to store the GetResultContainerDelegates.
         private static Internal.GetResultContainerDelegate<T1> s_getResult1Delegate;
@@ -396,6 +398,9 @@ namespace Proto.Promises
         private static Internal.GetResultContainerDelegate<T3> s_getResult3Delegate;
         private static Internal.GetResultContainerDelegate<T4> s_getResult4Delegate;
         private static Internal.GetResultContainerDelegate<T5> s_getResult5Delegate;
+
+        private readonly PromiseMergeGroup _mergeGroup;
+        private readonly (T1, T2, T3, T4, T5) _value;
 
         [MethodImpl(Internal.InlineOption)]
         internal PromiseMergeResultsGroup(in PromiseMergeGroup mergeGroup, in (T1, T2, T3, T4, T5) value,
@@ -458,11 +463,11 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup._cancelationRef.Dispose();
+                mergeGroup.DisposeCancelationOrThrow();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._groupId))
             {
                 Internal.ThrowInvalidMergeGroup(1);
             }
@@ -488,8 +493,6 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseMergeResultsGroup<T1, T2, T3, T4, T5, T6>
     {
-        private readonly PromiseMergeGroup _mergeGroup;
-        private readonly (T1, T2, T3, T4, T5, T6) _value;
         // The generic types can be Promise<T>.ResultContainer, or Promise.ResultContainer.
         // In order to resolve the correct type, we have to store the GetResultContainerDelegates.
         private static Internal.GetResultContainerDelegate<T1> s_getResult1Delegate;
@@ -498,6 +501,9 @@ namespace Proto.Promises
         private static Internal.GetResultContainerDelegate<T4> s_getResult4Delegate;
         private static Internal.GetResultContainerDelegate<T5> s_getResult5Delegate;
         private static Internal.GetResultContainerDelegate<T6> s_getResult6Delegate;
+
+        private readonly PromiseMergeGroup _mergeGroup;
+        private readonly (T1, T2, T3, T4, T5, T6) _value;
 
         [MethodImpl(Internal.InlineOption)]
         internal PromiseMergeResultsGroup(in PromiseMergeGroup mergeGroup, in (T1, T2, T3, T4, T5, T6) value,
@@ -564,11 +570,11 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup._cancelationRef.Dispose();
+                mergeGroup.DisposeCancelationOrThrow();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._groupId))
             {
                 Internal.ThrowInvalidMergeGroup(1);
             }
@@ -595,8 +601,6 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseMergeResultsGroup<T1, T2, T3, T4, T5, T6, T7>
     {
-        private readonly PromiseMergeGroup _mergeGroup;
-        private readonly (T1, T2, T3, T4, T5, T6, T7) _value;
         // The generic types can be Promise<T>.ResultContainer, or Promise.ResultContainer.
         // In order to resolve the correct type, we have to store the GetResultContainerDelegates.
         private static Internal.GetResultContainerDelegate<T1> s_getResult1Delegate;
@@ -606,6 +610,9 @@ namespace Proto.Promises
         private static Internal.GetResultContainerDelegate<T5> s_getResult5Delegate;
         private static Internal.GetResultContainerDelegate<T6> s_getResult6Delegate;
         private static Internal.GetResultContainerDelegate<T7> s_getResult7Delegate;
+
+        private readonly PromiseMergeGroup _mergeGroup;
+        private readonly (T1, T2, T3, T4, T5, T6, T7) _value;
 
         [MethodImpl(Internal.InlineOption)]
         internal PromiseMergeResultsGroup(in PromiseMergeGroup mergeGroup, in (T1, T2, T3, T4, T5, T6, T7) value,
@@ -637,33 +644,62 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeResultsGroupExtended<(T1, T2, T3, T4, T5, T6, T7), Promise.ResultContainer> Add(Promise promise)
-        {
-            var waitAsyncPromise = WaitAsync();
-            return new PromiseMergeResultsGroupExtended<(T1, T2, T3, T4, T5, T6, T7), Promise.ResultContainer>
+            => new PromiseMergeResultsGroupExtended<(T1, T2, T3, T4, T5, T6, T7), Promise.ResultContainer>
             (
-                new PromiseMergeGroup(_mergeGroup._cancelationRef)
-                    .Add(waitAsyncPromise.AsPromise())
-                    .Add(promise),
-                (waitAsyncPromise._result, Promise.ResultContainer.Resolved),
+                SetupExtension().Add(promise),
+                (_value, Promise.ResultContainer.Resolved),
                 Promise.MergeResultFuncs.GetMergeResultVoid()
             );
-        }
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
         /// </summary>
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeResultsGroupExtended<(T1, T2, T3, T4, T5, T6, T7), Promise<T8>.ResultContainer> Add<T8>(Promise<T8> promise)
-        {
-            var waitAsyncPromise = WaitAsync();
-            return new PromiseMergeResultsGroupExtended<(T1, T2, T3, T4, T5, T6, T7), Promise<T8>.ResultContainer>
+            => new PromiseMergeResultsGroupExtended<(T1, T2, T3, T4, T5, T6, T7), Promise<T8>.ResultContainer>
             (
-                new PromiseMergeGroup(_mergeGroup._cancelationRef)
-                    .Merge(waitAsyncPromise, 0)
-                    .Merge(promise, 1),
-                (waitAsyncPromise._result, promise._result),
+                SetupExtension().Merge(promise, 1),
+                (_value, promise._result),
                 Promise.MergeResultFuncs.GetMergeResult<T8>()
             );
+
+        private PromiseMergeGroup SetupExtension()
+        {
+            var mergeGroup = _mergeGroup;
+            if (mergeGroup._cancelationRef == null)
+            {
+                Internal.ThrowInvalidMergeGroup(2);
+            }
+
+            var group = mergeGroup._group;
+            if (group == null)
+            {
+                // We're wrapping this in another group, so we just increment its SourceId instead of disposing.
+                if (!mergeGroup._cancelationRef.TryIncrementSourceId(mergeGroup._cancelationId))
+                {
+                    Internal.ThrowInvalidMergeGroup(2);
+                }
+                return new PromiseMergeGroup(mergeGroup._cancelationRef, true);
+            }
+
+            if (!group.TryIncrementId(mergeGroup._groupId))
+            {
+                Internal.ThrowInvalidMergeGroup(2);
+            }
+            group.MarkReady(mergeGroup._count);
+            var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
+                Promise.MergeResultFuncs.GetCombinedMerger(
+                    s_getResult1Delegate,
+                    s_getResult2Delegate,
+                    s_getResult3Delegate,
+                    s_getResult4Delegate,
+                    s_getResult5Delegate,
+                    s_getResult6Delegate,
+                    s_getResult7Delegate)
+                );
+            group.HookupNewPromise(group.Id, promise);
+            return PromiseMergeGroup.New(new CancelationToken(mergeGroup._cancelationRef, mergeGroup._cancelationRef.TokenId), out _)
+                .MergeForExtension(promise, promise.Id);
         }
 
         /// <summary>
@@ -680,11 +716,11 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup._cancelationRef.Dispose();
+                mergeGroup.DisposeCancelationOrThrow();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._groupId))
             {
                 Internal.ThrowInvalidMergeGroup(1);
             }
@@ -712,11 +748,12 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseMergeResultsGroupExtended<T1, T2>
     {
-        private readonly PromiseMergeGroup _mergeGroup;
-        private readonly (T1, T2) _value;
         // The generic types can be Promise<T>.ResultContainer, or Promise.ResultContainer.
         // In order to resolve the correct type, we have to store the GetResultContainerDelegates.
         private static Internal.GetResultContainerDelegate<T2> s_getResult2Delegate;
+
+        private readonly PromiseMergeGroup _mergeGroup;
+        private readonly (T1, T2) _value;
 
         [MethodImpl(Internal.InlineOption)]
         internal PromiseMergeResultsGroupExtended(in PromiseMergeGroup mergeGroup, in (T1, T2) value,
@@ -763,11 +800,11 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup._cancelationRef.Dispose();
+                mergeGroup.DisposeCancelationOrThrow();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._groupId))
             {
                 Internal.ThrowInvalidMergeGroup(1);
             }
@@ -790,12 +827,13 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseMergeResultsGroupExtended<T1, T2, T3>
     {
-        private readonly PromiseMergeGroup _mergeGroup;
-        private readonly (T1, T2, T3) _value;
         // The generic types can be Promise<T>.ResultContainer, or Promise.ResultContainer.
         // In order to resolve the correct type, we have to store the GetResultContainerDelegates.
         private static Internal.GetResultContainerDelegate<T2> s_getResult2Delegate;
         private static Internal.GetResultContainerDelegate<T3> s_getResult3Delegate;
+
+        private readonly PromiseMergeGroup _mergeGroup;
+        private readonly (T1, T2, T3) _value;
 
         [MethodImpl(Internal.InlineOption)]
         internal PromiseMergeResultsGroupExtended(in PromiseMergeGroup mergeGroup, in (T1, T2, T3) value,
@@ -846,11 +884,11 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup._cancelationRef.Dispose();
+                mergeGroup.DisposeCancelationOrThrow();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._groupId))
             {
                 Internal.ThrowInvalidMergeGroup(1);
             }
@@ -874,13 +912,14 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseMergeResultsGroupExtended<T1, T2, T3, T4>
     {
-        private readonly PromiseMergeGroup _mergeGroup;
-        private readonly (T1, T2, T3, T4) _value;
         // The generic types can be Promise<T>.ResultContainer, or Promise.ResultContainer.
         // In order to resolve the correct type, we have to store the GetResultContainerDelegates.
         private static Internal.GetResultContainerDelegate<T2> s_getResult2Delegate;
         private static Internal.GetResultContainerDelegate<T3> s_getResult3Delegate;
         private static Internal.GetResultContainerDelegate<T4> s_getResult4Delegate;
+
+        private readonly PromiseMergeGroup _mergeGroup;
+        private readonly (T1, T2, T3, T4) _value;
 
         [MethodImpl(Internal.InlineOption)]
         internal PromiseMergeResultsGroupExtended(in PromiseMergeGroup mergeGroup, in (T1, T2, T3, T4) value,
@@ -935,11 +974,11 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup._cancelationRef.Dispose();
+                mergeGroup.DisposeCancelationOrThrow();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._groupId))
             {
                 Internal.ThrowInvalidMergeGroup(1);
             }
@@ -964,14 +1003,15 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseMergeResultsGroupExtended<T1, T2, T3, T4, T5>
     {
-        private readonly PromiseMergeGroup _mergeGroup;
-        private readonly (T1, T2, T3, T4, T5) _value;
         // The generic types can be Promise<T>.ResultContainer, or Promise.ResultContainer.
         // In order to resolve the correct type, we have to store the GetResultContainerDelegates.
         private static Internal.GetResultContainerDelegate<T2> s_getResult2Delegate;
         private static Internal.GetResultContainerDelegate<T3> s_getResult3Delegate;
         private static Internal.GetResultContainerDelegate<T4> s_getResult4Delegate;
         private static Internal.GetResultContainerDelegate<T5> s_getResult5Delegate;
+
+        private readonly PromiseMergeGroup _mergeGroup;
+        private readonly (T1, T2, T3, T4, T5) _value;
 
         [MethodImpl(Internal.InlineOption)]
         internal PromiseMergeResultsGroupExtended(in PromiseMergeGroup mergeGroup, in (T1, T2, T3, T4, T5) value,
@@ -1030,11 +1070,11 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup._cancelationRef.Dispose();
+                mergeGroup.DisposeCancelationOrThrow();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._groupId))
             {
                 Internal.ThrowInvalidMergeGroup(1);
             }
@@ -1060,8 +1100,6 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseMergeResultsGroupExtended<T1, T2, T3, T4, T5, T6>
     {
-        private readonly PromiseMergeGroup _mergeGroup;
-        private readonly (T1, T2, T3, T4, T5, T6) _value;
         // The generic types can be Promise<T>.ResultContainer, or Promise.ResultContainer.
         // In order to resolve the correct type, we have to store the GetResultContainerDelegates.
         private static Internal.GetResultContainerDelegate<T2> s_getResult2Delegate;
@@ -1069,6 +1107,9 @@ namespace Proto.Promises
         private static Internal.GetResultContainerDelegate<T4> s_getResult4Delegate;
         private static Internal.GetResultContainerDelegate<T5> s_getResult5Delegate;
         private static Internal.GetResultContainerDelegate<T6> s_getResult6Delegate;
+
+        private readonly PromiseMergeGroup _mergeGroup;
+        private readonly (T1, T2, T3, T4, T5, T6) _value;
 
         [MethodImpl(Internal.InlineOption)]
         internal PromiseMergeResultsGroupExtended(in PromiseMergeGroup mergeGroup, in (T1, T2, T3, T4, T5, T6) value,
@@ -1131,11 +1172,11 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup._cancelationRef.Dispose();
+                mergeGroup.DisposeCancelationOrThrow();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._groupId))
             {
                 Internal.ThrowInvalidMergeGroup(1);
             }
@@ -1162,8 +1203,6 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseMergeResultsGroupExtended<T1, T2, T3, T4, T5, T6, T7>
     {
-        private readonly PromiseMergeGroup _mergeGroup;
-        private readonly (T1, T2, T3, T4, T5, T6, T7) _value;
         // The generic types can be Promise<T>.ResultContainer, or Promise.ResultContainer.
         // In order to resolve the correct type, we have to store the GetResultContainerDelegates.
         private static Internal.GetResultContainerDelegate<T2> s_getResult2Delegate;
@@ -1172,6 +1211,9 @@ namespace Proto.Promises
         private static Internal.GetResultContainerDelegate<T5> s_getResult5Delegate;
         private static Internal.GetResultContainerDelegate<T6> s_getResult6Delegate;
         private static Internal.GetResultContainerDelegate<T7> s_getResult7Delegate;
+
+        private readonly PromiseMergeGroup _mergeGroup;
+        private readonly (T1, T2, T3, T4, T5, T6, T7) _value;
 
         [MethodImpl(Internal.InlineOption)]
         internal PromiseMergeResultsGroupExtended(in PromiseMergeGroup mergeGroup, in (T1, T2, T3, T4, T5, T6, T7) value,
@@ -1199,33 +1241,62 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeResultsGroupExtended<(T1, T2, T3, T4, T5, T6, T7), Promise.ResultContainer> Add(Promise promise)
-        {
-            var waitAsyncPromise = WaitAsync();
-            return new PromiseMergeResultsGroupExtended<(T1, T2, T3, T4, T5, T6, T7), Promise.ResultContainer>
+            => new PromiseMergeResultsGroupExtended<(T1, T2, T3, T4, T5, T6, T7), Promise.ResultContainer>
             (
-                new PromiseMergeGroup(_mergeGroup._cancelationRef)
-                    .Add(waitAsyncPromise.AsPromise())
-                    .Add(promise),
-                (waitAsyncPromise._result, Promise.ResultContainer.Resolved),
+                SetupExtension().Add(promise),
+                (_value, Promise.ResultContainer.Resolved),
                 Promise.MergeResultFuncs.GetMergeResultVoid()
             );
-        }
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
         /// </summary>
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeResultsGroupExtended<(T1, T2, T3, T4, T5, T6, T7), Promise<T8>.ResultContainer> Add<T8>(Promise<T8> promise)
-        {
-            var waitAsyncPromise = WaitAsync();
-            return new PromiseMergeResultsGroupExtended<(T1, T2, T3, T4, T5, T6, T7), Promise<T8>.ResultContainer>
+            => new PromiseMergeResultsGroupExtended<(T1, T2, T3, T4, T5, T6, T7), Promise<T8>.ResultContainer>
             (
-                new PromiseMergeGroup(_mergeGroup._cancelationRef)
-                    .Merge(waitAsyncPromise, 0)
-                    .Merge(promise, 1),
-                (waitAsyncPromise._result, promise._result),
+                SetupExtension().Merge(promise, 1),
+                (_value, promise._result),
                 Promise.MergeResultFuncs.GetMergeResult<T8>()
             );
+
+        private PromiseMergeGroup SetupExtension()
+        {
+            var mergeGroup = _mergeGroup;
+            if (mergeGroup._cancelationRef == null)
+            {
+                Internal.ThrowInvalidMergeGroup(2);
+            }
+
+            var group = mergeGroup._group;
+            if (group == null)
+            {
+                // We're wrapping this in another group, so we just increment its SourceId instead of disposing.
+                if (!mergeGroup._cancelationRef.TryIncrementSourceId(mergeGroup._cancelationId))
+                {
+                    Internal.ThrowInvalidMergeGroup(2);
+                }
+                return new PromiseMergeGroup(mergeGroup._cancelationRef, true);
+            }
+
+            if (!group.TryIncrementId(mergeGroup._groupId))
+            {
+                Internal.ThrowInvalidMergeGroup(2);
+            }
+            group.MarkReady(mergeGroup._count);
+            var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
+                Promise.MergeResultFuncs.GetCombinedMerger(
+                    Promise.MergeResultFuncs.GetMergeValue<T1>(),
+                    s_getResult2Delegate,
+                    s_getResult3Delegate,
+                    s_getResult4Delegate,
+                    s_getResult5Delegate,
+                    s_getResult6Delegate,
+                    s_getResult7Delegate)
+                );
+            group.HookupNewPromise(group.Id, promise);
+            return PromiseMergeGroup.New(new CancelationToken(mergeGroup._cancelationRef, mergeGroup._cancelationRef.TokenId), out _)
+                .MergeForExtension(promise, promise.Id);
         }
 
         /// <summary>
@@ -1242,11 +1313,11 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup._cancelationRef.Dispose();
+                mergeGroup.DisposeCancelationOrThrow();
                 return Promise.Resolved(_value);
             }
 
-            if (!group.TryIncrementId(mergeGroup._id))
+            if (!group.TryIncrementId(mergeGroup._groupId))
             {
                 Internal.ThrowInvalidMergeGroup(1);
             }

@@ -156,7 +156,7 @@ namespace ProtoPromiseTests
 #endif
             }
 
-#if PROMISE_DEBUG
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             Internal.AssertAllObjectsReleased();
 #endif
 
@@ -258,7 +258,7 @@ namespace ProtoPromiseTests
             throw new Exception();
         }
 
-        public static Action<Promise.Deferred, CancelationSource> GetTryCompleterVoid(CompleteType completeType, string rejectValue)
+        public static Action<Promise.Deferred, CancelationSource> GetTryCompleterVoid<TReject>(CompleteType completeType, TReject rejectValue)
         {
             switch (completeType)
             {
@@ -274,7 +274,7 @@ namespace ProtoPromiseTests
             throw new Exception();
         }
 
-        public static Action<Promise<T>.Deferred, CancelationSource> GetTryCompleterT<T>(CompleteType completeType, T resolveValue, string rejectValue)
+        public static Action<Promise<T>.Deferred, CancelationSource> GetTryCompleterT<T, TReject>(CompleteType completeType, T resolveValue, TReject rejectValue)
         {
             switch (completeType)
             {
@@ -366,6 +366,20 @@ namespace ProtoPromiseTests
                     return Promise<T>.Canceled();
                 }
             }
+        }
+
+        public static Promise BuildPromise<TReject>(CompleteType completeType, bool isAlreadyComplete, TReject reason, out Action completer)
+        {
+            var promise = BuildPromise(completeType, isAlreadyComplete, reason, out var deferred, out var cancelationSource);
+            completer = () => GetTryCompleterVoid(completeType, reason).Invoke(deferred, cancelationSource);
+            return promise;
+        }
+
+        public static Promise<T> BuildPromise<T, TReject>(CompleteType completeType, bool isAlreadyComplete, T value, TReject reason, out Action completer)
+        {
+            var promise = BuildPromise(completeType, isAlreadyComplete, value, reason, out var deferred, out var cancelationSource);
+            completer = () => GetTryCompleterT(completeType, value, reason).Invoke(deferred, cancelationSource);
+            return promise;
         }
 
         public static Promise ThenDuplicate(this Promise promise, CancelationToken cancelationToken = default(CancelationToken))

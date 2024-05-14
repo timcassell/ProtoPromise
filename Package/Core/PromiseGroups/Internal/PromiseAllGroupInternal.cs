@@ -43,9 +43,6 @@ namespace Proto.Promises
                 internal override void MaybeDispose()
                 {
                     Dispose();
-                    _exceptions = null;
-                    _cancelationRef.Dispose();
-                    _cancelationRef = null;
                     ObjectPool.MaybeRepool(this);
                 }
 
@@ -68,9 +65,8 @@ namespace Proto.Promises
 
                 private void Complete(Promise.State state)
                 {
-                    var passthroughs = _completedPassThroughs;
-                    _completedPassThroughs = default;
-                    do
+                    var passthroughs = _completedPassThroughs.TakeAndClear();
+                    while (passthroughs.IsNotEmpty)
                     {
                         var passthrough = passthroughs.Pop();
                         var owner = passthrough.Owner;
@@ -80,7 +76,7 @@ namespace Proto.Promises
                             RecordException(owner._rejectContainer.GetValueAsException());
                         }
                         passthrough.Dispose();
-                    } while (passthroughs.IsNotEmpty);
+                    }
 
                     if (_exceptions != null)
                     {
@@ -147,15 +143,14 @@ namespace Proto.Promises
                         _exceptions = null;
                     }
 
-                    var passthroughs = _completedPassThroughs;
-                    _completedPassThroughs = default;
-                    do
+                    var passthroughs = _completedPassThroughs.TakeAndClear();
+                    while (passthroughs.IsNotEmpty)
                     {
                         var passthrough = passthroughs.Pop();
                         var owner = passthrough.Owner;
                         _result[passthrough.Index] = new Promise.ResultContainer(owner._rejectContainer, owner.State);
                         passthrough.Dispose();
-                    } while (passthroughs.IsNotEmpty);
+                    }
 
                     HandleNextInternal(state);
                 }
@@ -215,15 +210,14 @@ namespace Proto.Promises
                         _exceptions = null;
                     }
 
-                    var passthroughs = _completedPassThroughs;
-                    _completedPassThroughs = default;
-                    do
+                    var passthroughs = _completedPassThroughs.TakeAndClear();
+                    while (passthroughs.IsNotEmpty)
                     {
                         var passthrough = passthroughs.Pop();
                         var owner = passthrough.Owner;
                         _result[passthrough.Index] = new Promise<T>.ResultContainer(owner.GetResult<T>(), owner._rejectContainer, owner.State);
                         passthrough.Dispose();
-                    } while (passthroughs.IsNotEmpty);
+                    }
 
                     HandleNextInternal(state);
                 }

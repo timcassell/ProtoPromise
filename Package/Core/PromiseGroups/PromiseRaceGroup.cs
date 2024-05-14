@@ -20,35 +20,20 @@ namespace Proto.Promises
     {
         private readonly Internal.CancelationRef _cancelationRef;
         private readonly Internal.PromiseRefBase.RacePromiseGroup<Internal.VoidResult> _group;
-        internal readonly uint _count;
-        private readonly short _id;
+        private readonly int _cancelationId;
+        private readonly uint _count;
+        private readonly short _groupId;
         private readonly bool _cancelOnNonResolved;
         private readonly bool _hasAtLeastOnePromise;
 
-        private PromiseRaceGroup(Internal.CancelationRef cancelationRef, bool cancelOnNonResolved)
-        {
-            _cancelationRef = cancelationRef;
-            _count = 0;
-            _cancelOnNonResolved = cancelOnNonResolved;
-            _hasAtLeastOnePromise = false;
-#if PROMISE_DEBUG
-            // We always create the promise backing reference in DEBUG mode to ensure the group is used properly.
-            _group = Internal.GetOrCreateRacePromiseGroup<Internal.VoidResult>(cancelationRef, cancelOnNonResolved);
-            _id = _group.Id;
-#else
-            // In RELEASE mode, we only create the backing reference when it's needed.
-            _group = null;
-            _id = 0;
-#endif
-        }
-
         [MethodImpl(Internal.InlineOption)]
-        private PromiseRaceGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.RacePromiseGroup<Internal.VoidResult> group, uint count, short id, bool cancelOnNonResolved)
+        private PromiseRaceGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.RacePromiseGroup<Internal.VoidResult> group, uint count, short groupId, bool cancelOnNonResolved)
         {
             _cancelationRef = cancelationRef;
             _group = group;
+            _cancelationId = cancelationRef.SourceId;
             _count = count;
-            _id = id;
+            _groupId = groupId;
             _cancelOnNonResolved = cancelOnNonResolved;
             _hasAtLeastOnePromise = true;
         }
@@ -74,7 +59,7 @@ namespace Proto.Promises
             var cancelationRef = Internal.CancelationRef.GetOrCreate();
             cancelationRef.MaybeLinkToken(sourceCancelationToken);
             groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseRaceGroup(cancelationRef, cancelOnNonResolved);
+            return new PromiseRaceGroup(cancelationRef, null, 0, 0, cancelOnNonResolved);
         }
 
         /// <summary>
@@ -94,7 +79,7 @@ namespace Proto.Promises
 
             if (group != null)
             {
-                if (!group.TryIncrementId(_id))
+                if (!group.TryIncrementId(_groupId))
                 {
                     Internal.ThrowInvalidRaceGroup(1);
                 }
@@ -109,6 +94,11 @@ namespace Proto.Promises
                     group.SetResolved();
                 }
                 return new PromiseRaceGroup(cancelationRef, group, count, group.Id, cancelOnNonResolved);
+            }
+
+            if (!cancelationRef.TryIncrementSourceId(_cancelationId))
+            {
+                Internal.ThrowInvalidAllGroup(1);
             }
 
             if (promise._ref != null)
@@ -132,7 +122,7 @@ namespace Proto.Promises
                 return new PromiseRaceGroup(cancelationRef, group, 0, group.Id, false);
             }
 
-            return new PromiseRaceGroup(cancelationRef, group, 0, _id, false);
+            return new PromiseRaceGroup(cancelationRef, group, 0, _groupId, false);
         }
 
         /// <summary>
@@ -157,11 +147,14 @@ namespace Proto.Promises
 
             if (group == null)
             {
-                cancelationRef.Dispose();
+                if (!cancelationRef.TryDispose(_cancelationId))
+                {
+                    Internal.ThrowInvalidAllGroup(1);
+                }
                 return Promise.Resolved();
             }
 
-            if (!group.TryIncrementId(_id))
+            if (!group.TryIncrementId(_groupId))
             {
                 Internal.ThrowInvalidRaceGroup(1);
             }
@@ -180,38 +173,22 @@ namespace Proto.Promises
     {
         private readonly Internal.CancelationRef _cancelationRef;
         private readonly Internal.PromiseRefBase.RacePromiseGroup<T> _group;
-        private readonly T _result;
-        internal readonly uint _count;
-        private readonly short _id;
+        private readonly int _cancelationId;
+        private readonly uint _count;
+        private readonly short _groupId;
         private readonly bool _cancelOnNonResolved;
         private readonly bool _hasAtLeastOnePromise;
-
-        private PromiseRaceGroup(Internal.CancelationRef cancelationRef, bool cancelOnNonResolved)
-        {
-            _cancelationRef = cancelationRef;
-            _result = default;
-            _count = 0;
-            _cancelOnNonResolved = cancelOnNonResolved;
-            _hasAtLeastOnePromise = false;
-#if PROMISE_DEBUG
-            // We always create the promise backing reference in DEBUG mode to ensure the group is used properly.
-            _group = Internal.GetOrCreateRacePromiseGroup<T>(cancelationRef, cancelOnNonResolved);
-            _id = _group.Id;
-#else
-            // In RELEASE mode, we only create the backing reference when it's needed.
-            _group = null;
-            _id = 0;
-#endif
-        }
+        private readonly T _result;
 
         [MethodImpl(Internal.InlineOption)]
-        private PromiseRaceGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.RacePromiseGroup<T> group, in T result, uint count, short id, bool cancelOnNonResolved)
+        private PromiseRaceGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.RacePromiseGroup<T> group, in T result, uint count, short groupId, bool cancelOnNonResolved)
         {
             _cancelationRef = cancelationRef;
             _group = group;
+            _cancelationId = cancelationRef.SourceId;
             _result = result;
             _count = count;
-            _id = id;
+            _groupId = groupId;
             _cancelOnNonResolved = cancelOnNonResolved;
             _hasAtLeastOnePromise = true;
         }
@@ -237,7 +214,7 @@ namespace Proto.Promises
             var cancelationRef = Internal.CancelationRef.GetOrCreate();
             cancelationRef.MaybeLinkToken(sourceCancelationToken);
             groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseRaceGroup<T>(cancelationRef, cancelOnNonResolved);
+            return new PromiseRaceGroup<T>(cancelationRef, null, default, 0, 0, cancelOnNonResolved);
         }
 
         /// <summary>
@@ -257,7 +234,7 @@ namespace Proto.Promises
 
             if (group != null)
             {
-                if (!group.TryIncrementId(_id))
+                if (!group.TryIncrementId(_groupId))
                 {
                     Internal.ThrowInvalidRaceGroup(1);
                 }
@@ -272,6 +249,11 @@ namespace Proto.Promises
                     group.SetResolved();
                 }
                 return new PromiseRaceGroup<T>(cancelationRef, group, default, count, group.Id, cancelOnNonResolved);
+            }
+
+            if (!cancelationRef.TryIncrementSourceId(_cancelationId))
+            {
+                Internal.ThrowInvalidRaceGroup(1);
             }
 
             if (promise._ref != null)
@@ -295,7 +277,7 @@ namespace Proto.Promises
                 return new PromiseRaceGroup<T>(cancelationRef, group, default, 0, group.Id, false);
             }
 
-            return new PromiseRaceGroup<T>(cancelationRef, group, promise._result, 0, _id, false);
+            return new PromiseRaceGroup<T>(cancelationRef, group, promise._result, 0, _groupId, false);
         }
 
         /// <summary>
@@ -320,11 +302,14 @@ namespace Proto.Promises
 
             if (group == null)
             {
-                cancelationRef.Dispose();
+                if (!cancelationRef.TryDispose(_cancelationId))
+                {
+                    Internal.ThrowInvalidRaceGroup(1);
+                }
                 return Promise.Resolved(_result);
             }
 
-            if (!group.TryIncrementId(_id))
+            if (!group.TryIncrementId(_groupId))
             {
                 Internal.ThrowInvalidRaceGroup(1);
             }
