@@ -33,10 +33,9 @@ namespace Proto.Promises
                 internal static AllPromiseGroup<T> GetOrCreate(CancelationRef cancelationSource, IList<T> value)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
                     promise._result = value;
                     promise._completeState = Promise.State.Resolved; // Default to Resolved state. If the promise is actually canceled or rejected, the state will be overwritten.
-                    promise._cancelationRef = cancelationSource;
+                    promise.Reset(cancelationSource);
                     return promise;
                 }
 
@@ -104,10 +103,9 @@ namespace Proto.Promises
                 internal static AllPromiseResultsGroupVoid GetOrCreate(CancelationRef cancelationSource, IList<Promise.ResultContainer> value)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
                     promise._result = value;
                     promise._completeState = Promise.State.Resolved; // Default to Resolved state. If the promise is actually canceled or rejected, the state will be overwritten.
-                    promise._cancelationRef = cancelationSource;
+                    promise.Reset(cancelationSource);
                     return promise;
                 }
 
@@ -171,10 +169,9 @@ namespace Proto.Promises
                 internal static AllPromiseResultsGroup<T> GetOrCreate(CancelationRef cancelationSource, IList<Promise<T>.ResultContainer> value)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
                     promise._result = value;
                     promise._completeState = Promise.State.Resolved; // Default to Resolved state. If the promise is actually canceled or rejected, the state will be overwritten.
-                    promise._cancelationRef = cancelationSource;
+                    promise.Reset(cancelationSource);
                     return promise;
                 }
 

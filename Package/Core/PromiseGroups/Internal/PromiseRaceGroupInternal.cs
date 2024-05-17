@@ -70,10 +70,9 @@ namespace Proto.Promises
                 internal static RacePromiseGroup<TResult> GetOrCreate(CancelationRef cancelationSource, bool cancelOnNonResolved)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
                     promise._completeState = Promise.State.Canceled; // Default to Canceled state. If the promise is actually resolved or rejected, the state will be overwritten.
-                    promise._cancelationRef = cancelationSource;
                     promise._cancelOnNonResolved = cancelOnNonResolved;
+                    promise.Reset(cancelationSource);
                     return promise;
                 }
 
@@ -133,10 +132,9 @@ namespace Proto.Promises
                 internal static RacePromiseWithIndexGroupVoid GetOrCreate(CancelationRef cancelationSource, bool cancelOnNonResolved)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
                     promise._completeState = Promise.State.Canceled; // Default to Canceled state. If the promise is actually resolved or rejected, the state will be overwritten.
-                    promise._cancelationRef = cancelationSource;
                     promise._cancelOnNonResolved = cancelOnNonResolved;
+                    promise.Reset(cancelationSource);
                     return promise;
                 }
 
@@ -196,10 +194,9 @@ namespace Proto.Promises
                 internal static RacePromiseWithIndexGroup<TResult> GetOrCreate(CancelationRef cancelationSource, bool cancelOnNonResolved)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
                     promise._completeState = Promise.State.Canceled; // Default to Canceled state. If the promise is actually resolved or rejected, the state will be overwritten.
-                    promise._cancelationRef = cancelationSource;
                     promise._cancelOnNonResolved = cancelOnNonResolved;
+                    promise.Reset(cancelationSource);
                     return promise;
                 }
 

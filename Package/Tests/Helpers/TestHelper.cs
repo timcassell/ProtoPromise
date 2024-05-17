@@ -54,6 +54,13 @@ namespace ProtoPromiseTests
         Both
     }
 
+    public enum CancelationType
+    {
+        None,
+        Deferred,
+        Immediate
+    }
+
     public delegate void TestAction<T>(ref T value);
     public delegate void TestAction<T1, T2>(ref T1 value1, T2 value2);
 
@@ -226,7 +233,7 @@ namespace ProtoPromiseTests
             return a + (b - a) * t;
         }
 
-        public static Action<Promise.Deferred, CancelationSource> GetCompleterVoid(CompleteType completeType, string rejectValue)
+        public static Action<Promise.Deferred, CancelationSource> GetCompleterVoid<TReject>(CompleteType completeType, TReject rejectValue)
         {
             switch (completeType)
             {
@@ -242,7 +249,7 @@ namespace ProtoPromiseTests
             throw new Exception();
         }
 
-        public static Action<Promise<T>.Deferred, CancelationSource> GetCompleterT<T>(CompleteType completeType, T resolveValue, string rejectValue)
+        public static Action<Promise<T>.Deferred, CancelationSource> GetCompleterT<T, TReject>(CompleteType completeType, T resolveValue, TReject rejectValue)
         {
             switch (completeType)
             {
@@ -368,17 +375,53 @@ namespace ProtoPromiseTests
             }
         }
 
-        public static Promise BuildPromise<TReject>(CompleteType completeType, bool isAlreadyComplete, TReject reason, out Action completer)
+        public static Promise BuildPromise<TReject>(CompleteType completeType, bool isAlreadyComplete, TReject reason, out Action tryCompleter)
         {
             var promise = BuildPromise(completeType, isAlreadyComplete, reason, out var deferred, out var cancelationSource);
-            completer = () => GetTryCompleterVoid(completeType, reason).Invoke(deferred, cancelationSource);
+            tryCompleter = () => GetTryCompleterVoid(completeType, reason).Invoke(deferred, cancelationSource);
             return promise;
         }
 
-        public static Promise<T> BuildPromise<T, TReject>(CompleteType completeType, bool isAlreadyComplete, T value, TReject reason, out Action completer)
+        public static Promise<T> BuildPromise<T, TReject>(CompleteType completeType, bool isAlreadyComplete, T value, TReject reason, out Action tryCompleter)
         {
             var promise = BuildPromise(completeType, isAlreadyComplete, value, reason, out var deferred, out var cancelationSource);
-            completer = () => GetTryCompleterT(completeType, value, reason).Invoke(deferred, cancelationSource);
+            tryCompleter = () => GetTryCompleterT(completeType, value, reason).Invoke(deferred, cancelationSource);
+            return promise;
+        }
+
+        public static Promise BuildPromise<TReject>(CompleteType completeType, bool isAlreadyComplete, TReject reason, CancelationToken cancelationToken, out Action tryCompleter)
+        {
+            if (cancelationToken.IsCancelationRequested)
+            {
+                tryCompleter = () => { };
+                return Promise.Canceled();
+            }
+
+            var promise = BuildPromise(completeType, isAlreadyComplete, reason, out var deferred, out var cancelationSource);
+            cancelationToken.TryRegister(() =>
+            {
+                deferred.TryCancel();
+                cancelationSource.TryCancel();
+            }, out _);
+            tryCompleter = () => GetTryCompleterVoid(completeType, reason).Invoke(deferred, cancelationSource);
+            return promise;
+        }
+
+        public static Promise<T> BuildPromise<T, TReject>(CompleteType completeType, bool isAlreadyComplete, T value, TReject reason, CancelationToken cancelationToken, out Action tryCompleter)
+        {
+            if (cancelationToken.IsCancelationRequested)
+            {
+                tryCompleter = () => { };
+                return Promise<T>.Canceled();
+            }
+
+            var promise = BuildPromise(completeType, isAlreadyComplete, value, reason, out var deferred, out var cancelationSource);
+            cancelationToken.TryRegister(() =>
+            {
+                deferred.TryCancel();
+                cancelationSource.TryCancel();
+            }, out _);
+            tryCompleter = () => GetTryCompleterT(completeType, value, reason).Invoke(deferred, cancelationSource);
             return promise;
         }
 

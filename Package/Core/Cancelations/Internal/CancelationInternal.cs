@@ -491,17 +491,13 @@ namespace Proto.Promises
             internal bool TryDispose(int sourceId)
             {
                 _smallFields._locker.Enter();
-                if (sourceId != SourceId)
+                if (!TryIncrementSourceId(sourceId))
                 {
                     _smallFields._locker.Exit();
                     return false;
                 }
 
                 ThrowIfInPool(this);
-                unchecked
-                {
-                    ++_sourceId;
-                }
                 if (_state == State.Pending)
                 {
                     _state = State.Disposed;
@@ -638,7 +634,14 @@ namespace Proto.Promises
 
             internal void Cancel()
             {
-                TrySetCanceled(SourceId);
+                // Same as TrySetCanceled, but without checking the SourceId.
+                _smallFields._locker.Enter();
+                if (_state != State.Pending)
+                {
+                    _smallFields._locker.Exit();
+                    return;
+                }
+                InvokeCallbacksAlreadyLocked();
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE

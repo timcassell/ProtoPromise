@@ -376,7 +376,8 @@ namespace Proto.Promises
             partial class PromiseGroupBase<TResult> : PromiseSingleAwait<TResult>
             {
                 internal List<Exception> _exceptions;
-                protected CancelationRef _cancelationRef; // Store the reference directly instead of CancelationSource struct to reduce memory.
+                private CancelationRef _cancelationRef; // Store the reference directly instead of CancelationSource struct to reduce memory.
+                private int _cancelationId;
                 private int _waitCount; // int for Interlocked since it doesn't support uint on older runtimes.
                 protected Promise.State _completeState;
             }

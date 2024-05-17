@@ -634,7 +634,8 @@ namespace Proto.Promises
         private PromiseMergeGroup SetupExtension()
         {
             var mergeGroup = _mergeGroup;
-            if (mergeGroup._cancelationRef == null)
+            // We're wrapping this in another group, so we just increment its SourceId instead of disposing.
+            if (mergeGroup._cancelationRef == null || !mergeGroup._cancelationRef.TryIncrementSourceId(mergeGroup._cancelationId))
             {
                 Internal.ThrowInvalidMergeGroup(2);
             }
@@ -642,11 +643,6 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                // We're wrapping this in another group, so we just increment its SourceId instead of disposing.
-                if (!mergeGroup._cancelationRef.TryIncrementSourceId(mergeGroup._cancelationId))
-                {
-                    Internal.ThrowInvalidMergeGroup(2);
-                }
                 return new PromiseMergeGroup(mergeGroup._cancelationRef, true);
             }
 
@@ -654,10 +650,12 @@ namespace Proto.Promises
             {
                 Internal.ThrowInvalidMergeGroup(2);
             }
+
             group.MarkReady(mergeGroup._count);
             var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>(), mergeGroup._isExtended);
             group.HookupNewPromise(group.Id, promise);
-            return PromiseMergeGroup.New(new CancelationToken(mergeGroup._cancelationRef, mergeGroup._cancelationRef.TokenId), out _)
+
+            return new PromiseMergeGroup(mergeGroup._cancelationRef, true)
                 .MergeForExtension(promise, promise.Id);
         }
 

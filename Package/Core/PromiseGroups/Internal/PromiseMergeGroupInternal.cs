@@ -5,7 +5,6 @@
 #endif
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -91,11 +90,19 @@ namespace Proto.Promises
 
                 internal override void Handle(PromiseRefBase handler, Promise.State state) { throw new System.InvalidOperationException(); }
 
+                [MethodImpl(InlineOption)]
+                protected void Reset(CancelationRef cancelationSource)
+                {
+                    _cancelationRef = cancelationSource;
+                    _cancelationId = cancelationSource.SourceId;
+                    Reset();
+                }
+
                 new protected void Dispose()
                 {
                     ValidateNoPending();
                     base.Dispose();
-                    _cancelationRef.TryDispose(_cancelationRef.SourceId);
+                    _cancelationRef.TryDispose(_cancelationId);
                     _cancelationRef = null;
                 }
 
@@ -223,9 +230,8 @@ namespace Proto.Promises
                 internal static MergePromiseGroupVoid GetOrCreate(CancelationRef cancelationSource)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
                     promise._completeState = Promise.State.Resolved; // Default to Resolved state. If the promise is actually canceled or rejected, the state will be overwritten.
-                    promise._cancelationRef = cancelationSource;
+                    promise.Reset(cancelationSource);
                     return promise;
                 }
 
@@ -241,11 +247,11 @@ namespace Proto.Promises
                     RemovePromiseAndSetCompletionState(handler, state);
                     if (state != Promise.State.Resolved)
                     {
+                        CancelGroup();
                         if (state == Promise.State.Rejected)
                         {
                             RecordException(handler._rejectContainer.GetValueAsException());
                         }
-                        CancelGroup();
                     }
                     handler.MaybeDispose();
                     if (TryComplete())
