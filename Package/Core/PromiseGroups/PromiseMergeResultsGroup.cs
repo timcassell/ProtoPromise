@@ -52,7 +52,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeResultsGroup<Promise.ResultContainer> Add(Promise promise)
             => new PromiseMergeResultsGroup<Promise.ResultContainer>(
-                _mergeGroup.Add(promise),
+                _mergeGroup.Merge(promise, 0),
                 Promise.ResultContainer.Resolved,
                 Promise.MergeResultFuncs.GetMergeResultVoid());
 
@@ -96,7 +96,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeResultsGroup<T1, Promise.ResultContainer> Add(Promise promise)
             => new PromiseMergeResultsGroup<T1, Promise.ResultContainer>(
-                _mergeGroup.Add(promise),
+                _mergeGroup.Merge(promise, 1),
                 (_value, Promise.ResultContainer.Resolved),
                 s_getResult1Delegate,
                 Promise.MergeResultFuncs.GetMergeResultVoid());
@@ -146,7 +146,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeResultsGroup<T1, T2, Promise.ResultContainer> Add(Promise promise)
             => new PromiseMergeResultsGroup<T1, T2, Promise.ResultContainer>(
-                _mergeGroup.Add(promise),
+                _mergeGroup.Merge(promise, 2),
                 (_value.Item1, _value.Item2, Promise.ResultContainer.Resolved),
                 s_getResult1Delegate,
                 s_getResult2Delegate,
@@ -190,7 +190,8 @@ namespace Proto.Promises
             var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     s_getResult1Delegate,
-                    s_getResult2Delegate)
+                    s_getResult2Delegate),
+                false
                 );
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2)>(promise, promise.Id);
@@ -233,7 +234,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeResultsGroup<T1, T2, T3, Promise.ResultContainer> Add(Promise promise)
             => new PromiseMergeResultsGroup<T1, T2, T3, Promise.ResultContainer>(
-                _mergeGroup.Add(promise),
+                _mergeGroup.Merge(promise, 3),
                 (_value.Item1, _value.Item2, _value.Item3, Promise.ResultContainer.Resolved),
                 s_getResult1Delegate,
                 s_getResult2Delegate,
@@ -280,7 +281,8 @@ namespace Proto.Promises
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     s_getResult1Delegate,
                     s_getResult2Delegate,
-                    s_getResult3Delegate)
+                    s_getResult3Delegate),
+                false
                 );
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2, T3)>(promise, promise.Id);
@@ -326,7 +328,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeResultsGroup<T1, T2, T3, T4, Promise.ResultContainer> Add(Promise promise)
             => new PromiseMergeResultsGroup<T1, T2, T3, T4, Promise.ResultContainer>(
-                _mergeGroup.Add(promise),
+                _mergeGroup.Merge(promise, 4),
                 (_value.Item1, _value.Item2, _value.Item3, _value.Item4, Promise.ResultContainer.Resolved),
                 s_getResult1Delegate,
                 s_getResult2Delegate,
@@ -376,7 +378,8 @@ namespace Proto.Promises
                     s_getResult1Delegate,
                     s_getResult2Delegate,
                     s_getResult3Delegate,
-                    s_getResult4Delegate)
+                    s_getResult4Delegate),
+                false
                 );
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2, T3, T4)>(promise, promise.Id);
@@ -425,7 +428,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeResultsGroup<T1, T2, T3, T4, T5, Promise.ResultContainer> Add(Promise promise)
             => new PromiseMergeResultsGroup<T1, T2, T3, T4, T5, Promise.ResultContainer>(
-                _mergeGroup.Add(promise),
+                _mergeGroup.Merge(promise, 5),
                 (_value.Item1, _value.Item2, _value.Item3, _value.Item4, _value.Item5, Promise.ResultContainer.Resolved),
                 s_getResult1Delegate,
                 s_getResult2Delegate,
@@ -478,7 +481,8 @@ namespace Proto.Promises
                     s_getResult2Delegate,
                     s_getResult3Delegate,
                     s_getResult4Delegate,
-                    s_getResult5Delegate)
+                    s_getResult5Delegate),
+                false
                 );
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2, T3, T4, T5)>(promise, promise.Id);
@@ -530,7 +534,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeResultsGroup<T1, T2, T3, T4, T5, T6, Promise.ResultContainer> Add(Promise promise)
             => new PromiseMergeResultsGroup<T1, T2, T3, T4, T5, T6, Promise.ResultContainer>(
-                _mergeGroup.Add(promise),
+                _mergeGroup.Merge(promise, 6),
                 (_value.Item1, _value.Item2, _value.Item3, _value.Item4, _value.Item5, _value.Item6, Promise.ResultContainer.Resolved),
                 s_getResult1Delegate,
                 s_getResult2Delegate,
@@ -586,7 +590,8 @@ namespace Proto.Promises
                     s_getResult3Delegate,
                     s_getResult4Delegate,
                     s_getResult5Delegate,
-                    s_getResult6Delegate)
+                    s_getResult6Delegate),
+                false
                 );
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2, T3, T4, T5, T6)>(promise, promise.Id);
@@ -646,7 +651,7 @@ namespace Proto.Promises
         public PromiseMergeResultsGroupExtended<(T1, T2, T3, T4, T5, T6, T7), Promise.ResultContainer> Add(Promise promise)
             => new PromiseMergeResultsGroupExtended<(T1, T2, T3, T4, T5, T6, T7), Promise.ResultContainer>
             (
-                SetupExtension().Add(promise),
+                SetupExtension().Merge(promise, 1),
                 (_value, Promise.ResultContainer.Resolved),
                 Promise.MergeResultFuncs.GetMergeResultVoid()
             );
@@ -692,7 +697,8 @@ namespace Proto.Promises
                     s_getResult4Delegate,
                     s_getResult5Delegate,
                     s_getResult6Delegate,
-                    s_getResult7Delegate)
+                    s_getResult7Delegate),
+                false
                 );
             group.HookupNewPromise(group.Id, promise);
 
@@ -731,7 +737,8 @@ namespace Proto.Promises
                     s_getResult4Delegate,
                     s_getResult5Delegate,
                     s_getResult6Delegate,
-                    s_getResult7Delegate)
+                    s_getResult7Delegate),
+                false
                 );
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2, T3, T4, T5, T6, T7)>(promise, promise.Id);
@@ -768,7 +775,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeResultsGroupExtended<T1, T2, Promise.ResultContainer> Add(Promise promise)
             => new PromiseMergeResultsGroupExtended<T1, T2, Promise.ResultContainer>(
-                _mergeGroup.Add(promise),
+                _mergeGroup.Merge(promise, 2),
                 (_value.Item1, _value.Item2, Promise.ResultContainer.Resolved),
                 s_getResult2Delegate,
                 Promise.MergeResultFuncs.GetMergeResultVoid());
@@ -810,7 +817,8 @@ namespace Proto.Promises
             var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     Promise.MergeResultFuncs.GetMergeValue<T1>(),
-                    s_getResult2Delegate)
+                    s_getResult2Delegate),
+                true
                 );
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2)>(promise, promise.Id);
@@ -850,7 +858,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeResultsGroupExtended<T1, T2, T3, Promise.ResultContainer> Add(Promise promise)
             => new PromiseMergeResultsGroupExtended<T1, T2, T3, Promise.ResultContainer>(
-                _mergeGroup.Add(promise),
+                _mergeGroup.Merge(promise, 3),
                 (_value.Item1, _value.Item2, _value.Item3, Promise.ResultContainer.Resolved),
                 s_getResult2Delegate,
                 s_getResult3Delegate,
@@ -895,7 +903,8 @@ namespace Proto.Promises
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     Promise.MergeResultFuncs.GetMergeValue<T1>(),
                     s_getResult2Delegate,
-                    s_getResult3Delegate)
+                    s_getResult3Delegate),
+                true
                 );
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2, T3)>(promise, promise.Id);
@@ -938,7 +947,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeResultsGroupExtended<T1, T2, T3, T4, Promise.ResultContainer> Add(Promise promise)
             => new PromiseMergeResultsGroupExtended<T1, T2, T3, T4, Promise.ResultContainer>(
-                _mergeGroup.Add(promise),
+                _mergeGroup.Merge(promise, 4),
                 (_value.Item1, _value.Item2, _value.Item3, _value.Item4, Promise.ResultContainer.Resolved),
                 s_getResult2Delegate,
                 s_getResult3Delegate,
@@ -986,7 +995,8 @@ namespace Proto.Promises
                     Promise.MergeResultFuncs.GetMergeValue<T1>(),
                     s_getResult2Delegate,
                     s_getResult3Delegate,
-                    s_getResult4Delegate)
+                    s_getResult4Delegate),
+                true
                 );
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2, T3, T4)>(promise, promise.Id);
@@ -1032,7 +1042,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeResultsGroupExtended<T1, T2, T3, T4, T5, Promise.ResultContainer> Add(Promise promise)
             => new PromiseMergeResultsGroupExtended<T1, T2, T3, T4, T5, Promise.ResultContainer>(
-                _mergeGroup.Add(promise),
+                _mergeGroup.Merge(promise, 5),
                 (_value.Item1, _value.Item2, _value.Item3, _value.Item4, _value.Item5, Promise.ResultContainer.Resolved),
                 s_getResult2Delegate,
                 s_getResult3Delegate,
@@ -1083,7 +1093,8 @@ namespace Proto.Promises
                     s_getResult2Delegate,
                     s_getResult3Delegate,
                     s_getResult4Delegate,
-                    s_getResult5Delegate)
+                    s_getResult5Delegate),
+                true
                 );
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2, T3, T4, T5)>(promise, promise.Id);
@@ -1132,7 +1143,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseMergeResultsGroupExtended<T1, T2, T3, T4, T5, T6, Promise.ResultContainer> Add(Promise promise)
             => new PromiseMergeResultsGroupExtended<T1, T2, T3, T4, T5, T6, Promise.ResultContainer>(
-                _mergeGroup.Add(promise),
+                _mergeGroup.Merge(promise, 6),
                 (_value.Item1, _value.Item2, _value.Item3, _value.Item4, _value.Item5, _value.Item6, Promise.ResultContainer.Resolved),
                 s_getResult2Delegate,
                 s_getResult3Delegate,
@@ -1186,7 +1197,8 @@ namespace Proto.Promises
                     s_getResult3Delegate,
                     s_getResult4Delegate,
                     s_getResult5Delegate,
-                    s_getResult6Delegate)
+                    s_getResult6Delegate),
+                true
                 );
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2, T3, T4, T5, T6)>(promise, promise.Id);
@@ -1241,7 +1253,7 @@ namespace Proto.Promises
         public PromiseMergeResultsGroupExtended<(T1, T2, T3, T4, T5, T6, T7), Promise.ResultContainer> Add(Promise promise)
             => new PromiseMergeResultsGroupExtended<(T1, T2, T3, T4, T5, T6, T7), Promise.ResultContainer>
             (
-                SetupExtension().Add(promise),
+                SetupExtension().Merge(promise, 1),
                 (_value, Promise.ResultContainer.Resolved),
                 Promise.MergeResultFuncs.GetMergeResultVoid()
             );
@@ -1287,7 +1299,8 @@ namespace Proto.Promises
                     s_getResult4Delegate,
                     s_getResult5Delegate,
                     s_getResult6Delegate,
-                    s_getResult7Delegate)
+                    s_getResult7Delegate),
+                true
                 );
             group.HookupNewPromise(group.Id, promise);
 
@@ -1326,7 +1339,8 @@ namespace Proto.Promises
                     s_getResult4Delegate,
                     s_getResult5Delegate,
                     s_getResult6Delegate,
-                    s_getResult7Delegate)
+                    s_getResult7Delegate),
+                true
                 );
             group.HookupNewPromise(group.Id, promise);
             return new Promise<(T1, T2, T3, T4, T5, T6, T7)>(promise, promise.Id);
