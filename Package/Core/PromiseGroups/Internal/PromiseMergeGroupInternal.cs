@@ -157,15 +157,19 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
+                protected bool MarkReadyAndGetIsComplete(int totalPromises)
+                    // _waitCount starts at 0 and is decremented every time an added promise completes.
+                    // We add back the number of promises that were added, and when the count goes back to 0, all promises are complete.
+                    => Interlocked.Add(ref _waitCount, totalPromises) == 0;
+
+                [MethodImpl(InlineOption)]
                 internal void MarkReady(uint totalPromises)
                     => MarkReady(unchecked((int) totalPromises));
 
                 internal void MarkReady(int totalPromises)
                 {
                     // This method is called after all promises have been hooked up to this.
-                    // _waitCount starts at 0 and is decremented every time an added promise completes.
-                    // We add back the number of promises that were added, and when the count goes back to 0, all promises are complete.
-                    if (Interlocked.Add(ref _waitCount, totalPromises) == 0)
+                    if (MarkReadyAndGetIsComplete(totalPromises))
                     {
                         // All promises already completed.
                         _next = PromiseCompletionSentinel.s_instance;

@@ -24,16 +24,18 @@ namespace Proto.Promises
         private readonly Internal.PromiseRefBase.AllPromiseGroup<T> _group;
         private readonly int _cancelationId;
         private readonly int _count;
+        private readonly int _index;
         private readonly short _groupId;
 
         [MethodImpl(Internal.InlineOption)]
-        private PromiseAllGroup(IList<T> valueContainer, Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.AllPromiseGroup<T> group, int count, short groupId)
+        private PromiseAllGroup(IList<T> valueContainer, Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.AllPromiseGroup<T> group, int count, int index, short groupId)
         {
             _valueContainer = valueContainer;
             _cancelationRef = cancelationRef;
             _cancelationId = cancelationRef.SourceId;
             _group = group;
             _count = count;
+            _index = index;
             _groupId = groupId;
         }
 
@@ -56,7 +58,7 @@ namespace Proto.Promises
             var cancelationRef = Internal.CancelationRef.GetOrCreate();
             cancelationRef.MaybeLinkToken(sourceCancelationToken);
             groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseAllGroup<T>(valueContainer ?? new List<T>(), cancelationRef, null, 0, 0);
+            return new PromiseAllGroup<T>(valueContainer ?? new List<T>(), cancelationRef, null, 0, 0, 0);
         }
 
         /// <summary>
@@ -69,6 +71,7 @@ namespace Proto.Promises
             var cancelationRef = _cancelationRef;
             var group = _group;
             int count = _count;
+            int index = _index;
             if (cancelationRef == null | list == null)
             {
                 Internal.ThrowInvalidAllGroup(1);
@@ -81,14 +84,14 @@ namespace Proto.Promises
                     Internal.ThrowInvalidAllGroup(1);
                 }
 
-                AddOrSetResult(list, promise._result, count);
+                AddOrSetResult(list, promise._result, index);
                 // We don't need to do anything else if the ref is null.
                 if (promise._ref != null)
                 {
                     ++count;
-                    group.AddPromise(promise._ref, promise._id);
+                    group.AddPromiseForMerge(promise._ref, promise._id, index);
                 }
-                return new PromiseAllGroup<T>(list, cancelationRef, group, count, group.Id);
+                return new PromiseAllGroup<T>(list, cancelationRef, group, count, index + 1, group.Id);
             }
 
             if (!cancelationRef.TryIncrementSourceId(_cancelationId))
@@ -96,15 +99,15 @@ namespace Proto.Promises
                 Internal.ThrowInvalidAllGroup(1);
             }
 
-            AddOrSetResult(list, promise._result, count);
+            AddOrSetResult(list, promise._result, index);
             if (promise._ref != null)
             {
                 group = Internal.GetOrCreateAllPromiseGroup(cancelationRef, list);
-                group.AddPromise(promise._ref, promise._id);
-                return new PromiseAllGroup<T>(list, cancelationRef, group, 1, group.Id);
+                group.AddPromiseForMerge(promise._ref, promise._id, index);
+                return new PromiseAllGroup<T>(list, cancelationRef, group, 1, index + 1, group.Id);
             }
 
-            return this;
+            return new PromiseAllGroup<T>(list, cancelationRef, null, 0, index + 1, 0);
         }
 
         private static void AddOrSetResult(IList<T> list, in T result, int index)
@@ -132,6 +135,7 @@ namespace Proto.Promises
             var cancelationRef = _cancelationRef;
             var group = _group;
             int count = _count;
+            int index = _index;
             if (cancelationRef == null | list == null)
             {
                 Internal.ThrowInvalidAllGroup(1);
@@ -139,7 +143,7 @@ namespace Proto.Promises
 
             // Make sure list has the same count as promises.
             int listCount = list.Count;
-            while (listCount > count)
+            while (listCount > index)
             {
                 list.RemoveAt(--listCount);
             }

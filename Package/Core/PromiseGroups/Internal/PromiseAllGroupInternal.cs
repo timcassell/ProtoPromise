@@ -86,6 +86,14 @@ namespace Proto.Promises
 
                     HandleNextInternal(state);
                 }
+
+                new internal void MarkReady(int totalPromises)
+                {
+                    if (MarkReadyAndGetIsComplete(totalPromises))
+                    {
+                        Complete(_completeState);
+                    }
+                }
             }
 
             internal sealed partial class AllPromiseResultsGroupVoid : MergePromiseGroupBase<IList<Promise.ResultContainer>>
@@ -128,12 +136,15 @@ namespace Proto.Promises
                     if (TryComplete())
                     {
                         // All promises are complete.
-                        Complete(_completeState);
+                        Complete();
                     }
                 }
 
-                private void Complete(Promise.State state)
+                private void Complete()
                 {
+                    // If any of the promises in the group completed unsuccessfully, the group state was set to canceled.
+                    // We ignore that and set it to always resolved, because we're yielding ResultContainers.
+                    var state = Promise.State.Resolved;
                     if (_exceptions != null)
                     {
                         state = Promise.State.Rejected;
@@ -151,6 +162,14 @@ namespace Proto.Promises
                     }
 
                     HandleNextInternal(state);
+                }
+
+                new internal void MarkReady(int totalPromises)
+                {
+                    if (MarkReadyAndGetIsComplete(totalPromises))
+                    {
+                        Complete();
+                    }
                 }
             }
 
@@ -194,12 +213,15 @@ namespace Proto.Promises
                     if (TryComplete())
                     {
                         // All promises are complete.
-                        Complete(_completeState);
+                        Complete();
                     }
                 }
 
-                private void Complete(Promise.State state)
+                private void Complete()
                 {
+                    // If any of the promises in the group completed unsuccessfully, the group state was set to canceled.
+                    // We ignore that and set it to always resolved, because we're yielding ResultContainers.
+                    var state = Promise.State.Resolved;
                     if (_exceptions != null)
                     {
                         state = Promise.State.Rejected;
@@ -217,6 +239,14 @@ namespace Proto.Promises
                     }
 
                     HandleNextInternal(state);
+                }
+
+                new internal void MarkReady(int totalPromises)
+                {
+                    if (MarkReadyAndGetIsComplete(totalPromises))
+                    {
+                        Complete();
+                    }
                 }
             }
         } // class PromiseRefBase

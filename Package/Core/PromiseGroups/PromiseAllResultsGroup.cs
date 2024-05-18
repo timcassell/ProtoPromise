@@ -23,16 +23,19 @@ namespace Proto.Promises
         private readonly Internal.PromiseRefBase.AllPromiseResultsGroupVoid _group;
         private readonly int _cancelationId;
         private readonly int _count;
+        private readonly int _index;
         private readonly short _groupId;
 
         [MethodImpl(Internal.InlineOption)]
-        private PromiseAllResultsGroup(IList<Promise.ResultContainer> valueContainer, Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.AllPromiseResultsGroupVoid group, int count, short groupId)
+        private PromiseAllResultsGroup(IList<Promise.ResultContainer> valueContainer, Internal.CancelationRef cancelationRef,
+            Internal.PromiseRefBase.AllPromiseResultsGroupVoid group, int count, int index, short groupId)
         {
             _valueContainer = valueContainer;
             _cancelationRef = cancelationRef;
             _cancelationId = cancelationRef.SourceId;
             _group = group;
             _count = count;
+            _index = index;
             _groupId = groupId;
         }
 
@@ -55,7 +58,7 @@ namespace Proto.Promises
             var cancelationRef = Internal.CancelationRef.GetOrCreate();
             cancelationRef.MaybeLinkToken(sourceCancelationToken);
             groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseAllResultsGroup(valueContainer ?? new List<Promise.ResultContainer>(), cancelationRef, null, 0, 0);
+            return new PromiseAllResultsGroup(valueContainer ?? new List<Promise.ResultContainer>(), cancelationRef, null, 0, 0, 0);
         }
 
         /// <summary>
@@ -68,6 +71,7 @@ namespace Proto.Promises
             var cancelationRef = _cancelationRef;
             var group = _group;
             int count = _count;
+            int index = _index;
             if (cancelationRef == null | list == null)
             {
                 Internal.ThrowInvalidAllGroup(1);
@@ -80,14 +84,14 @@ namespace Proto.Promises
                     Internal.ThrowInvalidAllGroup(1);
                 }
 
-                AddOrSetResult(list, count);
+                AddOrSetResult(list, index);
                 // We don't need to do anything else if the ref is null.
                 if (promise._ref != null)
                 {
                     ++count;
-                    group.AddPromise(promise._ref, promise._id);
+                    group.AddPromiseForMerge(promise._ref, promise._id, index);
                 }
-                return new PromiseAllResultsGroup(list, cancelationRef, group, count, group.Id);
+                return new PromiseAllResultsGroup(list, cancelationRef, group, count, index + 1, group.Id);
             }
 
             if (!cancelationRef.TryIncrementSourceId(_cancelationId))
@@ -95,15 +99,15 @@ namespace Proto.Promises
                 Internal.ThrowInvalidAllGroup(1);
             }
 
-            AddOrSetResult(list, count);
+            AddOrSetResult(list, index);
             if (promise._ref != null)
             {
                 group = Internal.GetOrCreateAllPromiseResultsGroup(cancelationRef, list);
-                group.AddPromise(promise._ref, promise._id);
-                return new PromiseAllResultsGroup(list, cancelationRef, group, 1, group.Id);
+                group.AddPromiseForMerge(promise._ref, promise._id, index);
+                return new PromiseAllResultsGroup(list, cancelationRef, group, 1, index + 1, group.Id);
             }
 
-            return this;
+            return new PromiseAllResultsGroup(list, cancelationRef, null, 0, index + 1, 0);
         }
 
         private static void AddOrSetResult(IList<Promise.ResultContainer> list, int index)
@@ -128,6 +132,7 @@ namespace Proto.Promises
             var cancelationRef = _cancelationRef;
             var group = _group;
             int count = _count;
+            int index = _index;
             if (cancelationRef == null | list == null)
             {
                 Internal.ThrowInvalidAllGroup(1);
@@ -135,7 +140,7 @@ namespace Proto.Promises
 
             // Make sure list has the same count as promises.
             int listCount = list.Count;
-            while (listCount > count)
+            while (listCount > index)
             {
                 list.RemoveAt(--listCount);
             }
@@ -171,17 +176,19 @@ namespace Proto.Promises
         private readonly Internal.PromiseRefBase.AllPromiseResultsGroup<T> _group;
         private readonly int _cancelationId;
         private readonly int _count;
+        private readonly int _index;
         private readonly short _id;
 
         [MethodImpl(Internal.InlineOption)]
         private PromiseAllResultsGroup(IList<Promise<T>.ResultContainer> valueContainer, Internal.CancelationRef cancelationRef,
-            Internal.PromiseRefBase.AllPromiseResultsGroup<T> group, int count, short groupId)
+            Internal.PromiseRefBase.AllPromiseResultsGroup<T> group, int count, int index, short groupId)
         {
             _valueContainer = valueContainer;
             _cancelationRef = cancelationRef;
             _cancelationId = cancelationRef.SourceId;
             _group = group;
             _count = count;
+            _index = index;
             _id = groupId;
         }
 
@@ -204,7 +211,7 @@ namespace Proto.Promises
             var cancelationRef = Internal.CancelationRef.GetOrCreate();
             cancelationRef.MaybeLinkToken(sourceCancelationToken);
             groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseAllResultsGroup<T>(valueContainer ?? new List<Promise<T>.ResultContainer>(), cancelationRef, null, 0, 0);
+            return new PromiseAllResultsGroup<T>(valueContainer ?? new List<Promise<T>.ResultContainer>(), cancelationRef, null, 0, 0, 0);
         }
 
         /// <summary>
@@ -217,6 +224,7 @@ namespace Proto.Promises
             var cancelationRef = _cancelationRef;
             var group = _group;
             int count = _count;
+            int index = _index;
             if (cancelationRef == null | list == null)
             {
                 Internal.ThrowInvalidAllGroup(1);
@@ -229,14 +237,14 @@ namespace Proto.Promises
                     Internal.ThrowInvalidAllGroup(1);
                 }
 
-                AddOrSetResult(list, promise._result, count);
+                AddOrSetResult(list, promise._result, index);
                 // We don't need to do anything else if the ref is null.
                 if (promise._ref != null)
                 {
                     ++count;
-                    group.AddPromise(promise._ref, promise._id);
+                    group.AddPromiseForMerge(promise._ref, promise._id, index);
                 }
-                return new PromiseAllResultsGroup<T>(list, cancelationRef, group, count, group.Id);
+                return new PromiseAllResultsGroup<T>(list, cancelationRef, group, count, index + 1, group.Id);
             }
 
             if (!cancelationRef.TryIncrementSourceId(_cancelationId))
@@ -244,15 +252,15 @@ namespace Proto.Promises
                 Internal.ThrowInvalidAllGroup(1);
             }
 
-            AddOrSetResult(list, promise._result, count);
+            AddOrSetResult(list, promise._result, index);
             if (promise._ref != null)
             {
                 group = Internal.GetOrCreateAllPromiseResultsGroup(cancelationRef, list);
-                group.AddPromise(promise._ref, promise._id);
-                return new PromiseAllResultsGroup<T>(list, cancelationRef, group, 1, group.Id);
+                group.AddPromiseForMerge(promise._ref, promise._id, index);
+                return new PromiseAllResultsGroup<T>(list, cancelationRef, group, 1, index + 1, group.Id);
             }
 
-            return this;
+            return new PromiseAllResultsGroup<T>(list, cancelationRef, null, 0, index + 1, 0);
         }
 
         private static void AddOrSetResult(IList<Promise<T>.ResultContainer> list, in T result, int index)
@@ -277,6 +285,7 @@ namespace Proto.Promises
             var cancelationRef = _cancelationRef;
             var group = _group;
             int count = _count;
+            int index = _index;
             if (cancelationRef == null | list == null)
             {
                 Internal.ThrowInvalidAllGroup(1);
@@ -284,7 +293,7 @@ namespace Proto.Promises
 
             // Make sure list has the same count as promises.
             int listCount = list.Count;
-            while (listCount > count)
+            while (listCount > index)
             {
                 list.RemoveAt(--listCount);
             }
