@@ -84,7 +84,8 @@ namespace Proto.Promises
                     Internal.ThrowInvalidAllGroup(1);
                 }
 
-                AddOrSetResult(list, promise._result, index);
+                // We don't protect the list with a lock, because we ensure this is only used by a single caller.
+                list.SetOrAdd(promise._result, index);
                 // We don't need to do anything else if the ref is null.
                 if (promise._ref != null)
                 {
@@ -99,7 +100,8 @@ namespace Proto.Promises
                 Internal.ThrowInvalidAllGroup(1);
             }
 
-            AddOrSetResult(list, promise._result, index);
+            // We don't protect the list with a lock, because we ensure this is only used by a single caller.
+            list.SetOrAdd(promise._result, index);
             if (promise._ref != null)
             {
                 group = Internal.GetOrCreateAllPromiseGroup(cancelationRef, list);
@@ -108,19 +110,6 @@ namespace Proto.Promises
             }
 
             return new PromiseAllGroup<T>(list, cancelationRef, null, 0, index + 1, 0);
-        }
-
-        private static void AddOrSetResult(IList<T> list, in T result, int index)
-        {
-            // We don't protect the list with a lock, because we ensure this is only used by a single caller.
-            if (list.Count <= index)
-            {
-                list.Add(result);
-            }
-            else
-            {
-                list[index] = result;
-            }
         }
 
         /// <summary>
@@ -141,19 +130,15 @@ namespace Proto.Promises
                 Internal.ThrowInvalidAllGroup(1);
             }
 
-            // Make sure list has the same count as promises.
-            int listCount = list.Count;
-            while (listCount > index)
-            {
-                list.RemoveAt(--listCount);
-            }
-
             if (group == null)
             {
                 if (!cancelationRef.TryDispose(_cancelationId))
                 {
                     Internal.ThrowInvalidAllGroup(1);
                 }
+
+                // Make sure list has the same count as promises.
+                list.MaybeShrink(index);
                 return Promise.Resolved(list);
             }
 
@@ -161,6 +146,9 @@ namespace Proto.Promises
             {
                 Internal.ThrowInvalidAllGroup(1);
             }
+
+            // Make sure list has the same count as promises.
+            list.MaybeShrink(index);
             group.MarkReady(count);
             return new Promise<IList<T>>(group, group.Id);
         }

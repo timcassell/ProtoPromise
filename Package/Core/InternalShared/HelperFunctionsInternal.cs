@@ -238,5 +238,26 @@ namespace Proto.Promises
             maybeJoinedToken = source.Token;
             return source;
         }
+
+        internal static void SetOrAdd<T>(this IList<T> list, in T value, int index)
+        {
+            if (index < list.Count)
+            {
+                list[index] = value;
+            }
+            else
+            {
+                list.Add(value);
+            }
+        }
+
+        internal static void MaybeShrink<T>(this IList<T> list, int expectedCount)
+        {
+            int listCount = list.Count;
+            while (listCount > expectedCount)
+            {
+                list.RemoveAt(--listCount);
+            }
+        }
     } // class Internal
 } // namespace Proto.Promises
