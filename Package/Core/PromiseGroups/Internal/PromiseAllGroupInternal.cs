@@ -58,12 +58,13 @@ namespace Proto.Promises
                     if (TryComplete())
                     {
                         // All promises are complete.
-                        Complete(_completeState);
+                        HandleNextInternal(CompleteAndGetState());
                     }
                 }
 
-                private void Complete(Promise.State state)
+                private Promise.State CompleteAndGetState()
                 {
+                    var state = _completeState;
                     var passthroughs = _completedPassThroughs.TakeAndClear();
                     while (passthroughs.IsNotEmpty)
                     {
@@ -84,14 +85,17 @@ namespace Proto.Promises
                         _exceptions = null;
                     }
 
-                    HandleNextInternal(state);
+                    return state;
                 }
 
-                new internal void MarkReady(int totalPromises)
+                internal void MarkReady(int totalPromises)
                 {
+                    // This method is called after all promises have been hooked up to this.
                     if (MarkReadyAndGetIsComplete(totalPromises))
                     {
-                        Complete(_completeState);
+                        // All promises already completed.
+                        _next = PromiseCompletionSentinel.s_instance;
+                        SetCompletionState(CompleteAndGetState());
                     }
                 }
             }
@@ -136,11 +140,11 @@ namespace Proto.Promises
                     if (TryComplete())
                     {
                         // All promises are complete.
-                        Complete();
+                        HandleNextInternal(CompleteAndGetState());
                     }
                 }
 
-                private void Complete()
+                private Promise.State CompleteAndGetState()
                 {
                     // If any of the promises in the group completed unsuccessfully, the group state was set to canceled.
                     // We ignore that and set it to always resolved, because we're yielding ResultContainers.
@@ -161,14 +165,17 @@ namespace Proto.Promises
                         passthrough.Dispose();
                     }
 
-                    HandleNextInternal(state);
+                    return state;
                 }
 
-                new internal void MarkReady(int totalPromises)
+                internal void MarkReady(int totalPromises)
                 {
+                    // This method is called after all promises have been hooked up to this.
                     if (MarkReadyAndGetIsComplete(totalPromises))
                     {
-                        Complete();
+                        // All promises already completed.
+                        _next = PromiseCompletionSentinel.s_instance;
+                        SetCompletionState(CompleteAndGetState());
                     }
                 }
             }
@@ -213,11 +220,11 @@ namespace Proto.Promises
                     if (TryComplete())
                     {
                         // All promises are complete.
-                        Complete();
+                        HandleNextInternal(CompleteAndGetState());
                     }
                 }
 
-                private void Complete()
+                private Promise.State CompleteAndGetState()
                 {
                     // If any of the promises in the group completed unsuccessfully, the group state was set to canceled.
                     // We ignore that and set it to always resolved, because we're yielding ResultContainers.
@@ -238,14 +245,17 @@ namespace Proto.Promises
                         passthrough.Dispose();
                     }
 
-                    HandleNextInternal(state);
+                    return state;
                 }
 
-                new internal void MarkReady(int totalPromises)
+                internal void MarkReady(int totalPromises)
                 {
+                    // This method is called after all promises have been hooked up to this.
                     if (MarkReadyAndGetIsComplete(totalPromises))
                     {
-                        Complete();
+                        // All promises already completed.
+                        _next = PromiseCompletionSentinel.s_instance;
+                        SetCompletionState(CompleteAndGetState());
                     }
                 }
             }

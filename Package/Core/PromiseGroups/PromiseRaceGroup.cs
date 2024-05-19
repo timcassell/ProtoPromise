@@ -7,6 +7,7 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Proto.Promises
 {
@@ -24,10 +25,11 @@ namespace Proto.Promises
         private readonly uint _count;
         private readonly short _groupId;
         private readonly bool _cancelOnNonResolved;
-        private readonly bool _hasAtLeastOnePromise;
+        private readonly bool _isResolved;
 
         [MethodImpl(Internal.InlineOption)]
-        private PromiseRaceGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.RacePromiseGroup<Internal.VoidResult> group, uint count, short groupId, bool cancelOnNonResolved)
+        private PromiseRaceGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.RacePromiseGroup<Internal.VoidResult> group,
+            uint count, short groupId, bool cancelOnNonResolved, bool isResolved)
         {
             _cancelationRef = cancelationRef;
             _group = group;
@@ -35,7 +37,7 @@ namespace Proto.Promises
             _count = count;
             _groupId = groupId;
             _cancelOnNonResolved = cancelOnNonResolved;
-            _hasAtLeastOnePromise = true;
+            _isResolved = isResolved;
         }
 
         /// <summary>
@@ -59,7 +61,7 @@ namespace Proto.Promises
             var cancelationRef = Internal.CancelationRef.GetOrCreate();
             cancelationRef.MaybeLinkToken(sourceCancelationToken);
             groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseRaceGroup(cancelationRef, null, 0, 0, cancelOnNonResolved);
+            return new PromiseRaceGroup(cancelationRef, null, 0, 0, cancelOnNonResolved, false);
         }
 
         /// <summary>
@@ -72,6 +74,7 @@ namespace Proto.Promises
             var group = _group;
             var count = _count;
             var cancelOnNonResolved = _cancelOnNonResolved;
+            var isResolved = _isResolved;
             if (cancelationRef == null)
             {
                 Internal.ThrowInvalidRaceGroup(1);
@@ -91,9 +94,10 @@ namespace Proto.Promises
                 }
                 else
                 {
+                    isResolved = true;
                     group.SetResolved();
                 }
-                return new PromiseRaceGroup(cancelationRef, group, count, group.Id, cancelOnNonResolved);
+                return new PromiseRaceGroup(cancelationRef, group, count, group.Id, cancelOnNonResolved, isResolved);
             }
 
             if (!cancelationRef.TryIncrementSourceId(_cancelationId))
@@ -105,7 +109,11 @@ namespace Proto.Promises
             {
                 group = Internal.GetOrCreateRacePromiseGroup<Internal.VoidResult>(cancelationRef, cancelOnNonResolved);
                 group.AddPromise(promise._ref, promise._id);
-                return new PromiseRaceGroup(cancelationRef, group, 1, group.Id, cancelOnNonResolved);
+                if (isResolved)
+                {
+                    group.SetResolved();
+                }
+                return new PromiseRaceGroup(cancelationRef, group, 1, group.Id, cancelOnNonResolved, isResolved);
             }
 
             // The promise is already resolved, we need to cancel the group token,
@@ -119,24 +127,25 @@ namespace Proto.Promises
                 // We already canceled the group token, no need to cancel it again if a promise is non-resolved.
                 group = Internal.GetOrCreateRacePromiseGroup<Internal.VoidResult>(cancelationRef, false);
                 group.RecordException(e);
-                return new PromiseRaceGroup(cancelationRef, group, 0, group.Id, false);
+                group._cancelationThrew = true;
+                return new PromiseRaceGroup(cancelationRef, group, 0, group.Id, false, isResolved);
             }
 
-            return new PromiseRaceGroup(cancelationRef, group, 0, _groupId, false);
+            return new PromiseRaceGroup(cancelationRef, group, 0, _groupId, false, true);
         }
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
         /// If any promise is resolved, the returned promise will be resolved.
         /// If no promises are resolved and any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if any promise is canceled, the returned promise will be canceled.
+        /// Otherwise, if all promises are canceled, the returned promise will be canceled.
         /// </summary>
         public Promise WaitAsync()
         {
             var cancelationRef = _cancelationRef;
             var group = _group;
             var count = _count;
-            if (cancelationRef == null | !_hasAtLeastOnePromise)
+            if (cancelationRef == null | (group == null & !_isResolved))
             {
                 if (cancelationRef == null)
                 {
@@ -169,6 +178,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
+    [StructLayout(LayoutKind.Auto)]
     public readonly struct PromiseRaceGroup<T>
     {
         private readonly Internal.CancelationRef _cancelationRef;
@@ -177,11 +187,12 @@ namespace Proto.Promises
         private readonly uint _count;
         private readonly short _groupId;
         private readonly bool _cancelOnNonResolved;
-        private readonly bool _hasAtLeastOnePromise;
+        private readonly bool _isResolved;
         private readonly T _result;
 
         [MethodImpl(Internal.InlineOption)]
-        private PromiseRaceGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.RacePromiseGroup<T> group, in T result, uint count, short groupId, bool cancelOnNonResolved)
+        private PromiseRaceGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.RacePromiseGroup<T> group,
+            in T result, uint count, short groupId, bool cancelOnNonResolved, bool isResolved)
         {
             _cancelationRef = cancelationRef;
             _group = group;
@@ -190,7 +201,7 @@ namespace Proto.Promises
             _count = count;
             _groupId = groupId;
             _cancelOnNonResolved = cancelOnNonResolved;
-            _hasAtLeastOnePromise = true;
+            _isResolved = isResolved;
         }
 
         /// <summary>
@@ -214,7 +225,7 @@ namespace Proto.Promises
             var cancelationRef = Internal.CancelationRef.GetOrCreate();
             cancelationRef.MaybeLinkToken(sourceCancelationToken);
             groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseRaceGroup<T>(cancelationRef, null, default, 0, 0, cancelOnNonResolved);
+            return new PromiseRaceGroup<T>(cancelationRef, null, default, 0, 0, cancelOnNonResolved, false);
         }
 
         /// <summary>
@@ -227,6 +238,7 @@ namespace Proto.Promises
             var group = _group;
             var count = _count;
             var cancelOnNonResolved = _cancelOnNonResolved;
+            var isResolved = _isResolved;
             if (cancelationRef == null)
             {
                 Internal.ThrowInvalidRaceGroup(1);
@@ -244,11 +256,13 @@ namespace Proto.Promises
                     checked { ++count; }
                     group.AddPromise(promise._ref, promise._id);
                 }
-                else
+                else if (!isResolved)
                 {
-                    group.SetResolved();
+
+                    isResolved = true;
+                    group.SetResolved(promise._result);
                 }
-                return new PromiseRaceGroup<T>(cancelationRef, group, default, count, group.Id, cancelOnNonResolved);
+                return new PromiseRaceGroup<T>(cancelationRef, group, default, count, group.Id, cancelOnNonResolved, isResolved);
             }
 
             if (!cancelationRef.TryIncrementSourceId(_cancelationId))
@@ -260,7 +274,11 @@ namespace Proto.Promises
             {
                 group = Internal.GetOrCreateRacePromiseGroup<T>(cancelationRef, cancelOnNonResolved);
                 group.AddPromise(promise._ref, promise._id);
-                return new PromiseRaceGroup<T>(cancelationRef, group, default, 1, group.Id, cancelOnNonResolved);
+                if (isResolved)
+                {
+                    group.SetResolved(_result);
+                }
+                return new PromiseRaceGroup<T>(cancelationRef, group, default, 1, group.Id, cancelOnNonResolved, isResolved);
             }
 
             // The promise is already resolved, we need to cancel the group token,
@@ -274,24 +292,25 @@ namespace Proto.Promises
                 // We already canceled the group token, no need to cancel it again if a promise is non-resolved.
                 group = Internal.GetOrCreateRacePromiseGroup<T>(cancelationRef, false);
                 group.RecordException(e);
-                return new PromiseRaceGroup<T>(cancelationRef, group, default, 0, group.Id, false);
+                group._cancelationThrew = true;
+                return new PromiseRaceGroup<T>(cancelationRef, group, default, 0, group.Id, false, isResolved);
             }
 
-            return new PromiseRaceGroup<T>(cancelationRef, group, promise._result, 0, _groupId, false);
+            return new PromiseRaceGroup<T>(cancelationRef, group, isResolved ? _result : promise._result, 0, _groupId, false, true);
         }
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
         /// If any promise is resolved, the returned promise will be resolved with the value of the promise that resolved first.
         /// If no promises are resolved and any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if any promise is canceled, the returned promise will be canceled.
+        /// Otherwise, if all promises are canceled, the returned promise will be canceled.
         /// </summary>
         public Promise<T> WaitAsync()
         {
             var cancelationRef = _cancelationRef;
             var group = _group;
             var count = _count;
-            if (cancelationRef == null | !_hasAtLeastOnePromise)
+            if (cancelationRef == null | (group == null & !_isResolved))
             {
                 if (cancelationRef == null)
                 {

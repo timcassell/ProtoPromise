@@ -162,30 +162,6 @@ namespace Proto.Promises
                     // We add back the number of promises that were added, and when the count goes back to 0, all promises are complete.
                     => Interlocked.Add(ref _waitCount, totalPromises) == 0;
 
-                [MethodImpl(InlineOption)]
-                internal void MarkReady(uint totalPromises)
-                    => MarkReady(unchecked((int) totalPromises));
-
-                internal void MarkReady(int totalPromises)
-                {
-                    // This method is called after all promises have been hooked up to this.
-                    if (MarkReadyAndGetIsComplete(totalPromises))
-                    {
-                        // All promises already completed.
-                        _next = PromiseCompletionSentinel.s_instance;
-                        if (_exceptions != null)
-                        {
-                            _rejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
-                            _exceptions = null;
-                            SetCompletionState(Promise.State.Rejected);
-                        }
-                        else
-                        {
-                            SetCompletionState(_completeState);
-                        }
-                    }
-                }
-
                 protected void CancelGroup()
                 {
                     // This may be called multiple times. It's fine because it checks internally if it's already canceled.
@@ -261,22 +237,20 @@ namespace Proto.Promises
                     if (TryComplete())
                     {
                         // All promises are complete.
-                        HandleCompletion();
+                        HandleNextInternal(CompleteAndGetState());
                     }
                 }
 
-                private void HandleCompletion()
+                private Promise.State CompleteAndGetState()
                 {
-                    if (_exceptions != null)
+                    if (_exceptions == null)
                     {
-                        _rejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
-                        _exceptions = null;
-                        HandleNextInternal(Promise.State.Rejected);
+                        return _completeState;
                     }
-                    else
-                    {
-                        HandleNextInternal(_completeState);
-                    }
+
+                    _rejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
+                    _exceptions = null;
+                    return Promise.State.Rejected;
                 }
 
                 internal override void Handle(PromisePassThroughForMergeGroup passthrough, PromiseRefBase handler, Promise.State state)
@@ -296,6 +270,17 @@ namespace Proto.Promises
                         // We just pass the state here and don't do anything about the exceptions,
                         // because the attached promise will handle the actual completion logic.
                         HandleNextInternal(_completeState);
+                    }
+                }
+
+                internal void MarkReady(uint totalPromises)
+                {
+                    // This method is called after all promises have been hooked up to this.
+                    if (MarkReadyAndGetIsComplete(unchecked((int) totalPromises)))
+                    {
+                        // All promises already completed.
+                        _next = PromiseCompletionSentinel.s_instance;
+                        SetCompletionState(CompleteAndGetState());
                     }
                 }
             }

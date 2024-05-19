@@ -376,7 +376,7 @@ namespace Proto.Promises
             partial class PromiseGroupBase<TResult> : PromiseSingleAwait<TResult>
             {
                 internal List<Exception> _exceptions;
-                private CancelationRef _cancelationRef; // Store the reference directly instead of CancelationSource struct to reduce memory.
+                protected CancelationRef _cancelationRef; // Store the reference directly instead of CancelationSource struct to reduce memory.
                 private int _cancelationId;
                 private int _waitCount; // int for Interlocked since it doesn't support uint on older runtimes.
                 protected Promise.State _completeState;
@@ -417,6 +417,7 @@ namespace Proto.Promises
             {
                 protected int _isResolved; // Flag used to indicate that the promise has already been resolved. int for Interlocked.
                 protected bool _cancelOnNonResolved;
+                internal bool _cancelationThrew;
             }
 
             partial class RacePromiseGroup<TResult> : RacePromiseGroupBase<TResult>

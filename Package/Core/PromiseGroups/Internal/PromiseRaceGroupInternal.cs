@@ -20,15 +20,23 @@ namespace Proto.Promises
 #endif
             internal abstract partial class RacePromiseGroupBase<TResult> : PromiseGroupBase<TResult>
             {
-                protected void Complete(Promise.State state)
+                protected void Complete()
                 {
-                    if (_exceptions != null)
+                    HandleNextInternal(CompleteAndGetState());
+                }
+
+                private Promise.State CompleteAndGetState()
+                {
+                    var state = _completeState;
+                    // Race promise group ignores rejections if any promise was resolved,
+                    // unless a cancelation token callback threw.
+                    if ((state != Promise.State.Resolved | _cancelationThrew) & _exceptions != null)
                     {
                         state = Promise.State.Rejected;
                         _rejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
-                        _exceptions = null;
                     }
-                    HandleNextInternal(state);
+                    _exceptions = null;
+                    return state;
                 }
 
                 [MethodImpl(InlineOption)]
@@ -50,6 +58,45 @@ namespace Proto.Promises
                     }
                     CancelGroup();
                 }
+
+                new protected void CancelGroup()
+                {
+                    // This may be called multiple times. It's fine because it checks internally if it's already canceled.
+                    try
+                    {
+                        _cancelationRef.Cancel();
+                    }
+                    catch (Exception e)
+                    {
+                        _cancelationThrew = true;
+                        RecordException(e);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal void MarkReady(uint totalPromises)
+                    => MarkReady(unchecked((int) totalPromises));
+
+                internal void MarkReady(int totalPromises)
+                {
+                    // This method is called after all promises have been hooked up to this.
+                    if (MarkReadyAndGetIsComplete(totalPromises))
+                    {
+                        // All promises already completed.
+                        _next = PromiseCompletionSentinel.s_instance;
+                        SetCompletionState(CompleteAndGetState());
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                protected void Reset(CancelationRef cancelationSource, bool cancelOnNonResolved)
+                {
+                    base.Reset(cancelationSource);
+                    _completeState = Promise.State.Canceled; // Default to Canceled state. If the promise is actually resolved or rejected, the state will be overwritten.
+                    _isResolved = 0;
+                    _cancelOnNonResolved = cancelOnNonResolved;
+                    _cancelationThrew = false;
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -70,9 +117,7 @@ namespace Proto.Promises
                 internal static RacePromiseGroup<TResult> GetOrCreate(CancelationRef cancelationSource, bool cancelOnNonResolved)
                 {
                     var promise = GetOrCreate();
-                    promise._completeState = Promise.State.Canceled; // Default to Canceled state. If the promise is actually resolved or rejected, the state will be overwritten.
-                    promise._cancelOnNonResolved = cancelOnNonResolved;
-                    promise.Reset(cancelationSource);
+                    promise.Reset(cancelationSource, cancelOnNonResolved);
                     return promise;
                 }
 
@@ -109,7 +154,7 @@ namespace Proto.Promises
                     if (TryComplete())
                     {
                         // All promises are complete.
-                        Complete(_completeState);
+                        Complete();
                     }
                 }
             }
@@ -132,9 +177,7 @@ namespace Proto.Promises
                 internal static RacePromiseWithIndexGroupVoid GetOrCreate(CancelationRef cancelationSource, bool cancelOnNonResolved)
                 {
                     var promise = GetOrCreate();
-                    promise._completeState = Promise.State.Canceled; // Default to Canceled state. If the promise is actually resolved or rejected, the state will be overwritten.
-                    promise._cancelOnNonResolved = cancelOnNonResolved;
-                    promise.Reset(cancelationSource);
+                    promise.Reset(cancelationSource, cancelOnNonResolved);
                     return promise;
                 }
 
@@ -171,7 +214,7 @@ namespace Proto.Promises
                     if (TryComplete())
                     {
                         // All promises are complete.
-                        Complete(_completeState);
+                        Complete();
                     }
                 }
             }
@@ -194,9 +237,7 @@ namespace Proto.Promises
                 internal static RacePromiseWithIndexGroup<TResult> GetOrCreate(CancelationRef cancelationSource, bool cancelOnNonResolved)
                 {
                     var promise = GetOrCreate();
-                    promise._completeState = Promise.State.Canceled; // Default to Canceled state. If the promise is actually resolved or rejected, the state will be overwritten.
-                    promise._cancelOnNonResolved = cancelOnNonResolved;
-                    promise.Reset(cancelationSource);
+                    promise.Reset(cancelationSource, cancelOnNonResolved);
                     return promise;
                 }
 
@@ -233,7 +274,7 @@ namespace Proto.Promises
                     if (TryComplete())
                     {
                         // All promises are complete.
-                        Complete(_completeState);
+                        Complete();
                     }
                 }
             }
