@@ -7,6 +7,7 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Proto.Promises
 {
@@ -22,20 +23,23 @@ namespace Proto.Promises
         private readonly Internal.PromiseRefBase.RacePromiseWithIndexGroupVoid _group;
         private readonly int _cancelationId;
         private readonly int _count;
+        private readonly int _index;
+        private readonly int _winIndex;
         private readonly short _groupId;
         private readonly bool _cancelOnNonResolved;
-        private readonly bool _hasAtLeastOnePromise;
 
         [MethodImpl(Internal.InlineOption)]
-        private PromiseRaceWithIndexGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.RacePromiseWithIndexGroupVoid group, int count, short groupId, bool cancelOnNonResolved)
+        private PromiseRaceWithIndexGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.RacePromiseWithIndexGroupVoid group,
+            int count, int index, int winIndex, short groupId, bool cancelOnNonResolved)
         {
             _cancelationRef = cancelationRef;
             _group = group;
             _cancelationId = cancelationRef.SourceId;
             _count = count;
+            _index = index;
+            _winIndex = winIndex;
             _groupId = groupId;
             _cancelOnNonResolved = cancelOnNonResolved;
-            _hasAtLeastOnePromise = true;
         }
 
         /// <summary>
@@ -59,7 +63,7 @@ namespace Proto.Promises
             var cancelationRef = Internal.CancelationRef.GetOrCreate();
             cancelationRef.MaybeLinkToken(sourceCancelationToken);
             groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseRaceWithIndexGroup(cancelationRef, null, 0, 0, cancelOnNonResolved);
+            return new PromiseRaceWithIndexGroup(cancelationRef, null, count: 0, index: -1, groupId: 0, winIndex: -1, cancelOnNonResolved: cancelOnNonResolved);
         }
 
         /// <summary>
@@ -71,12 +75,15 @@ namespace Proto.Promises
             var cancelationRef = _cancelationRef;
             var group = _group;
             var count = _count;
+            var index = _index;
+            var winIndex = _winIndex;
             var cancelOnNonResolved = _cancelOnNonResolved;
             if (cancelationRef == null)
             {
                 Internal.ThrowInvalidRaceGroup(1);
             }
 
+            checked { ++index; }
             if (group != null)
             {
                 if (!group.TryIncrementId(_groupId))
@@ -86,13 +93,15 @@ namespace Proto.Promises
 
                 if (promise._ref != null)
                 {
-                    group.AddPromiseWithIndex(promise._ref, promise._id, checked(count++));
+                    ++count;
+                    group.AddPromiseWithIndex(promise._ref, promise._id, index);
                 }
-                else
+                else if (winIndex == -1)
                 {
-                    group.SetResolved(count);
+                    winIndex = index;
+                    group.SetResolved(index);
                 }
-                return new PromiseRaceWithIndexGroup(cancelationRef, group, count, group.Id, cancelOnNonResolved);
+                return new PromiseRaceWithIndexGroup(cancelationRef, group, count, index, winIndex, group.Id, cancelOnNonResolved);
             }
 
             if (!cancelationRef.TryIncrementSourceId(_cancelationId))
@@ -103,8 +112,12 @@ namespace Proto.Promises
             if (promise._ref != null)
             {
                 group = Internal.GetOrCreateRacePromiseWithIndexGroupVoid(cancelationRef, cancelOnNonResolved);
-                group.AddPromise(promise._ref, promise._id);
-                return new PromiseRaceWithIndexGroup(cancelationRef, group, 1, group.Id, cancelOnNonResolved);
+                group.AddPromiseWithIndex(promise._ref, promise._id, index);
+                if (winIndex != -1)
+                {
+                    group.SetResolved(winIndex);
+                }
+                return new PromiseRaceWithIndexGroup(cancelationRef, group, 1, index, winIndex, group.Id, cancelOnNonResolved);
             }
 
             // The promise is already resolved, we need to cancel the group token,
@@ -118,24 +131,26 @@ namespace Proto.Promises
                 // We already canceled the group token, no need to cancel it again if a promise is non-resolved.
                 group = Internal.GetOrCreateRacePromiseWithIndexGroupVoid(cancelationRef, false);
                 group.RecordException(e);
-                return new PromiseRaceWithIndexGroup(cancelationRef, group, 0, group.Id, false);
+                group._cancelationThrew = true;
+                return new PromiseRaceWithIndexGroup(cancelationRef, group, 0, index, winIndex, group.Id, false);
             }
 
-            return new PromiseRaceWithIndexGroup(cancelationRef, group, 0, _groupId, false);
+            return new PromiseRaceWithIndexGroup(cancelationRef, group, 0, index, winIndex != -1 ? winIndex : index, _groupId, false);
         }
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
         /// If any promise is resolved, the returned promise will be resolved with the index of the promise that resolved first.
         /// If no promises are resolved and any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if any promise is canceled, the returned promise will be canceled.
+        /// Otherwise, if all promises are canceled, the returned promise will be canceled.
         /// </summary>
         public Promise<int> WaitAsync()
         {
             var cancelationRef = _cancelationRef;
             var group = _group;
             var count = _count;
-            if (cancelationRef == null | !_hasAtLeastOnePromise)
+            var winIndex = _winIndex;
+            if (cancelationRef == null | (group == null & winIndex == -1))
             {
                 if (cancelationRef == null)
                 {
@@ -150,7 +165,7 @@ namespace Proto.Promises
                 {
                     Internal.ThrowInvalidRaceGroup(1);
                 }
-                return Promise.Resolved(0);
+                return Promise.Resolved(winIndex);
             }
 
             if (!group.TryIncrementId(_groupId))
@@ -168,27 +183,31 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
+    [StructLayout(LayoutKind.Auto)]
     public readonly struct PromiseRaceWithIndexGroup<T>
     {
         private readonly Internal.CancelationRef _cancelationRef;
         private readonly Internal.PromiseRefBase.RacePromiseWithIndexGroup<T> _group;
         private readonly int _cancelationId;
         private readonly int _count;
+        private readonly int _index;
+        private readonly int _winIndex;
         private readonly short _groupId;
         private readonly bool _cancelOnNonResolved;
-        private readonly bool _hasAtLeastOnePromise;
         private readonly T _result;
 
         [MethodImpl(Internal.InlineOption)]
-        private PromiseRaceWithIndexGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.RacePromiseWithIndexGroup<T> group, int count, short groupId, bool cancelOnNonResolved, in T result)
+        private PromiseRaceWithIndexGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.RacePromiseWithIndexGroup<T> group,
+            int count, int index, short groupId, bool cancelOnNonResolved, int winIndex, in T result)
         {
             _cancelationRef = cancelationRef;
             _group = group;
             _cancelationId = cancelationRef.SourceId;
             _count = count;
+            _index = index;
             _groupId = groupId;
             _cancelOnNonResolved = cancelOnNonResolved;
-            _hasAtLeastOnePromise = true;
+            _winIndex = winIndex;
             _result = result;
         }
 
@@ -213,7 +232,7 @@ namespace Proto.Promises
             var cancelationRef = Internal.CancelationRef.GetOrCreate();
             cancelationRef.MaybeLinkToken(sourceCancelationToken);
             groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseRaceWithIndexGroup<T>(cancelationRef, null, 0, 0, cancelOnNonResolved, default);
+            return new PromiseRaceWithIndexGroup<T>(cancelationRef, null, count: 0, index: -1, groupId: 0, cancelOnNonResolved: cancelOnNonResolved, winIndex: -1, default);
         }
 
         /// <summary>
@@ -225,12 +244,15 @@ namespace Proto.Promises
             var cancelationRef = _cancelationRef;
             var group = _group;
             var count = _count;
+            var index = _index;
             var cancelOnNonResolved = _cancelOnNonResolved;
+            var winIndex = _winIndex;
             if (cancelationRef == null)
             {
                 Internal.ThrowInvalidRaceGroup(1);
             }
 
+            checked { ++index; }
             if (group != null)
             {
                 if (!group.TryIncrementId(_groupId))
@@ -240,13 +262,15 @@ namespace Proto.Promises
 
                 if (promise._ref != null)
                 {
-                    group.AddPromiseWithIndex(promise._ref, promise._id, checked(count++));
+                    ++count;
+                    group.AddPromiseWithIndex(promise._ref, promise._id, index);
                 }
-                else
+                else if (winIndex == -1)
                 {
-                    group.SetResolved((count, promise._result));
+                    winIndex = index;
+                    group.SetResolved((index, promise._result));
                 }
-                return new PromiseRaceWithIndexGroup<T>(cancelationRef, group, count, group.Id, cancelOnNonResolved, default);
+                return new PromiseRaceWithIndexGroup<T>(cancelationRef, group, count, index, group.Id, cancelOnNonResolved, winIndex, default);
             }
 
             if (!cancelationRef.TryIncrementSourceId(_cancelationId))
@@ -257,8 +281,12 @@ namespace Proto.Promises
             if (promise._ref != null)
             {
                 group = Internal.GetOrCreateRacePromiseWithIndexGroup<T>(cancelationRef, cancelOnNonResolved);
-                group.AddPromise(promise._ref, promise._id);
-                return new PromiseRaceWithIndexGroup<T>(cancelationRef, group, 1, group.Id, cancelOnNonResolved, default);
+                group.AddPromiseWithIndex(promise._ref, promise._id, index);
+                if (winIndex != -1)
+                {
+                    group.SetResolved((winIndex, _result));
+                }
+                return new PromiseRaceWithIndexGroup<T>(cancelationRef, group, 1, index, group.Id, cancelOnNonResolved, winIndex, default);
             }
 
             // The promise is already resolved, we need to cancel the group token,
@@ -272,24 +300,28 @@ namespace Proto.Promises
                 // We already canceled the group token, no need to cancel it again if a promise is non-resolved.
                 group = Internal.GetOrCreateRacePromiseWithIndexGroup<T>(cancelationRef, false);
                 group.RecordException(e);
-                return new PromiseRaceWithIndexGroup<T>(cancelationRef, group, 0, group.Id, false, default);
+                group._cancelationThrew = true;
+                return new PromiseRaceWithIndexGroup<T>(cancelationRef, group, 0, index, group.Id, false, winIndex, default);
             }
 
-            return new PromiseRaceWithIndexGroup<T>(cancelationRef, group, 0, _groupId, false, promise._result);
+            return winIndex != -1
+                ? new PromiseRaceWithIndexGroup<T>(cancelationRef, group, 0, index, _groupId, false, winIndex, _result)
+                : new PromiseRaceWithIndexGroup<T>(cancelationRef, group, 0, index, _groupId, false, index, promise._result);
         }
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
         /// If any promise is resolved, the returned promise will be resolved with the index and value of the promise that resolved first.
         /// If no promises are resolved and any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if any promise is canceled, the returned promise will be canceled.
+        /// Otherwise, if all promises are canceled, the returned promise will be canceled.
         /// </summary>
         public Promise<(int winIndex, T result)> WaitAsync()
         {
             var cancelationRef = _cancelationRef;
             var group = _group;
             var count = _count;
-            if (cancelationRef == null | !_hasAtLeastOnePromise)
+            var winIndex = _winIndex;
+            if (cancelationRef == null | (group == null & winIndex == -1))
             {
                 if (cancelationRef == null)
                 {
@@ -304,7 +336,7 @@ namespace Proto.Promises
                 {
                     Internal.ThrowInvalidRaceGroup(1);
                 }
-                return Promise.Resolved((0, _result));
+                return Promise.Resolved((winIndex, _result));
             }
 
             if (!group.TryIncrementId(_groupId))
