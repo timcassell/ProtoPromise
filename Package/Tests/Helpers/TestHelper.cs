@@ -23,6 +23,7 @@ namespace ProtoPromiseTests
         Resolve = 1,
         Reject = 2,
         Cancel = 3,
+        // TODO: remove this option
         CancelFromToken,
     }
 
