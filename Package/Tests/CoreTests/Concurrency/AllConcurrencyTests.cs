@@ -47,13 +47,11 @@ namespace ProtoPromiseTests.Concurrency
 
             var deferred0 = default(Promise.Deferred);
             var deferred1 = default(Promise.Deferred);
-            var cancelationSource0 = default(CancelationSource);
-            var cancelationSource1 = default(CancelationSource);
 
             List<Action> parallelActions = new List<Action>()
             {
-                () => completer0(deferred0, cancelationSource0),
-                () => completer1(deferred1, cancelationSource1)
+                () => completer0(deferred0),
+                () => completer1(deferred1)
             };
 
             var helper = ParallelCombineTestHelper.Create(
@@ -67,16 +65,14 @@ namespace ProtoPromiseTests.Concurrency
                 // setup
                 () =>
                 {
-                    deferred0 = TestHelper.GetNewDeferredVoid(completeType0, out cancelationSource0);
-                    deferred1 = TestHelper.GetNewDeferredVoid(completeType1, out cancelationSource1);
+                    deferred0 = Promise.NewDeferred();
+                    deferred1 = Promise.NewDeferred();
                     helper.Setup();
                 },
                 // teardown
                 () =>
                 {
                     helper.Teardown();
-                    cancelationSource0.TryDispose();
-                    cancelationSource1.TryDispose();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -97,15 +93,12 @@ namespace ProtoPromiseTests.Concurrency
             var deferred0 = default(Promise.Deferred);
             var deferred1 = default(Promise.Deferred);
             var deferred2 = default(Promise.Deferred);
-            var cancelationSource0 = default(CancelationSource);
-            var cancelationSource1 = default(CancelationSource);
-            var cancelationSource2 = default(CancelationSource);
 
             List<Action> parallelActions = new List<Action>()
             {
-                () => completer0(deferred0, cancelationSource0),
-                () => completer1(deferred1, cancelationSource1),
-                () => completer2(deferred2, cancelationSource2)
+                () => completer0(deferred0),
+                () => completer1(deferred1),
+                () => completer2(deferred2)
             };
 
             var helper = ParallelCombineTestHelper.Create(
@@ -119,18 +112,15 @@ namespace ProtoPromiseTests.Concurrency
                 // setup
                 () =>
                 {
-                    deferred0 = TestHelper.GetNewDeferredVoid(completeType0, out cancelationSource0);
-                    deferred1 = TestHelper.GetNewDeferredVoid(completeType1, out cancelationSource1);
-                    deferred2 = TestHelper.GetNewDeferredVoid(completeType2, out cancelationSource2);
+                    deferred0 = Promise.NewDeferred();
+                    deferred1 = Promise.NewDeferred();
+                    deferred2 = Promise.NewDeferred();
                     helper.Setup();
                 },
                 // teardown
                 () =>
                 {
                     helper.Teardown();
-                    cancelationSource0.TryDispose();
-                    cancelationSource1.TryDispose();
-                    cancelationSource2.TryDispose();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -154,17 +144,13 @@ namespace ProtoPromiseTests.Concurrency
             var deferred1 = default(Promise.Deferred);
             var deferred2 = default(Promise.Deferred);
             var deferred3 = default(Promise.Deferred);
-            var cancelationSource0 = default(CancelationSource);
-            var cancelationSource1 = default(CancelationSource);
-            var cancelationSource2 = default(CancelationSource);
-            var cancelationSource3 = default(CancelationSource);
 
             List<Action> parallelActions = new List<Action>()
             {
-                () => completer0(deferred0, cancelationSource0),
-                () => completer1(deferred1, cancelationSource1),
-                () => completer2(deferred2, cancelationSource2),
-                () => completer3(deferred3, cancelationSource3)
+                () => completer0(deferred0),
+                () => completer1(deferred1),
+                () => completer2(deferred2),
+                () => completer3(deferred3)
             };
 
             var helper = ParallelCombineTestHelper.Create(
@@ -178,20 +164,16 @@ namespace ProtoPromiseTests.Concurrency
                 // setup
                 () =>
                 {
-                    deferred0 = TestHelper.GetNewDeferredVoid(completeType0, out cancelationSource0);
-                    deferred1 = TestHelper.GetNewDeferredVoid(completeType1, out cancelationSource1);
-                    deferred2 = TestHelper.GetNewDeferredVoid(completeType2, out cancelationSource2);
-                    deferred3 = TestHelper.GetNewDeferredVoid(completeType3, out cancelationSource3);
+                    deferred0 = Promise.NewDeferred();
+                    deferred1 = Promise.NewDeferred();
+                    deferred2 = Promise.NewDeferred();
+                    deferred3 = Promise.NewDeferred();
                     helper.Setup();
                 },
                 // teardown
                 () =>
                 {
                     helper.Teardown();
-                    cancelationSource0.TryDispose();
-                    cancelationSource1.TryDispose();
-                    cancelationSource2.TryDispose();
-                    cancelationSource3.TryDispose();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -213,17 +195,13 @@ namespace ProtoPromiseTests.Concurrency
 
             Promise.Deferred[] deferreds = null;
             IEnumerator<Promise> promises = null;
-            var cancelationSource0 = default(CancelationSource);
-            var cancelationSource1 = default(CancelationSource);
-            var cancelationSource2 = default(CancelationSource);
-            var cancelationSource3 = default(CancelationSource);
 
             List<Action> parallelActions = new List<Action>()
             {
-                () => completer0(deferreds[0], cancelationSource0),
-                () => completer1(deferreds[1], cancelationSource1),
-                () => completer2(deferreds[2], cancelationSource2),
-                () => completer3(deferreds[3], cancelationSource3)
+                () => completer0(deferreds[0]),
+                () => completer1(deferreds[1]),
+                () => completer2(deferreds[2]),
+                () => completer3(deferreds[3])
             };
 
             var helper = ParallelCombineTestHelper.Create(
@@ -239,10 +217,10 @@ namespace ProtoPromiseTests.Concurrency
                 {
                     deferreds = new Promise.Deferred[]
                     {
-                        TestHelper.GetNewDeferredVoid(completeType0, out cancelationSource0),
-                        TestHelper.GetNewDeferredVoid(completeType1, out cancelationSource1),
-                        TestHelper.GetNewDeferredVoid(completeType2, out cancelationSource2),
-                        TestHelper.GetNewDeferredVoid(completeType3, out cancelationSource3)
+                        Promise.NewDeferred(),
+                        Promise.NewDeferred(),
+                        Promise.NewDeferred(),
+                        Promise.NewDeferred()
                     };
                     promises = deferreds.Select(d => d.Promise).GetEnumerator();
                     helper.Setup();
@@ -251,10 +229,6 @@ namespace ProtoPromiseTests.Concurrency
                 () =>
                 {
                     helper.Teardown();
-                    cancelationSource0.TryDispose();
-                    cancelationSource1.TryDispose();
-                    cancelationSource2.TryDispose();
-                    cancelationSource3.TryDispose();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -272,13 +246,11 @@ namespace ProtoPromiseTests.Concurrency
 
             var deferred0 = default(Promise<int>.Deferred);
             var deferred1 = default(Promise<int>.Deferred);
-            var cancelationSource0 = default(CancelationSource);
-            var cancelationSource1 = default(CancelationSource);
 
             List<Action> parallelActions = new List<Action>()
             {
-                () => completer0(deferred0, cancelationSource0),
-                () => completer1(deferred1, cancelationSource1),
+                () => completer0(deferred0),
+                () => completer1(deferred1),
             };
 
             var helper = ParallelCombineTestHelper.Create(
@@ -293,16 +265,14 @@ namespace ProtoPromiseTests.Concurrency
                 // setup
                 () =>
                 {
-                    deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
-                    deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
+                    deferred0 = Promise<int>.NewDeferred();
+                    deferred1 = Promise<int>.NewDeferred();
                     helper.Setup();
                 },
                 // teardown
                 () =>
                 {
                     helper.Teardown();
-                    cancelationSource0.TryDispose();
-                    cancelationSource1.TryDispose();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -323,15 +293,12 @@ namespace ProtoPromiseTests.Concurrency
             var deferred0 = default(Promise<int>.Deferred);
             var deferred1 = default(Promise<int>.Deferred);
             var deferred2 = default(Promise<int>.Deferred);
-            var cancelationSource0 = default(CancelationSource);
-            var cancelationSource1 = default(CancelationSource);
-            var cancelationSource2 = default(CancelationSource);
 
             List<Action> parallelActions = new List<Action>()
             {
-                () => completer0(deferred0, cancelationSource0),
-                () => completer1(deferred1, cancelationSource1),
-                () => completer2(deferred2, cancelationSource2),
+                () => completer0(deferred0),
+                () => completer1(deferred1),
+                () => completer2(deferred2),
             };
 
             var helper = ParallelCombineTestHelper.Create(
@@ -346,18 +313,15 @@ namespace ProtoPromiseTests.Concurrency
                 // setup
                 () =>
                 {
-                    deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
-                    deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
-                    deferred2 = TestHelper.GetNewDeferredT<int>(completeType2, out cancelationSource2);
+                    deferred0 = Promise<int>.NewDeferred();
+                    deferred1 = Promise<int>.NewDeferred();
+                    deferred2 = Promise<int>.NewDeferred();
                     helper.Setup();
                 },
                 // teardown
                 () =>
                 {
                     helper.Teardown();
-                    cancelationSource0.TryDispose();
-                    cancelationSource1.TryDispose();
-                    cancelationSource2.TryDispose();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -381,17 +345,13 @@ namespace ProtoPromiseTests.Concurrency
             var deferred1 = default(Promise<int>.Deferred);
             var deferred2 = default(Promise<int>.Deferred);
             var deferred3 = default(Promise<int>.Deferred);
-            var cancelationSource0 = default(CancelationSource);
-            var cancelationSource1 = default(CancelationSource);
-            var cancelationSource2 = default(CancelationSource);
-            var cancelationSource3 = default(CancelationSource);
 
             List<Action> parallelActions = new List<Action>()
             {
-                () => completer0(deferred0, cancelationSource0),
-                () => completer1(deferred1, cancelationSource1),
-                () => completer2(deferred2, cancelationSource2),
-                () => completer3(deferred3, cancelationSource3)
+                () => completer0(deferred0),
+                () => completer1(deferred1),
+                () => completer2(deferred2),
+                () => completer3(deferred3)
             };
 
             var helper = ParallelCombineTestHelper.Create(
@@ -406,20 +366,16 @@ namespace ProtoPromiseTests.Concurrency
                 // setup
                 () =>
                 {
-                    deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
-                    deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
-                    deferred2 = TestHelper.GetNewDeferredT<int>(completeType2, out cancelationSource2);
-                    deferred3 = TestHelper.GetNewDeferredT<int>(completeType3, out cancelationSource3);
+                    deferred0 = Promise<int>.NewDeferred();
+                    deferred1 = Promise<int>.NewDeferred();
+                    deferred2 = Promise<int>.NewDeferred();
+                    deferred3 = Promise<int>.NewDeferred();
                     helper.Setup();
                 },
                 // teardown
                 () =>
                 {
                     helper.Teardown();
-                    cancelationSource0.TryDispose();
-                    cancelationSource1.TryDispose();
-                    cancelationSource2.TryDispose();
-                    cancelationSource3.TryDispose();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -441,17 +397,13 @@ namespace ProtoPromiseTests.Concurrency
 
             Promise<int>.Deferred[] deferreds = null;
             IEnumerator<Promise<int>> promises = null;
-            var cancelationSource0 = default(CancelationSource);
-            var cancelationSource1 = default(CancelationSource);
-            var cancelationSource2 = default(CancelationSource);
-            var cancelationSource3 = default(CancelationSource);
 
             List<Action> parallelActions = new List<Action>()
             {
-                () => completer0(deferreds[0], cancelationSource0),
-                () => completer1(deferreds[1], cancelationSource1),
-                () => completer2(deferreds[2], cancelationSource2),
-                () => completer3(deferreds[3], cancelationSource3)
+                () => completer0(deferreds[0]),
+                () => completer1(deferreds[1]),
+                () => completer2(deferreds[2]),
+                () => completer3(deferreds[3])
             };
 
             var helper = ParallelCombineTestHelper.Create(
@@ -468,10 +420,10 @@ namespace ProtoPromiseTests.Concurrency
                 {
                     deferreds = new Promise<int>.Deferred[]
                     {
-                        TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0),
-                        TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1),
-                        TestHelper.GetNewDeferredT<int>(completeType2, out cancelationSource2),
-                        TestHelper.GetNewDeferredT<int>(completeType3, out cancelationSource3)
+                        Promise<int>.NewDeferred(),
+                        Promise<int>.NewDeferred(),
+                        Promise<int>.NewDeferred(),
+                        Promise<int>.NewDeferred()
                     };
                     promises = deferreds.Select(d => d.Promise).GetEnumerator();
                     helper.Setup();
@@ -480,10 +432,6 @@ namespace ProtoPromiseTests.Concurrency
                 () =>
                 {
                     helper.Teardown();
-                    cancelationSource0.TryDispose();
-                    cancelationSource1.TryDispose();
-                    cancelationSource2.TryDispose();
-                    cancelationSource3.TryDispose();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
