@@ -42,13 +42,9 @@ namespace ProtoPromiseTests.Concurrency.PromiseGroups
             // We need at least 1 promise to be pending.
             [Values(false)] bool alreadyComplete3)
         {
-            var tryCompleter1 = TestHelper.GetTryCompleterVoid(completeType1, rejectValue);
-            var tryCompleter2 = TestHelper.GetTryCompleterVoid(completeType2, rejectValue);
-            var tryCompleter3 = TestHelper.GetTryCompleterVoid(completeType3, rejectValue);
-
-            var deferred1 = default(Promise.Deferred);
-            var deferred2 = default(Promise.Deferred);
-            var deferred3 = default(Promise.Deferred);
+            var tryCompleter1 = default(Action);
+            var tryCompleter2 = default(Action);
+            var tryCompleter3 = default(Action);
             var promise1 = default(Promise);
             var promise2 = default(Promise);
             var promise3 = default(Promise);
@@ -59,15 +55,15 @@ namespace ProtoPromiseTests.Concurrency.PromiseGroups
             List<Action> parallelActions = new List<Action>();
             if (!alreadyComplete1)
             {
-                parallelActions.Add(() => tryCompleter1(deferred1, default));
+                parallelActions.Add(() => tryCompleter1());
             }
             if (!alreadyComplete2)
             {
-                parallelActions.Add(() => tryCompleter2(deferred2, default));
+                parallelActions.Add(() => tryCompleter2());
             }
             if (!alreadyComplete3)
             {
-                parallelActions.Add(() => tryCompleter3(deferred3, default));
+                parallelActions.Add(() => tryCompleter3());
             }
             if (withCancelation)
             {
@@ -98,15 +94,9 @@ namespace ProtoPromiseTests.Concurrency.PromiseGroups
                     {
                         group = PromiseRaceWithIndexGroup.New(out groupCancelationToken);
                     }
-                    promise1 = TestHelper.BuildPromise(completeType1, alreadyComplete1, rejectValue, out deferred1, out _);
-                    promise2 = TestHelper.BuildPromise(completeType2, alreadyComplete2, rejectValue, out deferred2, out _);
-                    promise3 = TestHelper.BuildPromise(completeType3, alreadyComplete3, rejectValue, out deferred3, out _);
-                    groupCancelationToken.Register(() =>
-                    {
-                        deferred1.TryCancel();
-                        deferred2.TryCancel();
-                        deferred3.TryCancel();
-                    });
+                    promise1 = TestHelper.BuildPromise(completeType1, alreadyComplete1, rejectValue, groupCancelationToken, out tryCompleter1);
+                    promise2 = TestHelper.BuildPromise(completeType2, alreadyComplete2, rejectValue, groupCancelationToken, out tryCompleter2);
+                    promise3 = TestHelper.BuildPromise(completeType3, alreadyComplete3, rejectValue, groupCancelationToken, out tryCompleter3);
                     helper.Setup();
                 },
                 // teardown
@@ -132,13 +122,9 @@ namespace ProtoPromiseTests.Concurrency.PromiseGroups
             // We need at least 1 promise to be pending.
             [Values(false)] bool alreadyComplete3)
         {
-            var tryCompleter1 = TestHelper.GetTryCompleterT(completeType1, 1, rejectValue);
-            var tryCompleter2 = TestHelper.GetTryCompleterT(completeType2, 2, rejectValue);
-            var tryCompleter3 = TestHelper.GetTryCompleterT(completeType3, 3, rejectValue);
-
-            var deferred1 = default(Promise<int>.Deferred);
-            var deferred2 = default(Promise<int>.Deferred);
-            var deferred3 = default(Promise<int>.Deferred);
+            var tryCompleter1 = default(Action);
+            var tryCompleter2 = default(Action);
+            var tryCompleter3 = default(Action);
             var promise1 = default(Promise<int>);
             var promise2 = default(Promise<int>);
             var promise3 = default(Promise<int>);
@@ -149,15 +135,15 @@ namespace ProtoPromiseTests.Concurrency.PromiseGroups
             List<Action> parallelActions = new List<Action>();
             if (!alreadyComplete1)
             {
-                parallelActions.Add(() => tryCompleter1(deferred1, default));
+                parallelActions.Add(() => tryCompleter1());
             }
             if (!alreadyComplete2)
             {
-                parallelActions.Add(() => tryCompleter2(deferred2, default));
+                parallelActions.Add(() => tryCompleter2());
             }
             if (!alreadyComplete3)
             {
-                parallelActions.Add(() => tryCompleter3(deferred3, default));
+                parallelActions.Add(() => tryCompleter3());
             }
             if (withCancelation)
             {
@@ -188,15 +174,9 @@ namespace ProtoPromiseTests.Concurrency.PromiseGroups
                     {
                         group = PromiseRaceWithIndexGroup<int>.New(out groupCancelationToken);
                     }
-                    promise1 = TestHelper.BuildPromise(completeType1, alreadyComplete1, 1, rejectValue, out deferred1, out _);
-                    promise2 = TestHelper.BuildPromise(completeType2, alreadyComplete2, 2, rejectValue, out deferred2, out _);
-                    promise3 = TestHelper.BuildPromise(completeType3, alreadyComplete3, 3, rejectValue, out deferred3, out _);
-                    groupCancelationToken.Register(() =>
-                    {
-                        deferred1.TryCancel();
-                        deferred2.TryCancel();
-                        deferred3.TryCancel();
-                    });
+                    promise1 = TestHelper.BuildPromise(completeType1, alreadyComplete1, 1, rejectValue, groupCancelationToken, out tryCompleter1);
+                    promise2 = TestHelper.BuildPromise(completeType2, alreadyComplete2, 2, rejectValue, groupCancelationToken, out tryCompleter2);
+                    promise3 = TestHelper.BuildPromise(completeType3, alreadyComplete3, 3, rejectValue, groupCancelationToken, out tryCompleter3);
                     helper.Setup();
                 },
                 // teardown

@@ -694,7 +694,7 @@ namespace ProtoPromiseTests.APIs
         {
             string expected = "Reject!";
 
-            var promise = TestHelper.BuildPromise(CompleteType.Reject, alreadyComplete, expected, out var deferred)
+            var promise = TestHelper.BuildPromise(CompleteType.Reject, alreadyComplete, expected, out var tryCompleter)
                 .Preserve();
 
             int rejectCount = 0;
@@ -719,7 +719,7 @@ namespace ProtoPromiseTests.APIs
                 onCallbackAddedConvert: onCallbackAddedConvert
             );
 
-            deferred.TryReject(expected);
+            tryCompleter();
 
             Assert.AreEqual(
                 TestHelper.rejectVoidCallbacks * 2,
@@ -735,7 +735,7 @@ namespace ProtoPromiseTests.APIs
         {
             string expected = "Reject!";
 
-            var promise = TestHelper.BuildPromise(CompleteType.Reject, alreadyComplete, 0, expected, out var deferred)
+            var promise = TestHelper.BuildPromise(CompleteType.Reject, alreadyComplete, 0, expected, out var tryCompleter)
                 .Preserve();
 
             int rejectCount = 0;
@@ -761,7 +761,7 @@ namespace ProtoPromiseTests.APIs
                 onCallbackAddedT: onCallbackAddedConvert
             );
 
-            deferred.TryReject(expected);
+            tryCompleter();
 
             Assert.AreEqual(
                 TestHelper.rejectTCallbacks * 2,

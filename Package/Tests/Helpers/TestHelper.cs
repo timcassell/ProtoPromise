@@ -288,70 +288,74 @@ namespace ProtoPromiseTests
             throw new Exception();
         }
 
-        public static Promise BuildPromise<TReject>(CompleteType completeType, bool isAlreadyComplete, TReject reason, out Promise.Deferred deferred)
-        {
-            if (!isAlreadyComplete)
-            {
-                deferred = Promise.NewDeferred();
-                return deferred.Promise;
-            }
-
-            deferred = default(Promise.Deferred);
-            switch (completeType)
-            {
-                case CompleteType.Resolve:
-                {
-                    return Promise.Resolved();
-                }
-                case CompleteType.Reject:
-                {
-                    return Promise.Rejected(reason);
-                }
-                default:
-                {
-                    return Promise.Canceled();
-                }
-            }
-        }
-
-        public static Promise<T> BuildPromise<T, TReject>(CompleteType completeType, bool isAlreadyComplete, T value, TReject reason, out Promise<T>.Deferred deferred)
-        {
-            if (!isAlreadyComplete)
-            {
-                deferred = Promise<T>.NewDeferred();
-                return deferred.Promise;
-            }
-
-            deferred = default(Promise<T>.Deferred);
-            switch (completeType)
-            {
-                case CompleteType.Resolve:
-                {
-                    return Promise.Resolved(value);
-                }
-                case CompleteType.Reject:
-                {
-                    return Promise<T>.Rejected(reason);
-                }
-                default:
-                {
-                    return Promise<T>.Canceled();
-                }
-            }
-        }
-
         public static Promise BuildPromise<TReject>(CompleteType completeType, bool isAlreadyComplete, TReject reason, out Action tryCompleter)
         {
-            var promise = BuildPromise(completeType, isAlreadyComplete, reason, out Promise.Deferred deferred);
-            tryCompleter = () => GetTryCompleterVoid(completeType, reason).Invoke(deferred);
-            return promise;
+            if (isAlreadyComplete)
+            {
+                tryCompleter = () => { };
+                switch (completeType)
+                {
+                    case CompleteType.Resolve:
+                        return Promise.Resolved();
+                    case CompleteType.Reject:
+                        return Promise.Rejected(reason);
+                    case CompleteType.Cancel:
+                        return Promise.Canceled();
+                }
+                throw new Exception();
+            }
+
+            var deferred = Promise.NewDeferred();
+            switch (completeType)
+            {
+                case CompleteType.Resolve:
+                    tryCompleter = () => deferred.TryResolve();
+                    break;
+                case CompleteType.Reject:
+                    tryCompleter = () => deferred.TryReject(reason);
+                    break;
+                case CompleteType.Cancel:
+                    tryCompleter = () => deferred.TryCancel();
+                    break;
+                default:
+                    throw new Exception();
+            }
+            return deferred.Promise;
         }
 
         public static Promise<T> BuildPromise<T, TReject>(CompleteType completeType, bool isAlreadyComplete, T value, TReject reason, out Action tryCompleter)
         {
-            var promise = BuildPromise(completeType, isAlreadyComplete, value, reason, out Promise<T>.Deferred deferred);
-            tryCompleter = () => GetTryCompleterT(completeType, value, reason).Invoke(deferred);
-            return promise;
+            if (isAlreadyComplete)
+            {
+                tryCompleter = () => { };
+                switch (completeType)
+                {
+                    case CompleteType.Resolve:
+                        return Promise.Resolved(value);
+                    case CompleteType.Reject:
+                        return Promise<T>.Rejected(reason);
+                    case CompleteType.Cancel:
+                        return Promise<T>.Canceled();
+                }
+                throw new Exception();
+            }
+
+            var deferred = Promise<T>.NewDeferred();
+            switch (completeType)
+            {
+                case CompleteType.Resolve:
+                    tryCompleter = () => deferred.TryResolve(value);
+                    break;
+                case CompleteType.Reject:
+                    tryCompleter = () => deferred.TryReject(reason);
+                    break;
+                case CompleteType.Cancel:
+                    tryCompleter = () => deferred.TryCancel();
+                    break;
+                default:
+                    throw new Exception();
+            }
+            return deferred.Promise;
         }
 
         public static Promise BuildPromise<TReject>(CompleteType completeType, bool isAlreadyComplete, TReject reason, CancelationToken cancelationToken, out Action tryCompleter)
@@ -362,10 +366,38 @@ namespace ProtoPromiseTests
                 return Promise.Canceled();
             }
 
-            var promise = BuildPromise(completeType, isAlreadyComplete, reason, out Promise.Deferred deferred);
+            if (isAlreadyComplete)
+            {
+                tryCompleter = () => { };
+                switch (completeType)
+                {
+                    case CompleteType.Resolve:
+                        return Promise.Resolved();
+                    case CompleteType.Reject:
+                        return Promise.Rejected(reason);
+                    case CompleteType.Cancel:
+                        return Promise.Canceled();
+                }
+                throw new Exception();
+            }
+
+            var deferred = Promise.NewDeferred();
             cancelationToken.TryRegister(() => deferred.TryCancel(), out _);
-            tryCompleter = () => GetTryCompleterVoid(completeType, reason).Invoke(deferred);
-            return promise;
+            switch (completeType)
+            {
+                case CompleteType.Resolve:
+                    tryCompleter = () => deferred.TryResolve();
+                    break;
+                case CompleteType.Reject:
+                    tryCompleter = () => deferred.TryReject(reason);
+                    break;
+                case CompleteType.Cancel:
+                    tryCompleter = () => deferred.TryCancel();
+                    break;
+                default:
+                    throw new Exception();
+            }
+            return deferred.Promise;
         }
 
         public static Promise<T> BuildPromise<T, TReject>(CompleteType completeType, bool isAlreadyComplete, T value, TReject reason, CancelationToken cancelationToken, out Action tryCompleter)
@@ -376,10 +408,38 @@ namespace ProtoPromiseTests
                 return Promise<T>.Canceled();
             }
 
-            var promise = BuildPromise(completeType, isAlreadyComplete, value, reason, out Promise<T>.Deferred deferred);
+            if (isAlreadyComplete)
+            {
+                tryCompleter = () => { };
+                switch (completeType)
+                {
+                    case CompleteType.Resolve:
+                        return Promise.Resolved(value);
+                    case CompleteType.Reject:
+                        return Promise<T>.Rejected(reason);
+                    case CompleteType.Cancel:
+                        return Promise<T>.Canceled();
+                }
+                throw new Exception();
+            }
+
+            var deferred = Promise<T>.NewDeferred();
             cancelationToken.TryRegister(() => deferred.TryCancel(), out _);
-            tryCompleter = () => GetTryCompleterT(completeType, value, reason).Invoke(deferred);
-            return promise;
+            switch (completeType)
+            {
+                case CompleteType.Resolve:
+                    tryCompleter = () => deferred.TryResolve(value);
+                    break;
+                case CompleteType.Reject:
+                    tryCompleter = () => deferred.TryReject(reason);
+                    break;
+                case CompleteType.Cancel:
+                    tryCompleter = () => deferred.TryCancel();
+                    break;
+                default:
+                    throw new Exception();
+            }
+            return deferred.Promise;
         }
 
         public static Promise ThenDuplicate(this Promise promise, CancelationToken cancelationToken = default(CancelationToken))

@@ -65,7 +65,7 @@ namespace ProtoPromiseTests.APIs
             [Values] bool isAlreadyComplete)
         {
             const string rejection = "Reject";
-            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection, out var deferred)
+            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection, out var tryCompleter)
                 .Preserve();
 
             int testCount = 0;
@@ -105,7 +105,7 @@ namespace ProtoPromiseTests.APIs
 
             Assert.Greater(testCount, 0);
 
-            TestHelper.GetTryCompleterVoid(completeType, rejection).Invoke(deferred);
+            tryCompleter();
 
             Assert.AreEqual(2 * testCount, finallyCount);
             Assert.AreEqual(testCount, completeCount);
@@ -120,7 +120,7 @@ namespace ProtoPromiseTests.APIs
         {
             const int resolveValue = 42;
             const string rejection = "Reject";
-            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, resolveValue, rejection, out var deferred)
+            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, resolveValue, rejection, out var tryCompleter)
                 .Preserve();
 
             int testCount = 0;
@@ -161,7 +161,7 @@ namespace ProtoPromiseTests.APIs
 
             Assert.Greater(testCount, 0);
 
-            TestHelper.GetTryCompleterT(completeType, resolveValue, rejection).Invoke(deferred);
+            tryCompleter();
 
             Assert.AreEqual(2 * testCount, finallyCount);
             Assert.AreEqual(testCount, completeCount);
@@ -187,7 +187,7 @@ namespace ProtoPromiseTests.APIs
                 ++uncaughtHandledCount;
             };
 
-            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection, out var deferred)
+            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection, out var tryCompleter)
                 .Preserve();
 
             int testCount = 0;
@@ -212,7 +212,7 @@ namespace ProtoPromiseTests.APIs
 
             Assert.Greater(testCount, 0);
 
-            TestHelper.GetTryCompleterVoid(completeType, rejection).Invoke(deferred);
+            tryCompleter();
 
             Assert.AreEqual(testCount, catchCount);
             Assert.AreEqual(completeType == CompleteType.Reject ? testCount : 0, uncaughtHandledCount);
@@ -241,7 +241,7 @@ namespace ProtoPromiseTests.APIs
             };
 
             const int resolveValue = 42;
-            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, resolveValue, rejection, out var deferred)
+            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, resolveValue, rejection, out var tryCompleter)
                 .Preserve();
 
             int testCount = 0;
@@ -266,7 +266,7 @@ namespace ProtoPromiseTests.APIs
 
             Assert.Greater(testCount, 0);
 
-            TestHelper.GetTryCompleterT(completeType, resolveValue, rejection).Invoke(deferred);
+            tryCompleter();
 
             Assert.AreEqual(testCount, catchCount);
             Assert.AreEqual(completeType == CompleteType.Reject ? testCount : 0, uncaughtHandledCount);
@@ -294,7 +294,7 @@ namespace ProtoPromiseTests.APIs
                 ++uncaughtHandledCount;
             };
 
-            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection, out var deferred)
+            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection, out var tryCompleter)
                 .Preserve();
 
             int testCount = 0;
@@ -314,7 +314,7 @@ namespace ProtoPromiseTests.APIs
 
             Assert.Greater(testCount, 0);
 
-            TestHelper.GetTryCompleterVoid(completeType, rejection).Invoke(deferred);
+            tryCompleter();
 
             Assert.AreEqual(testCount, catchCount);
             Assert.AreEqual(completeType == CompleteType.Reject ? testCount : 0, uncaughtHandledCount);
@@ -343,7 +343,7 @@ namespace ProtoPromiseTests.APIs
             };
 
             const int resolveValue = 42;
-            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, resolveValue, rejection, out var deferred)
+            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, resolveValue, rejection, out var tryCompleter)
                 .Preserve();
 
             int testCount = 0;
@@ -363,7 +363,7 @@ namespace ProtoPromiseTests.APIs
 
             Assert.Greater(testCount, 0);
 
-            TestHelper.GetTryCompleterT(completeType, resolveValue, rejection).Invoke(deferred);
+            tryCompleter();
 
             Assert.AreEqual(testCount, catchCount);
             Assert.AreEqual(completeType == CompleteType.Reject ? testCount : 0, uncaughtHandledCount);
@@ -397,19 +397,19 @@ namespace ProtoPromiseTests.APIs
                 ++uncaughtHandledCount;
             };
 
-            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection1, out var deferred)
+            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection1, out var preservedCompleter)
                 .Preserve();
 
             int finallyCount = 0;
             int completeCount = 0;
             const string captureValue = "captureValue";
 
-            var returnPromises = new List<(Promise.Deferred deferred, Promise promise)>();
+            var returnPromises = new List<(Promise promise, Action tryCompleter)>();
             foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
             {
-                var returnPromise = TestHelper.BuildPromise(returnCompleteType, returnIsAlreadyComplete, rejection2, out var returnDeferred)
+                var returnPromise = TestHelper.BuildPromise(returnCompleteType, returnIsAlreadyComplete, rejection2, out var tryCompleter)
                     .Preserve();
-                returnPromises.Add((returnDeferred, returnPromise));
+                returnPromises.Add((returnPromise, tryCompleter));
 
                 promise
                     .Finally(() =>
@@ -457,16 +457,15 @@ namespace ProtoPromiseTests.APIs
 
             Assert.Greater(returnPromises.Count, 0);
 
-            TestHelper.GetTryCompleterVoid(completeType, rejection1).Invoke(deferred);
+            preservedCompleter();
 
             Assert.AreEqual(returnPromises.Count * (returnIsAlreadyComplete ? 2 : 1), finallyCount);
             Assert.AreEqual(returnIsAlreadyComplete ? returnPromises.Count : 0, completeCount);
 
-            var completer = TestHelper.GetTryCompleterVoid(returnCompleteType, rejection2);
-            foreach (var tuple in returnPromises)
+            foreach (var (promise, tryCompleter) in returnPromises)
             {
-                completer.Invoke(tuple.deferred);
-                tuple.promise.Forget();
+                tryCompleter();
+                promise.Forget();
             }
 
             Assert.AreEqual(returnPromises.Count, completeCount);
@@ -511,19 +510,19 @@ namespace ProtoPromiseTests.APIs
             };
 
             const int resolveValue = 42;
-            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, resolveValue, rejection1, out var deferred)
+            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, resolveValue, rejection1, out var preservedCompleter)
                 .Preserve();
 
             int finallyCount = 0;
             int completeCount = 0;
             const string captureValue = "captureValue";
 
-            var returnPromises = new List<(Promise.Deferred deferred, Promise promise)>();
+            var returnPromises = new List<(Promise promise, Action tryCompleter)>();
             foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
             {
-                var returnPromise = TestHelper.BuildPromise(returnCompleteType, returnIsAlreadyComplete, rejection2, out var returnDeferred)
+                var returnPromise = TestHelper.BuildPromise(returnCompleteType, returnIsAlreadyComplete, rejection2, out var tryCompleter)
                     .Preserve();
-                returnPromises.Add((returnDeferred, returnPromise));
+                returnPromises.Add((returnPromise, tryCompleter));
 
                 promise
                     .Finally(() =>
@@ -571,16 +570,15 @@ namespace ProtoPromiseTests.APIs
 
             Assert.Greater(returnPromises.Count, 0);
 
-            TestHelper.GetTryCompleterT(completeType, resolveValue, rejection1).Invoke(deferred);
+            preservedCompleter();
 
             Assert.AreEqual(returnPromises.Count * (returnIsAlreadyComplete ? 2 : 1), finallyCount);
             Assert.AreEqual(returnIsAlreadyComplete ? returnPromises.Count : 0, completeCount);
 
-            var completer = TestHelper.GetTryCompleterVoid(returnCompleteType, rejection2);
-            foreach (var tuple in returnPromises)
+            foreach (var (promise, tryCompleter) in returnPromises)
             {
-                completer.Invoke(tuple.deferred);
-                tuple.promise.Forget();
+                tryCompleter();
+                promise.Forget();
             }
 
             Assert.AreEqual(returnPromises.Count, completeCount);
