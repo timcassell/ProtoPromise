@@ -28,7 +28,6 @@ namespace Proto.Promises
             internal virtual void Handle(PromiseRefBase handler, Promise.State state) { throw new System.InvalidOperationException(); }
             // For PromisePassThrough
             internal virtual void Handle(PromiseRefBase handler, Promise.State state, int index) { throw new System.InvalidOperationException(); }
-            internal virtual void Handle(PromiseRefBase.PromisePassThroughForMergeGroup passthrough, PromiseRefBase handler, Promise.State state) { throw new System.InvalidOperationException(); }
         }
 
         partial class PromiseRefBase

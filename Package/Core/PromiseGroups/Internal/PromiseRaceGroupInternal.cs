@@ -91,7 +91,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 protected void Reset(CancelationRef cancelationSource, bool cancelOnNonResolved)
                 {
-                    base.Reset(cancelationSource);
+                    Reset(cancelationSource);
                     _completeState = Promise.State.Canceled; // Default to Canceled state. If the promise is actually resolved or rejected, the state will be overwritten.
                     _isResolved = 0;
                     _cancelOnNonResolved = cancelOnNonResolved;

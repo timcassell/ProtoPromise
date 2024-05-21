@@ -162,9 +162,10 @@ PublishScripts/
 *.nupkg
 # The packages folder can be ignored because of Package Restore
 **/packages/*
-!Packages/manifest.json
-# except build/, which is used as an MSBuild target.
+# except build/, which is used as an MSBuild target
 !**/packages/build/
+# and Unity's manifest.json.
+!**/Packages/manifest.json
 # Uncomment if necessary however generally it will be regenerated when needed
 #!**/packages/repositories.config
 # NuGet v3's project.json files produces more ignoreable files

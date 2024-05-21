@@ -34,7 +34,7 @@ namespace Proto.Promises
                 => this;
 
             Exception IRejectContainer.GetValueAsException()
-                => this;
+                => Value as Exception ?? this;
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
