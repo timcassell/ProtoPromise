@@ -159,7 +159,7 @@ namespace ProtoPromiseTests.APIs
         //     .WaitAsync(SynchronizationOption)
         //     .Then(() => ...)
 
-        [Test, TestCaseSource("GetArgs_ResolveReject")]
+        [Test, TestCaseSource(nameof(GetArgs_ResolveReject))]
         public void CallbacksWillBeInvokedOnTheCorrectSynchronizationContext_ResolveReject_void(
             CompleteType firstCompleteType,
             CompleteType secondCompleteType,
@@ -385,7 +385,7 @@ namespace ProtoPromiseTests.APIs
             configureAwaitCancelationSource2.TryDispose();
         }
 
-        [Test, TestCaseSource("GetArgs_ResolveReject")]
+        [Test, TestCaseSource(nameof(GetArgs_ResolveReject))]
         public void CallbacksWillBeInvokedOnTheCorrectSynchronizationContext_ResolveReject_T(
             CompleteType firstCompleteType,
             CompleteType secondCompleteType,
@@ -611,7 +611,7 @@ namespace ProtoPromiseTests.APIs
             configureAwaitCancelationSource2.TryDispose();
         }
 
-        [Test, TestCaseSource("GetArgs_ContinueWith")]
+        [Test, TestCaseSource(nameof(GetArgs_ContinueWith))]
         public void CallbacksWillBeInvokedOnTheCorrectSynchronizationContext_ContinueWith_void(
             CompleteType firstCompleteType,
             CompleteType secondCompleteType,
@@ -729,7 +729,7 @@ namespace ProtoPromiseTests.APIs
             configureAwaitCancelationSource2.TryDispose();
         }
 
-        [Test, TestCaseSource("GetArgs_ContinueWith")]
+        [Test, TestCaseSource(nameof(GetArgs_ContinueWith))]
         public void CallbacksWillBeInvokedOnTheCorrectSynchronizationContext_ContinueWith_T(
             CompleteType firstCompleteType,
             CompleteType secondCompleteType,
@@ -847,7 +847,7 @@ namespace ProtoPromiseTests.APIs
             configureAwaitCancelationSource2.TryDispose();
         }
 
-        [Test, TestCaseSource("GetArgs_Cancel")]
+        [Test, TestCaseSource(nameof(GetArgs_Cancel))]
         public void CallbacksWillBeInvokedOnTheCorrectSynchronizationContext_Cancel_void(
             CompleteType completeType,
             SynchronizationType waitType,
@@ -897,7 +897,7 @@ namespace ProtoPromiseTests.APIs
             promise.Forget();
         }
 
-        [Test, TestCaseSource("GetArgs_Cancel")]
+        [Test, TestCaseSource(nameof(GetArgs_Cancel))]
         public void CallbacksWillBeInvokedOnTheCorrectSynchronizationContext_Cancel_T(
             CompleteType completeType,
             SynchronizationType waitType,
@@ -947,7 +947,7 @@ namespace ProtoPromiseTests.APIs
             promise.Forget();
         }
 
-        [Test, TestCaseSource("GetArgs_Finally")]
+        [Test, TestCaseSource(nameof(GetArgs_Finally))]
         public void CallbacksWillBeInvokedOnTheCorrectSynchronizationContext_Finally_void(
             CompleteType completeType,
             SynchronizationType waitType,
@@ -999,7 +999,7 @@ namespace ProtoPromiseTests.APIs
             promise.Forget();
         }
 
-        [Test, TestCaseSource("GetArgs_Finally")]
+        [Test, TestCaseSource(nameof(GetArgs_Finally))]
         public void CallbacksWillBeInvokedOnTheCorrectSynchronizationContext_Finally_T(
             CompleteType completeType,
             SynchronizationType waitType,
@@ -1161,7 +1161,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetArgs_ContinueWith")]
+        [Test, TestCaseSource(nameof(GetArgs_ContinueWith))]
         public void CallbacksWillBeInvokedOnTheCorrectSynchronizationContext_Await_void(
             CompleteType firstCompleteType,
             CompleteType secondCompleteType,
@@ -1280,7 +1280,7 @@ namespace ProtoPromiseTests.APIs
             configureAwaitCancelationSource2.TryDispose();
         }
 
-        [Test, TestCaseSource("GetArgs_ContinueWith")]
+        [Test, TestCaseSource(nameof(GetArgs_ContinueWith))]
         public void CallbacksWillBeInvokedOnTheCorrectSynchronizationContext_Await_T(
             CompleteType firstCompleteType,
             CompleteType secondCompleteType,
@@ -1519,7 +1519,7 @@ namespace ProtoPromiseTests.APIs
 
         [Test]
         public void WaitAsyncWithCancelationTokenWillBeCompletedProperly_void(
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType,
+            [Values] CompleteType completeType,
             [Values(ConfigureAwaitCancelType.NoToken, ConfigureAwaitCancelType.WithToken_NoCancel, ConfigureAwaitCancelType.AlreadyCanceled, ConfigureAwaitCancelType.CancelFirst)] ConfigureAwaitCancelType waitAsyncCancelType,
             [Values] bool isAlreadyComplete)
         {
@@ -1592,7 +1592,7 @@ namespace ProtoPromiseTests.APIs
 
         [Test]
         public void WaitAsyncWithCancelationTokenWillBeCompletedProperly_T(
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType,
+            [Values] CompleteType completeType,
             [Values(ConfigureAwaitCancelType.NoToken, ConfigureAwaitCancelType.WithToken_NoCancel, ConfigureAwaitCancelType.AlreadyCanceled, ConfigureAwaitCancelType.CancelFirst)] ConfigureAwaitCancelType waitAsyncCancelType,
             [Values] bool isAlreadyComplete)
         {

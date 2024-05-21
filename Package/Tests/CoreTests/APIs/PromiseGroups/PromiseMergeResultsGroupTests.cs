@@ -143,9 +143,9 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
         [Test]
         public void PromiseMergeResultsGroupIsResolvedWhenAllPromisesAreCompleted_void_void(
             [Values] CancelationType cancelationType,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType1,
+            [Values] CompleteType completeType1,
             [Values] bool alreadyComplete1,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType2,
+            [Values] CompleteType completeType2,
             [Values] bool alreadyComplete2)
         {
             using (var cancelationSource = CancelationSource.New())
@@ -185,9 +185,9 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
         [Test]
         public void PromiseMergeResultsGroupIsResolvedWhenAllPromisesAreCompleted_T_T(
             [Values] CancelationType cancelationType,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType1,
+            [Values] CompleteType completeType1,
             [Values] bool alreadyComplete1,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType2,
+            [Values] CompleteType completeType2,
             [Values] bool alreadyComplete2)
         {
             using (var cancelationSource = CancelationSource.New())
@@ -229,12 +229,12 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
         [Test]
         public void PromiseMergeResultsGroupIsResolvedWhenAllPromisesAreCompleted_void_T_void_T(
             [Values] CancelationType cancelationType,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType1,
+            [Values] CompleteType completeType1,
             [Values] bool alreadyComplete1,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType2,
+            [Values] CompleteType completeType2,
             [Values] bool alreadyComplete2,
-            // Only test resolve for 3 and 4 to reduce the number of tests.
-            [Values] bool alreadyComplete3and4,
+            // Reduce number of tests.
+            [Values(false)] bool alreadyComplete3and4,
             [Values(CompleteType.Resolve)] CompleteType completeType3,
             [Values(CompleteType.Resolve)] CompleteType completeType4)
         {
@@ -286,12 +286,12 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
         [Test]
         public void PromiseMergeResultsGroupIsResolvedWhenAllPromisesAreCompleted_T_T_T_T_void_void_void(
             [Values] CancelationType cancelationType,
-            // Only test all complete types for 1 and 2 to reduce the number of tests.
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType1,
+            [Values] CompleteType completeType1,
             [Values] bool alreadyComplete1,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType2,
+            [Values] CompleteType completeType2,
             [Values] bool alreadyComplete2,
-            [Values] bool alreadyComplete3Through7,
+            // Reduce number of tests.
+            [Values(false)] bool alreadyComplete3Through7,
             [Values(CompleteType.Resolve)] CompleteType completeType3,
             [Values(CompleteType.Resolve)] CompleteType completeType4,
             [Values(CompleteType.Resolve)] CompleteType completeType5,
@@ -360,17 +360,17 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
         [Test]
         public void PromiseMergeResultsGroupIsResolvedWhenAllPromisesAreCompleted_T_void_T_void_T_T_void_void(
             [Values] CancelationType cancelationType,
-            // Only test all complete types for 1 and 8 to reduce the number of tests.
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType1,
+            [Values] CompleteType completeType1,
             [Values] bool alreadyComplete1,
-            [Values] bool alreadyComplete2Through7,
+            // Reduce number of tests.
+            [Values(false)] bool alreadyComplete2Through7,
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3,
             [Values(CompleteType.Resolve)] CompleteType completeType4,
             [Values(CompleteType.Resolve)] CompleteType completeType5,
             [Values(CompleteType.Resolve)] CompleteType completeType6,
             [Values(CompleteType.Resolve)] CompleteType completeType7,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType8,
+            [Values] CompleteType completeType8,
             [Values] bool alreadyComplete8)
         {
             using (var cancelationSource = CancelationSource.New())
@@ -520,9 +520,9 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
         [Test]
         public void PromiseMergeResultsGroupIsResolvedWhenAllPromisesAreCompleted_WithCancelation_void_void(
             [Values] CancelationType cancelationType,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType1,
+            [Values] CompleteType completeType1,
             [Values] bool alreadyComplete1,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType2,
+            [Values] CompleteType completeType2,
             [Values] bool alreadyComplete2)
         {
             using (var cancelationSource = CancelationSource.New())
@@ -578,9 +578,9 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
         [Test]
         public void PromiseMergeResultsGroupIsResolvedWhenAllPromisesAreCompleted_WithCancelation_T_T(
             [Values] CancelationType cancelationType,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType1,
+            [Values] CompleteType completeType1,
             [Values] bool alreadyComplete1,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType2,
+            [Values] CompleteType completeType2,
             [Values] bool alreadyComplete2)
         {
             using (var cancelationSource = CancelationSource.New())
@@ -638,12 +638,12 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
         [Test]
         public void PromiseMergeResultsGroupIsResolvedWhenAllPromisesAreCompleted_WithCancelation_void_T_void_T(
             [Values] CancelationType cancelationType,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType1,
+            [Values] CompleteType completeType1,
             [Values] bool alreadyComplete1,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType2,
+            [Values] CompleteType completeType2,
             [Values] bool alreadyComplete2,
-            // Only test resolve for 3 and 4 to reduce the number of tests.
-            [Values] bool alreadyComplete3and4,
+            // Reduce number of tests.
+            [Values(false)] bool alreadyComplete3and4,
             [Values(CompleteType.Resolve)] CompleteType completeType3,
             [Values(CompleteType.Resolve)] CompleteType completeType4)
         {
@@ -720,12 +720,12 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
         [Test]
         public void PromiseMergeResultsGroupIsResolvedWhenAllPromisesAreCompleted_WithCancelation_T_T_T_T_void_void_void(
             [Values] CancelationType cancelationType,
-            // Only test all complete types for 1 and 2 to reduce the number of tests.
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType1,
+            [Values] CompleteType completeType1,
             [Values] bool alreadyComplete1,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType2,
+            [Values] CompleteType completeType2,
             [Values] bool alreadyComplete2,
-            [Values] bool alreadyComplete3Through7,
+            // Reduce number of tests.
+            [Values(false)] bool alreadyComplete3Through7,
             [Values(CompleteType.Resolve)] CompleteType completeType3,
             [Values(CompleteType.Resolve)] CompleteType completeType4,
             [Values(CompleteType.Resolve)] CompleteType completeType5,
@@ -834,17 +834,17 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
         [Test]
         public void PromiseMergeResultsGroupIsResolvedWhenAllPromisesAreCompleted_WithCancelation_T_void_T_void_T_T_void_T(
             [Values] CancelationType cancelationType,
-            // Only test all complete types for 1 and 8 to reduce the number of tests.
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType1,
+            [Values] CompleteType completeType1,
             [Values] bool alreadyComplete1,
-            [Values] bool alreadyComplete2Through7,
+            // Reduce number of tests.
+            [Values(false)] bool alreadyComplete2Through7,
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3,
             [Values(CompleteType.Resolve)] CompleteType completeType4,
             [Values(CompleteType.Resolve)] CompleteType completeType5,
             [Values(CompleteType.Resolve)] CompleteType completeType6,
             [Values(CompleteType.Resolve)] CompleteType completeType7,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType8,
+            [Values] CompleteType completeType8,
             [Values] bool alreadyComplete8)
         {
             using (var cancelationSource = CancelationSource.New())
@@ -959,10 +959,10 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
         [Test]
         public void PromiseMergeResultsGroupIsResolvedWhenAllPromisesAreCompleted_WithCancelation_14(
             [Values] CancelationType cancelationType,
-            // Only test all complete types for 1 and 14 to reduce the number of tests.
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType1,
+            [Values] CompleteType completeType1,
             [Values] bool alreadyComplete1,
-            [Values] bool alreadyComplete2Through13,
+            // Reduce number of tests.
+            [Values(false)] bool alreadyComplete2Through13,
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3,
             [Values(CompleteType.Resolve)] CompleteType completeType4,
@@ -975,7 +975,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
             [Values(CompleteType.Resolve)] CompleteType completeType11,
             [Values(CompleteType.Resolve)] CompleteType completeType12,
             [Values(CompleteType.Resolve)] CompleteType completeType13,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType14,
+            [Values] CompleteType completeType14,
             [Values] bool alreadyComplete14)
         {
             using (var cancelationSource = CancelationSource.New())
@@ -1191,10 +1191,10 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
         [Test]
         public void PromiseMergeResultsGroup_CancelationCallbackExceptionsArePropagated_8(
             [Values(CancelationType.None, CancelationType.Deferred)] CancelationType cancelationType,
-            // Only test all complete types for 1 and 8 to reduce the number of tests.
             [Values(CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType1,
             [Values] bool alreadyComplete1,
-            [Values] bool alreadyComplete2Through7,
+            // Reduce number of tests.
+            [Values(false)] bool alreadyComplete2Through7,
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3,
             [Values(CompleteType.Resolve)] CompleteType completeType4,
@@ -1265,10 +1265,10 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
         [Test]
         public void PromiseMergeResultsGroup_CancelationCallbackExceptionsArePropagated_14(
             [Values(CancelationType.None, CancelationType.Deferred)] CancelationType cancelationType,
-            // Only test all complete types for 1, 8, and 14 to reduce the number of tests.
             [Values(CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType1,
             [Values] bool alreadyComplete1,
-            [Values] bool alreadyComplete2Through13,
+            // Reduce number of tests.
+            [Values(false)] bool alreadyComplete2Through13,
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values(CompleteType.Resolve)] CompleteType completeType3,
             [Values(CompleteType.Resolve)] CompleteType completeType4,

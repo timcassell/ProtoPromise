@@ -7,6 +7,7 @@
 using NUnit.Framework;
 using Proto.Promises;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace ProtoPromiseTests.APIs.PromiseGroups
@@ -90,7 +91,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
         public void PromiseRaceGroupAdoptsTheStateOfTheFirstCompletedPromise_1_void(
             [Values] CancelationType cancelationType,
             [Values] bool cancelOnNonResolved,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType,
+            [Values] CompleteType completeType,
             [Values] bool alreadyComplete)
         {
             using (var cancelationSource = CancelationSource.New())
@@ -126,15 +127,34 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
             }
         }
 
-        [Test]
+        private static IEnumerable<TestCaseData> GetArgs()
+        {
+            var cancelationTypes = new[] { CancelationType.None, CancelationType.Deferred, CancelationType.Immediate };
+            var completeTypes = new[] { CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel };
+            var bools = new[] { true, false };
+            var falseOnly = new[] { false };
+
+            foreach (var cancelationType in cancelationTypes)
+            foreach (var cancelOnNonResolved in bools)
+            foreach (var completeType1 in completeTypes)
+            foreach (var alreadyComplete1 in bools)
+            foreach (var completeType2 in completeTypes)
+            foreach (var alreadyComplete2 in bools)
+            foreach (var completeFirstPromiseFirst in !alreadyComplete1 && !alreadyComplete2 ? bools : falseOnly)
+            {
+                yield return new TestCaseData(cancelationType, cancelOnNonResolved, completeType1, alreadyComplete1, completeType2, alreadyComplete2, completeFirstPromiseFirst);
+            }
+        }
+
+        [Test, TestCaseSource(nameof(GetArgs))]
         public void PromiseRaceGroupAdoptsTheStateOfTheFirstCompletedPromise_2_void(
-            [Values] CancelationType cancelationType,
-            [Values] bool cancelOnNonResolved,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType1,
-            [Values] bool alreadyComplete1,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType2,
-            [Values] bool alreadyComplete2,
-            [Values] bool completeFirstPromiseFirst)
+            CancelationType cancelationType,
+            bool cancelOnNonResolved,
+            CompleteType completeType1,
+            bool alreadyComplete1,
+            CompleteType completeType2,
+            bool alreadyComplete2,
+            bool completeFirstPromiseFirst)
         {
             using (var cancelationSource = CancelationSource.New())
             {
@@ -265,15 +285,15 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
             return GetExpectedState(completeType1, completeType2);
         }
 
-        [Test]
+        [Test, TestCaseSource(nameof(GetArgs))]
         public void PromiseRaceGroupAdoptsTheStateOfTheFirstCompletedPromise_WithCancelation_2_void(
-            [Values] CancelationType cancelationType,
-            [Values] bool cancelOnNonResolved,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType1,
-            [Values] bool alreadyComplete1,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType2,
-            [Values] bool alreadyComplete2,
-            [Values] bool completeFirstPromiseFirst)
+            CancelationType cancelationType,
+            bool cancelOnNonResolved,
+            CompleteType completeType1,
+            bool alreadyComplete1,
+            CompleteType completeType2,
+            bool alreadyComplete2,
+            bool completeFirstPromiseFirst)
         {
             using (var cancelationSource = CancelationSource.New())
             {
@@ -470,7 +490,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
         public void PromiseRaceGroupAdoptsTheStateOfTheFirstCompletedPromise_1_T(
             [Values] CancelationType cancelationType,
             [Values] bool cancelOnNonResolved,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType,
+            [Values] CompleteType completeType,
             [Values] bool alreadyComplete)
         {
             using (var cancelationSource = CancelationSource.New())
@@ -542,15 +562,15 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                 : value2;
         }
 
-        [Test]
+        [Test, TestCaseSource(nameof(GetArgs))]
         public void PromiseRaceGroupAdoptsTheStateOfTheFirstCompletedPromise_2_T(
-            [Values] CancelationType cancelationType,
-            [Values] bool cancelOnNonResolved,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType1,
-            [Values] bool alreadyComplete1,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType2,
-            [Values] bool alreadyComplete2,
-            [Values] bool completeFirstPromiseFirst)
+            CancelationType cancelationType,
+            bool cancelOnNonResolved,
+            CompleteType completeType1,
+            bool alreadyComplete1,
+            CompleteType completeType2,
+            bool alreadyComplete2,
+            bool completeFirstPromiseFirst)
         {
             using (var cancelationSource = CancelationSource.New())
             {
@@ -603,15 +623,15 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
             }
         }
 
-        [Test]
+        [Test, TestCaseSource(nameof(GetArgs))]
         public void PromiseRaceGroupAdoptsTheStateOfTheFirstCompletedPromise_WithCancelation_2_T(
-            [Values] CancelationType cancelationType,
-            [Values] bool cancelOnNonResolved,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType1,
-            [Values] bool alreadyComplete1,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType2,
-            [Values] bool alreadyComplete2,
-            [Values] bool completeFirstPromiseFirst)
+            CancelationType cancelationType,
+            bool cancelOnNonResolved,
+            CompleteType completeType1,
+            bool alreadyComplete1,
+            CompleteType completeType2,
+            bool alreadyComplete2,
+            bool completeFirstPromiseFirst)
         {
             using (var cancelationSource = CancelationSource.New())
             {

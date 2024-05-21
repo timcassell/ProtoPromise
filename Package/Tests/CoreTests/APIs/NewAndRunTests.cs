@@ -69,7 +69,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetArgs_New")]
+        [Test, TestCaseSource(nameof(GetArgs_New))]
         public void PromiseNewIsInvokedAndCompletedProperly_void(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -134,7 +134,7 @@ namespace ProtoPromiseTests.APIs
             Assert.True(invoked);
         }
 
-        [Test, TestCaseSource("GetArgs_New")]
+        [Test, TestCaseSource(nameof(GetArgs_New))]
         public void PromiseNewIsInvokedAndCompletedProperly_capture_void(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -201,7 +201,7 @@ namespace ProtoPromiseTests.APIs
             Assert.True(invoked);
         }
 
-        [Test, TestCaseSource("GetArgs_New")]
+        [Test, TestCaseSource(nameof(GetArgs_New))]
         public void PromiseNewIsInvokedAndCompletedProperly_T(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -268,7 +268,7 @@ namespace ProtoPromiseTests.APIs
             Assert.True(invoked);
         }
 
-        [Test, TestCaseSource("GetArgs_New")]
+        [Test, TestCaseSource(nameof(GetArgs_New))]
         public void PromiseNewIsInvokedAndCompletedProperly_capture_T(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -373,7 +373,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetArgs_Run")]
+        [Test, TestCaseSource(nameof(GetArgs_Run))]
         public void PromiseRunIsInvokedAndCompletedProperly_void(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -431,7 +431,7 @@ namespace ProtoPromiseTests.APIs
             Assert.True(invoked);
         }
 
-        [Test, TestCaseSource("GetArgs_Run")]
+        [Test, TestCaseSource(nameof(GetArgs_Run))]
         public void PromiseRunIsInvokedAndCompletedProperly_capture_void(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -491,7 +491,7 @@ namespace ProtoPromiseTests.APIs
             Assert.True(invoked);
         }
 
-        [Test, TestCaseSource("GetArgs_Run")]
+        [Test, TestCaseSource(nameof(GetArgs_Run))]
         public void PromiseRunIsInvokedAndCompletedProperly_T(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -552,7 +552,7 @@ namespace ProtoPromiseTests.APIs
             Assert.True(invoked);
         }
 
-        [Test, TestCaseSource("GetArgs_Run")]
+        [Test, TestCaseSource(nameof(GetArgs_Run))]
         public void PromiseRunIsInvokedAndCompletedProperly_capture_T(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -663,7 +663,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetArgs_RunAdopt")]
+        [Test, TestCaseSource(nameof(GetArgs_RunAdopt))]
         public void PromiseRunIsInvokedAndCompletedProperly_adopt_void(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -732,7 +732,7 @@ namespace ProtoPromiseTests.APIs
             Assert.True(invoked);
         }
 
-        [Test, TestCaseSource("GetArgs_RunAdopt")]
+        [Test, TestCaseSource(nameof(GetArgs_RunAdopt))]
         public void PromiseRunIsInvokedAndCompletedProperly_adopt_capture_void(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -803,7 +803,7 @@ namespace ProtoPromiseTests.APIs
             Assert.True(invoked);
         }
 
-        [Test, TestCaseSource("GetArgs_RunAdopt")]
+        [Test, TestCaseSource(nameof(GetArgs_RunAdopt))]
         public void PromiseRunIsInvokedAndCompletedProperly_adopt_T(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -874,7 +874,7 @@ namespace ProtoPromiseTests.APIs
             Assert.True(invoked);
         }
 
-        [Test, TestCaseSource("GetArgs_RunAdopt")]
+        [Test, TestCaseSource(nameof(GetArgs_RunAdopt))]
         public void PromiseRunIsInvokedAndCompletedProperly_adopt_capture_T(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,

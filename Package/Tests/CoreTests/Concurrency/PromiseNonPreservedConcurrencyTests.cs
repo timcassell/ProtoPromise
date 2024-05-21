@@ -213,7 +213,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         // It takes a long time to test all then actions, so split it up for each action.
-        [Test, TestCaseSource("GetThenArgs_void")]
+        [Test, TestCaseSource(nameof(GetThenArgs_void))]
         public void PromiseWithReferenceBacking_ThenMayOnlyBeCalledOnce_void(int thenIndex)
         {
             var actions = GetThenActions_void();
@@ -261,7 +261,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         // It takes a long time to test all then actions, so split it up for each action.
-        [Test, TestCaseSource("GetThenArgs_T")]
+        [Test, TestCaseSource(nameof(GetThenArgs_T))]
         public void PromiseWithReferenceBacking_ThenMayOnlyBeCalledOnce_T(int thenIndex)
         {
             var actions = GetThenActions_T();

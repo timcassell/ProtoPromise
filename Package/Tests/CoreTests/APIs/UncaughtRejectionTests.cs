@@ -37,7 +37,7 @@ namespace ProtoPromiseTests.APIs
             yield return new TestCaseData(42);
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void UncaughtRejectionIsSentToUncaughtRejectionHandler_void(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -117,7 +117,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void UncaughtRejectionIsSentToUncaughtRejectionHandler_T(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -197,7 +197,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void WhenPromiseIsCanceled_UncaughtRejectionIsSentToUncaughtRejectionHandler_void(object expectedRejectionValue)
         {
             // Testing an implementation detail - when a promise is canceled and the previous promise is rejected, it counts as an uncaught rejection.
@@ -264,7 +264,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void WhenPromiseIsCanceled_UncaughtRejectionIsSentToUncaughtRejectionHandler_T(object expectedRejectionValue)
         {
             // Testing an implementation detail - when a promise is canceled and the previous promise is rejected, it counts as an uncaught rejection.
@@ -331,7 +331,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseAll_UncaughtRejectionIsSentToUncaughtRejectionHandler_void(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -390,7 +390,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseAll_UncaughtRejectionIsSentToUncaughtRejectionHandler_T(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -449,7 +449,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseMerge_UncaughtRejectionIsSentToUncaughtRejectionHandler(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -508,7 +508,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseRace_UncaughtRejectionIsSentToUncaughtRejectionHandler_void(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -567,7 +567,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseRace_UncaughtRejectionIsSentToUncaughtRejectionHandler_T(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -626,7 +626,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseRaceWithIndex_UncaughtRejectionIsSentToUncaughtRejectionHandler_void(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -685,7 +685,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseRaceWithIndex_UncaughtRejectionIsSentToUncaughtRejectionHandler_T(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -744,7 +744,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseFirst_UncaughtRejectionIsSuppressed_void(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -792,7 +792,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseFirst_UncaughtRejectionIsSuppressed_T(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -840,7 +840,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseFirstWithIndex_UncaughtRejectionIsSuppressed_void(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -888,7 +888,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseFirstWithIndex_UncaughtRejectionIsSuppressed_T(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -955,7 +955,7 @@ namespace ProtoPromiseTests.APIs
                 }
         }
 
-        [Test, TestCaseSource("GetExpectedRejectionsAndTimeout")]
+        [Test, TestCaseSource(nameof(GetExpectedRejectionsAndTimeout))]
         public void PromiseWait_UncaughtRejectionIsSentToUncaughtRejectionHandler(object expectedRejectionValue, int timeout)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -1000,7 +1000,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejectionsAndTimeout")]
+        [Test, TestCaseSource(nameof(GetExpectedRejectionsAndTimeout))]
         public void PromiseWaitForResult_UncaughtRejectionIsSentToUncaughtRejectionHandler(object expectedRejectionValue, int timeout)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;

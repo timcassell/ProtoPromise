@@ -1004,7 +1004,7 @@ namespace ProtoPromiseTests.APIs
 
         [Test]
         public void PromiseWait_AlreadyCompleted_ReturnsSuccessfullyOrThrowsCorrectException(
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType,
+            [Values] CompleteType completeType,
             [Values] bool withTimeout)
         {
             var expectedException = completeType == CompleteType.Reject
@@ -1039,7 +1039,7 @@ namespace ProtoPromiseTests.APIs
 
         [Test]
         public void PromiseWaitNoThrow_AlreadyCompleted_ReturnsSuccessfullyWithProperResult(
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType,
+            [Values] CompleteType completeType,
             [Values] bool withTimeout)
         {
             string expectedRejection = "Rejected";
@@ -1215,7 +1215,7 @@ namespace ProtoPromiseTests.APIs
 
         [Test]
         public void PromiseWaitForResult_AlreadyCompleted_ReturnsSuccessfullyOrThrowsCorrectException(
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType,
+            [Values] CompleteType completeType,
             [Values] bool withTimeout)
         {
             var expectedException = completeType == CompleteType.Reject
@@ -1256,7 +1256,7 @@ namespace ProtoPromiseTests.APIs
 
         [Test]
         public void PromiseWaitForResultNoThrow_AlreadyCompleted_ReturnsSuccessfullyWithProperResult(
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType,
+            [Values] CompleteType completeType,
             [Values] bool withTimeout)
         {
             var expectedException = completeType == CompleteType.Reject

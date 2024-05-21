@@ -93,7 +93,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
         public void PromiseAllGroupIsCompletedWhenAllPromisesAreCompleted_1(
             [Values] CancelationType cancelationType,
             [Values] bool provideList,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType,
+            [Values] CompleteType completeType,
             [Values] bool alreadyComplete)
         {
             using (var cancelationSource = CancelationSource.New())
@@ -143,9 +143,9 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
         public void PromiseAllGroupIsCompletedWhenAllPromisesAreCompleted_2(
             [Values] CancelationType cancelationType,
             [Values] bool provideList,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType1,
+            [Values] CompleteType completeType1,
             [Values] bool alreadyComplete1,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType2,
+            [Values] CompleteType completeType2,
             [Values] bool alreadyComplete2)
         {
             using (var cancelationSource = CancelationSource.New())
@@ -282,9 +282,9 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
         public void PromiseAllGroupIsCompletedWhenAllPromisesAreCompleted_WithCancelation_2(
             [Values] CancelationType cancelationType,
             [Values] bool provideList,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType1,
+            [Values] CompleteType completeType1,
             [Values] bool alreadyComplete1,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType2,
+            [Values] CompleteType completeType2,
             [Values] bool alreadyComplete2)
         {
             using (var cancelationSource = CancelationSource.New())

@@ -33,9 +33,9 @@ namespace ProtoPromiseTests.Concurrency.PromiseGroups
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToPromiseMergeGroup_AndCancelationTriggeredConcurrently_T_void(
             [Values] bool withCancelation,
             [Values] CombineType combineType,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType1,
+            [Values] CompleteType completeType1,
             [Values] bool alreadyComplete1,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType2,
+            [Values] CompleteType completeType2,
             // We need at least 1 promise to be pending.
             [Values(false)] bool alreadyComplete2)
         {
@@ -104,7 +104,7 @@ namespace ProtoPromiseTests.Concurrency.PromiseGroups
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToPromiseMergeGroup_AndCancelationTriggeredConcurrently_void_T_void_T(
             [Values] bool withCancelation,
             [Values] CombineType combineType,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType1,
+            [Values] CompleteType completeType1,
             [Values] bool alreadyComplete1,
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             // We need at least 1 promise to be pending.
@@ -112,7 +112,7 @@ namespace ProtoPromiseTests.Concurrency.PromiseGroups
             [Values(CompleteType.Resolve)] CompleteType completeType3,
             // Only have up to 2 already complete to reduce test count.
             [Values(false)] bool alreadyComplete3,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType4,
+            [Values] CompleteType completeType4,
             [Values] bool alreadyComplete4)
         {
             var tryCompleter1 = default(Action);

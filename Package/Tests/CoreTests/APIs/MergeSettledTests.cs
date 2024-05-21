@@ -261,7 +261,7 @@ namespace ProtoPromiseTests.APIs
 
         private const string rejectValue = "reject";
 
-        [Test, TestCaseSource("GetArgs")]
+        [Test, TestCaseSource(nameof(GetArgs))]
         public void MergeSettledWorksProperly(MergeSettledArg[] args)
         {
             Type[] genericArgTypes = args.Select(arg => arg.Type)

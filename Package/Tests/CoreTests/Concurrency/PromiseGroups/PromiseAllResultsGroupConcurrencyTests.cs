@@ -34,11 +34,11 @@ namespace ProtoPromiseTests.Concurrency.PromiseGroups
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToPromiseAllResultsGroup_AndCancelationTriggeredConcurrently_3(
             [Values] bool withCancelation,
             [Values] CombineType combineType,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType1,
+            [Values] CompleteType completeType1,
             [Values] bool alreadyComplete1,
             [Values(CompleteType.Resolve)] CompleteType completeType2,
             [Values] bool alreadyComplete2,
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType3,
+            [Values] CompleteType completeType3,
             // We need at least 1 promise to be pending.
             [Values(false)] bool alreadyComplete3)
         {
