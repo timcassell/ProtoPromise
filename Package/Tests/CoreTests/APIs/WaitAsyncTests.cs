@@ -44,40 +44,30 @@ namespace ProtoPromiseTests.APIs
             TestHelper.s_expectedUncaughtRejectValue = null;
         }
 
-        private static IEnumerable<TestCaseData> GetArgs(CompleteType[] completeTypes)
+        private static IEnumerable<TestCaseData> GetArgs(params CompleteType[] completeTypes)
         {
-            // Make sure we're testing all wait types on the first await.
-            SynchronizationType[] firstWaitTypes = new SynchronizationType[]
+            var waitTypes = new[]
             {
                 SynchronizationType.Synchronous,
-                SynchronizationType.Foreground,
+                //SynchronizationType.Foreground, // Ignore foreground to reduce number of tests, testing explicit is effectively the same.
 #if !UNITY_WEBGL
                 SynchronizationType.Background,
 #endif
                 SynchronizationType.Explicit
             };
-            SynchronizationType[] secondWaitTypes = new SynchronizationType[]
-            {
-                SynchronizationType.Synchronous,
-                //SynchronizationType.Foreground, // Ignore foreground on second await to reduce number of tests, testing explicit is effectively the same due to the implementation.
-#if !UNITY_WEBGL
-                SynchronizationType.Background,
-#endif
-                SynchronizationType.Explicit
-            };
-            SynchronizationType[] reportTypes = new SynchronizationType[]
+            SynchronizationType[] reportTypes = new[]
             {
                 SynchronizationType.Foreground
 #if !UNITY_WEBGL
                 , SynchronizationType.Background
 #endif
             };
-            SynchronizationType[] foregroundOnlyReportType = new SynchronizationType[] { SynchronizationType.Foreground };
-            bool[] alreadyCompletes = new bool[] { true, false };
+            var foregroundOnlyReportType = new[] { SynchronizationType.Foreground };
+            var alreadyCompletes = new[] { true, false };
 
-            CompleteType[] secondCompleteTypes = new CompleteType[] { CompleteType.Resolve }; // Just use a single value to reduce number of tests.
+            var secondCompleteTypes = new[] { CompleteType.Resolve }; // Just use a single value to reduce number of tests.
 
-            ConfigureAwaitCancelType[] configureAwaitCancelTypes = new ConfigureAwaitCancelType[]
+            var configureAwaitCancelTypes = new[]
             {
                 ConfigureAwaitCancelType.NoToken,
                 ConfigureAwaitCancelType.WithToken_NoCancel,
@@ -90,21 +80,23 @@ namespace ProtoPromiseTests.APIs
             foreach (CompleteType firstCompleteType in completeTypes)
             foreach (CompleteType secondCompleteType in secondCompleteTypes)
             foreach (bool isFirstComplete in alreadyCompletes)
-            foreach (bool isSecondComplete in alreadyCompletes)
-            foreach (SynchronizationType firstWaitType in firstWaitTypes)
-            foreach (SynchronizationType secondWaitType in secondWaitTypes)
+            foreach (bool isSecondComplete in new[] { false })// alreadyCompletes) // Second always pending to reduce number of tests.
+            foreach (SynchronizationType firstWaitType in waitTypes)
+            foreach (SynchronizationType secondWaitType in waitTypes)
             foreach (SynchronizationType firstReportType in isFirstComplete ? foregroundOnlyReportType : reportTypes)
             {
-                var secondReportTypes = !isSecondComplete
-                    ? reportTypes
-                    : new SynchronizationType[]
-                    {
-                        firstWaitType == SynchronizationType.Synchronous
-                            ? firstReportType
-                            : firstWaitType == (SynchronizationType) SynchronizationOption.Background
-                                ? (SynchronizationType) SynchronizationOption.Background
-                                : SynchronizationType.Foreground
-                    };
+                // Only report second on foreground to reduce number of tests.
+                var secondReportTypes = foregroundOnlyReportType;
+                //var secondReportTypes = !isSecondComplete
+                //    ? reportTypes
+                //    : new SynchronizationType[]
+                //    {
+                //        firstWaitType == SynchronizationType.Synchronous
+                //            ? firstReportType
+                //            : firstWaitType == (SynchronizationType) SynchronizationOption.Background
+                //                ? (SynchronizationType) SynchronizationOption.Background
+                //                : SynchronizationType.Foreground
+                //    };
                 foreach (SynchronizationType secondReportType in secondReportTypes)
                 {
                     yield return new TestCaseData(firstCompleteType, secondCompleteType, firstWaitType, secondWaitType, firstReportType, secondReportType, configureAwaitCancelType, isFirstComplete, isSecondComplete);
@@ -113,28 +105,14 @@ namespace ProtoPromiseTests.APIs
         }
 
         private static IEnumerable<TestCaseData> GetArgs_ResolveReject()
-        {
-            return GetArgs(new CompleteType[]
-            {
-                CompleteType.Resolve,
-                CompleteType.Reject
-            });
-        }
+            => GetArgs(CompleteType.Resolve, CompleteType.Reject);
 
         private static IEnumerable<TestCaseData> GetArgs_ContinueWith()
-        {
-            return GetArgs(new CompleteType[]
-            {
-                CompleteType.Resolve,
-                CompleteType.Reject,
-                CompleteType.Cancel
-                //, CompleteType.CancelFromToken // Ignore CancelFromToken to reduce number of tests.
-            });
-        }
+            => GetArgs(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel);
 
-        private static IEnumerable<TestCaseData> GetArgs_CancelFinally(CompleteType[] completeTypes)
+        private static IEnumerable<TestCaseData> GetArgs_CancelFinally(params CompleteType[] completeTypes)
         {
-            SynchronizationType[] synchronizationTypes = new SynchronizationType[]
+            var synchronizationTypes = new[]
             {
                 SynchronizationType.Synchronous,
                 SynchronizationType.Foreground,
@@ -143,15 +121,15 @@ namespace ProtoPromiseTests.APIs
 #endif
                 SynchronizationType.Explicit
             };
-            SynchronizationType[] reportTypes = new SynchronizationType[]
+            var reportTypes = new[]
             {
                 SynchronizationType.Foreground
 #if !UNITY_WEBGL
                 , SynchronizationType.Background
 #endif
             };
-            SynchronizationType[] foregroundOnlyReportType = new SynchronizationType[] { SynchronizationType.Foreground };
-            bool[] alreadyCompletes = new bool[] { true, false };
+            var foregroundOnlyReportType = new[] { SynchronizationType.Foreground };
+            var alreadyCompletes = new[] { true, false };
 
             foreach (CompleteType firstCompleteType in completeTypes)
             foreach (bool isComplete in alreadyCompletes)
@@ -163,22 +141,10 @@ namespace ProtoPromiseTests.APIs
         }
 
         private static IEnumerable<TestCaseData> GetArgs_Cancel()
-        {
-            return GetArgs_CancelFinally(new CompleteType[]
-            {
-                CompleteType.Cancel
-            });
-        }
+            => GetArgs_CancelFinally(CompleteType.Cancel);
 
         private static IEnumerable<TestCaseData> GetArgs_Finally()
-        {
-            return GetArgs_CancelFinally(new CompleteType[]
-            {
-                CompleteType.Resolve,
-                CompleteType.Reject,
-                CompleteType.Cancel
-            });
-        }
+            => GetArgs_CancelFinally(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel);
         private readonly TimeSpan timeout = TimeSpan.FromSeconds(2);
 
         // promise
