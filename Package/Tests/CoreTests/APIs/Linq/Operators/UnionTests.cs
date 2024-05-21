@@ -645,11 +645,12 @@ namespace ProtoPromiseTests.APIs.Linq
             [Values] bool configured1,
             [Values] bool configured2,
             [Values] bool configured3,
-            [Values] bool configured4,
+            // Reduce number of tests.
+            [Values(false)] bool configured4,
             [Values] bool withComparer1,
             [Values] bool withComparer2,
             [Values] bool withComparer3,
-            [Values] bool withComparer4)
+            [Values(false)] bool withComparer4)
         {
             Promise.Run(async () =>
             {
@@ -687,11 +688,12 @@ namespace ProtoPromiseTests.APIs.Linq
             [Values] bool configured1,
             [Values] bool configured2,
             [Values] bool configured3,
-            [Values] bool configured4,
+            // Reduce number of tests.
+            [Values(false)] bool configured4,
             [Values] bool withComparer1,
             [Values] bool withComparer2,
             [Values] bool withComparer3,
-            [Values] bool withComparer4)
+            [Values(false)] bool withComparer4)
         {
             Promise.Run(async () =>
             {
@@ -731,13 +733,14 @@ namespace ProtoPromiseTests.APIs.Linq
             [Values] bool configured1,
             [Values] bool configured2,
             [Values] bool configured3,
-            [Values] bool configured4,
-            [Values] bool configured5,
+            // Reduce number of tests.
+            [Values(false)] bool configured4,
+            [Values(false)] bool configured5,
             [Values] bool withComparer1,
             [Values] bool withComparer2,
             [Values] bool withComparer3,
-            [Values] bool withComparer4,
-            [Values] bool withComparer5)
+            [Values(false)] bool withComparer4,
+            [Values(false)] bool withComparer5)
         {
             Promise.Run(async () =>
             {
@@ -778,13 +781,14 @@ namespace ProtoPromiseTests.APIs.Linq
             [Values] bool configured1,
             [Values] bool configured2,
             [Values] bool configured3,
-            [Values] bool configured4,
-            [Values] bool configured5,
+            // Reduce number of tests.
+            [Values(false)] bool configured4,
+            [Values(false)] bool configured5,
             [Values] bool withComparer1,
             [Values] bool withComparer2,
             [Values] bool withComparer3,
-            [Values] bool withComparer4,
-            [Values] bool withComparer5)
+            [Values(false)] bool withComparer4,
+            [Values(false)] bool withComparer5)
         {
             Promise.Run(async () =>
             {
@@ -1118,21 +1122,21 @@ namespace ProtoPromiseTests.APIs.Linq
 
         private static IEnumerable<TestCaseData> Union_UnionedBoth_Cancel_Args()
         {
-            ConfiguredType[] configuredTypes = new ConfiguredType[]
+            var configuredTypes = new[]
             {
                 ConfiguredType.NotConfigured,
                 ConfiguredType.Configured,
                 ConfiguredType.ConfiguredWithCancelation
             };
-            bool[] bools = new bool[] { true, false };
-            int[] cancelSequences = new int[] { 0, 1, 2, 3 };
+            var bools = new[] { true, false };
+            var cancelSequences = new[] { 0, 1, 2, 3 };
 
             foreach (var configured1Type in configuredTypes)
             foreach (var configured2Type in configuredTypes)
-            foreach (var configured3Type in configuredTypes)
+            foreach (var configured3Type in new[] { ConfiguredType.NotConfigured })// configuredTypes) // Reduce number of tests.
             foreach (var withComparer1 in bools)
             foreach (var withComparer2 in bools)
-            foreach (var withComparer3 in bools)
+            foreach (var withComparer3 in new[] { true, })// bools) // Reduce number of tests.
             foreach (var enumeratorToken in bools)
             foreach (var cancelSequence in cancelSequences)
             {

@@ -843,7 +843,8 @@ namespace ProtoPromiseTests.APIs.Linq
             [Values] bool asyncOrderBy,
             [Values] bool captureKeyOrderBy,
             [Values] bool asyncThenBy,
-            [Values] bool captureKeyThenBy,
+            // Reduce number of tests.
+            [Values(false)] bool captureKeyThenBy,
             [Values] bool withOrderByComparer,
             [Values] bool withThenByComparer)
         {
@@ -893,7 +894,8 @@ namespace ProtoPromiseTests.APIs.Linq
             [Values] bool asyncOrderBy,
             [Values] bool captureKeyOrderBy,
             [Values] bool asyncThenBy,
-            [Values] bool captureKeyThenBy,
+            // Reduce number of tests.
+            [Values(false)] bool captureKeyThenBy,
             [Values] bool withOrderByComparer,
             [Values] bool withThenByComparer)
         {
@@ -1036,7 +1038,8 @@ namespace ProtoPromiseTests.APIs.Linq
         public void OrderThenBy(
             [Values] bool configured,
             [Values] bool asyncThenBy,
-            [Values] bool captureKeyThenBy,
+            // Reduce number of tests.
+            [Values(false)] bool captureKeyThenBy,
             [Values] bool withComparer)
         {
             Promise.Run(async () =>
@@ -1083,7 +1086,8 @@ namespace ProtoPromiseTests.APIs.Linq
         public void OrderThenByDescending(
             [Values] bool configured,
             [Values] bool asyncThenBy,
-            [Values] bool captureKeyThenBy,
+            // Reduce number of tests.
+            [Values(false)] bool captureKeyThenBy,
             [Values] bool withComparer)
         {
             Promise.Run(async () =>
@@ -1130,7 +1134,8 @@ namespace ProtoPromiseTests.APIs.Linq
         public void OrderDescendingThenBy(
             [Values] bool configured,
             [Values] bool asyncThenBy,
-            [Values] bool captureKeyThenBy,
+            // Reduce number of tests.
+            [Values(false)] bool captureKeyThenBy,
             [Values] bool withComparer)
         {
             Promise.Run(async () =>
@@ -1177,7 +1182,8 @@ namespace ProtoPromiseTests.APIs.Linq
         public void OrderDescendingThenByDescending(
             [Values] bool configured,
             [Values] bool asyncThenBy,
-            [Values] bool captureKeyThenBy,
+            // Reduce number of tests.
+            [Values(false)] bool captureKeyThenBy,
             [Values] bool withComparer)
         {
             Promise.Run(async () =>
@@ -1244,32 +1250,32 @@ namespace ProtoPromiseTests.APIs.Linq
 
         private static IEnumerable<TestCaseData> Order_Cancel_Args()
         {
-            OrderType[] orderTypes = new OrderType[]
+            var orderTypes = new[]
             {
                 OrderType.Ascending,
                 OrderType.Descending,
                 OrderType.ByAscending,
                 OrderType.ByDescending
             };
-            ThenByType[] thenByTypes = new ThenByType[]
+            var thenByTypes = new[]
             {
                 ThenByType.None,
                 ThenByType.Ascending,
                 ThenByType.Descending
             };
-            ConfiguredType[] configuredTypes = new ConfiguredType[]
+            var configuredTypes = new[]
             {
                 ConfiguredType.NotConfigured,
                 ConfiguredType.Configured,
                 ConfiguredType.ConfiguredWithCancelation
             };
-            bool[] bools = new bool[] { true, false };
+            var bools = new[] { true, false };
 
             foreach (var orderType in orderTypes)
             foreach (var thenByType in thenByTypes)
             foreach (var configuredType in configuredTypes)
             foreach (bool async in bools)
-            foreach (bool captureKey in bools)
+            foreach (bool captureKey in new[] { false })// bools) // Reduce number of tests.
             foreach (bool withComparer in bools)
             foreach (bool enumeratorToken in bools)
             {

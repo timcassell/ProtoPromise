@@ -604,7 +604,8 @@ namespace ProtoPromiseTests.APIs.Linq
         public void GroupBy_KeySelector_Simple2_TempCollectionIsStillValidAfterMoveNextAsyncUntilDisposeAsync(
             [Values] bool configured,
             [Values] bool async,
-            [Values] bool captureKey,
+            // Reduce number of tests.
+            [Values(false)] bool captureKey,
             [Values] bool withComparer)
         {
             Promise.Run(async () =>
@@ -665,7 +666,8 @@ namespace ProtoPromiseTests.APIs.Linq
         public void GroupBy_KeySelector_Simple2_TempCollectionToArrayIsPersistedAfterMoveNextAndDisposeAsync(
             [Values] bool configured,
             [Values] bool async,
-            [Values] bool captureKey,
+            // Reduce number of tests.
+            [Values(false)] bool captureKey,
             [Values] bool withComparer)
         {
             Promise.Run(async () =>
@@ -726,7 +728,8 @@ namespace ProtoPromiseTests.APIs.Linq
         public void GroupBy_KeySelector_Empty(
             [Values] bool configured,
             [Values] bool async,
-            [Values] bool captureKey,
+            // Reduce number of tests.
+            [Values(false)] bool captureKey,
             [Values] bool withComparer)
         {
             Promise.Run(async () =>
@@ -742,7 +745,8 @@ namespace ProtoPromiseTests.APIs.Linq
         public void GroupBy_KeySelector_Throws_Source1(
             [Values] bool configured,
             [Values] bool async,
-            [Values] bool captureKey)
+            // Reduce number of tests.
+            [Values(false)] bool captureKey)
         {
             Promise.Run(async () =>
             {
@@ -758,7 +762,8 @@ namespace ProtoPromiseTests.APIs.Linq
         public void GroupBy_KeySelector_Throws_Source2(
             [Values] bool configured,
             [Values] bool async,
-            [Values] bool captureKey,
+            // Reduce number of tests.
+            [Values(false)] bool captureKey,
             [Values] bool withComparer)
         {
             Promise.Run(async () =>
@@ -983,8 +988,9 @@ namespace ProtoPromiseTests.APIs.Linq
         public void GroupBy_KeySelector_ElementSelector_Comparer_TempCollectionIsInvalidatedAfterDisposeAsync(
             [Values] bool configured,
             [Values] bool async,
-            [Values] bool captureKey,
-            [Values] bool captureElement)
+            // Reduce number of tests.
+            [Values(false)] bool captureKey,
+            [Values(false)] bool captureElement)
         {
             Promise.Run(async () =>
             {

@@ -412,7 +412,8 @@ namespace ProtoPromiseTests.APIs.Linq
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureOuterKey,
-            [Values] bool captureInnerKey,
+            // Reduce number of tests.
+            [Values(false)] bool captureInnerKey,
             [Values] bool withComparer)
         {
             Promise.Run(async () =>
@@ -431,7 +432,8 @@ namespace ProtoPromiseTests.APIs.Linq
         public void GroupJoin_EmptyOuter(
             [Values] bool configured,
             [Values] bool async,
-            [Values] bool captureOuterKey,
+            // Reduce number of tests.
+            [Values(false)] bool captureOuterKey,
             [Values] bool captureInnerKey,
             [Values] bool withComparer)
         {
@@ -452,7 +454,8 @@ namespace ProtoPromiseTests.APIs.Linq
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureOuterKey,
-            [Values] bool captureInnerKey,
+            // Reduce number of tests.
+            [Values(false)] bool captureInnerKey,
             [Values] bool withComparer)
         {
             Promise.Run(async () =>
@@ -540,7 +543,8 @@ namespace ProtoPromiseTests.APIs.Linq
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureOuterKey,
-            [Values] bool captureInnerKey,
+            // Reduce number of tests.
+            [Values(false)] bool captureInnerKey,
             [Values] bool withComparer)
         {
             Promise.Run(async () =>
@@ -562,7 +566,8 @@ namespace ProtoPromiseTests.APIs.Linq
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureOuterKey,
-            [Values] bool captureInnerKey,
+            // Reduce number of tests.
+            [Values(false)] bool captureInnerKey,
             [Values] bool withComparer)
         {
             Promise.Run(async () =>
@@ -584,7 +589,8 @@ namespace ProtoPromiseTests.APIs.Linq
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureOuterKey,
-            [Values] bool captureInnerKey,
+            // Reduce number of tests.
+            [Values(false)] bool captureInnerKey,
             [Values] bool withComparer)
         {
             Promise.Run(async () =>
@@ -606,7 +612,8 @@ namespace ProtoPromiseTests.APIs.Linq
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureOuterKey,
-            [Values] bool captureInnerKey,
+            // Reduce number of tests.
+            [Values(false)] bool captureInnerKey,
             [Values] bool withComparer)
         {
             Promise.Run(async () =>

@@ -181,7 +181,8 @@ namespace ProtoPromiseTests.APIs.Linq
             [Values(0, 1, 2, 7)] int count1,
             [Values] SkipOrTakeType skipOrTakeType2,
             [Values(0, 1, 7)] int count2,
-            [Values] SkipOrTakeType skipOrTakeType3,
+            // Reduce number of tests.
+            [Values(SkipOrTakeType.SkipSimple)] SkipOrTakeType skipOrTakeType3,
             [Values(1, 7)] int count3)
         {
             Promise.Run(async () =>
