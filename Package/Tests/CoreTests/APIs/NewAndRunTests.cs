@@ -128,7 +128,7 @@ namespace ProtoPromiseTests.APIs
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
-            TestHelper.GetTryCompleterVoid(completeType, "Reject").Invoke(deferred, default(CancelationSource));
+            TestHelper.GetTryCompleterVoid(completeType, "Reject").Invoke(deferred);
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
             Assert.True(invoked);
@@ -195,7 +195,7 @@ namespace ProtoPromiseTests.APIs
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
-            TestHelper.GetTryCompleterVoid(completeType, "Reject").Invoke(deferred, default(CancelationSource));
+            TestHelper.GetTryCompleterVoid(completeType, "Reject").Invoke(deferred);
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
             Assert.True(invoked);
@@ -262,7 +262,7 @@ namespace ProtoPromiseTests.APIs
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
-            TestHelper.GetTryCompleterT(completeType, expectedResolveValue, "Reject").Invoke(deferred, default(CancelationSource));
+            TestHelper.GetTryCompleterT(completeType, expectedResolveValue, "Reject").Invoke(deferred);
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
             Assert.True(invoked);
@@ -331,7 +331,7 @@ namespace ProtoPromiseTests.APIs
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
-            TestHelper.GetTryCompleterT(completeType, expectedResolveValue, "Reject").Invoke(deferred, default(CancelationSource));
+            TestHelper.GetTryCompleterT(completeType, expectedResolveValue, "Reject").Invoke(deferred);
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
             Assert.True(invoked);
@@ -640,8 +640,7 @@ namespace ProtoPromiseTests.APIs
             {
                 CompleteType.Resolve,
                 CompleteType.Reject,
-                CompleteType.Cancel,
-                CompleteType.CancelFromToken
+                CompleteType.Cancel
             };
 
             bool[] bools = new bool[] { true, false };
@@ -678,7 +677,6 @@ namespace ProtoPromiseTests.APIs
             bool invoked = false;
             string expectedRejectValue = "Reject";
 
-            var cancelationSource = default(CancelationSource);
             var deferred = default(Promise.Deferred);
 
             System.Func<Promise> action = () =>
@@ -692,7 +690,7 @@ namespace ProtoPromiseTests.APIs
                     }
                     throw Promise.CancelException();
                 }
-                return TestHelper.BuildPromise(completeType, isAlreadyComplete, expectedRejectValue, out deferred, out cancelationSource);
+                return TestHelper.BuildPromise(completeType, isAlreadyComplete, expectedRejectValue, out deferred);
             };
 
             var promise = default(Promise);
@@ -730,9 +728,8 @@ namespace ProtoPromiseTests.APIs
 
             if (isPending)
             {
-                TestHelper.GetCompleterVoid(completeType, expectedRejectValue).Invoke(deferred, cancelationSource);
+                TestHelper.GetCompleterVoid(completeType, expectedRejectValue).Invoke(deferred);
             }
-            cancelationSource.TryDispose();
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
             Assert.True(invoked);
@@ -753,7 +750,6 @@ namespace ProtoPromiseTests.APIs
             string expectedRejectValue = "Reject";
             int captureValue = 10;
 
-            var cancelationSource = default(CancelationSource);
             var deferred = default(Promise.Deferred);
 
             System.Func<int, Promise> action = cv =>
@@ -768,7 +764,7 @@ namespace ProtoPromiseTests.APIs
                     }
                     throw Promise.CancelException();
                 }
-                return TestHelper.BuildPromise(completeType, isAlreadyComplete, expectedRejectValue, out deferred, out cancelationSource);
+                return TestHelper.BuildPromise(completeType, isAlreadyComplete, expectedRejectValue, out deferred);
             };
 
             var promise = default(Promise);
@@ -806,9 +802,8 @@ namespace ProtoPromiseTests.APIs
 
             if (isPending)
             {
-                TestHelper.GetCompleterVoid(completeType, expectedRejectValue).Invoke(deferred, cancelationSource);
+                TestHelper.GetCompleterVoid(completeType, expectedRejectValue).Invoke(deferred);
             }
-            cancelationSource.TryDispose();
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
             Assert.True(invoked);
@@ -829,7 +824,6 @@ namespace ProtoPromiseTests.APIs
             string expectedRejectValue = "Reject";
             int expectedResolveValue = 1;
 
-            var cancelationSource = default(CancelationSource);
             var deferred = default(Promise<int>.Deferred);
 
             System.Func<Promise<int>> action = () =>
@@ -843,7 +837,7 @@ namespace ProtoPromiseTests.APIs
                     }
                     throw Promise.CancelException();
                 }
-                return TestHelper.BuildPromise(completeType, isAlreadyComplete, expectedResolveValue, expectedRejectValue, out deferred, out cancelationSource);
+                return TestHelper.BuildPromise(completeType, isAlreadyComplete, expectedResolveValue, expectedRejectValue, out deferred);
             };
 
             var promise = default(Promise<int>);
@@ -882,9 +876,8 @@ namespace ProtoPromiseTests.APIs
 
             if (isPending)
             {
-                TestHelper.GetCompleterT(completeType, expectedResolveValue, expectedRejectValue).Invoke(deferred, cancelationSource);
+                TestHelper.GetCompleterT(completeType, expectedResolveValue, expectedRejectValue).Invoke(deferred);
             }
-            cancelationSource.TryDispose();
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
             Assert.True(invoked);
@@ -906,7 +899,6 @@ namespace ProtoPromiseTests.APIs
             int expectedResolveValue = 1;
             int captureValue = 10;
 
-            var cancelationSource = default(CancelationSource);
             var deferred = default(Promise<int>.Deferred);
 
             System.Func<int, Promise<int>> action = cv =>
@@ -921,7 +913,7 @@ namespace ProtoPromiseTests.APIs
                     }
                     throw Promise.CancelException();
                 }
-                return TestHelper.BuildPromise(completeType, isAlreadyComplete, expectedResolveValue, expectedRejectValue, out deferred, out cancelationSource);
+                return TestHelper.BuildPromise(completeType, isAlreadyComplete, expectedResolveValue, expectedRejectValue, out deferred);
             };
 
             var promise = default(Promise<int>);
@@ -960,9 +952,8 @@ namespace ProtoPromiseTests.APIs
 
             if (isPending)
             {
-                TestHelper.GetCompleterT(completeType, expectedResolveValue, expectedRejectValue).Invoke(deferred, cancelationSource);
+                TestHelper.GetCompleterT(completeType, expectedResolveValue, expectedRejectValue).Invoke(deferred);
             }
-            cancelationSource.TryDispose();
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
             Assert.True(invoked);

@@ -694,9 +694,7 @@ namespace ProtoPromiseTests.APIs
         {
             string expected = "Reject!";
 
-            CancelationSource cancelationSource;
-            Promise.Deferred deferred;
-            var promise = TestHelper.BuildPromise(CompleteType.Reject, alreadyComplete, expected, out deferred, out cancelationSource)
+            var promise = TestHelper.BuildPromise(CompleteType.Reject, alreadyComplete, expected, out var deferred)
                 .Preserve();
 
             int rejectCount = 0;
@@ -737,9 +735,7 @@ namespace ProtoPromiseTests.APIs
         {
             string expected = "Reject!";
 
-            CancelationSource cancelationSource;
-            Promise<int>.Deferred deferred;
-            var promise = TestHelper.BuildPromise(CompleteType.Reject, alreadyComplete, 0, expected, out deferred, out cancelationSource)
+            var promise = TestHelper.BuildPromise(CompleteType.Reject, alreadyComplete, 0, expected, out var deferred)
                 .Preserve();
 
             int rejectCount = 0;

@@ -208,7 +208,6 @@ namespace ProtoPromiseTests.Concurrency
         {
             var returnDeferred = default(Promise.Deferred);
             var returnPromise = default(Promise);
-            var cancelationSource = default(CancelationSource);
             Action threadBarrier = null;
             var tryCompleter = TestHelper.GetTryCompleterVoid(completeType, rejectValue);
 
@@ -226,7 +225,7 @@ namespace ProtoPromiseTests.Concurrency
                     setup: () =>
                     {
                         result = Promise.State.Pending;
-                        returnDeferred = TestHelper.GetNewDeferredVoid(completeType, out cancelationSource);
+                        returnDeferred = Promise.NewDeferred();
                         returnPromise = returnDeferred.Promise;
                     },
                     parallelActionsSetup: new Action<Action>[]
@@ -241,12 +240,10 @@ namespace ProtoPromiseTests.Concurrency
                     },
                     parallelActions: new Action[]
                     {
-                        () => tryCompleter(returnDeferred, cancelationSource)
+                        () => tryCompleter(returnDeferred)
                     },
                     teardown: () =>
                     {
-                        cancelationSource.TryDispose();
-                        
                         Assert.AreNotEqual(Promise.State.Pending, result);
                         switch (completeType)
                         {
@@ -256,8 +253,7 @@ namespace ProtoPromiseTests.Concurrency
                             case CompleteType.Reject:
                                 Assert.AreEqual(Promise.State.Rejected, result);
                                 break;
-                            case CompleteType.Cancel:
-                            case CompleteType.CancelFromToken:
+                            default:
                                 Assert.AreEqual(Promise.State.Canceled, result);
                                 break;
                         }
@@ -272,7 +268,6 @@ namespace ProtoPromiseTests.Concurrency
         {
             var returnDeferred = default(Promise<int>.Deferred);
             var returnPromise = default(Promise<int>);
-            var cancelationSource = default(CancelationSource);
             Action threadBarrier = null;
             var tryCompleter = TestHelper.GetTryCompleterT(completeType, 1, rejectValue);
 
@@ -290,7 +285,7 @@ namespace ProtoPromiseTests.Concurrency
                     setup: () =>
                     {
                         result = Promise.State.Pending;
-                        returnDeferred = TestHelper.GetNewDeferredT<int>(completeType, out cancelationSource);
+                        returnDeferred = Promise<int>.NewDeferred();
                         returnPromise = returnDeferred.Promise;
                     },
                     parallelActionsSetup: new Action<Action>[]
@@ -305,12 +300,10 @@ namespace ProtoPromiseTests.Concurrency
                     },
                     parallelActions: new Action[]
                     {
-                        () => tryCompleter(returnDeferred, cancelationSource)
+                        () => tryCompleter(returnDeferred)
                     },
                     teardown: () =>
                     {
-                        cancelationSource.TryDispose();
-
                         Assert.AreNotEqual(Promise.State.Pending, result);
                         switch (completeType)
                         {
@@ -320,8 +313,7 @@ namespace ProtoPromiseTests.Concurrency
                             case CompleteType.Reject:
                                 Assert.AreEqual(Promise.State.Rejected, result);
                                 break;
-                            case CompleteType.Cancel:
-                            case CompleteType.CancelFromToken:
+                            default:
                                 Assert.AreEqual(Promise.State.Canceled, result);
                                 break;
                         }

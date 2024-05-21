@@ -65,9 +65,7 @@ namespace ProtoPromiseTests.APIs
             [Values] bool isAlreadyComplete)
         {
             const string rejection = "Reject";
-            Promise.Deferred deferred;
-            CancelationSource cancelationSource;
-            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection, out deferred, out cancelationSource)
+            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection, out var deferred)
                 .Preserve();
 
             int testCount = 0;
@@ -107,13 +105,12 @@ namespace ProtoPromiseTests.APIs
 
             Assert.Greater(testCount, 0);
 
-            TestHelper.GetTryCompleterVoid(completeType, rejection).Invoke(deferred, cancelationSource);
+            TestHelper.GetTryCompleterVoid(completeType, rejection).Invoke(deferred);
 
             Assert.AreEqual(2 * testCount, finallyCount);
             Assert.AreEqual(testCount, completeCount);
 
             preservedPromise.Forget();
-            cancelationSource.TryDispose();
         }
 
         [Test]
@@ -123,9 +120,7 @@ namespace ProtoPromiseTests.APIs
         {
             const int resolveValue = 42;
             const string rejection = "Reject";
-            CancelationSource cancelationSource;
-            Promise<int>.Deferred deferred;
-            var preservedPromise = TestHelper.BuildPromise<int, string>(completeType, isAlreadyComplete, resolveValue, rejection, out deferred, out cancelationSource)
+            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, resolveValue, rejection, out var deferred)
                 .Preserve();
 
             int testCount = 0;
@@ -166,13 +161,12 @@ namespace ProtoPromiseTests.APIs
 
             Assert.Greater(testCount, 0);
 
-            TestHelper.GetTryCompleterT(completeType, resolveValue, rejection).Invoke(deferred, cancelationSource);
+            TestHelper.GetTryCompleterT(completeType, resolveValue, rejection).Invoke(deferred);
 
             Assert.AreEqual(2 * testCount, finallyCount);
             Assert.AreEqual(testCount, completeCount);
 
             preservedPromise.Forget();
-            cancelationSource.TryDispose();
         }
 
         [Test]
@@ -193,9 +187,7 @@ namespace ProtoPromiseTests.APIs
                 ++uncaughtHandledCount;
             };
 
-            Promise.Deferred deferred;
-            CancelationSource cancelationSource;
-            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection, out deferred, out cancelationSource)
+            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection, out var deferred)
                 .Preserve();
 
             int testCount = 0;
@@ -220,13 +212,12 @@ namespace ProtoPromiseTests.APIs
 
             Assert.Greater(testCount, 0);
 
-            TestHelper.GetTryCompleterVoid(completeType, rejection).Invoke(deferred, cancelationSource);
+            TestHelper.GetTryCompleterVoid(completeType, rejection).Invoke(deferred);
 
             Assert.AreEqual(testCount, catchCount);
             Assert.AreEqual(completeType == CompleteType.Reject ? testCount : 0, uncaughtHandledCount);
 
             preservedPromise.Forget();
-            cancelationSource.TryDispose();
 
             Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
@@ -250,9 +241,7 @@ namespace ProtoPromiseTests.APIs
             };
 
             const int resolveValue = 42;
-            CancelationSource cancelationSource;
-            Promise<int>.Deferred deferred;
-            var preservedPromise = TestHelper.BuildPromise<int, string>(completeType, isAlreadyComplete, resolveValue, rejection, out deferred, out cancelationSource)
+            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, resolveValue, rejection, out var deferred)
                 .Preserve();
 
             int testCount = 0;
@@ -277,13 +266,12 @@ namespace ProtoPromiseTests.APIs
 
             Assert.Greater(testCount, 0);
 
-            TestHelper.GetTryCompleterT(completeType, resolveValue, rejection).Invoke(deferred, cancelationSource);
+            TestHelper.GetTryCompleterT(completeType, resolveValue, rejection).Invoke(deferred);
 
             Assert.AreEqual(testCount, catchCount);
             Assert.AreEqual(completeType == CompleteType.Reject ? testCount : 0, uncaughtHandledCount);
 
             preservedPromise.Forget();
-            cancelationSource.TryDispose();
 
             Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
@@ -306,9 +294,7 @@ namespace ProtoPromiseTests.APIs
                 ++uncaughtHandledCount;
             };
 
-            Promise.Deferred deferred;
-            CancelationSource cancelationSource;
-            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection, out deferred, out cancelationSource)
+            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection, out var deferred)
                 .Preserve();
 
             int testCount = 0;
@@ -328,13 +314,12 @@ namespace ProtoPromiseTests.APIs
 
             Assert.Greater(testCount, 0);
 
-            TestHelper.GetTryCompleterVoid(completeType, rejection).Invoke(deferred, cancelationSource);
+            TestHelper.GetTryCompleterVoid(completeType, rejection).Invoke(deferred);
 
             Assert.AreEqual(testCount, catchCount);
             Assert.AreEqual(completeType == CompleteType.Reject ? testCount : 0, uncaughtHandledCount);
 
             preservedPromise.Forget();
-            cancelationSource.TryDispose();
 
             Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
@@ -358,9 +343,7 @@ namespace ProtoPromiseTests.APIs
             };
 
             const int resolveValue = 42;
-            CancelationSource cancelationSource;
-            Promise<int>.Deferred deferred;
-            var preservedPromise = TestHelper.BuildPromise<int, string>(completeType, isAlreadyComplete, resolveValue, rejection, out deferred, out cancelationSource)
+            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, resolveValue, rejection, out var deferred)
                 .Preserve();
 
             int testCount = 0;
@@ -380,13 +363,12 @@ namespace ProtoPromiseTests.APIs
 
             Assert.Greater(testCount, 0);
 
-            TestHelper.GetTryCompleterT(completeType, resolveValue, rejection).Invoke(deferred, cancelationSource);
+            TestHelper.GetTryCompleterT(completeType, resolveValue, rejection).Invoke(deferred);
 
             Assert.AreEqual(testCount, catchCount);
             Assert.AreEqual(completeType == CompleteType.Reject ? testCount : 0, uncaughtHandledCount);
 
             preservedPromise.Forget();
-            cancelationSource.TryDispose();
 
             Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
@@ -415,23 +397,19 @@ namespace ProtoPromiseTests.APIs
                 ++uncaughtHandledCount;
             };
 
-            Promise.Deferred deferred;
-            CancelationSource cancelationSource;
-            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection1, out deferred, out cancelationSource)
+            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection1, out var deferred)
                 .Preserve();
 
             int finallyCount = 0;
             int completeCount = 0;
             const string captureValue = "captureValue";
 
-            var returnPromises = new List<ValueTuple<Promise.Deferred, Promise, CancelationSource>>();
+            var returnPromises = new List<(Promise.Deferred deferred, Promise promise)>();
             foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
             {
-                Promise.Deferred returnDeferred;
-                CancelationSource returnCts;
-                var returnPromise = TestHelper.BuildPromise(returnCompleteType, returnIsAlreadyComplete, rejection2, out returnDeferred, out returnCts)
+                var returnPromise = TestHelper.BuildPromise(returnCompleteType, returnIsAlreadyComplete, rejection2, out var returnDeferred)
                     .Preserve();
-                returnPromises.Add(ValueTuple.Create(returnDeferred, returnPromise, returnCts));
+                returnPromises.Add((returnDeferred, returnPromise));
 
                 promise
                     .Finally(() =>
@@ -479,7 +457,7 @@ namespace ProtoPromiseTests.APIs
 
             Assert.Greater(returnPromises.Count, 0);
 
-            TestHelper.GetTryCompleterVoid(completeType, rejection1).Invoke(deferred, cancelationSource);
+            TestHelper.GetTryCompleterVoid(completeType, rejection1).Invoke(deferred);
 
             Assert.AreEqual(returnPromises.Count * (returnIsAlreadyComplete ? 2 : 1), finallyCount);
             Assert.AreEqual(returnIsAlreadyComplete ? returnPromises.Count : 0, completeCount);
@@ -487,9 +465,8 @@ namespace ProtoPromiseTests.APIs
             var completer = TestHelper.GetTryCompleterVoid(returnCompleteType, rejection2);
             foreach (var tuple in returnPromises)
             {
-                completer.Invoke(tuple.Item1, tuple.Item3);
-                tuple.Item2.Forget();
-                tuple.Item3.TryDispose();
+                completer.Invoke(tuple.deferred);
+                tuple.promise.Forget();
             }
 
             Assert.AreEqual(returnPromises.Count, completeCount);
@@ -505,7 +482,6 @@ namespace ProtoPromiseTests.APIs
             Assert.AreEqual(expectedUncaughtCount, uncaughtHandledCount);
 
             preservedPromise.Forget();
-            cancelationSource.TryDispose();
 
             Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
@@ -535,23 +511,19 @@ namespace ProtoPromiseTests.APIs
             };
 
             const int resolveValue = 42;
-            CancelationSource cancelationSource;
-            Promise<int>.Deferred deferred;
-            var preservedPromise = TestHelper.BuildPromise<int, string>(completeType, isAlreadyComplete, resolveValue, rejection1, out deferred, out cancelationSource)
+            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, resolveValue, rejection1, out var deferred)
                 .Preserve();
 
             int finallyCount = 0;
             int completeCount = 0;
             const string captureValue = "captureValue";
 
-            var returnPromises = new List<ValueTuple<Promise.Deferred, Promise, CancelationSource>>();
+            var returnPromises = new List<(Promise.Deferred deferred, Promise promise)>();
             foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
             {
-                Promise.Deferred returnDeferred;
-                CancelationSource returnCts;
-                var returnPromise = TestHelper.BuildPromise(returnCompleteType, returnIsAlreadyComplete, rejection2, out returnDeferred, out returnCts)
+                var returnPromise = TestHelper.BuildPromise(returnCompleteType, returnIsAlreadyComplete, rejection2, out var returnDeferred)
                     .Preserve();
-                returnPromises.Add(ValueTuple.Create(returnDeferred, returnPromise, returnCts));
+                returnPromises.Add((returnDeferred, returnPromise));
 
                 promise
                     .Finally(() =>
@@ -599,7 +571,7 @@ namespace ProtoPromiseTests.APIs
 
             Assert.Greater(returnPromises.Count, 0);
 
-            TestHelper.GetTryCompleterT(completeType, resolveValue, rejection1).Invoke(deferred, cancelationSource);
+            TestHelper.GetTryCompleterT(completeType, resolveValue, rejection1).Invoke(deferred);
 
             Assert.AreEqual(returnPromises.Count * (returnIsAlreadyComplete ? 2 : 1), finallyCount);
             Assert.AreEqual(returnIsAlreadyComplete ? returnPromises.Count : 0, completeCount);
@@ -607,9 +579,8 @@ namespace ProtoPromiseTests.APIs
             var completer = TestHelper.GetTryCompleterVoid(returnCompleteType, rejection2);
             foreach (var tuple in returnPromises)
             {
-                completer.Invoke(tuple.Item1, tuple.Item3);
-                tuple.Item2.Forget();
-                tuple.Item3.TryDispose();
+                completer.Invoke(tuple.deferred);
+                tuple.promise.Forget();
             }
 
             Assert.AreEqual(returnPromises.Count, completeCount);
@@ -625,7 +596,6 @@ namespace ProtoPromiseTests.APIs
             Assert.AreEqual(expectedUncaughtCount, uncaughtHandledCount);
 
             preservedPromise.Forget();
-            cancelationSource.TryDispose();
 
             Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
