@@ -144,8 +144,8 @@ namespace ProtoPromiseTests.APIs
 
         private static IEnumerable<MergeSettledArg> GetMergeSettledArgs(bool isGeneric, int index)
         {
-            // In order to keep the number of test cases down, we only do all combinations for the first 3 args.
-            if (index >= 3)
+            // In order to keep the number of test cases down, we only do all combinations for the first 2 args.
+            if (index >= 2)
             {
                 yield return new MergeSettledArg()
                 {

@@ -32,7 +32,7 @@ namespace ProtoPromiseTests.APIs
             SynchronizationType[] synchronizationTypes = new SynchronizationType[]
             {
                 SynchronizationType.Synchronous,
-                SynchronizationType.Foreground,
+                //SynchronizationType.Foreground, // Ignore foreground to reduce number of tests, testing explicit is effectively the same.
 #if !UNITY_WEBGL
                 SynchronizationType.Background,
 #endif
@@ -343,7 +343,7 @@ namespace ProtoPromiseTests.APIs
             SynchronizationType[] synchronizationTypes = new SynchronizationType[]
             {
                 SynchronizationType.Synchronous,
-                SynchronizationType.Foreground,
+                //SynchronizationType.Foreground, // Ignore foreground to reduce number of tests, testing explicit is effectively the same.
 #if !UNITY_WEBGL
                 SynchronizationType.Background,
 #endif
