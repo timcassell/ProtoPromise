@@ -32,7 +32,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Rewrite ProjectSettings
         run: |
@@ -42,8 +42,10 @@ jobs:
           sed -i "{s/$DefineOriginal/$DefineReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
 
       - name: Build Project
-        uses: game-ci/unity-builder@v3
+        uses: game-ci/unity-builder@v4
         env:
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE_2018_4_36F1_UBUNTU }}
         with:
           projectPath: ProtoPromise_Unity

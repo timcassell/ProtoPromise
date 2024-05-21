@@ -10,26 +10,35 @@ concurrency:
 
 jobs:
   csproj-build:
+    name: ${{ matrix.config }}-${{ matrix.devMode.name }}
     runs-on: ubuntu-latest
     
     strategy:
       fail-fast: false
       matrix:
         config: [Release, Debug]
-        developerMode: [true, false]
+        devMode:
+          - {
+              name: devMode,
+              value: true
+            }
+          - {
+              name: userMode,
+              value: false
+            }
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
           
       - name: Build Core
         run: |
-          dotnet build -c ${{ matrix.config }} /p:DeveloperMode=${{ matrix.developerMode }} /p:IsNugetBuild=true
+          dotnet build -c ${{ matrix.config }} /p:DeveloperMode=${{ matrix.devMode.value }} /p:IsNugetBuild=true
         timeout-minutes: 10
 
       - name: Build Analyzer
