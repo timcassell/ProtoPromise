@@ -260,7 +260,7 @@ namespace Proto.Promises
 
         #region 2Args
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -329,7 +329,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -398,7 +398,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -472,7 +472,7 @@ namespace Proto.Promises
 
         #region 3Args
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -548,7 +548,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -624,7 +624,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -700,7 +700,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -780,7 +780,7 @@ namespace Proto.Promises
 
         #region 4Args
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -862,7 +862,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -944,7 +944,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -1026,7 +1026,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -1109,7 +1109,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -1196,7 +1196,7 @@ namespace Proto.Promises
 
         #region 5Args
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -1284,7 +1284,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -1372,7 +1372,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -1460,7 +1460,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -1549,7 +1549,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -1638,7 +1638,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -1731,7 +1731,7 @@ namespace Proto.Promises
 
         #region 6Args
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -1826,7 +1826,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -1921,7 +1921,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -2016,7 +2016,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -2111,7 +2111,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -2206,7 +2206,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -2301,7 +2301,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -2400,7 +2400,7 @@ namespace Proto.Promises
 
         #region 7Args
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -2501,7 +2501,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -2602,7 +2602,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -2703,7 +2703,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -2804,7 +2804,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -2905,7 +2905,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -3006,7 +3006,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -3107,7 +3107,7 @@ namespace Proto.Promises
                 promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]

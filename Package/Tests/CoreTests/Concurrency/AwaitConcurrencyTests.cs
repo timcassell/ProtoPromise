@@ -69,7 +69,7 @@ namespace ProtoPromiseTests.Concurrency
 
         [Test]
         public void PreservedPromiseMayBeAwaitedConcurrently_AlreadyComplete_void(
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType)
+            [Values] CompleteType completeType)
         {
             int invokedCount = 0;
             var promise = completeType == CompleteType.Resolve
@@ -147,7 +147,7 @@ namespace ProtoPromiseTests.Concurrency
 
         [Test]
         public void PreservedPromiseMayBeAwaitedConcurrently_AlreadyComplete_T(
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType)
+            [Values] CompleteType completeType)
         {
             int invokedCount = 0;
             var promise = completeType == CompleteType.Resolve

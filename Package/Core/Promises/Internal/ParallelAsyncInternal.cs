@@ -392,7 +392,7 @@ namespace Proto.Promises
                     if (state == Promise.State.Rejected)
                     {
                         // Record the failure. The last worker to complete will propagate exceptions as is appropriate to the top-level promise.
-                        RecordRejection(rejectContainer);
+                        RecordException(rejectContainer.GetValueAsException());
                     }
                     if (isMoveNextAsyncContinuation)
                     {
@@ -402,15 +402,6 @@ namespace Proto.Promises
                     {
                         MaybeComplete(1);
                     }
-                }
-
-                private void RecordRejection(IRejectContainer rejectContainer)
-                {
-                    var container = rejectContainer;
-                    var exception = container.Value as Exception
-                        // If the reason was not an exception, get the reason wrapped in an exception.
-                        ?? container.GetExceptionDispatchInfo().SourceException;
-                    RecordException(exception);
                 }
 
                 private void RecordException(Exception e)
@@ -520,7 +511,7 @@ namespace Proto.Promises
                     handler.SetCompletionState(state);
                     if (state == Promise.State.Rejected)
                     {
-                        RecordRejection(handler._rejectContainer);
+                        RecordException(handler._rejectContainer.GetValueAsException());
                         handler.SuppressRejection = true;
                     }
                     handler.MaybeDispose();

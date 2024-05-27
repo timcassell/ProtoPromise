@@ -66,7 +66,7 @@ namespace ProtoPromiseTests.Concurrency.Threading
             yield return new TestCaseData(2, false);
         }
 
-        [Test, TestCaseSource("GetCountsAndSeparate")]
+        [Test, TestCaseSource(nameof(GetCountsAndSeparate))]
         public void AsyncCountdownEvent_WaitAndSignalCalledConcurrently(int count, bool separateSignals)
         {
             int invokedCount = 0;
@@ -147,7 +147,7 @@ namespace ProtoPromiseTests.Concurrency.Threading
             );
         }
 
-        [Test, TestCaseSource("GetCountsAndSeparate")]
+        [Test, TestCaseSource(nameof(GetCountsAndSeparate))]
         public void AsyncCountdownEvent_WaitAndSignalAndCancelCalledConcurrently(int count, bool separateSignals)
         {
             int invokedCount = 0;
@@ -228,7 +228,7 @@ namespace ProtoPromiseTests.Concurrency.Threading
             );
         }
 
-        [Test, TestCaseSource("GetCountsAndSeparate")]
+        [Test, TestCaseSource(nameof(GetCountsAndSeparate))]
         public void AsyncCountdownEvent_WaitAsyncAndSetCalledConcurrently(int count, bool separateSignals)
         {
             int invokedCount = 0;
@@ -312,7 +312,7 @@ namespace ProtoPromiseTests.Concurrency.Threading
             );
         }
 
-        [Test, TestCaseSource("GetCountsAndSeparate")]
+        [Test, TestCaseSource(nameof(GetCountsAndSeparate))]
         public void AsyncCountdownEvent_WaitAsyncAndSetAndCancelCalledConcurrently(int count, bool separateSignals)
         {
             int invokedCount = 0;

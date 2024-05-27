@@ -69,7 +69,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetArgs_New")]
+        [Test, TestCaseSource(nameof(GetArgs_New))]
         public void PromiseNewIsInvokedAndCompletedProperly_void(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -134,7 +134,7 @@ namespace ProtoPromiseTests.APIs
             Assert.True(invoked);
         }
 
-        [Test, TestCaseSource("GetArgs_New")]
+        [Test, TestCaseSource(nameof(GetArgs_New))]
         public void PromiseNewIsInvokedAndCompletedProperly_capture_void(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -201,7 +201,7 @@ namespace ProtoPromiseTests.APIs
             Assert.True(invoked);
         }
 
-        [Test, TestCaseSource("GetArgs_New")]
+        [Test, TestCaseSource(nameof(GetArgs_New))]
         public void PromiseNewIsInvokedAndCompletedProperly_T(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -268,7 +268,7 @@ namespace ProtoPromiseTests.APIs
             Assert.True(invoked);
         }
 
-        [Test, TestCaseSource("GetArgs_New")]
+        [Test, TestCaseSource(nameof(GetArgs_New))]
         public void PromiseNewIsInvokedAndCompletedProperly_capture_T(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -373,7 +373,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetArgs_Run")]
+        [Test, TestCaseSource(nameof(GetArgs_Run))]
         public void PromiseRunIsInvokedAndCompletedProperly_void(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -431,7 +431,7 @@ namespace ProtoPromiseTests.APIs
             Assert.True(invoked);
         }
 
-        [Test, TestCaseSource("GetArgs_Run")]
+        [Test, TestCaseSource(nameof(GetArgs_Run))]
         public void PromiseRunIsInvokedAndCompletedProperly_capture_void(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -491,7 +491,7 @@ namespace ProtoPromiseTests.APIs
             Assert.True(invoked);
         }
 
-        [Test, TestCaseSource("GetArgs_Run")]
+        [Test, TestCaseSource(nameof(GetArgs_Run))]
         public void PromiseRunIsInvokedAndCompletedProperly_T(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -552,7 +552,7 @@ namespace ProtoPromiseTests.APIs
             Assert.True(invoked);
         }
 
-        [Test, TestCaseSource("GetArgs_Run")]
+        [Test, TestCaseSource(nameof(GetArgs_Run))]
         public void PromiseRunIsInvokedAndCompletedProperly_capture_T(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -663,7 +663,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetArgs_RunAdopt")]
+        [Test, TestCaseSource(nameof(GetArgs_RunAdopt))]
         public void PromiseRunIsInvokedAndCompletedProperly_adopt_void(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -677,7 +677,7 @@ namespace ProtoPromiseTests.APIs
             bool invoked = false;
             string expectedRejectValue = "Reject";
 
-            var deferred = default(Promise.Deferred);
+            Action tryCompleter = () => { };
 
             System.Func<Promise> action = () =>
             {
@@ -690,7 +690,7 @@ namespace ProtoPromiseTests.APIs
                     }
                     throw Promise.CancelException();
                 }
-                return TestHelper.BuildPromise(completeType, isAlreadyComplete, expectedRejectValue, out deferred);
+                return TestHelper.BuildPromise(completeType, isAlreadyComplete, expectedRejectValue, out tryCompleter);
             };
 
             var promise = default(Promise);
@@ -726,16 +726,13 @@ namespace ProtoPromiseTests.APIs
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
-            if (isPending)
-            {
-                TestHelper.GetCompleterVoid(completeType, expectedRejectValue).Invoke(deferred);
-            }
+            tryCompleter();
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
             Assert.True(invoked);
         }
 
-        [Test, TestCaseSource("GetArgs_RunAdopt")]
+        [Test, TestCaseSource(nameof(GetArgs_RunAdopt))]
         public void PromiseRunIsInvokedAndCompletedProperly_adopt_capture_void(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -750,7 +747,7 @@ namespace ProtoPromiseTests.APIs
             string expectedRejectValue = "Reject";
             int captureValue = 10;
 
-            var deferred = default(Promise.Deferred);
+            Action tryCompleter = () => { };
 
             System.Func<int, Promise> action = cv =>
             {
@@ -764,7 +761,7 @@ namespace ProtoPromiseTests.APIs
                     }
                     throw Promise.CancelException();
                 }
-                return TestHelper.BuildPromise(completeType, isAlreadyComplete, expectedRejectValue, out deferred);
+                return TestHelper.BuildPromise(completeType, isAlreadyComplete, expectedRejectValue, out tryCompleter);
             };
 
             var promise = default(Promise);
@@ -800,16 +797,13 @@ namespace ProtoPromiseTests.APIs
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
-            if (isPending)
-            {
-                TestHelper.GetCompleterVoid(completeType, expectedRejectValue).Invoke(deferred);
-            }
+            tryCompleter();
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
             Assert.True(invoked);
         }
 
-        [Test, TestCaseSource("GetArgs_RunAdopt")]
+        [Test, TestCaseSource(nameof(GetArgs_RunAdopt))]
         public void PromiseRunIsInvokedAndCompletedProperly_adopt_T(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -824,7 +818,7 @@ namespace ProtoPromiseTests.APIs
             string expectedRejectValue = "Reject";
             int expectedResolveValue = 1;
 
-            var deferred = default(Promise<int>.Deferred);
+            Action tryCompleter = () => { };
 
             System.Func<Promise<int>> action = () =>
             {
@@ -837,7 +831,7 @@ namespace ProtoPromiseTests.APIs
                     }
                     throw Promise.CancelException();
                 }
-                return TestHelper.BuildPromise(completeType, isAlreadyComplete, expectedResolveValue, expectedRejectValue, out deferred);
+                return TestHelper.BuildPromise(completeType, isAlreadyComplete, expectedResolveValue, expectedRejectValue, out tryCompleter);
             };
 
             var promise = default(Promise<int>);
@@ -874,16 +868,13 @@ namespace ProtoPromiseTests.APIs
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
-            if (isPending)
-            {
-                TestHelper.GetCompleterT(completeType, expectedResolveValue, expectedRejectValue).Invoke(deferred);
-            }
+            tryCompleter();
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
             Assert.True(invoked);
         }
 
-        [Test, TestCaseSource("GetArgs_RunAdopt")]
+        [Test, TestCaseSource(nameof(GetArgs_RunAdopt))]
         public void PromiseRunIsInvokedAndCompletedProperly_adopt_capture_T(
             SynchronizationType synchronizationType,
             SynchronizationType invokeContext,
@@ -899,7 +890,7 @@ namespace ProtoPromiseTests.APIs
             int expectedResolveValue = 1;
             int captureValue = 10;
 
-            var deferred = default(Promise<int>.Deferred);
+            Action tryCompleter = () => { };
 
             System.Func<int, Promise<int>> action = cv =>
             {
@@ -913,7 +904,7 @@ namespace ProtoPromiseTests.APIs
                     }
                     throw Promise.CancelException();
                 }
-                return TestHelper.BuildPromise(completeType, isAlreadyComplete, expectedResolveValue, expectedRejectValue, out deferred);
+                return TestHelper.BuildPromise(completeType, isAlreadyComplete, expectedResolveValue, expectedRejectValue, out tryCompleter);
             };
 
             var promise = default(Promise<int>);
@@ -950,10 +941,7 @@ namespace ProtoPromiseTests.APIs
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
-            if (isPending)
-            {
-                TestHelper.GetCompleterT(completeType, expectedResolveValue, expectedRejectValue).Invoke(deferred);
-            }
+            tryCompleter();
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
             Assert.True(invoked);

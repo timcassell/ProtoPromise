@@ -188,7 +188,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        private static partial class MergeResultFuncs
+        internal static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -252,7 +252,7 @@ namespace Proto.Promises
             return new Promise<T1>(promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -348,7 +348,7 @@ namespace Proto.Promises
             return new Promise<(T1, T2)>(promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -453,7 +453,7 @@ namespace Proto.Promises
             return new Promise<(T1, T2, T3)>(promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -567,7 +567,7 @@ namespace Proto.Promises
             return new Promise<(T1, T2, T3, T4)>(promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -690,7 +690,7 @@ namespace Proto.Promises
             return new Promise<(T1, T2, T3, T4, T5)>(promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -822,7 +822,7 @@ namespace Proto.Promises
             return new Promise<(T1, T2, T3, T4, T5, T6)>(promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]

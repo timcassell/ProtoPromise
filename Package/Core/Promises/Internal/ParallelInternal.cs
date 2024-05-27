@@ -396,11 +396,7 @@ namespace Proto.Promises
                     {
                         CancelWorkers();
                         // Record the failure. The last worker to complete will propagate exceptions as is appropriate to the top-level promise.
-                        var container = rejectContainer;
-                        var exception = container.Value as Exception
-                            // If the reason was not an exception, get the reason wrapped in an exception.
-                            ?? container.GetExceptionDispatchInfo().SourceException;
-                        RecordException(exception);
+                        RecordException(rejectContainer.GetValueAsException());
                         MaybeComplete();
                     }
                 }

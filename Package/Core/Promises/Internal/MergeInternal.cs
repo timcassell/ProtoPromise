@@ -29,6 +29,7 @@ namespace Proto.Promises
             internal void Invoke(PromiseRefBase handler, int index, ref TResult result) => _ptr(handler, index, ref result);
         }
 
+        // TODO: remove this, just use GetResultDelegate. The rejectContainer and state can be read from the handler.
         internal readonly unsafe struct GetResultContainerDelegate<TResult>
         {
             private readonly delegate*<PromiseRefBase, IRejectContainer, Promise.State, int, ref TResult, void> _ptr;
@@ -42,6 +43,7 @@ namespace Proto.Promises
 #else
         internal delegate void GetResultDelegate<TResult>(PromiseRefBase handler, int index, ref TResult result);
 
+        // TODO: remove this, just use GetResultDelegate. The rejectContainer and state can be read from the handler.
         internal delegate void GetResultContainerDelegate<TResult>(PromiseRefBase handler, IRejectContainer rejectContainer, Promise.State state, int index, ref TResult result);
 #endif
 

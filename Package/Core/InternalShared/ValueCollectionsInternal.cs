@@ -162,6 +162,24 @@ namespace Proto.Promises
                 MarkRemovedFromCollection(temp);
                 return temp;
             }
+
+            [MethodImpl(InlineOption)]
+            internal void PushInterlocked(T item)
+            {
+                AssertNotInCollection(item);
+
+                var head = _head;
+                while (true)
+                {
+                    item.Next = head;
+                    var oldHead = Interlocked.CompareExchange(ref _head, item, head);
+                    if (oldHead == head)
+                    {
+                        break;
+                    }
+                    head = oldHead;
+                }
+            }
         }
 
         /// <summary>

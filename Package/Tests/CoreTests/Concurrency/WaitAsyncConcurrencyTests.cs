@@ -78,7 +78,7 @@ namespace ProtoPromiseTests.Concurrency
 
         private readonly TimeSpan timeout = TimeSpan.FromSeconds(2);
 
-        [Test, TestCaseSource("GetArgs")]
+        [Test, TestCaseSource(nameof(GetArgs))]
         public void WaitAsyncContinuationWillBeInvokedOnTheCorrectContext_Concurrent_void(
             ConfigureAwaitType waitType,
             ActionPlace waitAsyncSubscribePlace,
@@ -205,7 +205,7 @@ namespace ProtoPromiseTests.Concurrency
             );
         }
 
-        [Test, TestCaseSource("GetArgs")]
+        [Test, TestCaseSource(nameof(GetArgs))]
         public void WaitAsyncContinuationWillBeInvokedOnTheCorrectContext_Concurrent_T(
             ConfigureAwaitType waitType,
             ActionPlace waitAsyncSubscribePlace,
