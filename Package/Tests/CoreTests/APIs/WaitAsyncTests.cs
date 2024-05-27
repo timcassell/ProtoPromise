@@ -365,15 +365,9 @@ namespace ProtoPromiseTests.APIs
                 secondReportType == SynchronizationType.Foreground);
             TestHelper.ExecuteForegroundCallbacks();
 
-            if (!SpinWait.SpinUntil(() =>
-                {
-                    // We must execute foreground context on every spin to account for the race condition between firstInvokeCounter being incremented and the configured promise returning in the callback.
-                    TestHelper.ExecuteForegroundCallbacks();
-                    return secondInvokeCounter == expectedSecondInvokes;
-                }, timeout))
-            {
-                Assert.Fail("Timed out after " + timeout + ", expectedSecondInvokes: " + expectedSecondInvokes + ", secondInvokeCounter: " + secondInvokeCounter);
-            }
+            // We must execute foreground context on every spin to account for the race condition between firstInvokeCounter being incremented and the configured promise returning in the callback.
+            TestHelper.SpinUntilWhileExecutingForegroundContext(() => secondInvokeCounter == expectedSecondInvokes, timeout,
+                $"expectedSecondInvokes: {expectedSecondInvokes}, secondInvokeCounter: {secondInvokeCounter}");
 
             // Fix a race condition that causes forget to be called before ConfigureAwait.
             TestHelper._backgroundContext.WaitForAllThreadsToComplete();
@@ -591,15 +585,9 @@ namespace ProtoPromiseTests.APIs
                 secondReportType == SynchronizationType.Foreground);
             TestHelper.ExecuteForegroundCallbacks();
 
-            if (!SpinWait.SpinUntil(() =>
-                {
-                    // We must execute foreground context on every spin to account for the race condition between firstInvokeCounter being incremented and the configured promise returning in the callback.
-                    TestHelper.ExecuteForegroundCallbacks();
-                    return secondInvokeCounter == expectedSecondInvokes;
-                }, timeout))
-            {
-                Assert.Fail("Timed out after " + timeout + ", expectedSecondInvokes: " + expectedSecondInvokes + ", secondInvokeCounter: " + secondInvokeCounter);
-            }
+            // We must execute foreground context on every spin to account for the race condition between firstInvokeCounter being incremented and the configured promise returning in the callback.
+            TestHelper.SpinUntilWhileExecutingForegroundContext(() => secondInvokeCounter == expectedSecondInvokes, timeout,
+                $"expectedSecondInvokes: {expectedSecondInvokes}, secondInvokeCounter: {secondInvokeCounter}");
 
             // Fix a race condition that causes forget to be called before ConfigureAwait.
             TestHelper._backgroundContext.WaitForAllThreadsToComplete();
@@ -713,15 +701,9 @@ namespace ProtoPromiseTests.APIs
                 secondReportType == SynchronizationType.Foreground);
             TestHelper.ExecuteForegroundCallbacks();
 
-            if (!SpinWait.SpinUntil(() =>
-                {
-                    // We must execute foreground context on every spin to account for the race condition between firstInvokeCounter being incremented and the configured promise returning in the callback.
-                    TestHelper.ExecuteForegroundCallbacks();
-                    return secondInvokeCounter == expectedSecondInvokes;
-                }, timeout))
-            {
-                Assert.Fail("Timed out after " + timeout + ", expectedSecondInvokes: " + expectedSecondInvokes + ", secondInvokeCounter: " + secondInvokeCounter);
-            }
+            // We must execute foreground context on every spin to account for the race condition between firstInvokeCounter being incremented and the configured promise returning in the callback.
+            TestHelper.SpinUntilWhileExecutingForegroundContext(() => secondInvokeCounter == expectedSecondInvokes, timeout,
+                $"expectedSecondInvokes: {expectedSecondInvokes}, secondInvokeCounter: {secondInvokeCounter}");
 
             firstPromise.Forget();
             secondPromise.Forget();
@@ -831,15 +813,9 @@ namespace ProtoPromiseTests.APIs
                 secondReportType == SynchronizationType.Foreground);
             TestHelper.ExecuteForegroundCallbacks();
 
-            if (!SpinWait.SpinUntil(() =>
-                {
-                    // We must execute foreground context on every spin to account for the race condition between firstInvokeCounter being incremented and the configured promise returning in the callback.
-                    TestHelper.ExecuteForegroundCallbacks();
-                    return secondInvokeCounter == expectedSecondInvokes;
-                }, timeout))
-            {
-                Assert.Fail("Timed out after " + timeout + ", expectedSecondInvokes: " + expectedSecondInvokes + ", secondInvokeCounter: " + secondInvokeCounter);
-            }
+            // We must execute foreground context on every spin to account for the race condition between firstInvokeCounter being incremented and the configured promise returning in the callback.
+            TestHelper.SpinUntilWhileExecutingForegroundContext(() => secondInvokeCounter == expectedSecondInvokes, timeout,
+                $"expectedSecondInvokes: {expectedSecondInvokes}, secondInvokeCounter: {secondInvokeCounter}");
 
             firstPromise.Forget();
             secondPromise.Forget();
@@ -1100,10 +1076,7 @@ namespace ProtoPromiseTests.APIs
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
-            if (!SpinWait.SpinUntil(() => didInvoke, timeout))
-            {
-                Assert.Fail("Timed out after " + timeout + ", didInvoke: " + didInvoke);
-            }
+            TestHelper.SpinUntil(() => didInvoke, timeout, $"didInvoke: {didInvoke}");
         }
 
         [Test]
@@ -1155,10 +1128,7 @@ namespace ProtoPromiseTests.APIs
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
-            if (!SpinWait.SpinUntil(() => didInvoke, timeout))
-            {
-                Assert.Fail("Timed out after " + timeout + ", didInvoke: " + didInvoke);
-            }
+            TestHelper.SpinUntil(() => didInvoke, timeout, $"didInvoke: {didInvoke}");
         }
 
         [Test, TestCaseSource(nameof(GetArgs_ContinueWith))]
@@ -1264,15 +1234,9 @@ namespace ProtoPromiseTests.APIs
                 secondReportType == SynchronizationType.Foreground);
             TestHelper.ExecuteForegroundCallbacks();
 
-            if (!SpinWait.SpinUntil(() =>
-                {
-                    // We must execute foreground context on every spin to account for the race condition between firstInvokeCounter being incremented and the configured promise being awaited.
-                    TestHelper.ExecuteForegroundCallbacks();
-                    return secondInvokeCounter == expectedInvokes;
-                }, timeout))
-            {
-                Assert.Fail("Timed out after " + timeout + ", expectedInvokes: " + expectedInvokes + ", secondInvokeCounter: " + secondInvokeCounter);
-            }
+            // We must execute foreground context on every spin to account for the race condition between firstInvokeCounter being incremented and the configured promise being awaited.
+            TestHelper.SpinUntilWhileExecutingForegroundContext(() => secondInvokeCounter == expectedInvokes, timeout,
+                $"expectedInvokes: {expectedInvokes}, secondInvokeCounter: {secondInvokeCounter}");
 
             firstPromise.Forget();
             secondPromise.Forget();
@@ -1383,15 +1347,9 @@ namespace ProtoPromiseTests.APIs
                 secondReportType == SynchronizationType.Foreground);
             TestHelper.ExecuteForegroundCallbacks();
 
-            if (!SpinWait.SpinUntil(() =>
-                {
-                    // We must execute foreground context on every spin to account for the race condition between firstInvokeCounter being incremented and the configured promise being awaited.
-                    TestHelper.ExecuteForegroundCallbacks();
-                    return secondInvokeCounter == expectedInvokes;
-                }, timeout))
-            {
-                Assert.Fail("Timed out after " + timeout + ", expectedInvokes: " + expectedInvokes + ", secondInvokeCounter: " + secondInvokeCounter);
-            }
+            // We must execute foreground context on every spin to account for the race condition between firstInvokeCounter being incremented and the configured promise being awaited.
+            TestHelper.SpinUntilWhileExecutingForegroundContext(() => secondInvokeCounter == expectedInvokes, timeout,
+                $"expectedInvokes: {expectedInvokes}, secondInvokeCounter: {secondInvokeCounter}");
 
             firstPromise.Forget();
             secondPromise.Forget();
@@ -1452,10 +1410,7 @@ namespace ProtoPromiseTests.APIs
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
-            if (!SpinWait.SpinUntil(() => didInvoke, timeout))
-            {
-                Assert.Fail("Timed out after " + timeout + ", didInvoke: " + didInvoke);
-            }
+            TestHelper.SpinUntil(() => didInvoke, timeout, $"didInvoke: {didInvoke}");
         }
 
         [Test]
@@ -1511,10 +1466,7 @@ namespace ProtoPromiseTests.APIs
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
-            if (!SpinWait.SpinUntil(() => didInvoke, timeout))
-            {
-                Assert.Fail("Timed out after " + timeout + ", didInvoke: " + didInvoke);
-            }
+            TestHelper.SpinUntil(() => didInvoke, timeout, $"didInvoke: {didInvoke}");
         }
 
         [Test]

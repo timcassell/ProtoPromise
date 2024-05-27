@@ -8,7 +8,7 @@ concurrency:
 
 jobs:
   dotnet-core-tests:
-    name: Test (${{ matrix.config }}, ${{ matrix.objectPooling.name }}, ${{ matrix.devMode.name }})
+    name: ${{ matrix.config }}-${{ matrix.objectPooling.name }}-${{ matrix.devMode.name }}
     runs-on: ubuntu-latest
     
     strategy:
@@ -43,32 +43,32 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
-          global-json-file: global.json
+          dotnet-version: 8.X
           
       - name: Run Analyzer Tests
         run: |
-          dotnet test ./ProtoPromise.Analyzer/ProtoPromise.Analyzer.Test/ProtoPromise.Analyzer.Test.csproj -c ${{ matrix.config }} -f net6.0 --logger "Console;Verbosity=normal" --logger "trx;logfilename=dotnet-test-results-net6.0-${{ matrix.config }}-${{ matrix.objectPooling.name }}-${{ matrix.devMode.name }}-analyzer.trx" -p:ExtraDefineConstants=${{ matrix.objectPooling.symbol }} -p:DeveloperMode=${{ matrix.devMode.value }} --results-directory "./TestResults"
+          dotnet test ./ProtoPromise.Analyzer/ProtoPromise.Analyzer.Test/ProtoPromise.Analyzer.Test.csproj -c ${{ matrix.config }} -f net8.0 --logger "Console;Verbosity=normal" --logger "trx;logfilename=dotnet-test-results-net8.0-${{ matrix.config }}-${{ matrix.objectPooling.name }}-${{ matrix.devMode.name }}-analyzer.trx" -p:ExtraDefineConstants=${{ matrix.objectPooling.symbol }} -p:DeveloperMode=${{ matrix.devMode.value }} --results-directory "./TestResults"
         timeout-minutes: 10
           
       - name: Run Core Tests
         run: |
-          dotnet test ./ProtoPromiseTests/ProtoPromiseTests.csproj -c ${{ matrix.config }} -f net6.0 --logger "Console;Verbosity=normal" --logger "trx;logfilename=dotnet-test-results-net6.0-${{ matrix.config }}-${{ matrix.objectPooling.name }}-${{ matrix.devMode.name }}-core.trx" -p:ExtraDefineConstants=${{ matrix.objectPooling.symbol }} -p:DeveloperMode=${{ matrix.devMode.value }} --results-directory "./TestResults"
-        timeout-minutes: 240
+          dotnet test ./ProtoPromiseTests/ProtoPromiseTests.csproj -c ${{ matrix.config }} -f net8.0 --logger "Console;Verbosity=normal" --logger "trx;logfilename=dotnet-test-results-net8.0-${{ matrix.config }}-${{ matrix.objectPooling.name }}-${{ matrix.devMode.name }}-core.trx" -p:ExtraDefineConstants=${{ matrix.objectPooling.symbol }} -p:DeveloperMode=${{ matrix.devMode.value }} --results-directory "./TestResults"
+        timeout-minutes: 120
 
       - uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: dotnet-test-results-net6.0-${{ matrix.config }}-${{ matrix.objectPooling.name }}-${{ matrix.devMode.name }}
+          name: dotnet-test-results-net8.0-${{ matrix.config }}-${{ matrix.objectPooling.name }}-${{ matrix.devMode.name }}
           path: TestResults/*.trx
           reporter: dotnet-trx
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: dotnet-test-results-net6.0-${{ matrix.config }}-${{ matrix.objectPooling.name }}-${{ matrix.devMode.name }}
+          name: dotnet-test-results-net8.0-${{ matrix.config }}-${{ matrix.objectPooling.name }}-${{ matrix.devMode.name }}
           path: TestResults

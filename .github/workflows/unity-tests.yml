@@ -8,7 +8,7 @@ concurrency:
 
 jobs:
   unity-tests:
-    name: Test (${{ matrix.testMode.name }}, ${{ matrix.mode.name }}, ${{ matrix.objectPooling.name }}, ${{ matrix.unityVersion }})
+    name: ${{ matrix.unity.major }}-${{ matrix.configuration.name }}-${{ matrix.objectPooling.name }}-${{ matrix.testMode.name }}
     runs-on: ubuntu-latest
     
     strategy:
@@ -18,12 +18,10 @@ jobs:
           - {
               name: Editor,
               value: PlayMode,
-              buildTargetId: 1
             }
           - {
               name: Standalone,
               value: Standalone,
-              buildTargetId: 1
             }
           # Not testing WebGL as unity-test-runner does not support it.
           #- {
@@ -31,7 +29,7 @@ jobs:
           #    value: WebGL,
           #    buildTargetId: 13
           #  }
-        mode:
+        configuration:
           - {
               name: Release,
               symbol: PROTO_PROMISE_DEBUG_DISABLE
@@ -49,52 +47,78 @@ jobs:
               name: Pool_Disabled,
               symbol: PROTO_PROMISE_POOL_DISABLE
             }
-        # Editor uses 2018.4 to test netstandard2.0 in Mono.
-        # Standalone uses 2019.4 and 2023.1 to test IL2CPP with netstandard2.0 and netstandard2.1.
-        unityVersion: [2018.4.36f1, 2019.4.40f1, 2023.1.0f1]
+        # Editor uses 2018 to test netstandard2.0 in Mono.
+        # Standalone uses 2019 and 2023 to test IL2CPP with netstandard2.0 and netstandard2.1.
+        unity:
+          - {
+              major: 2018,
+              version: 2018.4.36f1,
+            }
+          - {
+              major: 2019,
+              version: 2019.4.40f1,
+            }
+          - {
+              major: 2023,
+              version: 2023.1.0f1,
+            }
 
         exclude:
           # DEBUG mode forces pooling disabled.
           - {
-              mode: { name: Debug },
+              configuration: { name: Debug },
               objectPooling: { name: Pool_Enabled }
             }
           # Editor tests only run in 2018.4 to keep CI times down.
           - {
               testMode: { name: Editor },
-              unityVersion: 2019.4.40f1
+              unity: { major: 2019 }
             }
           - {
               testMode: { name: Editor },
-              unityVersion: 2023.1.0f1
+              unity: { major: 2023 }
             }
           # Standalone with IL2CPP can only be built with 2019.4+ (unity-builder docker images constraint).
           - {
               testMode: { name: Standalone },
-              unityVersion: 2018.4.36f1
+              unity: { major: 2018 }
             }
+
+        include:
+          # id 1 for old Unity versions, Standalone for new Unity versions.
+          # This is hard-coded for Standalone, since we can't run WebGL tests in CI.
+          - unity: { major: 2018 }
+            buildTargetId: 1
+          - unity: { major: 2019 }
+            buildTargetId: 1
+          - unity: { major: 2023 }
+            buildtargetid: standalone
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+      
+      - name: Copy Project Settings
+        run: cp -a .github/unityci/Unity_${{ matrix.unity.major }}_Settings/. ProtoPromise_Unity/
 
       - name: Rewrite ProjectSettings
         run: |
-          DefineSymbols="${{ matrix.mode.symbol }};${{ matrix.objectPooling.symbol }}"
           DefineOriginal="  scriptingDefineSymbols: {}"
-          DefineReplace="  scriptingDefineSymbols: \\n    ${{ matrix.testMode.buildTargetId }}: $DefineSymbols"
+          DefineReplace="  scriptingDefineSymbols: \\n    ${{ matrix.buildTargetId }}: ${{ matrix.configuration.symbol }};${{ matrix.objectPooling.symbol }}"
           sed -i "{s/$DefineOriginal/$DefineReplace/g}" ProtoPromise_Unity/ProjectSettings/ProjectSettings.asset
 
       - name: Run tests
         id: tests
-        uses: game-ci/unity-test-runner@v3
+        uses: game-ci/unity-test-runner@v4
         env:
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE_2018_4_36F1_UBUNTU }}
         with:
           projectPath: ProtoPromise_Unity
           testMode: ${{ matrix.testMode.value }}
-          unityVersion: ${{ matrix.unityVersion }}
-        timeout-minutes: 240
+          unityVersion: ${{ matrix.unity.version }}
+        timeout-minutes: 120
 
       # Workaround for NUnit XML (see https://github.com/dorny/test-reporter/issues/98#issuecomment-867106931)
       - name: Install NUnit
@@ -123,12 +147,12 @@ jobs:
       - uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: unity-test-results-${{ matrix.testMode.name }}-${{ matrix.mode.name }}-${{ matrix.objectPooling.name }}-${{ matrix.unityVersion }}
+          name: unity-test-results-${{ matrix.unity.major }}-${{ matrix.testMode.name }}-${{ matrix.configuration.name }}-${{ matrix.objectPooling.name }}
           path: "*_junit.xml"
           reporter: java-junit
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: unity-test-results-${{ matrix.testMode.name }}-${{ matrix.mode.name }}-${{ matrix.objectPooling.name }}-${{ matrix.unityVersion }}
+          name: unity-test-results-${{ matrix.unity.major }}-${{ matrix.testMode.name }}-${{ matrix.configuration.name }}-${{ matrix.objectPooling.name }}
           path: artifacts

@@ -1,0 +1,16 @@
+{
+  "dependencies": {
+    "com.timcassell.protopromise": "file:../../Package",
+    "com.unity.test-framework": "1.1.31",
+    "com.unity.textmeshpro": "2.1.4",
+    "com.unity.ugui": "1.0.0",
+    "com.unity.modules.imageconversion": "1.0.0",
+    "com.unity.modules.imgui": "1.0.0",
+    "com.unity.modules.ui": "1.0.0",
+    "com.unity.modules.unitywebrequest": "1.0.0",
+    "com.unity.modules.unitywebrequesttexture": "1.0.0"
+  },
+  "testables": [
+    "com.timcassell.protopromise"
+  ]
+}

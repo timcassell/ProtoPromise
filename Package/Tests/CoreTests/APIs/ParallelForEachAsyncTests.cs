@@ -281,14 +281,7 @@ namespace ProtoPromiseTests.APIs
                 .Finally(() => isComplete = true)
                 .Forget();
 
-            if (!SpinWait.SpinUntil(() =>
-            {
-                TestHelper.ExecuteForegroundCallbacks();
-                return isComplete;
-            }, TimeSpan.FromSeconds(10)))
-            {
-                throw new TimeoutException();
-            }
+            TestHelper.SpinUntilWhileExecutingForegroundContext(() => isComplete, TimeSpan.FromSeconds(10));
 
             CollectionAssert.AreEqual(Enumerable.Range(1, 100), cq.OrderBy(i => i));
         }
@@ -589,20 +582,17 @@ namespace ProtoPromiseTests.APIs
             var parallelPromise = Promise.ParallelForEachAsync(AsyncEnumerable.Range(0, 3), (index, cancelationToken) =>
             {
                 cancelationToken.Register(() => throw new Exception("Error in cancelation!"));
+                Interlocked.Increment(ref readyCount);
                 if (index == 2)
                 {
-                    Interlocked.Increment(ref readyCount);
+                    // Wait until all iterations are ready, otherwise the token could be canceled before a worker registered, causing it to throw synchronously.
+                    TestHelper.SpinUntil(() => readyCount == 3, TimeSpan.FromSeconds(2));
                     throw new System.InvalidOperationException("Error in loop body!");
                 }
-                Interlocked.Increment(ref readyCount);
                 return blockPromise;
             }, context);
 
-            SpinWait.SpinUntil(() =>
-            {
-                TestHelper.ExecuteForegroundCallbacks();
-                return readyCount == 3;
-            });
+            TestHelper.SpinUntilWhileExecutingForegroundContext(() => readyCount == 3, TimeSpan.FromSeconds(3));
 
             bool didThrow = false;
             try

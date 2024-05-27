@@ -115,7 +115,7 @@ namespace ProtoPromiseTests.Concurrency.Threading
                 else
                 {
                     AsyncReaderWriterLock.UpgradedWriterKey writerKey = default;
-                    SpinWait.SpinUntil(() => rwl.TryUpgradeToWriterLock(key, out writerKey));
+                    TestHelper.SpinUntil(() => rwl.TryUpgradeToWriterLock(key, out writerKey), TimeSpan.FromSeconds(1));
                     using (writerKey)
                     {
                         InsideWriterLock();
@@ -165,7 +165,7 @@ namespace ProtoPromiseTests.Concurrency.Threading
                     Promise.Run(async () =>
                     {
                         AsyncReaderWriterLock.ReaderKey key = default;
-                        SpinWait.SpinUntil(() => rwl.TryEnterReaderLock(out key));
+                        TestHelper.SpinUntil(() => rwl.TryEnterReaderLock(out key), TimeSpan.FromSeconds(1));
                         using (key)
                         {
                             InsideReaderLock();
@@ -210,7 +210,7 @@ namespace ProtoPromiseTests.Concurrency.Threading
                     Promise.Run(async () =>
                     {
                         AsyncReaderWriterLock.WriterKey key = default;
-                        SpinWait.SpinUntil(() => rwl.TryEnterWriterLock(out key));
+                        TestHelper.SpinUntil(() => rwl.TryEnterWriterLock(out key), TimeSpan.FromSeconds(1));
                         using (key)
                         {
                             InsideWriterLock();
@@ -259,7 +259,7 @@ namespace ProtoPromiseTests.Concurrency.Threading
                     Promise.Run(async () =>
                     {
                         AsyncReaderWriterLock.UpgradeableReaderKey key = default;
-                        SpinWait.SpinUntil(() => rwl.TryEnterUpgradeableReaderLock(out key));
+                        TestHelper.SpinUntil(() => rwl.TryEnterUpgradeableReaderLock(out key), TimeSpan.FromSeconds(1));
                         using (key)
                         {
                             await InsideUpgradeableLock(key, upgradeType);

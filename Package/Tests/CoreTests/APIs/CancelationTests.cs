@@ -1710,7 +1710,7 @@ namespace ProtoPromiseTests.APIs
                 CancelationToken cancelationToken = cancelationSource.Token;
 
                 var promise = Promise.Run(RunAsync, SynchronizationOption.Background, forceAsync: true);
-                SpinWait.SpinUntil(() => isCallbackRegistered);
+                TestHelper.SpinUntil(() => isCallbackRegistered, TimeSpan.FromSeconds(1));
                 var cancelPromise = Promise.Run(cancelationSource.Cancel, SynchronizationOption.Background, forceAsync: true);
 
                 Thread.Sleep(100);
@@ -1730,11 +1730,11 @@ namespace ProtoPromiseTests.APIs
                     var registration = cancelationToken.Register(1, cv =>
                     {
                         continueAsyncFunction = true;
-                        SpinWait.SpinUntil(() => isCallbackComplete);
+                        TestHelper.SpinUntil(() => isCallbackComplete, TimeSpan.FromSeconds(1));
                     });
                     {
                         isCallbackRegistered = true;
-                        SpinWait.SpinUntil(() => continueAsyncFunction);
+                        TestHelper.SpinUntil(() => continueAsyncFunction, TimeSpan.FromSeconds(1));
                     }
                     await registration.DisposeAsync();
                     completedAsync = true;
@@ -1751,7 +1751,7 @@ namespace ProtoPromiseTests.APIs
                 CancelationToken cancelationToken = cancelationSource.Token;
 
                 var promise = Promise.Run(RunAsync, SynchronizationOption.Background, forceAsync: true);
-                SpinWait.SpinUntil(() => isCallbackRegistered);
+                TestHelper.SpinUntil(() => isCallbackRegistered, TimeSpan.FromSeconds(1));
                 var cancelPromise = Promise.Run(cancelationSource.Cancel, SynchronizationOption.Background, forceAsync: true);
 
                 Thread.Sleep(100);
@@ -1771,11 +1771,11 @@ namespace ProtoPromiseTests.APIs
                     await using (cancelationToken.Register(1, cv =>
                     {
                         continueAsyncFunction = true;
-                        SpinWait.SpinUntil(() => isCallbackComplete);
+                        TestHelper.SpinUntil(() => isCallbackComplete, TimeSpan.FromSeconds(1));
                     }))
                     {
                         isCallbackRegistered = true;
-                        SpinWait.SpinUntil(() => continueAsyncFunction);
+                        TestHelper.SpinUntil(() => continueAsyncFunction, TimeSpan.FromSeconds(1));
                     }
                     completedAsync = true;
                 }
@@ -1799,7 +1799,7 @@ namespace ProtoPromiseTests.APIs
                     invoked = true;
                 });
                 Promise.Run(() => cancelationSource.Cancel()).Forget();
-                SpinWait.SpinUntil(() => startedInvoke);
+                TestHelper.SpinUntil(() => startedInvoke, TimeSpan.FromSeconds(1));
                 cancelationRegistration.Dispose();
                 Assert.IsTrue(invoked);
                 cancelationSource.Dispose();
@@ -1820,7 +1820,7 @@ namespace ProtoPromiseTests.APIs
                     }))
                 {
                     Promise.Run(() => cancelationSource.Cancel()).Forget();
-                    SpinWait.SpinUntil(() => startedInvoke);
+                    TestHelper.SpinUntil(() => startedInvoke, TimeSpan.FromSeconds(1));
                 }
                 Assert.IsTrue(invoked);
                 cancelationSource.Dispose();
@@ -1846,7 +1846,7 @@ namespace ProtoPromiseTests.APIs
                         invoked = true;
                     });
                     Promise.Run(() => cancelationSource.Cancel()).Forget();
-                    SpinWait.SpinUntil(() => startedInvoke);
+                    TestHelper.SpinUntil(() => startedInvoke, TimeSpan.FromSeconds(1));
                     await cancelationRegistration.DisposeAsync();
                     Assert.IsTrue(invoked);
                     asyncComplete = true;
@@ -1876,7 +1876,7 @@ namespace ProtoPromiseTests.APIs
                         }))
                     {
                         Promise.Run(() => cancelationSource.Cancel()).Forget();
-                        SpinWait.SpinUntil(() => startedInvoke);
+                        TestHelper.SpinUntil(() => startedInvoke, TimeSpan.FromSeconds(1));
                     }
                     Assert.IsTrue(invoked);
                     asyncComplete = true;

@@ -102,7 +102,7 @@ namespace ProtoPromiseTests.APIs.Threading
 
             Promise.Run(() =>
             {
-                SpinWait.SpinUntil(() => isAboutToWait);
+                TestHelper.SpinUntil(() => isAboutToWait, TimeSpan.FromSeconds(1));
                 Thread.Sleep(TimeSpan.FromSeconds(0.5f));
                 cs.Cancel();
             }, SynchronizationOption.Background)

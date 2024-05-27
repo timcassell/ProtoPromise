@@ -91,10 +91,7 @@ namespace ProtoPromiseTests
             }
 
             TimeSpan timeout = TimeSpan.FromSeconds(runningActions);
-            if (!SpinWait.SpinUntil(() => _runningActionCount == 0, timeout))
-            {
-                throw new TimeoutException("WaitForAllThreadsToComplete timed out after " + timeout + ", _runningActionCount: " + _runningActionCount);
-            }
+            TestHelper.SpinUntil(() => _runningActionCount == 0, timeout, $"WaitForAllThreadsToComplete _runningActionCount: {_runningActionCount}");
         }
 
         public override SynchronizationContext CreateCopy()

@@ -501,15 +501,7 @@ namespace ProtoPromiseTests
             bool isPending = true;
             promise = promise.Finally(() => isPending = false);
 
-            if (!SpinWait.SpinUntil(() =>
-                {
-                    ExecuteForegroundCallbacks();
-                    return !isPending;
-                }, timeout))
-            {
-                promise.Forget();
-                throw new TimeoutException("Promise wait timed out after " + timeout);
-            }
+            SpinUntilWhileExecutingForegroundContext(() => !isPending, timeout);
             promise.Wait();
         }
 
@@ -518,16 +510,38 @@ namespace ProtoPromiseTests
             bool isPending = true;
             promise = promise.Finally(() => isPending = false);
 
+            SpinUntilWhileExecutingForegroundContext(() => !isPending, timeout);
+            return promise.WaitForResult();
+        }
+
+        public static void SpinUntil(Func<bool> condition, TimeSpan timeout, string message = null)
+        {
+            if (!SpinWait.SpinUntil(condition, timeout))
+            {
+                var msg = $"SpinUntil timed out after {timeout}";
+                if (message != null)
+                {
+                    msg += $"; {message}";
+                }
+                throw new TimeoutException(msg);
+            }
+        }
+
+        public static void SpinUntilWhileExecutingForegroundContext(Func<bool> condition, TimeSpan timeout, string message = null)
+        {
             if (!SpinWait.SpinUntil(() =>
             {
                 ExecuteForegroundCallbacks();
-                return !isPending;
+                return condition();
             }, timeout))
             {
-                promise.Forget();
-                throw new TimeoutException("Promise wait timed out after " + timeout);
+                var msg = $"SpinUntilWhileExecutingForegroundContext timed out after {timeout}";
+                if (message != null)
+                {
+                    msg += $"; {message}";
+                }
+                throw new TimeoutException(msg);
             }
-            return promise.WaitForResult();
         }
 
         public static void AssertCallbackContext(SynchronizationType expectedContext, SynchronizationType invokeContext, Thread foregroundThread)
