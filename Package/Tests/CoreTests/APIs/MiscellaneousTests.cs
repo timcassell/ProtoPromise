@@ -1073,7 +1073,7 @@ namespace ProtoPromiseTests.APIs
                 isComplete = true;
             });
 
-            SpinWait.SpinUntil(() => isExecuting);
+            TestHelper.SpinUntil(() => isExecuting, System.TimeSpan.FromSeconds(1));
             if (alreadyComplete)
             {
                 Thread.Sleep(sleepTime.Add(sleepTime));
@@ -1101,7 +1101,7 @@ namespace ProtoPromiseTests.APIs
                 isComplete = true;
             });
 
-            SpinWait.SpinUntil(() => isExecuting);
+            TestHelper.SpinUntil(() => isExecuting, System.TimeSpan.FromSeconds(1));
             if (alreadyComplete)
             {
                 Thread.Sleep(sleepTime.Add(sleepTime));
@@ -1141,7 +1141,7 @@ namespace ProtoPromiseTests.APIs
                 throw expectedException;
             });
 
-            SpinWait.SpinUntil(() => isExecuting);
+            TestHelper.SpinUntil(() => isExecuting, System.TimeSpan.FromSeconds(1));
             if (alreadyComplete)
             {
                 Thread.Sleep(sleepTime.Add(sleepTime));
@@ -1193,7 +1193,7 @@ namespace ProtoPromiseTests.APIs
                 throw expectedException;
             });
 
-            SpinWait.SpinUntil(() => isExecuting);
+            TestHelper.SpinUntil(() => isExecuting, System.TimeSpan.FromSeconds(1));
             if (alreadyComplete)
             {
                 Thread.Sleep(sleepTime.Add(sleepTime));
@@ -1299,7 +1299,7 @@ namespace ProtoPromiseTests.APIs
                 return expected;
             });
 
-            SpinWait.SpinUntil(() => isExecuting);
+            TestHelper.SpinUntil(() => isExecuting, System.TimeSpan.FromSeconds(1));
             if (alreadyComplete)
             {
                 Thread.Sleep(sleepTime.Add(sleepTime));
@@ -1334,7 +1334,7 @@ namespace ProtoPromiseTests.APIs
                 return expected;
             });
 
-            SpinWait.SpinUntil(() => isExecuting);
+            TestHelper.SpinUntil(() => isExecuting, System.TimeSpan.FromSeconds(1));
             if (alreadyComplete)
             {
                 Thread.Sleep(sleepTime.Add(sleepTime));
@@ -1378,7 +1378,7 @@ namespace ProtoPromiseTests.APIs
 #pragma warning restore CS0162 // Unreachable code detected
             });
 
-            SpinWait.SpinUntil(() => isExecuting);
+            TestHelper.SpinUntil(() => isExecuting, System.TimeSpan.FromSeconds(1));
             if (alreadyComplete)
             {
                 Thread.Sleep(sleepTime.Add(sleepTime));
@@ -1434,7 +1434,7 @@ namespace ProtoPromiseTests.APIs
 #pragma warning restore CS0162 // Unreachable code detected
             });
 
-            SpinWait.SpinUntil(() => isExecuting);
+            TestHelper.SpinUntil(() => isExecuting, System.TimeSpan.FromSeconds(1));
             if (alreadyComplete)
             {
                 Thread.Sleep(sleepTime.Add(sleepTime));

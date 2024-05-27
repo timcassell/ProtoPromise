@@ -205,7 +205,7 @@ namespace ProtoPromiseTests.APIs.Threading
             })
                 .Forget();
 
-            SpinWait.SpinUntil(() => isLocked);
+            TestHelper.SpinUntil(() => isLocked, TimeSpan.FromSeconds(1));
 
             bool promise2IsComplete = false;
             var promise2 = Promise.Run(() =>
@@ -244,7 +244,7 @@ namespace ProtoPromiseTests.APIs.Threading
             })
                 .Forget();
 
-            SpinWait.SpinUntil(() => isLocked);
+            TestHelper.SpinUntil(() => isLocked, TimeSpan.FromSeconds(1));
 
             bool deferred2Ready = false;
             bool deferred2HasLock = false;
@@ -262,7 +262,7 @@ namespace ProtoPromiseTests.APIs.Threading
                     .ContinueWith(r => r.Value.Dispose());
             });
 
-            SpinWait.SpinUntil(() => deferred2Ready);
+            TestHelper.SpinUntil(() => deferred2Ready, TimeSpan.FromSeconds(1));
 
             bool promise3Complete = false;
             var promise3 = Promise.Run(() =>
@@ -274,7 +274,7 @@ namespace ProtoPromiseTests.APIs.Threading
 
             deferred1Continue.Resolve();
 
-            SpinWait.SpinUntil(() => deferred2HasLock);
+            TestHelper.SpinUntil(() => deferred2HasLock, TimeSpan.FromSeconds(1));
 
             Assert.IsFalse(promise3Complete);
             deferred2Continue.Resolve();
@@ -300,7 +300,7 @@ namespace ProtoPromiseTests.APIs.Threading
                         return lockPromise;
                     });
 
-                    SpinWait.SpinUntil(() => triedToEnterLock);
+                    TestHelper.SpinUntil(() => triedToEnterLock, TimeSpan.FromSeconds(1));
                     cts.Cancel();
 
                     Assert.Catch<OperationCanceledException>(() => promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1)));
@@ -511,7 +511,7 @@ namespace ProtoPromiseTests.APIs.Threading
                     await lockPromise;
                 });
 
-                SpinWait.SpinUntil(() => triedToEnterLock);
+                TestHelper.SpinUntil(() => triedToEnterLock, TimeSpan.FromSeconds(1));
                 cts.Cancel();
 
                 Assert.Catch<OperationCanceledException>(() => promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1)));

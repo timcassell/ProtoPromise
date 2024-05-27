@@ -195,10 +195,7 @@ namespace ProtoPromiseTests.Concurrency
                     }
 
                     TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
-                    if (!SpinWait.SpinUntil(() => didContinue, timeout))
-                    {
-                        Assert.Fail("Timed out after " + timeout + ", didContinue: " + didContinue);
-                    }
+                    TestHelper.SpinUntil(() => didContinue, timeout, $"didContinue: {didContinue}");
                     cancelationSource.TryDispose();
                 },
                 actions: parallelActions.ToArray()
@@ -322,10 +319,7 @@ namespace ProtoPromiseTests.Concurrency
                     }
 
                     TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
-                    if (!SpinWait.SpinUntil(() => didContinue, timeout))
-                    {
-                        Assert.Fail("Timed out after " + timeout + ", didContinue: " + didContinue);
-                    }
+                    TestHelper.SpinUntil(() => didContinue, timeout, $"didContinue: {didContinue}");
                     cancelationSource.TryDispose();
                 },
                 actions: parallelActions.ToArray()
