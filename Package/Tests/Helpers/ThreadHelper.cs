@@ -1,6 +1,7 @@
 ﻿using Proto.Promises;
 using System;
 using System.Collections.Generic;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 
 namespace ProtoPromiseTests.Concurrency
@@ -81,7 +82,7 @@ namespace ProtoPromiseTests.Concurrency
                 catch (Exception e)
                 {
                     // Only reporting one exception instead of aggregate.
-                    merger._executionException = e;
+                    merger._executionExceptionInfo = ExceptionDispatchInfo.Capture(e);
                 }
                 Interlocked.Decrement(ref merger._currentParticipants);
             }
@@ -94,7 +95,7 @@ namespace ProtoPromiseTests.Concurrency
             volatile public int _currentParticipants = 0;
             // Only reporting one exception instead of aggregate.
             // This is so we don't have to wait on all actions to complete when 1 has errored, and also so we don't overload the test error output.
-            volatile public Exception _executionException = null;
+            volatile public ExceptionDispatchInfo _executionExceptionInfo = null;
         }
 
         public static readonly int multiExecutionCount = Math.Min(Environment.ProcessorCount * 100, 32766); // Maximum participants Barrier allows is 32767 (15 bits), subtract 1 for main/test thread.
@@ -181,12 +182,8 @@ namespace ProtoPromiseTests.Concurrency
             int numActions = merger._currentParticipants;
             merger._barrier.SignalAndWait();
             TimeSpan timeout = TimeSpan.FromTicks(timeoutPerAction.Ticks * numActions);
-            bool timedOut = !SpinWait.SpinUntil(() => merger._currentParticipants <= 0 || merger._executionException != null, timeout);
-            if (merger._executionException != null)
-            {
-                // Preserve the stacktrace.
-                throw new Exception("", merger._executionException);
-            }
+            bool timedOut = !SpinWait.SpinUntil(() => merger._currentParticipants <= 0 || merger._executionExceptionInfo != null, timeout);
+            merger._executionExceptionInfo?.Throw();
             if (timedOut)
             {
                 throw new TimeoutException(numActions + " Action(s) timed out after " + timeout + ", there may be a deadlock. Remaining Actions: " + merger._currentParticipants);
