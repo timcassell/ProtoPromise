@@ -68,7 +68,7 @@ namespace Proto.Promises
         {
             if (IsCancelationRequested)
             {
-                throw Internal.CanceledExceptionInternal.GetOrCreate();
+                throw Promise.CancelException();
             }
         }
 

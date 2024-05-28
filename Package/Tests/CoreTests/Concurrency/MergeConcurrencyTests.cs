@@ -100,7 +100,7 @@ namespace ProtoPromiseTests.Concurrency
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 () => Promise.Merge(deferred0.Promise, deferred1.Promise),
-                expectedResolveValue: ValueTuple.Create(1, 2)
+                expectedResolveValue: (1, 2)
             );
             helper.MaybeAddParallelAction(parallelActions);
 
@@ -148,7 +148,7 @@ namespace ProtoPromiseTests.Concurrency
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferredVoid.Promise),
-                expectedResolveValue: ValueTuple.Create(1, 2)
+                expectedResolveValue: (1, 2)
             );
             helper.MaybeAddParallelAction(parallelActions);
 
@@ -215,7 +215,7 @@ namespace ProtoPromiseTests.Concurrency
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise, deferred5.Promise, deferred6.Promise),
-                expectedResolveValue: ValueTuple.Create(1, 2, 3, 4, 5, 6, 7)
+                expectedResolveValue: (1, 2, 3, 4, 5, 6, 7)
             );
             helper.MaybeAddParallelAction(parallelActions);
 
@@ -288,7 +288,7 @@ namespace ProtoPromiseTests.Concurrency
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise, deferred5.Promise, deferred6.Promise, deferredVoid.Promise),
-                expectedResolveValue: ValueTuple.Create(1, 2, 3, 4, 5, 6, 7)
+                expectedResolveValue: (1, 2, 3, 4, 5, 6, 7)
             );
             helper.MaybeAddParallelAction(parallelActions);
 

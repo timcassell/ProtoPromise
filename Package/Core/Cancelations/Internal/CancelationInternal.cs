@@ -1119,8 +1119,8 @@ namespace Proto.Promises
                     // Queue the check to happen again on a background thread.
                     // Force async so the current thread will be yielded if this is already being executed on a background thread.
                     // This is recursive, but it's done so asynchronously so it will never cause StackOverflowException.
-                    Promise.Run(ValueTuple.Create(parent, node, nodeId, tokenId, deferred),
-                        cv => WaitForInvokeComplete(cv.Item1, cv.Item2, cv.Item3, cv.Item4, cv.Item5),
+                    Promise.Run((parent, node, nodeId, tokenId, deferred),
+                        cv => WaitForInvokeComplete(cv.parent, cv.node, cv.nodeId, cv.tokenId, cv.deferred),
                         Promise.Config.BackgroundContext, forceAsync: true)
                         .Forget();
                 }

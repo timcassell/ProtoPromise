@@ -4,6 +4,8 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0090 // Use 'new(...)'
+
 using System;
 using System.Diagnostics;
 using System.Runtime.ExceptionServices;

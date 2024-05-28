@@ -10,6 +10,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 
 #pragma warning disable IDE0090 // Use 'new(...)'
+#pragma warning disable IDE0251 // Make member 'readonly'
 
 namespace Proto.Promises
 {

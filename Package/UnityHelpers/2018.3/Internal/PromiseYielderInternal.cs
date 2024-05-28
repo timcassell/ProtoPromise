@@ -38,10 +38,12 @@ namespace Proto.Promises
         }
 #else
         [MethodImpl(Internal.InlineOption)]
+#pragma warning disable IDE0060 // Remove unused parameter
         internal static void ValidateIsOnMainThread(int skipFrames)
+#pragma warning restore IDE0060 // Remove unused parameter
         {
             // We read Time.frameCount in RELEASE mode since it's a faster thread check than accessing Thread.CurrentThread.
-            var _ = Time.frameCount;
+            _ = Time.frameCount;
         }
 #endif
 
@@ -544,7 +546,7 @@ namespace Proto.Promises
                     return;
                 }
                 // The token could be canceled from any thread, so we have to dispatch the cancelation logic to the main thread.
-                Promise.Run(ValueTuple.Create(this, runner, _id), (cv) => cv.Item1.OnCancel(cv.Item2, cv.Item3),
+                Promise.Run((this, runner, _id), (cv) => cv.Item1.OnCancel(cv.runner, cv._id),
                      PromiseBehaviour.Instance._syncContext) // Explicitly use the sync context in case the user overwrites the Config.ForegroundContext.
                     .Forget();
             }
