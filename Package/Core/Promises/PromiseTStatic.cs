@@ -323,7 +323,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
-        public static Promise<ValueTuple<int, T>> RaceWithIndex<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
+        public static Promise<(int winIndex, T result)> RaceWithIndex<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
             => Promise.RaceWithIndex<T, TEnumerator>(promises);
 
         /// <summary>
@@ -376,7 +376,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
-        public static Promise<ValueTuple<int, T>> FirstWithIndex<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
+        public static Promise<(int winIndex, T result)> FirstWithIndex<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
             => Promise.FirstWithIndex<T, TEnumerator>(promises);
 
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
@@ -573,17 +573,17 @@ namespace Proto.Promises
         }
 
         [MethodImpl(Internal.InlineOption)]
-        private static void GetAllResultContainer(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, Promise.State state, int index, ref IList<ResultContainer> result)
-            => result[index] = new ResultContainer(handler.GetResult<T>(), rejectContainer, state);
+        private static void GetAllResultContainer(Internal.PromiseRefBase handler, int index, ref IList<ResultContainer> result)
+            => result[index] = new ResultContainer(handler.GetResult<T>(), handler._rejectContainer, handler.State);
         
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-        private static unsafe Internal.GetResultContainerDelegate<IList<ResultContainer>> GetAllResultContainerFunc
+        private static unsafe Internal.GetResultDelegate<IList<ResultContainer>> GetAllResultContainerFunc
         {
             [MethodImpl(Internal.InlineOption)]
             get => new(&GetAllResultContainer);
         }
 #else
-        private static readonly Internal.GetResultContainerDelegate<IList<ResultContainer>> GetAllResultContainerFunc = GetAllResultContainer;
+        private static readonly Internal.GetResultDelegate<IList<ResultContainer>> GetAllResultContainerFunc = GetAllResultContainer;
 #endif
 
         /// <summary>
@@ -634,6 +634,7 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
         /// </summary>
+        /// <param name="promises">The promises to combine.</param>
         public static Promise<IList<ResultContainer>> AllSettled(params Promise<T>[] promises)
             => AllSettled(promises, new ResultContainer[promises.Length]);
 

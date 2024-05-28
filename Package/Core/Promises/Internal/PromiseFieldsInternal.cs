@@ -323,7 +323,7 @@ namespace Proto.Promises
             {
             }
 
-            partial class RacePromiseWithIndex<TResult> : RacePromise<ValueTuple<int, TResult>>
+            partial class RacePromiseWithIndex<TResult> : RacePromise<(int, TResult)>
             {
             }
 
@@ -332,7 +332,7 @@ namespace Proto.Promises
                 protected int _waitCount; // int for Interlocked since it doesn't support uint on older runtimes.
             }
 
-            partial class FirstPromiseWithIndex<TResult> : FirstPromise<ValueTuple<int, TResult>>
+            partial class FirstPromiseWithIndex<TResult> : FirstPromise<(int, TResult)>
             {
             }
 

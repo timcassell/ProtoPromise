@@ -16,17 +16,17 @@ namespace Proto.Promises
     public partial struct Promise
     {
         [MethodImpl(Internal.InlineOption)]
-        private static void GetAllResultContainer(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref IList<ResultContainer> result)
-            => result[index] = new ResultContainer(rejectContainer, state);
+        private static void GetAllResultContainer(Internal.PromiseRefBase handler, int index, ref IList<ResultContainer> result)
+            => result[index] = new ResultContainer(handler._rejectContainer, handler.State);
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-        private static unsafe Internal.GetResultContainerDelegate<IList<ResultContainer>> GetAllResultContainerFunc
+        private static unsafe Internal.GetResultDelegate<IList<ResultContainer>> GetAllResultContainerFunc
         {
             [MethodImpl(Internal.InlineOption)]
             get => new(&GetAllResultContainer);
         }
 #else
-        private static readonly Internal.GetResultContainerDelegate<IList<ResultContainer>> GetAllResultContainerFunc = GetAllResultContainer;
+        private static readonly Internal.GetResultDelegate<IList<ResultContainer>> GetAllResultContainerFunc = GetAllResultContainer;
 #endif
 
         /// <summary>
@@ -39,7 +39,7 @@ namespace Proto.Promises
         {
             ValidateArgument(promise1, nameof(promise1), 1);
             ValidateArgument(promise2, nameof(promise2), 1);
-            return AllSettled(Internal.GetEnumerator(promise1, promise2));
+            return AllSettled(Internal.GetEnumerator(promise1, promise2), valueContainer);
         }
 
         /// <summary>
@@ -54,7 +54,7 @@ namespace Proto.Promises
             ValidateArgument(promise1, nameof(promise1), 1);
             ValidateArgument(promise2, nameof(promise2), 1);
             ValidateArgument(promise3, nameof(promise3), 1);
-            return AllSettled(Internal.GetEnumerator(promise1, promise2, promise3));
+            return AllSettled(Internal.GetEnumerator(promise1, promise2, promise3), valueContainer);
         }
 
         /// <summary>
@@ -71,12 +71,13 @@ namespace Proto.Promises
             ValidateArgument(promise2, nameof(promise2), 1);
             ValidateArgument(promise3, nameof(promise3), 1);
             ValidateArgument(promise4, nameof(promise4), 1);
-            return AllSettled(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
+            return AllSettled(Internal.GetEnumerator(promise1, promise2, promise3, promise4), valueContainer);
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
         /// </summary>
+        /// <param name="promises">The promises to combine.</param>
         public static Promise<IList<ResultContainer>> AllSettled(params Promise[] promises)
             => AllSettled(promises, new ResultContainer[promises.Length]);
 
@@ -86,8 +87,10 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
         /// </summary>
-        public static Promise<IList<ResultContainer>> AllSettled(ReadOnlySpan<Promise> promises)
-            => AllSettled(promises.GetPersistedEnumerator());
+        /// <param name="promises">The promises to combine.</param>
+        /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
+        public static Promise<IList<ResultContainer>> AllSettled(ReadOnlySpan<Promise> promises, IList<ResultContainer> valueContainer = null)
+            => AllSettled(promises.GetPersistedEnumerator(), valueContainer);
 #endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
 
         /// <summary>
@@ -229,6 +232,7 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="Promise{T}.ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
         /// </summary>
+        /// <param name="promises">The promises to combine.</param>
         public static Promise<IList<Promise<T>.ResultContainer>> AllSettled<T>(params Promise<T>[] promises)
             => Promise<T>.AllSettled(promises);
 
@@ -238,8 +242,10 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="Promise{T}.ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
         /// </summary>
-        public static Promise<IList<Promise<T>.ResultContainer>> AllSettled<T>(ReadOnlySpan<Promise<T>> promises)
-            => Promise<T>.AllSettled(promises.GetPersistedEnumerator());
+        /// <param name="promises">The promises to combine.</param>
+        /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
+        public static Promise<IList<Promise<T>.ResultContainer>> AllSettled<T>(ReadOnlySpan<Promise<T>> promises, IList<Promise<T>.ResultContainer> valueContainer = null)
+            => Promise<T>.AllSettled(promises.GetPersistedEnumerator(), valueContainer);
 #endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
 
         /// <summary>
@@ -247,16 +253,16 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promises">The promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
-        public static Promise<IList<Promise<T>.ResultContainer>> AllSettled<T>(IEnumerable<Promise<T>> promises, IList<ResultContainer> valueContainer = null)
-            => Promise<T>.AllSettled(promises);
+        public static Promise<IList<Promise<T>.ResultContainer>> AllSettled<T>(IEnumerable<Promise<T>> promises, IList<Promise<T>.ResultContainer> valueContainer = null)
+            => Promise<T>.AllSettled(promises, valueContainer);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="Promise{T}.ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
         /// </summary>
         /// <param name="promises">The enumerator of promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
-        public static Promise<IList<Promise<T>.ResultContainer>> AllSettled<T, TEnumerator>(TEnumerator promises, IList<ResultContainer> valueContainer = null) where TEnumerator : IEnumerator<Promise<T>>
-            => Promise<T>.AllSettled(promises);
+        public static Promise<IList<Promise<T>.ResultContainer>> AllSettled<T, TEnumerator>(TEnumerator promises, IList<Promise<T>.ResultContainer> valueContainer = null) where TEnumerator : IEnumerator<Promise<T>>
+            => Promise<T>.AllSettled(promises, valueContainer);
 
         #region 2Args
 
@@ -268,39 +274,39 @@ namespace Proto.Promises
             private static class Settled2
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new ResultContainer(rejectContainer, state);
+                            result.Item1 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(rejectContainer, state);
+                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer>> Func = GetMergeResult;
+                internal static readonly Internal.GetResultDelegate<(ResultContainer, ResultContainer)> Func = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(ResultContainer, ResultContainer)>
                 GetSettled2() => Settled2.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<ResultContainer, ResultContainer>> MergeSettled(Promise promise1, Promise promise2)
+        public static Promise<(ResultContainer, ResultContainer)> MergeSettled(Promise promise1, Promise promise2)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
             ValidateArgument(promise2, nameof(promise2), 1);
@@ -337,39 +343,39 @@ namespace Proto.Promises
             private static class Settled1<T1>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(rejectContainer, state);
+                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer>> Func = GetMergeResult;
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, ResultContainer)> Func = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, ResultContainer)>
                 GetSettled1<T1>() => Settled1<T1>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, ResultContainer>> MergeSettled<T1>(Promise<T1> promise1, Promise promise2)
+        public static Promise<(Promise<T1>.ResultContainer, ResultContainer)> MergeSettled<T1>(Promise<T1> promise1, Promise promise2)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
             ValidateArgument(promise2, nameof(promise2), 1);
@@ -406,32 +412,32 @@ namespace Proto.Promises
             private static class Settled0<T1, T2>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), rejectContainer, state);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer>> Func = GetMergeResult;
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer)> Func = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer)>
                 GetSettled0<T1, T2>() => Settled0<T1, T2>.Func;
         }
 
@@ -439,7 +445,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer>> MergeSettled<T1, T2>(Promise<T1> promise1, Promise<T2> promise2)
+        public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer)> MergeSettled<T1, T2>(Promise<T1> promise1, Promise<T2> promise2)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
             ValidateArgument(promise2, nameof(promise2), 1);
@@ -480,42 +486,42 @@ namespace Proto.Promises
             private static class Settled3
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (ResultContainer, ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new ResultContainer(rejectContainer, state);
+                            result.Item1 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(rejectContainer, state);
+                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(rejectContainer, state);
+                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(ResultContainer, ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
+                internal static readonly Internal.GetResultDelegate<(ResultContainer, ResultContainer, ResultContainer)> Func = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(ResultContainer, ResultContainer, ResultContainer)>
                 GetSettled3() => Settled3.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<ResultContainer, ResultContainer, ResultContainer>> MergeSettled(
+        public static Promise<(ResultContainer, ResultContainer, ResultContainer)> MergeSettled(
             Promise promise1, Promise promise2, Promise promise3)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -556,42 +562,42 @@ namespace Proto.Promises
             private static class Settled2<T1>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(rejectContainer, state);
+                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(rejectContainer, state);
+                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer)> Func = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer)>
                 GetSettled2<T1>() => Settled2<T1>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1>(
+        public static Promise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1>(
             Promise<T1> promise1, Promise promise2, Promise promise3)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -632,42 +638,42 @@ namespace Proto.Promises
             private static class Settled1<T1, T2>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), rejectContainer, state);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(rejectContainer, state);
+                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer>> Func = GetMergeResult;
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer)> Func = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer)>
                 GetSettled1<T1, T2>() => Settled1<T1, T2>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer>> MergeSettled<T1, T2>(
+        public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer)> MergeSettled<T1, T2>(
             Promise<T1> promise1, Promise<T2> promise2, Promise promise3)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -708,42 +714,42 @@ namespace Proto.Promises
             private static class Settled0<T1, T2, T3>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), rejectContainer, state);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), rejectContainer, state);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer>> Func = GetMergeResult;
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer)> Func = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer)>
                 GetSettled0<T1, T2, T3>() => Settled0<T1, T2, T3>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer>> MergeSettled<T1, T2, T3>(
+        public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer)> MergeSettled<T1, T2, T3>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -788,45 +794,45 @@ namespace Proto.Promises
             private static class Settled4
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (ResultContainer, ResultContainer, ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new ResultContainer(rejectContainer, state);
+                            result.Item1 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(rejectContainer, state);
+                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(rejectContainer, state);
+                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(rejectContainer, state);
+                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
+                internal static readonly Internal.GetResultDelegate<(ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
                 GetSettled4() => Settled4.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled(
+        public static Promise<(ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled(
             Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -870,45 +876,45 @@ namespace Proto.Promises
             private static class Settled3<T1>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(rejectContainer, state);
+                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(rejectContainer, state);
+                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(rejectContainer, state);
+                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
                 GetSettled3<T1>() => Settled3<T1>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1>(
+        public static Promise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1>(
             Promise<T1> promise1, Promise promise2, Promise promise3, Promise promise4)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -952,45 +958,45 @@ namespace Proto.Promises
             private static class Settled2<T1, T2>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), rejectContainer, state);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(rejectContainer, state);
+                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(rejectContainer, state);
+                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer)> Func = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer)>
                 GetSettled2<T1, T2>() => Settled2<T1, T2>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1, T2>(
+        public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2>(
             Promise<T1> promise1, Promise<T2> promise2, Promise promise3, Promise promise4)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -1034,46 +1040,46 @@ namespace Proto.Promises
             private static class Settled1<T1, T2, T3>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), rejectContainer, state);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), rejectContainer, state);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(rejectContainer, state);
+                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer>> Func
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer)> Func
                     = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer)>
                 GetSettled1<T1, T2, T3>() => Settled1<T1, T2, T3>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer>> MergeSettled<T1, T2, T3>(
+        public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -1117,46 +1123,46 @@ namespace Proto.Promises
             private static class Settled0<T1, T2, T3, T4>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), rejectContainer, state);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), rejectContainer, state);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), rejectContainer, state);
+                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer>> Func
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer)> Func
                     = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer)>
                 GetSettled0<T1, T2, T3, T4>() => Settled0<T1, T2, T3, T4>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer>> MergeSettled<T1, T2, T3, T4>(
+        public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer)> MergeSettled<T1, T2, T3, T4>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -1204,48 +1210,48 @@ namespace Proto.Promises
             private static class Settled5
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new ResultContainer(rejectContainer, state);
+                            result.Item1 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(rejectContainer, state);
+                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(rejectContainer, state);
+                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(rejectContainer, state);
+                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(rejectContainer, state);
+                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
+                internal static readonly Internal.GetResultDelegate<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
                 GetSettled5() => Settled5.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled(
+        public static Promise<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled(
             Promise promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -1292,48 +1298,48 @@ namespace Proto.Promises
             private static class Settled4<T1>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(rejectContainer, state);
+                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(rejectContainer, state);
+                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(rejectContainer, state);
+                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(rejectContainer, state);
+                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
                 GetSettled4<T1>() => Settled4<T1>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1>(
+        public static Promise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1>(
             Promise<T1> promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -1380,48 +1386,48 @@ namespace Proto.Promises
             private static class Settled3<T1, T2>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), rejectContainer, state);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(rejectContainer, state);
+                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(rejectContainer, state);
+                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(rejectContainer, state);
+                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func = GetMergeResult;
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
                 GetSettled3<T1, T2>() => Settled3<T1, T2>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1, T2>(
+        public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2>(
             Promise<T1> promise1, Promise<T2> promise2, Promise promise3, Promise promise4, Promise promise5)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -1468,49 +1474,49 @@ namespace Proto.Promises
             private static class Settled2<T1, T2, T3>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), rejectContainer, state);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), rejectContainer, state);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(rejectContainer, state);
+                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(rejectContainer, state);
+                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer)> Func
                     = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer)>
                 GetSettled2<T1, T2, T3>() => Settled2<T1, T2, T3>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1, T2, T3>(
+        public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4, Promise promise5)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -1557,49 +1563,49 @@ namespace Proto.Promises
             private static class Settled1<T1, T2, T3, T4>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), rejectContainer, state);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), rejectContainer, state);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), rejectContainer, state);
+                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler._rejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(rejectContainer, state);
+                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer>> Func
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer)> Func
                     = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer)>
                 GetSettled1<T1, T2, T3, T4>() => Settled1<T1, T2, T3, T4>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer>> MergeSettled<T1, T2, T3, T4>(
+        public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3, T4>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise promise5)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -1646,49 +1652,49 @@ namespace Proto.Promises
             private static class Settled0<T1, T2, T3, T4, T5>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), rejectContainer, state);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), rejectContainer, state);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), rejectContainer, state);
+                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler._rejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), rejectContainer, state);
+                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer>> Func
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer)> Func
                     = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer)>
                 GetSettled0<T1, T2, T3, T4, T5>() => Settled0<T1, T2, T3, T4, T5>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer>> MergeSettled<T1, T2, T3, T4, T5>(
+        public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer)> MergeSettled<T1, T2, T3, T4, T5>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -1739,52 +1745,52 @@ namespace Proto.Promises
             private static class Settled6
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new ResultContainer(rejectContainer, state);
+                            result.Item1 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(rejectContainer, state);
+                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(rejectContainer, state);
+                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(rejectContainer, state);
+                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(rejectContainer, state);
+                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(rejectContainer, state);
+                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static readonly Internal.GetResultDelegate<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                     = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
                 GetSettled6() => Settled6.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled(
+        public static Promise<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled(
             Promise promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -1834,52 +1840,52 @@ namespace Proto.Promises
             private static class Settled5<T1>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(rejectContainer, state);
+                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(rejectContainer, state);
+                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(rejectContainer, state);
+                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(rejectContainer, state);
+                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(rejectContainer, state);
+                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                     = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
                 GetSettled5<T1>() => Settled5<T1>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1>(
+        public static Promise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1>(
             Promise<T1> promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -1929,52 +1935,52 @@ namespace Proto.Promises
             private static class Settled4<T1, T2>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), rejectContainer, state);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(rejectContainer, state);
+                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(rejectContainer, state);
+                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(rejectContainer, state);
+                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(rejectContainer, state);
+                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                     = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
                 GetSettled4<T1, T2>() => Settled4<T1, T2>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1, T2>(
+        public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2>(
             Promise<T1> promise1, Promise<T2> promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -2024,52 +2030,52 @@ namespace Proto.Promises
             private static class Settled3<T1, T2, T3>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), rejectContainer, state);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), rejectContainer, state);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(rejectContainer, state);
+                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(rejectContainer, state);
+                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(rejectContainer, state);
+                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                     = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
                 GetSettled3<T1, T2, T3>() => Settled3<T1, T2, T3>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1, T2, T3>(
+        public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4, Promise promise5, Promise promise6)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -2119,52 +2125,52 @@ namespace Proto.Promises
             private static class Settled2<T1, T2, T3, T4>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), rejectContainer, state);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), rejectContainer, state);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), rejectContainer, state);
+                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler._rejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(rejectContainer, state);
+                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(rejectContainer, state);
+                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer)> Func
                     = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer)>
                 GetSettled2<T1, T2, T3, T4>() => Settled2<T1, T2, T3, T4>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1, T2, T3, T4>(
+        public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3, T4>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise promise5, Promise promise6)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -2214,52 +2220,52 @@ namespace Proto.Promises
             private static class Settled1<T1, T2, T3, T4, T5>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), rejectContainer, state);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), rejectContainer, state);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), rejectContainer, state);
+                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler._rejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), rejectContainer, state);
+                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), handler._rejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(rejectContainer, state);
+                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer>> Func
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer)> Func
                     = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer)>
                 GetSettled1<T1, T2, T3, T4, T5>() => Settled1<T1, T2, T3, T4, T5>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer>> MergeSettled<T1, T2, T3, T4, T5>(
+        public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3, T4, T5>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise promise6)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -2309,52 +2315,52 @@ namespace Proto.Promises
             private static class Settled0<T1, T2, T3, T4, T5, T6>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), rejectContainer, state);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), rejectContainer, state);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), rejectContainer, state);
+                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler._rejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), rejectContainer, state);
+                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), handler._rejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new Promise<T6>.ResultContainer(handler.GetResult<T6>(), rejectContainer, state);
+                            result.Item6 = new Promise<T6>.ResultContainer(handler.GetResult<T6>(), handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer>> Func
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer)> Func
                     = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer)>
                 GetSettled0<T1, T2, T3, T4, T5, T6>() => Settled0<T1, T2, T3, T4, T5, T6>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer>> MergeSettled<T1, T2, T3, T4, T5, T6>(
+        public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer)> MergeSettled<T1, T2, T3, T4, T5, T6>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -2408,55 +2414,55 @@ namespace Proto.Promises
             private static class Settled7
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new ResultContainer(rejectContainer, state);
+                            result.Item1 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(rejectContainer, state);
+                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(rejectContainer, state);
+                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(rejectContainer, state);
+                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(rejectContainer, state);
+                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(rejectContainer, state);
+                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 6:
-                            result.Item7 = new ResultContainer(rejectContainer, state);
+                            result.Item7 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static readonly Internal.GetResultDelegate<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                     = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
                 GetSettled7() => Settled7.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled(
+        public static Promise<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled(
             Promise promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6, Promise promise7)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -2509,55 +2515,55 @@ namespace Proto.Promises
             private static class Settled6<T1>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(rejectContainer, state);
+                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(rejectContainer, state);
+                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(rejectContainer, state);
+                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(rejectContainer, state);
+                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(rejectContainer, state);
+                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 6:
-                            result.Item7 = new ResultContainer(rejectContainer, state);
+                            result.Item7 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                     = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
                 GetSettled6<T1>() => Settled6<T1>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1>(
+        public static Promise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1>(
             Promise<T1> promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6, Promise promise7)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -2610,55 +2616,55 @@ namespace Proto.Promises
             private static class Settled5<T1, T2>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), rejectContainer, state);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(rejectContainer, state);
+                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(rejectContainer, state);
+                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(rejectContainer, state);
+                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(rejectContainer, state);
+                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 6:
-                            result.Item7 = new ResultContainer(rejectContainer, state);
+                            result.Item7 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                     = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
                 GetSettled5<T1, T2>() => Settled5<T1, T2>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1, T2>(
+        public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2>(
             Promise<T1> promise1, Promise<T2> promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6, Promise promise7)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -2711,55 +2717,55 @@ namespace Proto.Promises
             private static class Settled4<T1, T2, T3>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), rejectContainer, state);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), rejectContainer, state);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(rejectContainer, state);
+                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(rejectContainer, state);
+                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(rejectContainer, state);
+                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 6:
-                            result.Item7 = new ResultContainer(rejectContainer, state);
+                            result.Item7 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                     = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
                 GetSettled4<T1, T2, T3>() => Settled4<T1, T2, T3>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1, T2, T3>(
+        public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4, Promise promise5, Promise promise6, Promise promise7)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -2812,55 +2818,55 @@ namespace Proto.Promises
             private static class Settled3<T1, T2, T3, T4>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), rejectContainer, state);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), rejectContainer, state);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), rejectContainer, state);
+                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler._rejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(rejectContainer, state);
+                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(rejectContainer, state);
+                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 6:
-                            result.Item7 = new ResultContainer(rejectContainer, state);
+                            result.Item7 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)> Func
                     = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
                 GetSettled3<T1, T2, T3, T4>() => Settled3<T1, T2, T3, T4>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1, T2, T3, T4>(
+        public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3, T4>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise promise5, Promise promise6, Promise promise7)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -2913,55 +2919,55 @@ namespace Proto.Promises
             private static class Settled2<T1, T2, T3, T4, T5>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), rejectContainer, state);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), rejectContainer, state);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), rejectContainer, state);
+                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler._rejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), rejectContainer, state);
+                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), handler._rejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(rejectContainer, state);
+                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                         case 6:
-                            result.Item7 = new ResultContainer(rejectContainer, state);
+                            result.Item7 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer>> Func
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer)> Func
                     = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer)>
                 GetSettled2<T1, T2, T3, T4, T5>() => Settled2<T1, T2, T3, T4, T5>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer>> MergeSettled<T1, T2, T3, T4, T5>(
+        public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3, T4, T5>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise promise6, Promise promise7)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -3014,55 +3020,55 @@ namespace Proto.Promises
             private static class Settled1<T1, T2, T3, T4, T5, T6>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), rejectContainer, state);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), rejectContainer, state);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), rejectContainer, state);
+                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler._rejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), rejectContainer, state);
+                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), handler._rejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new Promise<T6>.ResultContainer(handler.GetResult<T6>(), rejectContainer, state);
+                            result.Item6 = new Promise<T6>.ResultContainer(handler.GetResult<T6>(), handler._rejectContainer, handler.State);
                             break;
                         case 6:
-                            result.Item7 = new ResultContainer(rejectContainer, state);
+                            result.Item7 = new ResultContainer(handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer>> Func
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer)> Func
                     = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer)>
                 GetSettled1<T1, T2, T3, T4, T5, T6>() => Settled1<T1, T2, T3, T4, T5, T6>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer>> MergeSettled<T1, T2, T3, T4, T5, T6>(
+        public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3, T4, T5, T6>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise promise7)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -3115,55 +3121,55 @@ namespace Proto.Promises
             private static class Settled0<T1, T2, T3, T4, T5, T6, T7>
             {
                 [MethodImpl(Internal.InlineOption)]
-                private static void GetMergeResult(Internal.PromiseRefBase handler, Internal.IRejectContainer rejectContainer, State state, int index, ref ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer> result)
+                private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer) result)
                 {
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), rejectContainer, state);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), rejectContainer, state);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), rejectContainer, state);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), rejectContainer, state);
+                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler._rejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), rejectContainer, state);
+                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), handler._rejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new Promise<T6>.ResultContainer(handler.GetResult<T6>(), rejectContainer, state);
+                            result.Item6 = new Promise<T6>.ResultContainer(handler.GetResult<T6>(), handler._rejectContainer, handler.State);
                             break;
                         case 6:
-                            result.Item7 = new Promise<T7>.ResultContainer(handler.GetResult<T7>(), rejectContainer, state);
+                            result.Item7 = new Promise<T7>.ResultContainer(handler.GetResult<T7>(), handler._rejectContainer, handler.State);
                             break;
                     }
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-                internal static unsafe Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer>> Func
+                internal static unsafe Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer)> Func
                 {
                     [MethodImpl(Internal.InlineOption)]
                     get => new(&GetMergeResult);
                 }
 #else
-                internal static readonly Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer>> Func
+                internal static readonly Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer)> Func
                     = GetMergeResult;
 #endif
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static Internal.GetResultContainerDelegate<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer>>
+            internal static Internal.GetResultDelegate<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer)>
                 GetSettled0<T1, T2, T3, T4, T5, T6, T7>() => Settled0<T1, T2, T3, T4, T5, T6, T7>.Func;
         }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
-        public static Promise<ValueTuple<Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer>> MergeSettled<T1, T2, T3, T4, T5, T6, T7>(
+        public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer)> MergeSettled<T1, T2, T3, T4, T5, T6, T7>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise<T7> promise7)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
