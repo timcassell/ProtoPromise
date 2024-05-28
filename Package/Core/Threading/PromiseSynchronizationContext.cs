@@ -241,15 +241,16 @@ namespace Proto.Promises.Threading
                     List<Exception> exceptions = null;
                     for (int i = 0; i < postCount; ++i)
                     {
+                        ref var callback = ref postQueue[i];
                         try
                         {
-                            postQueue[i].Invoke();
+                            callback.Invoke();
                         }
                         catch (Exception e)
                         {
                             Internal.RecordException(e, ref exceptions);
                         }
-                        postQueue[i] = default;
+                        callback = default;
                     }
 
                     if (exceptions != null)

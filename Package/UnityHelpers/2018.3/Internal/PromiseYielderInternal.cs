@@ -71,20 +71,20 @@ namespace Proto.Promises
                 s_deltaTime = Time.deltaTime;
             }
 
-            static partial void StaticInit()
+            static private void StaticInit()
             {
                 s_mainThread = Thread.CurrentThread;
                 SetTimeValues();
             }
 
-            partial void Init()
+            private void Init()
             {
                 StartCoroutine(UpdateRoutine());
                 StartCoroutine(FixedUpdateRoutine());
                 StartCoroutine(EndOfFrameRoutine());
             }
 
-            partial void ResetProcessors()
+            private void ResetProcessors()
             {
                 s_waitOneFrameProcessor.Clear();
                 s_updateProcessor.Clear();
@@ -106,7 +106,7 @@ namespace Proto.Promises
             }
 
             // This is called from Update after the synchronization context is executed.
-            partial void ProcessUpdate()
+            private void ProcessUpdate()
                 => s_updateProcessor.Process();
 
             private void LateUpdate()
@@ -320,7 +320,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal void WaitFor<TYieldInstruction>(ref TYieldInstruction instruction) where TYieldInstruction : struct, IYieldInstruction
+            internal void WaitFor<TYieldInstruction>(in TYieldInstruction instruction) where TYieldInstruction : struct, IYieldInstruction
             {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 ValidateIsOnMainThread(2);
@@ -334,7 +334,7 @@ namespace Proto.Promises
                     _processors.Add(processor);
                 }
 
-                processor.WaitFor(ref instruction);
+                processor.WaitFor(instruction);
             }
 
             [MethodImpl(Internal.InlineOption)]
@@ -391,7 +391,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(Internal.InlineOption)]
-                internal void WaitFor(ref TYieldInstruction instruction)
+                internal void WaitFor(in TYieldInstruction instruction)
                 {
                     int capacity;
                     if (Time.frameCount != PromiseBehaviour.s_currentFrame)
@@ -447,30 +447,23 @@ namespace Proto.Promises
 
                     for (int i = 0; i < max; ++i)
                     {
-                        // ref locals are not available in older C# versions, so we pass it to a function with aggressive inlining instead.
-                        Evaluate(ref current[i]);
+                        ref TYieldInstruction instruction = ref current[i];
+                        // If any instruction throws, we still need to execute the remaining instructions.
+                        try
+                        {
+                            if (!instruction.Evaluate())
+                            {
+                                // This is hottest path, so we don't do a bounds check here (see WaitFor).
+                                _nextQueue[_nextCount++] = instruction;
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            UnityEngine.Debug.LogException(e);
+                        }
                         --_currentCount;
                     }
                     Array.Clear(_currentQueue, 0, max);
-                }
-
-                [MethodImpl(Internal.InlineOption)]
-                private void Evaluate(ref TYieldInstruction instruction)
-                {
-                    // If any instruction throws, we still need to execute the remaining instructions.
-                    try
-                    {
-                        if (!instruction.Evaluate())
-                        {
-                            // This is hottest path, so we don't do a bounds check here (see WaitFor).
-                            _nextQueue[_nextCount] = instruction;
-                            ++_nextCount;
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        UnityEngine.Debug.LogException(e);
-                    }
                 }
 
                 internal override void Reset()
