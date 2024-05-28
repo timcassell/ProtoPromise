@@ -16,6 +16,13 @@ namespace Proto.Promises
 #endif
     internal static partial class InternalHelper
     {
+        // AppDomain reload could be disabled in editor, so we need to explicitly reset static fields.
+        // See https://github.com/timcassell/ProtoPromise/issues/204
+        // https://docs.unity3d.com/Manual/DomainReloading.html
+        [RuntimeInitializeOnLoadMethod((RuntimeInitializeLoadType) 4)] // SubsystemRegistration
+        internal static void ResetStaticState()
+            => PromiseBehaviour.ResetStaticState();
+
         // We initialize the config as early as possible. Ideally we would just do this in static constructors of Promise(<T>) and Promise.Config,
         // but since this is in a separate assembly, that's not possible.
         // Also, using static constructors would slightly slow down promises in IL2CPP where it would have to check if it already ran on every call.
@@ -23,13 +30,6 @@ namespace Proto.Promises
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         internal static void InitializePromiseConfig()
             => PromiseBehaviour.Initialize();
-
-        // AppDomain reload could be disabled in editor, so we need to explicitly reset static fields.
-        // See https://github.com/timcassell/ProtoPromise/issues/204
-        // https://docs.unity3d.com/Manual/DomainReloading.html
-        [RuntimeInitializeOnLoadMethod((RuntimeInitializeLoadType) 4)] // SubsystemRegistration
-        internal static void ResetStaticState()
-            => PromiseBehaviour.ResetStaticState();
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
@@ -96,9 +96,6 @@ namespace Proto.Promises
                 Init();
             }
 
-            static partial void StaticInit();
-            partial void Init();
-
             // This should never be called except when the application is shutting down.
             // Users would have to go out of their way to find and destroy the PromiseBehaviour instance.
             private void OnDestroy()
@@ -106,7 +103,6 @@ namespace Proto.Promises
                 if (!_isApplicationQuitting & s_instance == this)
                 {
                     UnityEngine.Debug.LogError("PromiseBehaviour destroyed! Removing PromiseSynchronizationContext from Promise.Config.ForegroundContext. PromiseYielder functions will stop working.");
-                    ResetConfig();
                     ResetStaticState();
                 }
             }
@@ -115,7 +111,7 @@ namespace Proto.Promises
             {
                 // We report uncaught rejections in Update instead of directly sending them to UnityEngine.Debug.LogException,
                 // so that we can minimize the extra stack frames in the logs that we don't care about.
-                lock (_unhandledExceptions)
+                lock (this)
                 {
                     _unhandledExceptions.Enqueue(exception);
                 }
@@ -134,8 +130,7 @@ namespace Proto.Promises
                 }
 
                 // Pop and pass to UnityEngine.Debug here so Unity won't add extra stackframes that we don't care about.
-                object locker = _unhandledExceptions;
-                lock (locker)
+                lock (this)
                 {
                     (_currentlyReportingExceptions, _unhandledExceptions) = (_unhandledExceptions, _currentlyReportingExceptions);
                 }
@@ -150,19 +145,28 @@ namespace Proto.Promises
                 ProcessUpdate();
             }
 
-            partial void ProcessUpdate();
 
             private void OnApplicationQuit()
             {
                 _isApplicationQuitting = true;
                 if (Application.isEditor & s_instance == this)
                 {
+                    // Reset the SynchronizationContext.Current to Unity's context so it will work in edit mode.
+                    // We don't set the Promise.Config contexts to the same, because we only have this working with UnityEngine,
+                    // not UnityEditor, so we can't set it on project load.
+                    // Users can setup the Promise.Config themselves if they need the functionality in edit mode.
+
+                    // Also, we keep the UncaughtRejectionHandler routed to here which will never have its Update ran again, which effectively suppresses any further exceptions,
+                    // in case any background threads are left running after play mode exited, and in case promise objects were left un-released or un-completed and their finalizers ran (very likely).
+                    if (SynchronizationContext.Current == _syncContext)
+                    {
+                        SynchronizationContext.SetSynchronizationContext(_oldContext);
+                    }
+
                     // Destroy this to prevent a memory leak.
                     Destroy(this);
                 }
             }
-
-            partial void ResetProcessors();
 
             private void ResetConfig()
             {
@@ -186,12 +190,14 @@ namespace Proto.Promises
 
             internal static void ResetStaticState()
             {
-                if (s_instance is object)
+                if (s_instance is null)
                 {
-                    s_instance.ResetProcessors();
-                    s_instance.ResetConfig();
-                    s_instance = null;
+                    return;
                 }
+
+                s_instance.ResetProcessors();
+                s_instance.ResetConfig();
+                s_instance = null;
             }
         }
     }
