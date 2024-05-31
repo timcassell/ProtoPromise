@@ -90,7 +90,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public readonly partial struct ResultContainer
+        public readonly struct ResultContainer
         {
             internal readonly Internal.IRejectContainer _rejectContainer;
             private readonly Promise.State _state;
@@ -102,12 +102,6 @@ namespace Proto.Promises
                 _rejectContainer = rejectContainer;
                 _state = state;
                 _result = result;
-            }
-
-            [MethodImpl(Internal.InlineOption)]
-            private ResultContainer(Internal.IRejectContainer rejectContainer, Promise.State state)
-                : this(default, rejectContainer, state)
-            {
             }
 
             /// <summary>
@@ -175,10 +169,7 @@ namespace Proto.Promises
             /// </summary>
             [MethodImpl(Internal.InlineOption)]
             public static implicit operator Promise.ResultContainer(ResultContainer rhs)
-            {
-                var newContainer = new Promise<Internal.VoidResult>.ResultContainer(rhs._rejectContainer, rhs._state);
-                return new Promise.ResultContainer(newContainer);
-            }
+                => new Promise.ResultContainer(rhs._rejectContainer, rhs._state);
 
             /// <summary>
             /// Wrap the value in <see cref="ResultContainer"/>.

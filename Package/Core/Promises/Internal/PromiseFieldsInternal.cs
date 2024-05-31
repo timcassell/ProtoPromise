@@ -93,13 +93,6 @@ namespace Proto.Promises
 
         partial class PromiseRefBase : HandleablePromiseBase
         {
-            internal enum WaitState : byte
-            {
-                First,
-                SettingSecond,
-                Second,
-            }
-
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
             internal PromiseRefBase _previous; // Used to detect circular awaits.

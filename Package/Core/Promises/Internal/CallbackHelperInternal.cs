@@ -249,17 +249,8 @@ namespace Proto.Promises
                 {
                     try
                     {
-                        Promise<TResult> result;
-                        if (resolved._ref == null)
-                        {
-                            result = resolver.Invoke();
-                        }
-                        else
-                        {
-                            resolved._ref.MaybeMarkAwaitedAndDispose(resolved._id);
-                            result = resolver.Invoke();
-                        }
-                        return result.Duplicate();
+                        resolved._ref?.MaybeMarkAwaitedAndDispose(resolved._id);
+                        return resolver.Invoke().Duplicate();
                     }
                     catch (Exception e)
                     {
