@@ -169,31 +169,30 @@ namespace ProtoPromiseTests.APIs
             public void _2_1_2_2_MustHaveAValueWhichMustNotChange()
             {
                 var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
+                using (var promiseRetainer = deferred.Promise.GetRetainer())
+                {
+                    int result = -1;
+                    int expected = 1;
 
-                int result = -1;
-                int expected = 1;
+                    TestHelper.AddCallbacks<int, bool, object, string>(promiseRetainer.WaitAsync(),
+                        onResolve: num => { Assert.AreEqual(expected, num); result = num; },
+                        onReject: s => Assert.Fail("Promise was rejected when it should have been resolved."),
+                        onUnknownRejection: () => Assert.Fail("Promise was rejected when it should have been resolved.")
+                    );
+                    deferred.Resolve(expected);
 
-                TestHelper.AddCallbacks<int, bool, object, string>(promise,
-                    onResolve: num => { Assert.AreEqual(expected, num); result = num; },
-                    onReject: s => Assert.Fail("Promise was rejected when it should have been resolved."),
-                    onUnknownRejection: () => Assert.Fail("Promise was rejected when it should have been resolved.")
-                );
-                deferred.Resolve(expected);
+                    Assert.AreEqual(expected, result);
 
-                Assert.AreEqual(expected, result);
+                    TestHelper.AddCallbacks<int, bool, object, string>(promiseRetainer.WaitAsync(),
+                        onResolve: num => { Assert.AreEqual(expected, num); result = num; },
+                        onReject: s => Assert.Fail("Promise was rejected when it should have been resolved."),
+                        onUnknownRejection: () => Assert.Fail("Promise was rejected when it should have been resolved.")
+                    );
+                    Assert.IsFalse(deferred.TryResolve(100));
+                    Assert.Throws<InvalidOperationException>(() => deferred.Resolve(100));
 
-                TestHelper.AddCallbacks<int, bool, object, string>(promise,
-                    onResolve: num => { Assert.AreEqual(expected, num); result = num; },
-                    onReject: s => Assert.Fail("Promise was rejected when it should have been resolved."),
-                    onUnknownRejection: () => Assert.Fail("Promise was rejected when it should have been resolved.")
-                );
-                Assert.IsFalse(deferred.TryResolve(100));
-                Assert.Throws<InvalidOperationException>(() => deferred.Resolve(100));
-
-                Assert.AreEqual(expected, result);
-
-                promise.Forget();
+                    Assert.AreEqual(expected, result);
+                }
             }
         }
 
