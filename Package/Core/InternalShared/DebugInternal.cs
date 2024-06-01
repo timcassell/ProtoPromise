@@ -233,6 +233,7 @@ namespace Proto.Promises
         {
             if (!promise.IsValid)
             {
+                // TODO: update error message to use GetRetainer.
                 throw new InvalidOperationException("Promise is invalid." +
                     " Call `Preserve()` if you intend to add multiple callbacks or await multiple times on a single promise instance." +
                     " Remember to call `Forget()` when you are finished with it!",
