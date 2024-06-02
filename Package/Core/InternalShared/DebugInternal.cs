@@ -235,8 +235,7 @@ namespace Proto.Promises
             {
                 // TODO: update error message to use GetRetainer.
                 throw new InvalidOperationException("Promise is invalid." +
-                    " Call `Preserve()` if you intend to add multiple callbacks or await multiple times on a single promise instance." +
-                    " Remember to call `Forget()` when you are finished with it!",
+                    " Call `GetRetainer()` if you intend to await multiple times.",
                     GetFormattedStacktrace(skipFrames + 1));
             }
         }
@@ -474,8 +473,7 @@ namespace Proto.Promises
             {
                 throw new InvalidArgumentException(argName,
                     "Promise is invalid." +
-                    " Call `Preserve()` if you intend to add multiple callbacks or await multiple times on a single promise instance." +
-                    " Remember to call `Forget()` when you are finished with it!",
+                    " Call `GetRetainer()` if you intend to await multiple times.",
                     Internal.GetFormattedStacktrace(skipFrames + 1));
             }
         }
@@ -485,9 +483,8 @@ namespace Proto.Promises
             if (!promise.IsValid)
             {
                 throw new InvalidElementException(argName,
-                    string.Format("A promise is invalid in {0}." +
-                    " Call `Preserve()` if you intend to add multiple callbacks or await multiple times on a single promise instance." +
-                    " Remember to call `Forget()` when you are finished with it!", argName),
+                    $"A promise is invalid in {argName}." +
+                    " Call `GetRetainer()` if you intend to await multiple times.",
                     Internal.GetFormattedStacktrace(skipFrames + 1));
             }
         }
@@ -514,8 +511,7 @@ namespace Proto.Promises
             {
                 throw new InvalidArgumentException(argName,
                     "Promise is invalid." +
-                    " Call `Preserve()` if you intend to add multiple callbacks or await multiple times on a single promise instance." +
-                    " Remember to call `Forget()` when you are finished with it!",
+                    " Call `GetRetainer()` if you intend to await multiple times.",
                     Internal.GetFormattedStacktrace(skipFrames + 1));
             }
         }
@@ -525,9 +521,8 @@ namespace Proto.Promises
             if (!promise.IsValid)
             {
                 throw new InvalidElementException(argName,
-                    string.Format("A promise is invalid in {0}." +
-                    " Call `Preserve()` if you intend to add multiple callbacks or await multiple times on a single promise instance." +
-                    " Remember to call `Forget()` when you are finished with it!", argName),
+                    $"A promise is invalid in {argName}." +
+                    " Call `GetRetainer()` if you intend to await multiple times.",
                     Internal.GetFormattedStacktrace(skipFrames + 1));
             }
         }

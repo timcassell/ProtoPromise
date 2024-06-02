@@ -24,7 +24,7 @@ namespace Proto.Promises
         internal abstract class AsyncEnumerableMergerBase<TValue> : PromiseRefBase.AsyncEnumerableWithIterator<TValue>
         {
             // These must not be readonly.
-            // We queue the successful MoveNextAsync results instead of using Promise.RaceWithIndex, to avoid having to preserve each promise.
+            // We queue the successful MoveNextAsync results instead of using Promise.RaceWithIndex, to avoid having to retain each promise.
             protected SingleConsumerAsyncQueueInternal<int> _readyQueue;
             protected TempCollectionBuilder<AsyncEnumerator<TValue>> _enumerators;
             protected TempCollectionBuilder<(IRejectContainer rejectContainer, Promise disposePromise)> _disposePromises;

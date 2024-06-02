@@ -84,6 +84,7 @@ namespace Proto.Promises
         private sealed class LazyPromiseNoProgress : Internal.PromiseRefBase.LazyPromise<T>
         {
             private AsyncLazy<T> _owner;
+            // TODO: use PromiseRetainer instead.
             internal PromiseMultiAwait<T> _preservedPromise;
 
             [MethodImpl(Internal.InlineOption)]
@@ -189,6 +190,7 @@ namespace Proto.Promises
         private sealed class LazyWithProgressPromise : Internal.PromiseRefBase.LazyPromise<T>
         {
             private AsyncLazy<T> _owner;
+            // TODO: use PromiseRetainer instead.
             internal PromiseMultiAwait<T> _preservedPromise;
             internal Internal.ProgressMultiHandler _progressHandler;
 

@@ -233,7 +233,9 @@ namespace Proto.Promises
             ValidateArgument(promise2, nameof(promise2), 1);
             if (promise2._ref == null)
             {
+#pragma warning disable CS0618 // Type or member is obsolete
                 return promise1.Duplicate();
+#pragma warning restore CS0618 // Type or member is obsolete
             }
 
             uint pendingCount = 1;
