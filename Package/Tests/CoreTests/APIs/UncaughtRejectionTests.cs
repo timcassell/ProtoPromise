@@ -1003,7 +1003,9 @@ namespace ProtoPromiseTests.APIs
 #endif
 
                     // Run it again with a freshly preserved promise, because the preserved testabled promise will have had its rejection suppressed by the other promises.
+#pragma warning disable CS0618 // Type or member is obsolete
                     var secondPreservedPromise = promiseRetainer.WaitAsync().Preserve();
+#pragma warning restore CS0618 // Type or member is obsolete
                     Assert.IsFalse(secondPreservedPromise.TryWait(System.TimeSpan.FromMilliseconds(timeout)));
                     secondPreservedPromise.Forget();
                 }
@@ -1055,7 +1057,9 @@ namespace ProtoPromiseTests.APIs
 #endif
 
                     // Run it again with a freshly preserved promise, because the preserved testabled promise will have had its rejection suppressed by the other promises.
+#pragma warning disable CS0618 // Type or member is obsolete
                     var secondPreservedPromise = promiseRetainer.WaitAsync().Preserve();
+#pragma warning restore CS0618 // Type or member is obsolete
                     Assert.IsFalse(secondPreservedPromise.TryWaitForResult(System.TimeSpan.FromMilliseconds(timeout), out _));
                     secondPreservedPromise.Forget();
                 }

@@ -565,335 +565,333 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void ResolveDoubleAwaitedPromiseContinuesExecution()
+        public void ResolveDoubleAwaitedRetainedPromiseContinuesExecution()
         {
             var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
-
-            int continuedCount = 0;
-
-            async void Func()
+            using (var promiseRetainer = deferred.Promise.GetRetainer())
             {
-                await promise;
-                ++continuedCount;
+                int continuedCount = 0;
+
+                async void Func()
+                {
+                    await promiseRetainer;
+                    ++continuedCount;
+                }
+
+                Func();
+                Func();
+                Assert.AreEqual(0, continuedCount);
+
+                deferred.Resolve();
+                Assert.AreEqual(2, continuedCount);
             }
-
-            Func();
-            Func();
-            promise.Forget();
-            Assert.AreEqual(0, continuedCount);
-
-            deferred.Resolve();
-            Assert.AreEqual(2, continuedCount);
         }
 
         [Test]
-        public void ResolveDoubleAwaitedPromiseReturnsValueAndContinuesExecution()
+        public void ResolveDoubleAwaitedRetainedPromiseReturnsValueAndContinuesExecution()
         {
             var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
+            using (var promiseRetainer = deferred.Promise.GetRetainer())
+            {
+                int expected = 50;
+                int continuedCount = 0;
 
+                async void Func()
+                {
+                    int value = await promiseRetainer;
+                    Assert.AreEqual(expected, value);
+                    ++continuedCount;
+                }
+
+                Func();
+                Func();
+                Assert.AreEqual(0, continuedCount);
+
+                deferred.Resolve(expected);
+                Assert.AreEqual(2, continuedCount);
+            }
+        }
+
+        [Test]
+        public void DoubleAwaitAlreadyResolvedRetainedPromiseContinuesExecution()
+        {
+            using (var promiseRetainer = Promise.Resolved().GetRetainer())
+            {
+                int continuedCount = 0;
+
+                async void Func()
+                {
+                    await promiseRetainer;
+                    ++continuedCount;
+                }
+
+                Assert.AreEqual(0, continuedCount);
+                Func();
+                Func();
+                Assert.AreEqual(2, continuedCount);
+
+                Assert.AreEqual(2, continuedCount);
+            }
+        }
+
+        [Test]
+        public void DoubleAwaitAlreadyResolvedRetainedPromiseReturnsValueAndContinuesExecution()
+        {
             int expected = 50;
-            int continuedCount = 0;
-
-            async void Func()
+            using (var promiseRetainer = Promise.Resolved(expected).GetRetainer())
             {
-                int value = await promise;
-                Assert.AreEqual(expected, value);
-                ++continuedCount;
+                int continuedCount = 0;
+
+                async void Func()
+                {
+                    int value = await promiseRetainer;
+                    Assert.AreEqual(expected, value);
+                    ++continuedCount;
+                }
+
+                Assert.AreEqual(0, continuedCount);
+                Func();
+                Func();
+                Assert.AreEqual(2, continuedCount);
+
+                Assert.AreEqual(2, continuedCount);
             }
-
-            Func();
-            Func();
-            promise.Forget();
-            Assert.AreEqual(0, continuedCount);
-
-            deferred.Resolve(expected);
-            Assert.AreEqual(2, continuedCount);
         }
 
         [Test]
-        public void DoubleAwaitAlreadyResolvedPromiseContinuesExecution()
-        {
-            var promise = Promise.Resolved().Preserve();
-            int continuedCount = 0;
-
-            async void Func()
-            {
-                await promise;
-                ++continuedCount;
-            }
-
-            Assert.AreEqual(0, continuedCount);
-            Func();
-            Func();
-            promise.Forget();
-            Assert.AreEqual(2, continuedCount);
-
-            Assert.AreEqual(2, continuedCount);
-        }
-
-        [Test]
-        public void DoubleAwaitAlreadyResolvedPromiseReturnsValueAndContinuesExecution()
-        {
-            int expected = 50;
-            var promise = Promise.Resolved(expected).Preserve();
-            int continuedCount = 0;
-
-            async void Func()
-            {
-                int value = await promise;
-                Assert.AreEqual(expected, value);
-                ++continuedCount;
-            }
-
-            Assert.AreEqual(0, continuedCount);
-            Func();
-            Func();
-            promise.Forget();
-            Assert.AreEqual(2, continuedCount);
-
-            Assert.AreEqual(2, continuedCount);
-        }
-
-        [Test]
-        public void RejectDoubleAwaitedPromiseThrows_void()
+        public void RejectDoubleAwaitedRetainedPromiseThrows_void()
         {
             var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
-
-            string rejectValue = "Reject";
-            int continuedCount = 0;
-
-            async void Func()
+            using (var promiseRetainer = deferred.Promise.GetRetainer())
             {
-                try
+                string rejectValue = "Reject";
+                int continuedCount = 0;
+
+                async void Func()
                 {
-                    await promise;
+                    try
+                    {
+                        await promiseRetainer;
+                    }
+                    catch (UnhandledException e)
+                    {
+                        Assert.AreEqual(rejectValue, e.Value);
+                        ++continuedCount;
+                    }
                 }
-                catch (UnhandledException e)
-                {
-                    Assert.AreEqual(rejectValue, e.Value);
-                    ++continuedCount;
-                }
+
+                Func();
+                Func();
+                Assert.AreEqual(0, continuedCount);
+
+                deferred.Reject(rejectValue);
+                Assert.AreEqual(2, continuedCount);
             }
-
-            Func();
-            Func();
-            promise.Forget();
-            Assert.AreEqual(0, continuedCount);
-
-            deferred.Reject(rejectValue);
-            Assert.AreEqual(2, continuedCount);
         }
 
         [Test]
-        public void RejectDoubleAwaitedPromiseThrows_T()
+        public void RejectDoubleAwaitedRetainedPromiseThrows_T()
         {
             var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
-
-            string rejectValue = "Reject";
-            int continuedCount = 0;
-
-            async void Func()
+            using (var promiseRetainer = deferred.Promise.GetRetainer())
             {
-                try
+                string rejectValue = "Reject";
+                int continuedCount = 0;
+
+                async void Func()
                 {
-                    int value = await promise;
+                    try
+                    {
+                        int value = await promiseRetainer;
+                    }
+                    catch (UnhandledException e)
+                    {
+                        Assert.AreEqual(rejectValue, e.Value);
+                        ++continuedCount;
+                    }
                 }
-                catch (UnhandledException e)
-                {
-                    Assert.AreEqual(rejectValue, e.Value);
-                    ++continuedCount;
-                }
+
+                Func();
+                Func();
+                Assert.AreEqual(0, continuedCount);
+
+                deferred.Reject(rejectValue);
+                Assert.AreEqual(2, continuedCount);
             }
-
-            Func();
-            Func();
-            promise.Forget();
-            Assert.AreEqual(0, continuedCount);
-
-            deferred.Reject(rejectValue);
-            Assert.AreEqual(2, continuedCount);
         }
 
         [Test]
-        public void DoubleAwaitAlreadyRejectedPromiseThrows_void()
+        public void DoubleAwaitAlreadyRejectedRetainedPromiseThrows_void()
         {
             string rejectValue = "Reject";
-            var promise = Promise.Rejected(rejectValue).Preserve();
-            int continuedCount = 0;
-
-            async void Func()
+            using (var promiseRetainer = Promise.Rejected(rejectValue).GetRetainer())
             {
-                try
+                int continuedCount = 0;
+
+                async void Func()
                 {
-                    await promise;
+                    try
+                    {
+                        await promiseRetainer;
+                    }
+                    catch (UnhandledException e)
+                    {
+                        Assert.AreEqual(rejectValue, e.Value);
+                        ++continuedCount;
+                    }
                 }
-                catch (UnhandledException e)
-                {
-                    Assert.AreEqual(rejectValue, e.Value);
-                    ++continuedCount;
-                }
+
+                Assert.AreEqual(0, continuedCount);
+                Func();
+                Func();
+                Assert.AreEqual(2, continuedCount);
+
+                Assert.AreEqual(2, continuedCount);
             }
-
-            Assert.AreEqual(0, continuedCount);
-            Func();
-            Func();
-            promise.Forget();
-            Assert.AreEqual(2, continuedCount);
-
-            Assert.AreEqual(2, continuedCount);
         }
 
         [Test]
-        public void DoubleAwaitAlreadyRejectedPromiseThrows_T()
+        public void DoubleAwaitAlreadyRejectedRetainedPromiseThrows_T()
         {
             string rejectValue = "Reject";
-            var promise = Promise<int>.Rejected(rejectValue).Preserve();
-            int continuedCount = 0;
-
-            async void Func()
+            using (var promiseRetainer = Promise<int>.Rejected(rejectValue).GetRetainer())
             {
-                try
+                int continuedCount = 0;
+
+                async void Func()
                 {
-                    int value = await promise;
+                    try
+                    {
+                        int value = await promiseRetainer;
+                    }
+                    catch (UnhandledException e)
+                    {
+                        Assert.AreEqual(rejectValue, e.Value);
+                        ++continuedCount;
+                    }
                 }
-                catch (UnhandledException e)
-                {
-                    Assert.AreEqual(rejectValue, e.Value);
-                    ++continuedCount;
-                }
+
+                Assert.AreEqual(0, continuedCount);
+                Func();
+                Func();
+                Assert.AreEqual(2, continuedCount);
+
+                Assert.AreEqual(2, continuedCount);
             }
-
-            Assert.AreEqual(0, continuedCount);
-            Func();
-            Func();
-            promise.Forget();
-            Assert.AreEqual(2, continuedCount);
-
-            Assert.AreEqual(2, continuedCount);
         }
 
         [Test]
-        public void CancelDoubleAwaitedPromiseThrowsOperationCanceled_void()
+        public void CancelDoubleAwaitedRetainedPromiseThrowsOperationCanceled_void()
         {
-            CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred();
-            cancelationSource.Token.Register(deferred);
-            var promise = deferred.Promise.Preserve();
-
-            int continuedCount = 0;
-
-            async void Func()
+            using (var promiseRetainer = deferred.Promise.GetRetainer())
             {
-                try
+                int continuedCount = 0;
+
+                async void Func()
                 {
-                    await promise;
+                    try
+                    {
+                        await promiseRetainer;
+                    }
+                    catch (CanceledException)
+                    {
+                        ++continuedCount;
+                    }
                 }
-                catch (CanceledException)
-                {
-                    ++continuedCount;
-                }
+
+                Func();
+                Func();
+                Assert.AreEqual(0, continuedCount);
+
+                deferred.Cancel();
+                Assert.AreEqual(2, continuedCount);
             }
-
-            Func();
-            Func();
-            promise.Forget();
-            Assert.AreEqual(0, continuedCount);
-
-            cancelationSource.Cancel();
-            Assert.AreEqual(2, continuedCount);
-
-            cancelationSource.Dispose();
         }
 
         [Test]
-        public void CancelDoubleAwaitedPromiseThrowsOperationCanceled_T()
+        public void CancelDoubleAwaitedRetainedPromiseThrowsOperationCanceled_T()
         {
-            CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred<int>();
-            cancelationSource.Token.Register(deferred);
-            var promise = deferred.Promise.Preserve();
-
-            int continuedCount = 0;
-
-            async void Func()
+            using (var promiseRetainer = deferred.Promise.GetRetainer())
             {
-                try
+                int continuedCount = 0;
+
+                async void Func()
                 {
-                    int value = await promise;
+                    try
+                    {
+                        int value = await promiseRetainer;
+                    }
+                    catch (CanceledException)
+                    {
+                        ++continuedCount;
+                    }
                 }
-                catch (CanceledException)
-                {
-                    ++continuedCount;
-                }
+
+                Func();
+                Func();
+                Assert.AreEqual(0, continuedCount);
+
+                deferred.Cancel();
+                Assert.AreEqual(2, continuedCount);
             }
-
-            Func();
-            Func();
-            promise.Forget();
-            Assert.AreEqual(0, continuedCount);
-
-            cancelationSource.Cancel();
-            Assert.AreEqual(2, continuedCount);
-
-            cancelationSource.Dispose();
         }
 
         [Test]
-        public void DoubleAwaitAlreadyCanceledPromiseThrowsOperationCanceled_void()
+        public void DoubleAwaitAlreadyCanceledRetainedPromiseThrowsOperationCanceled_void()
         {
-            var promise = Promise.Canceled().Preserve();
-            int continuedCount = 0;
-
-            async void Func()
+            using (var promiseRetainer = Promise.Canceled().GetRetainer())
             {
-                try
+                int continuedCount = 0;
+
+                async void Func()
                 {
-                    await promise;
+                    try
+                    {
+                        await promiseRetainer;
+                    }
+                    catch (CanceledException)
+                    {
+                        ++continuedCount;
+                    }
                 }
-                catch (CanceledException)
-                {
-                    ++continuedCount;
-                }
+
+                Assert.AreEqual(0, continuedCount);
+                Func();
+                Func();
+                Assert.AreEqual(2, continuedCount);
+
+                Assert.AreEqual(2, continuedCount);
             }
-
-            Assert.AreEqual(0, continuedCount);
-            Func();
-            Func();
-            promise.Forget();
-            Assert.AreEqual(2, continuedCount);
-
-            Assert.AreEqual(2, continuedCount);
         }
 
         [Test]
-        public void DoubleAwaitAlreadyCanceledPromiseThrowsOperationCanceled_T()
+        public void DoubleAwaitAlreadyCanceledRetainedPromiseThrowsOperationCanceled_T()
         {
-            var promise = Promise<int>.Canceled().Preserve();
-            int continuedCount = 0;
-
-            async void Func()
+            using (var promiseRetainer = Promise<int>.Canceled().GetRetainer())
             {
-                try
+                int continuedCount = 0;
+
+                async void Func()
                 {
-                    int value = await promise;
+                    try
+                    {
+                        int value = await promiseRetainer;
+                    }
+                    catch (CanceledException)
+                    {
+                        ++continuedCount;
+                    }
                 }
-                catch (CanceledException)
-                {
-                    ++continuedCount;
-                }
+
+                Assert.AreEqual(0, continuedCount);
+                Func();
+                Func();
+                Assert.AreEqual(2, continuedCount);
+
+                Assert.AreEqual(2, continuedCount);
             }
-
-            Assert.AreEqual(0, continuedCount);
-            Func();
-            Func();
-            promise.Forget();
-            Assert.AreEqual(2, continuedCount);
-
-            Assert.AreEqual(2, continuedCount);
         }
 
         [Test]

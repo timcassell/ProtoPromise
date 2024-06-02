@@ -9,6 +9,7 @@
 using NUnit.Framework;
 using Proto.Promises;
 using System;
+using System.Collections.Generic;
 
 namespace ProtoPromiseTests.APIs
 {
@@ -30,175 +31,133 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void _2_3_1_IfPromiseAndXReferToTheSameObject_RejectPromiseWithInvalidReturnExceptionAsTheReason_void()
         {
+            string expectedMessage = "A Promise cannot wait on itself.";
             int exceptionCounter = 0;
 
+            // When the promise awaits itself, it becomes rejected and invalidated, so the InvalidReturnException gets sent to the UncaughtRejectionHandler.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = e =>
+            {
+                Assert.IsAssignableFrom<InvalidReturnException>(e.Value);
+                Assert.AreEqual(expectedMessage, e.Value.UnsafeAs<Exception>().Message);
+                ++exceptionCounter;
+            };
+
             var resolveDeferred = Promise.NewDeferred();
-            var resolvePromise = resolveDeferred.Promise.Preserve();
             var rejectDeferred = Promise.NewDeferred();
-            var rejectPromise = rejectDeferred.Promise.Preserve();
-
-            Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-            Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
-
-            TestAction<Promise> catchCallback = (ref Promise p) =>
+            using (var resolvePromiseRetainer = resolveDeferred.Promise.GetRetainer())
             {
-                var preserved = p.Preserve();
-                p = preserved;
-                p.Finally(() => preserved.Forget())
-                .Catch((object e) =>
+                using (var rejectPromiseRetainer = rejectDeferred.Promise.GetRetainer())
                 {
-                    Assert.IsInstanceOf<InvalidReturnException>(e);
-                    ++exceptionCounter;
-                }).Forget();
-            };
-            TestAction<Promise<int>> catchCallbackConvert = (ref Promise<int> p) =>
-            {
-                var preserved = p.Preserve();
-                p = preserved;
-                p.Finally(() => preserved.Forget())
-                .Catch((object e) =>
-                {
-                    Assert.IsInstanceOf<InvalidReturnException>(e);
-                    ++exceptionCounter;
-                }).Forget();
-            };
+                    int expectedCount = 0;
+                    var voidPromiseQueue = new Queue<Promise>();
+                    var intPromiseQueue = new Queue<Promise<int>>();
+                    Func<Promise> voidReturnProvider = () => voidPromiseQueue.Dequeue();
+                    Func<Promise<int>> intReturnProvider = () => intPromiseQueue.Dequeue();
 
-            TestHelper.AddResolveCallbacks<int, string>(resolvePromise,
-                promiseToPromise: p => p,
-                promiseToPromiseConvert: p => p,
-                onCallbackAdded: catchCallback,
-                onCallbackAddedConvert: catchCallbackConvert
-            );
-            TestHelper.AddCallbacks<int, bool, string>(resolvePromise,
-                onReject: _ => rejectAssert(),
-                onUnknownRejection: rejectAssert,
-                promiseToPromise: p => p,
-                promiseToPromiseConvert: p => p,
-                onCallbackAdded: catchCallback,
-                onCallbackAddedConvert: catchCallbackConvert
-            );
-            TestHelper.AddContinueCallbacks<int, string>(resolvePromise,
-                promiseToPromise: p => p,
-                promiseToPromiseConvert: p => p,
-                onCallbackAdded: catchCallback,
-                onCallbackAddedConvert: catchCallbackConvert
-            );
+                    foreach (var (func, adoptLocation) in TestHelper.GetFunctionsAdoptingPromiseVoidToVoid<string>(voidReturnProvider))
+                    {
+                        if (adoptLocation == AdoptLocation.Reject) continue;
 
-            TestHelper.AddCallbacks<int, string, string>(rejectPromise,
-                onResolve: resolveAssert,
-                promiseToPromise: p => p,
-                promiseToPromiseConvert: p => p,
-                onCallbackAdded: catchCallback,
-                onCallbackAddedConvert: catchCallbackConvert
-            );
-            TestHelper.AddContinueCallbacks<int, string>(rejectPromise,
-                promiseToPromise: p => p,
-                promiseToPromiseConvert: p => p,
-                onCallbackAdded: catchCallback,
-                onCallbackAddedConvert: catchCallbackConvert
-            );
+                        ++expectedCount;
+                        voidPromiseQueue.Enqueue(func.Invoke(resolvePromiseRetainer.WaitAsync()));
+                    }
+                    foreach (var (func, adoptLocation) in TestHelper.GetFunctionsAdoptingPromiseVoidToT<int, string>(intReturnProvider))
+                    {
+                        if (adoptLocation == AdoptLocation.Reject) continue;
 
-            resolveDeferred.Resolve();
-            rejectDeferred.Reject("Fail value");
+                        ++expectedCount;
+                        intPromiseQueue.Enqueue(func.Invoke(resolvePromiseRetainer.WaitAsync()));
+                    }
+                    foreach (var (func, adoptLocation) in TestHelper.GetFunctionsAdoptingPromiseVoidToVoid<string>(voidReturnProvider))
+                    {
+                        if (adoptLocation == AdoptLocation.Resolve) continue;
 
-            Assert.AreEqual(
-                (TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
-                TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
-                (TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks) * 2) * 2,
-                exceptionCounter
-            );
+                        ++expectedCount;
+                        voidPromiseQueue.Enqueue(func.Invoke(rejectPromiseRetainer.WaitAsync()));
+                    }
+                    foreach (var (func, adoptLocation) in TestHelper.GetFunctionsAdoptingPromiseVoidToT<int, string>(intReturnProvider))
+                    {
+                        if (adoptLocation == AdoptLocation.Resolve) continue;
 
-            resolvePromise.Forget();
-            rejectPromise.Forget();
+                        ++expectedCount;
+                        intPromiseQueue.Enqueue(func.Invoke(rejectPromiseRetainer.WaitAsync()));
+                    }
+
+                    resolveDeferred.Resolve();
+                    rejectDeferred.Reject("Fail value");
+
+                    Assert.AreEqual(expectedCount, exceptionCounter);
+                }
+            }
+
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test]
         public void _2_3_1_IfPromiseAndXReferToTheSameObject_RejectPromiseWithInvalidReturnExceptionAsTheReason_T()
         {
+            string expectedMessage = "A Promise cannot wait on itself.";
             int exceptionCounter = 0;
 
+            // When the promise awaits itself, it becomes rejected and invalidated, so the InvalidReturnException gets sent to the UncaughtRejectionHandler.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = e =>
+            {
+                Assert.IsAssignableFrom<InvalidReturnException>(e.Value);
+                Assert.AreEqual(expectedMessage, e.Value.UnsafeAs<Exception>().Message);
+                ++exceptionCounter;
+            };
+
             var resolveDeferred = Promise.NewDeferred<int>();
-            var resolvePromise = resolveDeferred.Promise.Preserve();
             var rejectDeferred = Promise.NewDeferred<int>();
-            var rejectPromise = rejectDeferred.Promise.Preserve();
-
-            Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-            Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
-
-            TestAction<Promise> catchCallback = (ref Promise p) =>
+            using (var resolvePromiseRetainer = resolveDeferred.Promise.GetRetainer())
             {
-                var preserved = p.Preserve();
-                p = preserved;
-                p.Finally(() => preserved.Forget())
-                .Catch((object e) =>
+                using (var rejectPromiseRetainer = rejectDeferred.Promise.GetRetainer())
                 {
-                    Assert.IsInstanceOf<InvalidReturnException>(e);
-                    ++exceptionCounter;
-                }).Forget();
-            };
-            TestAction<Promise<int>> catchCallbackConvert = (ref Promise<int> p) =>
-            {
-                var preserved = p.Preserve();
-                p = preserved;
-                p.Finally(() => preserved.Forget())
-                .Catch((object e) =>
-                {
-                    Assert.IsInstanceOf<InvalidReturnException>(e);
-                    ++exceptionCounter;
-                }).Forget();
-            };
+                    int expectedCount = 0;
+                    var voidPromiseQueue = new Queue<Promise>();
+                    var intPromiseQueue = new Queue<Promise<int>>();
+                    Func<Promise> voidReturnProvider = () => voidPromiseQueue.Dequeue();
+                    Func<Promise<int>> intReturnProvider = () => intPromiseQueue.Dequeue();
 
-            TestHelper.AddResolveCallbacks<int, int, string>(resolvePromise,
-                promiseToPromise: p => p,
-                promiseToPromiseConvert: p => p,
-                onCallbackAdded: catchCallback,
-                onCallbackAddedConvert: catchCallbackConvert
-            );
-            TestHelper.AddCallbacks<int, int, string, string>(resolvePromise,
-                onReject: _ => rejectAssert(),
-                onUnknownRejection: rejectAssert,
-                promiseToPromise: p => p,
-                promiseToPromiseConvert: p => p,
-                promiseToPromiseT: p => p,
-                onCallbackAdded: catchCallback,
-                onCallbackAddedConvert: catchCallbackConvert,
-                onCallbackAddedT: catchCallbackConvert
-            );
-            TestHelper.AddContinueCallbacks<int, int, string>(resolvePromise,
-                promiseToPromise: p => p,
-                promiseToPromiseConvert: p => p,
-                onCallbackAdded: catchCallback,
-                onCallbackAddedConvert: catchCallbackConvert
-            );
+                    foreach (var (func, adoptLocation) in TestHelper.GetFunctionsAdoptingPromiseTToVoid<int, string>(voidReturnProvider))
+                    {
+                        if (adoptLocation == AdoptLocation.Reject) continue;
 
-            TestHelper.AddCallbacks<int, int, string, string>(rejectPromise,
-                onResolve: _ => resolveAssert(),
-                promiseToPromise: p => p,
-                promiseToPromiseConvert: p => p,
-                promiseToPromiseT: p => p,
-                onCallbackAdded: catchCallback,
-                onCallbackAddedConvert: catchCallbackConvert,
-                onCallbackAddedT: catchCallbackConvert
-            );
-            TestHelper.AddContinueCallbacks<int, int, string>(rejectPromise,
-                promiseToPromise: p => p,
-                promiseToPromiseConvert: p => p,
-                onCallbackAdded: catchCallback,
-                onCallbackAddedConvert: catchCallbackConvert
-            );
+                        ++expectedCount;
+                        voidPromiseQueue.Enqueue(func.Invoke(resolvePromiseRetainer.WaitAsync()));
+                    }
+                    foreach (var (func, adoptLocation) in TestHelper.GetFunctionsAdoptingPromiseTToT<int, string>(intReturnProvider))
+                    {
+                        if (adoptLocation == AdoptLocation.Reject) continue;
 
-            resolveDeferred.Resolve(1);
-            rejectDeferred.Reject("Fail value");
+                        ++expectedCount;
+                        intPromiseQueue.Enqueue(func.Invoke(resolvePromiseRetainer.WaitAsync()));
+                    }
+                    foreach (var (func, adoptLocation) in TestHelper.GetFunctionsAdoptingPromiseTToVoid<int, string>(voidReturnProvider))
+                    {
+                        if (adoptLocation == AdoptLocation.Resolve) continue;
 
-            Assert.AreEqual(
-                (TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
-                TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
-                (TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2) * 2,
-                exceptionCounter
-            );
+                        ++expectedCount;
+                        voidPromiseQueue.Enqueue(func.Invoke(rejectPromiseRetainer.WaitAsync()));
+                    }
+                    foreach (var (func, adoptLocation) in TestHelper.GetFunctionsAdoptingPromiseTToT<int, string>(intReturnProvider))
+                    {
+                        if (adoptLocation == AdoptLocation.Resolve) continue;
 
-            resolvePromise.Forget();
-            rejectPromise.Forget();
+                        ++expectedCount;
+                        intPromiseQueue.Enqueue(func.Invoke(rejectPromiseRetainer.WaitAsync()));
+                    }
+
+                    resolveDeferred.Resolve(42);
+                    rejectDeferred.Reject("Fail value");
+
+                    Assert.AreEqual(expectedCount, exceptionCounter);
+                }
+            }
+
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 #endif
 
@@ -225,234 +184,262 @@ namespace ProtoPromiseTests.APIs
                 var resolveDeferred = Promise.NewDeferred();
                 var rejectDeferred = Promise.NewDeferred();
 
-                var resolvePromise = resolveDeferred.Promise.Preserve();
-                var rejectPromise = rejectDeferred.Promise.Preserve();
-
-                Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-                Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
-
-                var resolveWaitDeferred = Promise.NewDeferred();
-                var resolveWaitDeferredInt = Promise.NewDeferred<int>();
-                var rejectWaitDeferred = Promise.NewDeferred();
-                var rejectWaitDeferredInt = Promise.NewDeferred<int>();
-
-                var resolveWaitPromise = resolveWaitDeferred.Promise.Preserve();
-                var rejectWaitPromise = rejectWaitDeferred.Promise.Preserve();
-                var resolveWaitPromiseInt = resolveWaitDeferredInt.Promise.Preserve();
-                var rejectWaitPromiseInt = rejectWaitDeferredInt.Promise.Preserve();
-
-                TestAction<Promise> onCallbackAdded = (ref Promise p) =>
+                using (var resolvePromiseRetainer = resolveDeferred.Promise.GetRetainer())
                 {
-                    var preserved = p = p.Preserve();
-                    preserved
-                        .Catch(() => { })
-                        .Finally(() => preserved.Forget())
-                        .Forget();
-                };
-                TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
-                {
-                    var preserved = p = p.Preserve();
-                    preserved
-                        .Catch(() => { })
-                        .Finally(() => preserved.Forget())
-                        .Forget();
-                };
+                    using (var rejectPromiseRetainer = rejectDeferred.Promise.GetRetainer())
+                    {
+                        Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
+                        Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
 
-                TestHelper.AddResolveCallbacks<int, string>(resolvePromise,
-                    promiseToPromise: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Forget();
-                        return resolveWaitPromise;
-                    },
-                    promiseToPromiseConvert: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Forget();
-                        return resolveWaitPromiseInt;
-                    },
-                    onCallbackAdded: onCallbackAdded,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-                TestHelper.AddCallbacks<int, object, string>(resolvePromise,
-                    onReject: _ => rejectAssert(),
-                    onUnknownRejection: rejectAssert,
-                    promiseToPromise: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Forget();
-                        return resolveWaitPromise;
-                    },
-                    promiseToPromiseConvert: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Forget();
-                        return resolveWaitPromiseInt;
-                    },
-                    onCallbackAdded: onCallbackAdded,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-                TestHelper.AddContinueCallbacks<int, string>(resolvePromise,
-                    promiseToPromise: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Forget();
-                        return resolveWaitPromise;
-                    },
-                    promiseToPromiseConvert: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Forget();
-                        return resolveWaitPromiseInt;
-                    },
-                    onCallbackAdded: onCallbackAdded,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
+                        var resolveWaitDeferred = Promise.NewDeferred();
+                        var resolveWaitDeferredInt = Promise.NewDeferred<int>();
+                        var rejectWaitDeferred = Promise.NewDeferred();
+                        var rejectWaitDeferredInt = Promise.NewDeferred<int>();
 
-                TestHelper.AddResolveCallbacks<int, string>(resolvePromise,
-                    promiseToPromise: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
-                        return rejectWaitPromise;
-                    },
-                    promiseToPromiseConvert: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
-                        return rejectWaitPromiseInt;
-                    },
-                    onCallbackAdded: onCallbackAdded,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-                TestHelper.AddCallbacks<int, bool, string>(resolvePromise,
-                    onReject: _ => rejectAssert(),
-                    onUnknownRejection: rejectAssert,
-                    promiseToPromise: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
-                        return rejectWaitPromise;
-                    },
-                    promiseToPromiseConvert: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
-                        return rejectWaitPromiseInt;
-                    },
-                    onCallbackAdded: onCallbackAdded,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-                TestHelper.AddContinueCallbacks<int, string>(resolvePromise,
-                    promiseToPromise: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
-                        return rejectWaitPromise;
-                    },
-                    promiseToPromiseConvert: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
-                        return rejectWaitPromiseInt;
-                    },
-                    onCallbackAdded: onCallbackAdded,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
+                        using (var resolveWaitPromiseRetainer = resolveWaitDeferred.Promise.GetRetainer())
+                        {
+                            using (var rejectWaitPromiseRetainer = rejectWaitDeferred.Promise.GetRetainer())
+                            {
+                                using (var resolveWaitPromiseIntRetainer = resolveWaitDeferredInt.Promise.GetRetainer())
+                                {
+                                    using (var rejectWaitPromiseIntRetainer = rejectWaitDeferredInt.Promise.GetRetainer())
+                                    {
+                                        bool adopted = false;
+                                        TestAction<Promise> onAdoptCallbackAdded = (ref Promise p) => adopted = true;
+                                        TestAction<Promise<int>> onAdoptCallbackAddedConvert = (ref Promise<int> p) => adopted = true;
+                                        TestAction<Promise> onCallbackAdded = (ref Promise p) =>
+                                        {
+                                            if (!adopted)
+                                            {
+                                                p.Forget();
+                                            }
+                                            adopted = false;
+                                        };
+                                        TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
+                                        {
+                                            if (!adopted)
+                                            {
+                                                p.Forget();
+                                            }
+                                            adopted = false;
+                                        };
 
-                resolveDeferred.Resolve();
-                Assert.AreEqual(expectedCompleteCount, completeCounter);
+                                        TestHelper.AddResolveCallbacks<int, string>(resolvePromiseRetainer.WaitAsync(),
+                                            promiseToPromise: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Forget();
+                                                return resolveWaitPromiseRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseConvert: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Forget();
+                                                return resolveWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            onCallbackAdded: onCallbackAdded,
+                                            onCallbackAddedConvert: onCallbackAddedConvert,
+                                            onAdoptCallbackAdded: onAdoptCallbackAdded,
+                                            onAdoptCallbackAddedConvert: onAdoptCallbackAddedConvert
+                                        );
+                                        TestHelper.AddCallbacks<int, object, string>(resolvePromiseRetainer.WaitAsync(),
+                                            onReject: _ => rejectAssert(),
+                                            onUnknownRejection: rejectAssert,
+                                            promiseToPromise: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Forget();
+                                                return resolveWaitPromiseRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseConvert: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Forget();
+                                                return resolveWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            onCallbackAdded: onCallbackAdded,
+                                            onCallbackAddedConvert: onCallbackAddedConvert,
+                                            onAdoptCallbackAdded: (ref Promise p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Reject,
+                                            onAdoptCallbackAddedConvert: (ref Promise<int> p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Reject
+                                        );
+                                        TestHelper.AddContinueCallbacks<int, string>(resolvePromiseRetainer.WaitAsync(),
+                                            promiseToPromise: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Forget();
+                                                return resolveWaitPromiseRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseConvert: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Forget();
+                                                return resolveWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            onCallbackAdded: onCallbackAdded,
+                                            onCallbackAddedConvert: onCallbackAddedConvert,
+                                            onAdoptCallbackAdded: onAdoptCallbackAdded,
+                                            onAdoptCallbackAddedConvert: onAdoptCallbackAddedConvert
+                                        );
 
+                                        TestHelper.AddResolveCallbacks<int, string>(resolvePromiseRetainer.WaitAsync(),
+                                            promiseToPromise: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
+                                                return rejectWaitPromiseRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseConvert: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
+                                                return rejectWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            onCallbackAdded: onCallbackAdded,
+                                            onCallbackAddedConvert: onCallbackAddedConvert,
+                                            onAdoptCallbackAdded: onAdoptCallbackAdded,
+                                            onAdoptCallbackAddedConvert: onAdoptCallbackAddedConvert
+                                        );
+                                        TestHelper.AddCallbacks<int, bool, string>(resolvePromiseRetainer.WaitAsync(),
+                                            onReject: _ => rejectAssert(),
+                                            onUnknownRejection: rejectAssert,
+                                            promiseToPromise: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
+                                                return rejectWaitPromiseRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseConvert: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
+                                                return rejectWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            onCallbackAdded: onCallbackAdded,
+                                            onCallbackAddedConvert: onCallbackAddedConvert,
+                                            onAdoptCallbackAdded: (ref Promise p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Reject,
+                                            onAdoptCallbackAddedConvert: (ref Promise<int> p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Reject
+                                        );
+                                        TestHelper.AddContinueCallbacks<int, string>(resolvePromiseRetainer.WaitAsync(),
+                                            promiseToPromise: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
+                                                return rejectWaitPromiseRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseConvert: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
+                                                return rejectWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            onCallbackAdded: onCallbackAdded,
+                                            onCallbackAddedConvert: onCallbackAddedConvert,
+                                            onAdoptCallbackAdded: onAdoptCallbackAdded,
+                                            onAdoptCallbackAddedConvert: onAdoptCallbackAddedConvert
+                                        );
 
-                TestHelper.AddCallbacks<int, object, string>(rejectPromise,
-                    onResolve: resolveAssert,
-                    promiseToPromise: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Forget();
-                        return resolveWaitPromise;
-                    },
-                    promiseToPromiseConvert: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Forget();
-                        return resolveWaitPromiseInt;
-                    },
-                    onCallbackAdded: onCallbackAdded,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-                TestHelper.AddContinueCallbacks<int, string>(rejectPromise,
-                    promiseToPromise: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Forget();
-                        return resolveWaitPromise;
-                    },
-                    promiseToPromiseConvert: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Forget();
-                        return resolveWaitPromiseInt;
-                    },
-                    onCallbackAdded: onCallbackAdded,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-
-                TestHelper.AddCallbacks<int, object, string>(rejectPromise,
-                    onResolve: resolveAssert,
-                    promiseToPromise: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
-                        return rejectWaitPromise;
-                    },
-                    promiseToPromiseConvert: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
-                        return rejectWaitPromiseInt;
-                    },
-                    onCallbackAdded: onCallbackAdded,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-                TestHelper.AddContinueCallbacks<int, string>(rejectPromise,
-                    promiseToPromise: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
-                        return rejectWaitPromise;
-                    },
-                    promiseToPromiseConvert: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
-                        return rejectWaitPromiseInt;
-                    },
-                    onCallbackAdded: onCallbackAdded,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-
-                rejectDeferred.Reject("Fail outer");
-                Assert.AreEqual(expectedCompleteCount, completeCounter);
+                                        resolveDeferred.Resolve();
+                                        Assert.AreEqual(expectedCompleteCount, completeCounter);
 
 
-                resolveWaitDeferred.Resolve();
-                expectedCompleteCount +=
-                    (TestHelper.resolveVoidPromiseVoidCallbacks +
-                    TestHelper.rejectVoidPromiseVoidCallbacks +
-                    (TestHelper.continueVoidPromiseVoidCallbacks * 2)) * 2;
-                Assert.AreEqual(expectedCompleteCount, completeCounter);
+                                        TestHelper.AddCallbacks<int, object, string>(rejectPromiseRetainer.WaitAsync(),
+                                            onResolve: resolveAssert,
+                                            promiseToPromise: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Forget();
+                                                return resolveWaitPromiseRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseConvert: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Forget();
+                                                return resolveWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            onCallbackAdded: onCallbackAdded,
+                                            onCallbackAddedConvert: onCallbackAddedConvert,
+                                            onAdoptCallbackAdded: (ref Promise p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Resolve,
+                                            onAdoptCallbackAddedConvert: (ref Promise<int> p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Resolve,
+                                            onAdoptCallbackAddedCatch: onAdoptCallbackAdded
+                                        );
+                                        TestHelper.AddContinueCallbacks<int, string>(rejectPromiseRetainer.WaitAsync(),
+                                            promiseToPromise: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Forget();
+                                                return resolveWaitPromiseRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseConvert: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Forget();
+                                                return resolveWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            onCallbackAdded: onCallbackAdded,
+                                            onCallbackAddedConvert: onCallbackAddedConvert,
+                                            onAdoptCallbackAdded: onAdoptCallbackAdded,
+                                            onAdoptCallbackAddedConvert: onAdoptCallbackAddedConvert
+                                        );
+
+                                        TestHelper.AddCallbacks<int, object, string>(rejectPromiseRetainer.WaitAsync(),
+                                            onResolve: resolveAssert,
+                                            promiseToPromise: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
+                                                return rejectWaitPromiseRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseConvert: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
+                                                return rejectWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            onCallbackAdded: onCallbackAdded,
+                                            onCallbackAddedConvert: onCallbackAddedConvert,
+                                            onAdoptCallbackAdded: (ref Promise p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Resolve,
+                                            onAdoptCallbackAddedConvert: (ref Promise<int> p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Resolve,
+                                            onAdoptCallbackAddedCatch: onAdoptCallbackAdded
+                                        );
+                                        TestHelper.AddContinueCallbacks<int, string>(rejectPromiseRetainer.WaitAsync(),
+                                            promiseToPromise: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
+                                                return rejectWaitPromiseRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseConvert: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
+                                                return rejectWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            onCallbackAdded: onCallbackAdded,
+                                            onCallbackAddedConvert: onCallbackAddedConvert,
+                                            onAdoptCallbackAdded: onAdoptCallbackAdded,
+                                            onAdoptCallbackAddedConvert: onAdoptCallbackAddedConvert
+                                        );
+
+                                        rejectDeferred.Reject("Fail outer");
+                                        Assert.AreEqual(expectedCompleteCount, completeCounter);
 
 
-                resolveWaitDeferredInt.Resolve(1);
-                expectedCompleteCount +=
-                    (TestHelper.resolveVoidPromiseConvertCallbacks +
-                    TestHelper.rejectVoidPromiseConvertCallbacks +
-                    (TestHelper.continueVoidPromiseConvertCallbacks * 2)) * 2;
-                Assert.AreEqual(expectedCompleteCount, completeCounter);
+                                        resolveWaitDeferred.Resolve();
+                                        expectedCompleteCount +=
+                                            (TestHelper.resolveVoidPromiseVoidCallbacks +
+                                            TestHelper.rejectVoidPromiseVoidCallbacks +
+                                            (TestHelper.continueVoidPromiseVoidCallbacks * 2)) * 2;
+                                        Assert.AreEqual(expectedCompleteCount, completeCounter);
 
 
-                rejectWaitDeferred.Reject("Fail inner");
-                expectedCompleteCount +=
-                    (TestHelper.resolveVoidPromiseVoidCallbacks +
-                    TestHelper.rejectVoidPromiseVoidCallbacks +
-                    (TestHelper.continueVoidPromiseVoidCallbacks * 2)) * 2;
-                Assert.AreEqual(expectedCompleteCount, completeCounter);
+                                        resolveWaitDeferredInt.Resolve(1);
+                                        expectedCompleteCount +=
+                                            (TestHelper.resolveVoidPromiseConvertCallbacks +
+                                            TestHelper.rejectVoidPromiseConvertCallbacks +
+                                            (TestHelper.continueVoidPromiseConvertCallbacks * 2)) * 2;
+                                        Assert.AreEqual(expectedCompleteCount, completeCounter);
 
 
-                rejectWaitDeferredInt.Reject("Fail inner");
-                expectedCompleteCount +=
-                    (TestHelper.resolveVoidPromiseConvertCallbacks +
-                    TestHelper.rejectVoidPromiseConvertCallbacks +
-                    (TestHelper.continueVoidPromiseConvertCallbacks * 2)) * 2;
-                Assert.AreEqual(expectedCompleteCount, completeCounter);
+                                        rejectWaitDeferred.Reject("Fail inner");
+                                        expectedCompleteCount +=
+                                            (TestHelper.resolveVoidPromiseVoidCallbacks +
+                                            TestHelper.rejectVoidPromiseVoidCallbacks +
+                                            (TestHelper.continueVoidPromiseVoidCallbacks * 2)) * 2;
+                                        Assert.AreEqual(expectedCompleteCount, completeCounter);
 
-                resolvePromise.Forget();
-                rejectPromise.Forget();
-                resolveWaitPromise.Forget();
-                rejectWaitPromise.Forget();
-                resolveWaitPromiseInt.Forget();
-                rejectWaitPromiseInt.Forget();
+
+                                        rejectWaitDeferredInt.Reject("Fail inner");
+                                        expectedCompleteCount +=
+                                            (TestHelper.resolveVoidPromiseConvertCallbacks +
+                                            TestHelper.rejectVoidPromiseConvertCallbacks +
+                                            (TestHelper.continueVoidPromiseConvertCallbacks * 2)) * 2;
+                                        Assert.AreEqual(expectedCompleteCount, completeCounter);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             [Test]
@@ -464,251 +451,279 @@ namespace ProtoPromiseTests.APIs
                 var resolveDeferredInt = Promise.NewDeferred<int>();
                 var rejectDeferredInt = Promise.NewDeferred<int>();
 
-                var resolvePromiseInt = resolveDeferredInt.Promise.Preserve();
-                var rejectPromiseInt = rejectDeferredInt.Promise.Preserve();
-
-                Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-                Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
-
-                var resolveWaitDeferred = Promise.NewDeferred();
-                var resolveWaitDeferredInt = Promise.NewDeferred<int>();
-                var rejectWaitDeferred = Promise.NewDeferred();
-                var rejectWaitDeferredInt = Promise.NewDeferred<int>();
-
-                var resolveWaitPromise = resolveWaitDeferred.Promise.Preserve();
-                var resolveWaitPromiseInt = resolveWaitDeferredInt.Promise.Preserve();
-                var rejectWaitPromise = rejectWaitDeferred.Promise.Preserve();
-                var rejectWaitPromiseInt = rejectWaitDeferredInt.Promise.Preserve();
-
-                TestAction<Promise> onCallbackAdded = (ref Promise p) =>
+                using (var resolvePromiseIntRetainer = resolveDeferredInt.Promise.GetRetainer())
                 {
-                    var preserved = p = p.Preserve();
-                    preserved
-                        .Catch(() => { })
-                        .Finally(() => preserved.Forget())
-                        .Forget();
-                };
-                TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
-                {
-                    var preserved = p = p.Preserve();
-                    preserved
-                        .Catch(() => { })
-                        .Finally(() => preserved.Forget())
-                        .Forget();
-                };
+                    using (var rejectPromiseIntRetainer = rejectDeferredInt.Promise.GetRetainer())
+                    {
+                        Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
+                        Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
 
-                TestHelper.AddResolveCallbacks<int, int, string>(resolvePromiseInt,
-                    promiseToPromise: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Forget();
-                        return resolveWaitPromise;
-                    },
-                    promiseToPromiseConvert: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Forget();
-                        return resolveWaitPromiseInt;
-                    },
-                    onCallbackAdded: onCallbackAdded,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-                TestHelper.AddCallbacks<int, int, object, string>(resolvePromiseInt,
-                    onReject: _ => rejectAssert(),
-                    onUnknownRejection: rejectAssert,
-                    promiseToPromise: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Forget();
-                        return resolveWaitPromise;
-                    },
-                    promiseToPromiseConvert: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Forget();
-                        return resolveWaitPromiseInt;
-                    },
-                    onCallbackAdded: onCallbackAdded,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-                TestHelper.AddContinueCallbacks<int, string>(resolvePromiseInt,
-                    promiseToPromise: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Forget();
-                        return resolveWaitPromise;
-                    },
-                    promiseToPromiseConvert: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Forget();
-                        return resolveWaitPromiseInt;
-                    },
-                    onCallbackAdded: onCallbackAdded,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
+                        var resolveWaitDeferred = Promise.NewDeferred();
+                        var resolveWaitDeferredInt = Promise.NewDeferred<int>();
+                        var rejectWaitDeferred = Promise.NewDeferred();
+                        var rejectWaitDeferredInt = Promise.NewDeferred<int>();
 
-                TestHelper.AddResolveCallbacks<int, int, string>(resolvePromiseInt,
-                    promiseToPromise: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
-                        return rejectWaitPromise;
-                    },
-                    promiseToPromiseConvert: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
-                        return rejectWaitPromiseInt;
-                    },
-                    onCallbackAdded: onCallbackAdded,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-                TestHelper.AddCallbacks<int, int, object, string>(resolvePromiseInt,
-                    onReject: _ => rejectAssert(),
-                    onUnknownRejection: rejectAssert,
-                    promiseToPromise: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
-                        return rejectWaitPromise;
-                    },
-                    promiseToPromiseConvert: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
-                        return rejectWaitPromiseInt;
-                    },
-                    promiseToPromiseT: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
-                        return rejectWaitPromiseInt;
-                    },
-                    onCallbackAdded: onCallbackAdded,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-                TestHelper.AddContinueCallbacks<int, string>(resolvePromiseInt,
-                    promiseToPromise: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
-                        return rejectWaitPromise;
-                    },
-                    promiseToPromiseConvert: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
-                        return rejectWaitPromiseInt;
-                    },
-                    onCallbackAdded: onCallbackAdded,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
+                        using (var resolveWaitPromiseRetainer = resolveWaitDeferred.Promise.GetRetainer())
+                        {
+                            using (var resolveWaitPromiseIntRetainer = resolveWaitDeferredInt.Promise.GetRetainer())
+                            {
+                                using (var rejectWaitPromiseRetainer = rejectWaitDeferred.Promise.GetRetainer())
+                                {
+                                    using (var rejectWaitPromiseIntRetainer = rejectWaitDeferredInt.Promise.GetRetainer())
+                                    {
+                                        bool adopted = false;
+                                        TestAction<Promise> onAdoptCallbackAdded = (ref Promise p) => adopted = true;
+                                        TestAction<Promise<int>> onAdoptCallbackAddedConvert = (ref Promise<int> p) => adopted = true;
+                                        TestAction<Promise> onCallbackAdded = (ref Promise p) =>
+                                        {
+                                            if (!adopted)
+                                            {
+                                                p.Forget();
+                                            }
+                                            adopted = false;
+                                        };
+                                        TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
+                                        {
+                                            if (!adopted)
+                                            {
+                                                p.Forget();
+                                            }
+                                            adopted = false;
+                                        };
 
-                resolveDeferredInt.Resolve(1);
-                Assert.AreEqual(expectedCompleteCount, completeCounter);
+                                        TestHelper.AddResolveCallbacks<int, int, string>(resolvePromiseIntRetainer.WaitAsync(),
+                                            promiseToPromise: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Forget();
+                                                return resolveWaitPromiseRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseConvert: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Forget();
+                                                return resolveWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            onCallbackAdded: onCallbackAdded,
+                                            onCallbackAddedConvert: onCallbackAddedConvert,
+                                            onAdoptCallbackAdded: onAdoptCallbackAdded,
+                                            onAdoptCallbackAddedConvert: onAdoptCallbackAddedConvert
+                                        );
+                                        TestHelper.AddCallbacks<int, int, object, string>(resolvePromiseIntRetainer.WaitAsync(),
+                                            onReject: _ => rejectAssert(),
+                                            onUnknownRejection: rejectAssert,
+                                            promiseToPromise: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Forget();
+                                                return resolveWaitPromiseRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseConvert: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Forget();
+                                                return resolveWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            onCallbackAdded: onCallbackAdded,
+                                            onCallbackAddedConvert: onCallbackAddedConvert,
+                                            onAdoptCallbackAdded: (ref Promise p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Reject,
+                                            onAdoptCallbackAddedConvert: (ref Promise<int> p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Reject
+                                        );
+                                        TestHelper.AddContinueCallbacks<int, string>(resolvePromiseIntRetainer.WaitAsync(),
+                                            promiseToPromise: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Forget();
+                                                return resolveWaitPromiseRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseConvert: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Forget();
+                                                return resolveWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            onCallbackAdded: onCallbackAdded,
+                                            onCallbackAddedConvert: onCallbackAddedConvert,
+                                            onAdoptCallbackAdded: onAdoptCallbackAdded,
+                                            onAdoptCallbackAddedConvert: onAdoptCallbackAddedConvert
+                                        );
 
+                                        TestHelper.AddResolveCallbacks<int, int, string>(resolvePromiseIntRetainer.WaitAsync(),
+                                            promiseToPromise: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
+                                                return rejectWaitPromiseRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseConvert: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
+                                                return rejectWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            onCallbackAdded: onCallbackAdded,
+                                            onCallbackAddedConvert: onCallbackAddedConvert,
+                                            onAdoptCallbackAdded: onAdoptCallbackAdded,
+                                            onAdoptCallbackAddedConvert: onAdoptCallbackAddedConvert
+                                        );
+                                        TestHelper.AddCallbacks<int, int, object, string>(resolvePromiseIntRetainer.WaitAsync(),
+                                            onReject: _ => rejectAssert(),
+                                            onUnknownRejection: rejectAssert,
+                                            promiseToPromise: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
+                                                return rejectWaitPromiseRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseConvert: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
+                                                return rejectWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseT: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
+                                                return rejectWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            onCallbackAdded: onCallbackAdded,
+                                            onCallbackAddedConvert: onCallbackAddedConvert,
+                                            onAdoptCallbackAdded: (ref Promise p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Reject,
+                                            onAdoptCallbackAddedConvert: (ref Promise<int> p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Reject
+                                        );
+                                        TestHelper.AddContinueCallbacks<int, string>(resolvePromiseIntRetainer.WaitAsync(),
+                                            promiseToPromise: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
+                                                return rejectWaitPromiseRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseConvert: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
+                                                return rejectWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            onCallbackAdded: onCallbackAdded,
+                                            onCallbackAddedConvert: onCallbackAddedConvert,
+                                            onAdoptCallbackAdded: onAdoptCallbackAdded,
+                                            onAdoptCallbackAddedConvert: onAdoptCallbackAddedConvert
+                                        );
 
-                TestHelper.AddCallbacks<int, int, object, string>(rejectPromiseInt,
-                    onResolve: _ => resolveAssert(),
-                    promiseToPromise: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Forget();
-                        return resolveWaitPromise;
-                    },
-                    promiseToPromiseConvert: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Forget();
-                        return resolveWaitPromiseInt;
-                    },
-                    promiseToPromiseT: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Forget();
-                        return resolveWaitPromiseInt;
-                    },
-                    onCallbackAdded: onCallbackAdded,
-                    onCallbackAddedConvert: onCallbackAddedConvert,
-                    onCallbackAddedT: onCallbackAddedConvert
-                );
-                TestHelper.AddContinueCallbacks<int, int, string>(rejectPromiseInt,
-                    promiseToPromise: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Forget();
-                        return resolveWaitPromise;
-                    },
-                    promiseToPromiseConvert: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Forget();
-                        return resolveWaitPromiseInt;
-                    },
-                    onCallbackAdded: onCallbackAdded,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-
-                TestHelper.AddCallbacks<int, int, object, string>(rejectPromiseInt,
-                    onResolve: _ => resolveAssert(),
-                    promiseToPromise: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
-                        return rejectWaitPromise;
-                    },
-                    promiseToPromiseConvert: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
-                        return rejectWaitPromiseInt;
-                    },
-                    promiseToPromiseT: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
-                        return rejectWaitPromiseInt;
-                    },
-                    onCallbackAdded: onCallbackAdded,
-                    onCallbackAddedConvert: onCallbackAddedConvert,
-                    onCallbackAddedT: onCallbackAddedConvert
-                );
-                TestHelper.AddContinueCallbacks<int, int, string>(rejectPromiseInt,
-                    promiseToPromise: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
-                        return rejectWaitPromise;
-                    },
-                    promiseToPromiseConvert: p =>
-                    {
-                        p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
-                        return rejectWaitPromiseInt;
-                    },
-                    onCallbackAdded: onCallbackAdded,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-
-                rejectDeferredInt.Reject("Fail outer");
-                Assert.AreEqual(expectedCompleteCount, completeCounter);
+                                        resolveDeferredInt.Resolve(1);
+                                        Assert.AreEqual(expectedCompleteCount, completeCounter);
 
 
-                resolveWaitDeferred.Resolve();
-                expectedCompleteCount +=
-                    (TestHelper.resolveTPromiseVoidCallbacks +
-                    TestHelper.rejectTPromiseVoidCallbacks +
-                    (TestHelper.continueTPromiseVoidCallbacks * 2)) * 2;
-                Assert.AreEqual(expectedCompleteCount, completeCounter);
+                                        TestHelper.AddCallbacks<int, int, object, string>(rejectPromiseIntRetainer.WaitAsync(),
+                                            onResolve: _ => resolveAssert(),
+                                            promiseToPromise: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Forget();
+                                                return resolveWaitPromiseRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseConvert: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Forget();
+                                                return resolveWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseT: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Forget();
+                                                return resolveWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            onCallbackAdded: onCallbackAdded,
+                                            onCallbackAddedConvert: onCallbackAddedConvert,
+                                            onCallbackAddedT: onCallbackAddedConvert,
+                                            onAdoptCallbackAdded: (ref Promise p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Resolve,
+                                            onAdoptCallbackAddedConvert: (ref Promise<int> p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Resolve,
+                                            onAdoptCallbackAddedT: onAdoptCallbackAddedConvert
+                                        );
+                                        TestHelper.AddContinueCallbacks<int, int, string>(rejectPromiseIntRetainer.WaitAsync(),
+                                            promiseToPromise: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Forget();
+                                                return resolveWaitPromiseRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseConvert: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Forget();
+                                                return resolveWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            onCallbackAdded: onCallbackAdded,
+                                            onCallbackAddedConvert: onCallbackAddedConvert,
+                                            onAdoptCallbackAdded: onAdoptCallbackAdded,
+                                            onAdoptCallbackAddedConvert: onAdoptCallbackAddedConvert
+                                        );
+
+                                        TestHelper.AddCallbacks<int, int, object, string>(rejectPromiseIntRetainer.WaitAsync(),
+                                            onResolve: _ => resolveAssert(),
+                                            promiseToPromise: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
+                                                return rejectWaitPromiseRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseConvert: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
+                                                return rejectWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseT: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
+                                                return rejectWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            onCallbackAdded: onCallbackAdded,
+                                            onCallbackAddedConvert: onCallbackAddedConvert,
+                                            onCallbackAddedT: onCallbackAddedConvert,
+                                            onAdoptCallbackAdded: (ref Promise p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Resolve,
+                                            onAdoptCallbackAddedConvert: (ref Promise<int> p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Resolve,
+                                            onAdoptCallbackAddedT: onAdoptCallbackAddedConvert
+                                        );
+                                        TestHelper.AddContinueCallbacks<int, int, string>(rejectPromiseIntRetainer.WaitAsync(),
+                                            promiseToPromise: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
+                                                return rejectWaitPromiseRetainer.WaitAsync();
+                                            },
+                                            promiseToPromiseConvert: p =>
+                                            {
+                                                p.Finally(() => ++completeCounter).Catch(() => { }).Forget();
+                                                return rejectWaitPromiseIntRetainer.WaitAsync();
+                                            },
+                                            onCallbackAdded: onCallbackAdded,
+                                            onCallbackAddedConvert: onCallbackAddedConvert,
+                                            onAdoptCallbackAdded: onAdoptCallbackAdded,
+                                            onAdoptCallbackAddedConvert: onAdoptCallbackAddedConvert
+                                        );
+
+                                        rejectDeferredInt.Reject("Fail outer");
+                                        Assert.AreEqual(expectedCompleteCount, completeCounter);
 
 
-                resolveWaitDeferredInt.Resolve(1);
-                expectedCompleteCount +=
-                    (TestHelper.resolveTPromiseConvertCallbacks +
-                    TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
-                    (TestHelper.continueTPromiseConvertCallbacks * 2)) * 2;
-                Assert.AreEqual(expectedCompleteCount, completeCounter);
+                                        resolveWaitDeferred.Resolve();
+                                        expectedCompleteCount +=
+                                            (TestHelper.resolveTPromiseVoidCallbacks +
+                                            TestHelper.rejectTPromiseVoidCallbacks +
+                                            (TestHelper.continueTPromiseVoidCallbacks * 2)) * 2;
+                                        Assert.AreEqual(expectedCompleteCount, completeCounter);
 
 
-                rejectWaitDeferred.Reject("Fail inner");
-                expectedCompleteCount +=
-                    (TestHelper.resolveTPromiseVoidCallbacks +
-                    TestHelper.rejectTPromiseVoidCallbacks +
-                    (TestHelper.continueTPromiseVoidCallbacks * 2)) * 2;
-                Assert.AreEqual(expectedCompleteCount, completeCounter);
+                                        resolveWaitDeferredInt.Resolve(1);
+                                        expectedCompleteCount +=
+                                            (TestHelper.resolveTPromiseConvertCallbacks +
+                                            TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
+                                            (TestHelper.continueTPromiseConvertCallbacks * 2)) * 2;
+                                        Assert.AreEqual(expectedCompleteCount, completeCounter);
 
 
-                rejectWaitDeferredInt.Reject("Fail inner");
-                expectedCompleteCount +=
-                    (TestHelper.resolveTPromiseConvertCallbacks +
-                    TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
-                    (TestHelper.continueTPromiseConvertCallbacks * 2)) * 2;
-                Assert.AreEqual(expectedCompleteCount, completeCounter);
+                                        rejectWaitDeferred.Reject("Fail inner");
+                                        expectedCompleteCount +=
+                                            (TestHelper.resolveTPromiseVoidCallbacks +
+                                            TestHelper.rejectTPromiseVoidCallbacks +
+                                            (TestHelper.continueTPromiseVoidCallbacks * 2)) * 2;
+                                        Assert.AreEqual(expectedCompleteCount, completeCounter);
 
-                resolvePromiseInt.Forget();
-                rejectPromiseInt.Forget();
-                resolveWaitPromise.Forget();
-                resolveWaitPromiseInt.Forget();
-                rejectWaitPromise.Forget();
-                rejectWaitPromiseInt.Forget();
+
+                                        rejectWaitDeferredInt.Reject("Fail inner");
+                                        expectedCompleteCount +=
+                                            (TestHelper.resolveTPromiseConvertCallbacks +
+                                            TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
+                                            (TestHelper.continueTPromiseConvertCallbacks * 2)) * 2;
+                                        Assert.AreEqual(expectedCompleteCount, completeCounter);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             [Test]
@@ -724,117 +739,118 @@ namespace ProtoPromiseTests.APIs
                 resolveDeferredInt.Resolve(1);
                 rejectDeferredInt.Reject("Fail value");
 
-                var resolvePromise = resolveDeferred.Promise.Preserve();
-                var rejectPromise = rejectDeferred.Promise.Preserve();
-                var resolvePromiseInt = resolveDeferredInt.Promise.Preserve();
-                var rejectPromiseInt = rejectDeferredInt.Promise.Preserve();
-
-                Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-                Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
-
-                int resolveValue = 100;
-                int resolveCounter = 0;
-
-                TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
+                using (var resolvePromiseRetainer = resolveDeferred.Promise.GetRetainer())
                 {
-                    p.Then(v =>
+                    using (var rejectPromiseRetainer = rejectDeferred.Promise.GetRetainer())
                     {
-                        if (resolveValue == v)
+                        using (var resolvePromiseIntRetainer = resolveDeferredInt.Promise.GetRetainer())
                         {
-                            ++resolveCounter;
+                            using (var rejectPromiseIntRetainer = rejectDeferredInt.Promise.GetRetainer())
+                            {
+                                Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
+                                Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
+
+                                int resolveValue = 100;
+                                int resolveCounter = 0;
+
+                                TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
+                                {
+                                    p.Then(v =>
+                                    {
+                                        if (resolveValue == v)
+                                        {
+                                            ++resolveCounter;
+                                        }
+                                    }).Forget();
+                                };
+
+                                var resolveWaitDeferredInt = Promise.NewDeferred<int>();
+                                using (var resolveWaitPromiseIntRetainer = resolveWaitDeferredInt.Promise.GetRetainer())
+                                {
+                                    Func<Promise<int>, Promise<int>> promiseToPromiseConvert = p => resolveWaitPromiseIntRetainer.WaitAsync();
+
+                                    // Test pending -> resolved and already resolved.
+                                    bool firstRun = true;
+                                RunAgain:
+                                    resolveCounter = 0;
+
+                                    TestHelper.AddResolveCallbacks<int, string>(resolvePromiseRetainer.WaitAsync(),
+                                        promiseToPromiseConvert: promiseToPromiseConvert,
+                                        onCallbackAddedConvert: onCallbackAddedConvert
+                                    );
+                                    TestHelper.AddCallbacks<int, object, string>(resolvePromiseRetainer.WaitAsync(),
+                                        onReject: _ => rejectAssert(),
+                                        onUnknownRejection: rejectAssert,
+                                        promiseToPromiseConvert: promiseToPromiseConvert,
+                                        onCallbackAddedConvert: onCallbackAddedConvert
+                                    );
+                                    TestHelper.AddContinueCallbacks<int, string>(resolvePromiseRetainer.WaitAsync(),
+                                        promiseToPromiseConvert: promiseToPromiseConvert,
+                                        onCallbackAddedConvert: onCallbackAddedConvert
+                                    );
+
+                                    TestHelper.AddResolveCallbacks<int, int, string>(resolvePromiseIntRetainer.WaitAsync(),
+                                        promiseToPromiseConvert: promiseToPromiseConvert,
+                                        onCallbackAddedConvert: onCallbackAddedConvert
+                                    );
+                                    TestHelper.AddCallbacks<int, int, object, string>(resolvePromiseIntRetainer.WaitAsync(),
+                                        onReject: _ => rejectAssert(),
+                                        onUnknownRejection: rejectAssert,
+                                        promiseToPromiseConvert: promiseToPromiseConvert,
+                                        onCallbackAddedConvert: onCallbackAddedConvert
+                                    );
+                                    TestHelper.AddContinueCallbacks<int, string>(resolvePromiseIntRetainer.WaitAsync(),
+                                        promiseToPromiseConvert: promiseToPromiseConvert,
+                                        onCallbackAddedConvert: onCallbackAddedConvert
+                                    );
+
+
+                                    TestHelper.AddCallbacks<int, object, string>(rejectPromiseRetainer.WaitAsync(),
+                                        onResolve: resolveAssert,
+                                        promiseToPromiseConvert: promiseToPromiseConvert,
+                                        onCallbackAddedConvert: onCallbackAddedConvert
+                                    );
+                                    TestHelper.AddContinueCallbacks<int, string>(rejectPromiseRetainer.WaitAsync(),
+                                        promiseToPromiseConvert: promiseToPromiseConvert,
+                                        onCallbackAddedConvert: onCallbackAddedConvert
+                                    );
+
+                                    TestHelper.AddCallbacks<int, int, object, string>(rejectPromiseIntRetainer.WaitAsync(),
+                                        onResolve: _ => resolveAssert(),
+                                        promiseToPromiseConvert: promiseToPromiseConvert,
+                                        promiseToPromiseT: promiseToPromiseConvert,
+                                        onCallbackAddedConvert: onCallbackAddedConvert,
+                                        onCallbackAddedT: onCallbackAddedConvert
+                                    );
+                                    TestHelper.AddContinueCallbacks<int, string>(rejectPromiseIntRetainer.WaitAsync(),
+                                        promiseToPromiseConvert: promiseToPromiseConvert,
+                                        onCallbackAddedConvert: onCallbackAddedConvert
+                                    );
+
+
+                                    if (firstRun)
+                                    {
+                                        Assert.AreEqual(0, resolveCounter);
+                                        resolveWaitDeferredInt.Resolve(resolveValue);
+                                    }
+
+                                    Assert.AreEqual(
+                                        (TestHelper.resolveVoidPromiseConvertCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
+                                        TestHelper.rejectVoidPromiseConvertCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
+                                        ((TestHelper.continueVoidPromiseConvertCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2)) * 2,
+                                        resolveCounter
+                                    );
+
+                                    if (firstRun)
+                                    {
+                                        firstRun = false;
+                                        goto RunAgain;
+                                    }
+                                }
+                            }
                         }
-                    }).Forget();
-                };
-
-                var resolveWaitDeferredInt = Promise.NewDeferred<int>();
-                var resolveWaitPromiseInt = resolveWaitDeferredInt.Promise.Preserve();
-
-                Func<Promise<int>, Promise<int>> promiseToPromiseConvert = p => resolveWaitPromiseInt;
-
-                // Test pending -> resolved and already resolved.
-                bool firstRun = true;
-            RunAgain:
-                resolveCounter = 0;
-
-                TestHelper.AddResolveCallbacks<int, string>(resolvePromise,
-                    promiseToPromiseConvert: promiseToPromiseConvert,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-                TestHelper.AddCallbacks<int, object, string>(resolvePromise,
-                    onReject: _ => rejectAssert(),
-                    onUnknownRejection: rejectAssert,
-                    promiseToPromiseConvert: promiseToPromiseConvert,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-                TestHelper.AddContinueCallbacks<int, string>(resolvePromise,
-                    promiseToPromiseConvert: promiseToPromiseConvert,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-
-                TestHelper.AddResolveCallbacks<int, int, string>(resolvePromiseInt,
-                    promiseToPromiseConvert: promiseToPromiseConvert,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-                TestHelper.AddCallbacks<int, int, object, string>(resolvePromiseInt,
-                    onReject: _ => rejectAssert(),
-                    onUnknownRejection: rejectAssert,
-                    promiseToPromiseConvert: promiseToPromiseConvert,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-                TestHelper.AddContinueCallbacks<int, string>(resolvePromiseInt,
-                    promiseToPromiseConvert: promiseToPromiseConvert,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-
-
-                TestHelper.AddCallbacks<int, object, string>(rejectPromise,
-                    onResolve: resolveAssert,
-                    promiseToPromiseConvert: promiseToPromiseConvert,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-                TestHelper.AddContinueCallbacks<int, string>(rejectPromise,
-                    promiseToPromiseConvert: promiseToPromiseConvert,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-
-                TestHelper.AddCallbacks<int, int, object, string>(rejectPromiseInt,
-                    onResolve: _ => resolveAssert(),
-                    promiseToPromiseConvert: promiseToPromiseConvert,
-                    promiseToPromiseT: promiseToPromiseConvert,
-                    onCallbackAddedConvert: onCallbackAddedConvert,
-                    onCallbackAddedT: onCallbackAddedConvert
-                );
-                TestHelper.AddContinueCallbacks<int, string>(rejectPromiseInt,
-                    promiseToPromiseConvert: promiseToPromiseConvert,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-
-
-                if (firstRun)
-                {
-                    Assert.AreEqual(0, resolveCounter);
-                    resolveWaitDeferredInt.Resolve(resolveValue);
+                    }
                 }
-
-                Assert.AreEqual(
-                    (TestHelper.resolveVoidPromiseConvertCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
-                    TestHelper.rejectVoidPromiseConvertCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
-                    ((TestHelper.continueVoidPromiseConvertCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2)) * 2,
-                    resolveCounter
-                );
-
-                if (firstRun)
-                {
-                    firstRun = false;
-                    goto RunAgain;
-                }
-
-                resolvePromise.Forget();
-                rejectPromise.Forget();
-                resolvePromiseInt.Forget();
-                rejectPromiseInt.Forget();
-
-                resolveWaitPromiseInt.Forget();
             }
 
             [Test]
@@ -846,111 +862,111 @@ namespace ProtoPromiseTests.APIs
                 resolveDeferred.Resolve();
                 rejectDeferred.Reject("Fail value");
 
-                var resolvePromise = resolveDeferred.Promise.Preserve();
-                var rejectPromise = rejectDeferred.Promise.Preserve();
-
-                Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-                Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
-
-                string rejectValue = "Waited Rejection";
-                int rejectCounter = 0;
-
-                TestAction<Promise> onCallbackAdded = (ref Promise p) =>
+                using (var resolvePromiseRetainer = resolveDeferred.Promise.GetRetainer())
                 {
-                    p.Catch((string rej) =>
+                    using (var rejectPromiseRetainer = rejectDeferred.Promise.GetRetainer())
                     {
-                        if (rejectValue == rej)
+                        Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
+                        Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
+
+                        string rejectValue = "Waited Rejection";
+                        int rejectCounter = 0;
+
+                        TestAction<Promise> onCallbackAdded = (ref Promise p) =>
                         {
-                            ++rejectCounter;
-                        }
-                    }).Forget();
-                };
-                TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
-                {
-                    p.Catch((string rej) =>
-                    {
-                        if (rejectValue == rej)
+                            p.Catch((string rej) =>
+                            {
+                                if (rejectValue == rej)
+                                {
+                                    ++rejectCounter;
+                                }
+                            }).Forget();
+                        };
+                        TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
                         {
-                            ++rejectCounter;
+                            p.Catch((string rej) =>
+                            {
+                                if (rejectValue == rej)
+                                {
+                                    ++rejectCounter;
+                                }
+                            }).Forget();
+                        };
+
+                        var rejectWaitDeferred = Promise.NewDeferred();
+                        var rejectWaitDeferredInt = Promise.NewDeferred<int>();
+
+                        using (var rejectWaitPromiseRetainer = rejectWaitDeferred.Promise.GetRetainer())
+                        {
+                            using (var rejectWaitPromiseIntRetainer = rejectWaitDeferredInt.Promise.GetRetainer())
+                            {
+                                Func<Promise, Promise> promiseToPromise = p => rejectWaitPromiseRetainer.WaitAsync();
+                                Func<Promise<int>, Promise<int>> promiseToPromiseConvert = p => rejectWaitPromiseIntRetainer.WaitAsync();
+
+                                // Test pending -> rejected and already rejected.
+                                bool firstRun = true;
+                            RunAgain:
+                                rejectCounter = 0;
+
+                                TestHelper.AddResolveCallbacks<int, string>(resolvePromiseRetainer.WaitAsync(),
+                                    promiseToPromise: promiseToPromise,
+                                    onCallbackAdded: onCallbackAdded,
+                                    promiseToPromiseConvert: promiseToPromiseConvert,
+                                    onCallbackAddedConvert: onCallbackAddedConvert
+                                );
+                                TestHelper.AddCallbacks<int, object, string>(resolvePromiseRetainer.WaitAsync(),
+                                    onReject: _ => rejectAssert(),
+                                    onUnknownRejection: rejectAssert,
+                                    promiseToPromise: promiseToPromise,
+                                    onCallbackAdded: onCallbackAdded,
+                                    promiseToPromiseConvert: promiseToPromiseConvert,
+                                    onCallbackAddedConvert: onCallbackAddedConvert
+                                );
+                                TestHelper.AddContinueCallbacks<int, string>(resolvePromiseRetainer.WaitAsync(),
+                                    promiseToPromise: promiseToPromise,
+                                    onCallbackAdded: onCallbackAdded,
+                                    promiseToPromiseConvert: promiseToPromiseConvert,
+                                    onCallbackAddedConvert: onCallbackAddedConvert
+                                );
+
+                                TestHelper.AddCallbacks<int, object, string>(rejectPromiseRetainer.WaitAsync(),
+                                    onResolve: resolveAssert,
+                                    promiseToPromise: promiseToPromise,
+                                    onCallbackAdded: onCallbackAdded,
+                                    promiseToPromiseConvert: promiseToPromiseConvert,
+                                    onCallbackAddedConvert: onCallbackAddedConvert
+                                );
+                                TestHelper.AddContinueCallbacks<int, string>(rejectPromiseRetainer.WaitAsync(),
+                                    promiseToPromise: promiseToPromise,
+                                    onCallbackAdded: onCallbackAdded,
+                                    promiseToPromiseConvert: promiseToPromiseConvert,
+                                    onCallbackAddedConvert: onCallbackAddedConvert
+                                );
+
+
+                                if (firstRun)
+                                {
+                                    Assert.AreEqual(0, rejectCounter);
+                                    rejectWaitDeferred.Reject(rejectValue);
+                                    rejectWaitDeferredInt.Reject(rejectValue);
+                                }
+
+                                Assert.AreEqual(
+                                    (TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
+                                    TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
+                                    ((TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks) * 2)) * 2,
+                                    rejectCounter
+                                );
+
+                                if (firstRun)
+                                {
+                                    firstRun = false;
+                                    goto RunAgain;
+                                }
+                            }
                         }
-                    }).Forget();
-                };
-
-                var rejectWaitDeferred = Promise.NewDeferred();
-                var rejectWaitDeferredInt = Promise.NewDeferred<int>();
-
-                var rejectWaitPromise = rejectWaitDeferred.Promise.Preserve();
-                var rejectWaitPromiseInt = rejectWaitDeferredInt.Promise.Preserve();
-
-                Func<Promise, Promise> promiseToPromise = p => rejectWaitPromise;
-                Func<Promise<int>, Promise<int>> promiseToPromiseConvert = p => rejectWaitPromiseInt;
-
-                // Test pending -> rejected and already rejected.
-                bool firstRun = true;
-            RunAgain:
-                rejectCounter = 0;
-
-                TestHelper.AddResolveCallbacks<int, string>(resolvePromise,
-                    promiseToPromise: promiseToPromise,
-                    onCallbackAdded: onCallbackAdded,
-                    promiseToPromiseConvert: promiseToPromiseConvert,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-                TestHelper.AddCallbacks<int, object, string>(resolvePromise,
-                    onReject: _ => rejectAssert(),
-                    onUnknownRejection: rejectAssert,
-                    promiseToPromise: promiseToPromise,
-                    onCallbackAdded: onCallbackAdded,
-                    promiseToPromiseConvert: promiseToPromiseConvert,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-                TestHelper.AddContinueCallbacks<int, string>(resolvePromise,
-                    promiseToPromise: promiseToPromise,
-                    onCallbackAdded: onCallbackAdded,
-                    promiseToPromiseConvert: promiseToPromiseConvert,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-
-                TestHelper.AddCallbacks<int, object, string>(rejectPromise,
-                    onResolve: resolveAssert,
-                    promiseToPromise: promiseToPromise,
-                    onCallbackAdded: onCallbackAdded,
-                    promiseToPromiseConvert: promiseToPromiseConvert,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-                TestHelper.AddContinueCallbacks<int, string>(rejectPromise,
-                    promiseToPromise: promiseToPromise,
-                    onCallbackAdded: onCallbackAdded,
-                    promiseToPromiseConvert: promiseToPromiseConvert,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-
-
-                if (firstRun)
-                {
-                    Assert.AreEqual(0, rejectCounter);
-                    rejectWaitDeferred.Reject(rejectValue);
-                    rejectWaitDeferredInt.Reject(rejectValue);
+                    }
                 }
-
-                Assert.AreEqual(
-                    (TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
-                    TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
-                    ((TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks) * 2)) * 2,
-                    rejectCounter
-                );
-
-                if (firstRun)
-                {
-                    firstRun = false;
-                    goto RunAgain;
-                }
-
-                resolvePromise.Forget();
-                rejectPromise.Forget();
-
-                rejectWaitPromise.Forget();
-                rejectWaitPromiseInt.Forget();
             }
 
             [Test]
@@ -962,116 +978,115 @@ namespace ProtoPromiseTests.APIs
                 resolveDeferredInt.Resolve(1);
                 rejectDeferredInt.Reject("Fail value");
 
-                var resolvePromiseInt = resolveDeferredInt.Promise.Preserve();
-                var rejectPromiseInt = rejectDeferredInt.Promise.Preserve();
-
-                Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-                Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
-
-                string rejectValue = "Waited Rejection";
-                int rejectCounter = 0;
-
-                TestAction<Promise> onCallbackAdded = (ref Promise p) =>
+                using (var resolvePromiseIntRetainer = resolveDeferredInt.Promise.GetRetainer())
                 {
-                    p.Catch((string rej) =>
+                    using (var rejectPromiseIntRetainer = rejectDeferredInt.Promise.GetRetainer())
                     {
-                        if (rejectValue == rej)
+                        Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
+                        Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
+
+                        string rejectValue = "Waited Rejection";
+                        int rejectCounter = 0;
+
+                        TestAction<Promise> onCallbackAdded = (ref Promise p) =>
                         {
-                            ++rejectCounter;
-                        }
-                    }).Forget();
-                };
-                TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
-                {
-                    p.Catch((string rej) =>
-                    {
-                        if (rejectValue == rej)
+                            p.Catch((string rej) =>
+                            {
+                                if (rejectValue == rej)
+                                {
+                                    ++rejectCounter;
+                                }
+                            }).Forget();
+                        };
+                        TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
                         {
-                            ++rejectCounter;
+                            p.Catch((string rej) =>
+                            {
+                                if (rejectValue == rej)
+                                {
+                                    ++rejectCounter;
+                                }
+                            }).Forget();
+                        };
+
+                        var rejectWaitDeferred = Promise.NewDeferred();
+                        var rejectWaitDeferredInt = Promise.NewDeferred<int>();
+
+                        using (var rejectWaitPromiseRetainer = rejectWaitDeferred.Promise.GetRetainer())
+                        {
+                            using (var rejectWaitPromiseIntRetainer = rejectWaitDeferredInt.Promise.GetRetainer())
+                            {
+                                Func<Promise, Promise> promiseToPromise = p => rejectWaitPromiseRetainer.WaitAsync();
+                                Func<Promise<int>, Promise<int>> promiseToPromiseConvert = p => rejectWaitPromiseIntRetainer.WaitAsync();
+
+                                // Test pending -> rejected and already rejected.
+                                bool firstRun = true;
+                            RunAgain:
+                                rejectCounter = 0;
+
+                                TestHelper.AddResolveCallbacks<int, int, string>(resolvePromiseIntRetainer.WaitAsync(),
+                                    promiseToPromise: promiseToPromise,
+                                    onCallbackAdded: onCallbackAdded,
+                                    promiseToPromiseConvert: promiseToPromiseConvert,
+                                    onCallbackAddedConvert: onCallbackAddedConvert
+                                );
+                                TestHelper.AddCallbacks<int, int, object, string>(resolvePromiseIntRetainer.WaitAsync(),
+                                    onReject: _ => rejectAssert(),
+                                    onUnknownRejection: rejectAssert,
+                                    promiseToPromise: promiseToPromise,
+                                    onCallbackAdded: onCallbackAdded,
+                                    promiseToPromiseConvert: promiseToPromiseConvert,
+                                    onCallbackAddedConvert: onCallbackAddedConvert,
+                                    promiseToPromiseT: promiseToPromiseConvert,
+                                    onCallbackAddedT: onCallbackAddedConvert
+                                );
+                                TestHelper.AddContinueCallbacks<int, int, string>(resolvePromiseIntRetainer.WaitAsync(),
+                                    promiseToPromise: promiseToPromise,
+                                    onCallbackAdded: onCallbackAdded,
+                                    promiseToPromiseConvert: promiseToPromiseConvert,
+                                    onCallbackAddedConvert: onCallbackAddedConvert
+                                );
+
+                                TestHelper.AddCallbacks<int, int, object, string>(rejectPromiseIntRetainer.WaitAsync(),
+                                    onResolve: _ => resolveAssert(),
+                                    promiseToPromise: promiseToPromise,
+                                    onCallbackAdded: onCallbackAdded,
+                                    promiseToPromiseConvert: promiseToPromiseConvert,
+                                    onCallbackAddedConvert: onCallbackAddedConvert,
+                                    promiseToPromiseT: promiseToPromiseConvert,
+                                    onCallbackAddedT: onCallbackAddedConvert
+                                );
+                                TestHelper.AddContinueCallbacks<int, int, string>(rejectPromiseIntRetainer.WaitAsync(),
+                                    promiseToPromise: promiseToPromise,
+                                    onCallbackAdded: onCallbackAdded,
+                                    promiseToPromiseConvert: promiseToPromiseConvert,
+                                    onCallbackAddedConvert: onCallbackAddedConvert
+                                );
+
+
+                                if (firstRun)
+                                {
+                                    Assert.AreEqual(0, rejectCounter);
+                                    rejectWaitDeferred.Reject(rejectValue);
+                                    rejectWaitDeferredInt.Reject(rejectValue);
+                                }
+
+                                Assert.AreEqual(
+                                    (TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
+                                    TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
+                                    ((TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2)) * 2,
+                                    rejectCounter
+                                );
+
+                                if (firstRun)
+                                {
+                                    firstRun = false;
+                                    goto RunAgain;
+                                }
+                            }
                         }
-                    }).Forget();
-                };
-
-                var rejectWaitDeferred = Promise.NewDeferred();
-                var rejectWaitDeferredInt = Promise.NewDeferred<int>();
-
-                var rejectWaitPromise = rejectWaitDeferred.Promise.Preserve();
-                var rejectWaitPromiseInt = rejectWaitDeferredInt.Promise.Preserve();
-
-
-                Func<Promise, Promise> promiseToPromise = p => rejectWaitPromise;
-                Func<Promise<int>, Promise<int>> promiseToPromiseConvert = p => rejectWaitPromiseInt;
-
-                // Test pending -> rejected and already rejected.
-                bool firstRun = true;
-            RunAgain:
-                rejectCounter = 0;
-
-                TestHelper.AddResolveCallbacks<int, int, string>(resolvePromiseInt,
-                    promiseToPromise: promiseToPromise,
-                    onCallbackAdded: onCallbackAdded,
-                    promiseToPromiseConvert: promiseToPromiseConvert,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-                TestHelper.AddCallbacks<int, int, object, string>(resolvePromiseInt,
-                    onReject: _ => rejectAssert(),
-                    onUnknownRejection: rejectAssert,
-                    promiseToPromise: promiseToPromise,
-                    onCallbackAdded: onCallbackAdded,
-                    promiseToPromiseConvert: promiseToPromiseConvert,
-                    onCallbackAddedConvert: onCallbackAddedConvert,
-                    promiseToPromiseT: promiseToPromiseConvert,
-                    onCallbackAddedT: onCallbackAddedConvert
-                );
-                TestHelper.AddContinueCallbacks<int, int, string>(resolvePromiseInt,
-                    promiseToPromise: promiseToPromise,
-                    onCallbackAdded: onCallbackAdded,
-                    promiseToPromiseConvert: promiseToPromiseConvert,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-
-                TestHelper.AddCallbacks<int, int, object, string>(rejectPromiseInt,
-                    onResolve: _ => resolveAssert(),
-                    promiseToPromise: promiseToPromise,
-                    onCallbackAdded: onCallbackAdded,
-                    promiseToPromiseConvert: promiseToPromiseConvert,
-                    onCallbackAddedConvert: onCallbackAddedConvert,
-                    promiseToPromiseT: promiseToPromiseConvert,
-                    onCallbackAddedT: onCallbackAddedConvert
-                );
-                TestHelper.AddContinueCallbacks<int, int, string>(rejectPromiseInt,
-                    promiseToPromise: promiseToPromise,
-                    onCallbackAdded: onCallbackAdded,
-                    promiseToPromiseConvert: promiseToPromiseConvert,
-                    onCallbackAddedConvert: onCallbackAddedConvert
-                );
-
-
-                if (firstRun)
-                {
-                    Assert.AreEqual(0, rejectCounter);
-                    rejectWaitDeferred.Reject(rejectValue);
-                    rejectWaitDeferredInt.Reject(rejectValue);
+                    }
                 }
-
-                Assert.AreEqual(
-                    (TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
-                    TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
-                    ((TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2)) * 2,
-                    rejectCounter
-                );
-
-                if (firstRun)
-                {
-                    firstRun = false;
-                    goto RunAgain;
-                }
-
-                resolvePromiseInt.Forget();
-                rejectPromiseInt.Forget();
-
-                rejectWaitPromise.Forget();
-                rejectWaitPromiseInt.Forget();
             }
         }
 
@@ -1084,54 +1099,54 @@ namespace ProtoPromiseTests.APIs
             var resolveDeferred = Promise.NewDeferred();
             var rejectDeferred = Promise.NewDeferred();
 
-            var resolvePromise = resolveDeferred.Promise.Preserve();
-            var rejectPromise = rejectDeferred.Promise.Preserve();
+            using (var resolvePromiseRetainer = resolveDeferred.Promise.GetRetainer())
+            {
+                using (var rejectPromiseRetainer = rejectDeferred.Promise.GetRetainer())
+                {
+                    Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
+                    Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
 
-            Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-            Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
+                    int resolveCounter = 0;
 
-            int resolveCounter = 0;
+                    TestAction<Promise> onCallbackAdded = (ref Promise p) => p.Then(() => ++resolveCounter).Forget();
+                    TestAction<Promise<string>> onCallbackAddedConvert = (ref Promise<string> p) => p.Then(() => ++resolveCounter).Forget();
 
-            TestAction<Promise> onCallbackAdded = (ref Promise p) => p.Then(() => ++resolveCounter).Forget();
-            TestAction<Promise<string>> onCallbackAddedConvert = (ref Promise<string> p) => p.Then(() => ++resolveCounter).Forget();
+                    TestHelper.AddResolveCallbacks<string, string>(resolvePromiseRetainer.WaitAsync(),
+                        onCallbackAdded: onCallbackAdded,
+                        onCallbackAddedConvert: onCallbackAddedConvert
+                    );
+                    TestHelper.AddCallbacks<string, object, string>(resolvePromiseRetainer.WaitAsync(),
+                        onReject: _ => rejectAssert(),
+                        onUnknownRejection: rejectAssert,
+                        onCallbackAdded: onCallbackAdded,
+                        onCallbackAddedConvert: onCallbackAddedConvert
+                    );
+                    TestHelper.AddContinueCallbacks<string, string>(resolvePromiseRetainer.WaitAsync(),
+                        onCallbackAdded: onCallbackAdded,
+                        onCallbackAddedConvert: onCallbackAddedConvert
+                    );
 
-            TestHelper.AddResolveCallbacks<string, string>(resolvePromise,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-            TestHelper.AddCallbacks<string, object, string>(resolvePromise,
-                onReject: _ => rejectAssert(),
-                onUnknownRejection: rejectAssert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-            TestHelper.AddContinueCallbacks<string, string>(resolvePromise,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
+                    TestHelper.AddCallbacks<string, object, string>(rejectPromiseRetainer.WaitAsync(),
+                        onResolve: resolveAssert,
+                        onCallbackAdded: onCallbackAdded,
+                        onCallbackAddedConvert: onCallbackAddedConvert
+                    );
+                    TestHelper.AddContinueCallbacks<string, string>(rejectPromiseRetainer.WaitAsync(),
+                        onCallbackAdded: onCallbackAdded,
+                        onCallbackAddedConvert: onCallbackAddedConvert
+                    );
 
-            TestHelper.AddCallbacks<string, object, string>(rejectPromise,
-                onResolve: resolveAssert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-            TestHelper.AddContinueCallbacks<string, string>(rejectPromise,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
+                    resolveDeferred.Resolve();
+                    rejectDeferred.Reject("Fail value");
 
-            resolveDeferred.Resolve();
-            rejectDeferred.Reject("Fail value");
-
-            Assert.AreEqual(
-                (TestHelper.resolveOnlyVoidCallbacks + TestHelper.resolveVoidCallbacks +
-                TestHelper.rejectVoidCallbacks +
-                (TestHelper.continueVoidCallbacks * 2)) * 2,
-                resolveCounter
-            );
-
-            resolvePromise.Forget();
-            rejectPromise.Forget();
+                    Assert.AreEqual(
+                        (TestHelper.resolveOnlyVoidCallbacks + TestHelper.resolveVoidCallbacks +
+                        TestHelper.rejectVoidCallbacks +
+                        (TestHelper.continueVoidCallbacks * 2)) * 2,
+                        resolveCounter
+                    );
+                }
+            }
         }
 
         [Test]
@@ -1140,56 +1155,56 @@ namespace ProtoPromiseTests.APIs
             var resolveDeferredInt = Promise.NewDeferred<int>();
             var rejectDeferredInt = Promise.NewDeferred<int>();
 
-            var resolvePromiseInt = resolveDeferredInt.Promise.Preserve();
-            var rejectPromiseInt = rejectDeferredInt.Promise.Preserve();
+            using (var resolvePromiseIntRetainer = resolveDeferredInt.Promise.GetRetainer())
+            {
+                using (var rejectPromiseIntRetainer = rejectDeferredInt.Promise.GetRetainer())
+                {
+                    Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
+                    Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
 
-            Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-            Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
+                    int resolveCounter = 0;
 
-            int resolveCounter = 0;
+                    TestAction<Promise> onCallbackAdded = (ref Promise p) => p.Then(() => ++resolveCounter).Forget();
+                    TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) => p.Then(() => ++resolveCounter).Forget();
 
-            TestAction<Promise> onCallbackAdded = (ref Promise p) => p.Then(() => ++resolveCounter).Forget();
-            TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) => p.Then(() => ++resolveCounter).Forget();
+                    TestHelper.AddResolveCallbacks<int, int, string>(resolvePromiseIntRetainer.WaitAsync(),
+                        onCallbackAdded: onCallbackAdded,
+                        onCallbackAddedConvert: onCallbackAddedConvert
+                    );
+                    TestHelper.AddCallbacks<int, int, object, string>(resolvePromiseIntRetainer.WaitAsync(),
+                        onReject: _ => rejectAssert(),
+                        onUnknownRejection: rejectAssert,
+                        onCallbackAdded: onCallbackAdded,
+                        onCallbackAddedConvert: onCallbackAddedConvert,
+                        onCallbackAddedT: onCallbackAddedConvert
+                    );
+                    TestHelper.AddContinueCallbacks<int, int, string>(resolvePromiseIntRetainer.WaitAsync(),
+                        onCallbackAdded: onCallbackAdded,
+                        onCallbackAddedConvert: onCallbackAddedConvert
+                    );
 
-            TestHelper.AddResolveCallbacks<int, int, string>(resolvePromiseInt,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-            TestHelper.AddCallbacks<int, int, object, string>(resolvePromiseInt,
-                onReject: _ => rejectAssert(),
-                onUnknownRejection: rejectAssert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert,
-                onCallbackAddedT: onCallbackAddedConvert
-            );
-            TestHelper.AddContinueCallbacks<int, int, string>(resolvePromiseInt,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
+                    TestHelper.AddCallbacks<int, int, object, string>(rejectPromiseIntRetainer.WaitAsync(),
+                        onResolve: _ => resolveAssert(),
+                        onCallbackAdded: onCallbackAdded,
+                        onCallbackAddedConvert: onCallbackAddedConvert,
+                        onCallbackAddedT: onCallbackAddedConvert
+                    );
+                    TestHelper.AddContinueCallbacks<int, int, string>(rejectPromiseIntRetainer.WaitAsync(),
+                        onCallbackAdded: onCallbackAdded,
+                        onCallbackAddedConvert: onCallbackAddedConvert
+                    );
 
-            TestHelper.AddCallbacks<int, int, object, string>(rejectPromiseInt,
-                onResolve: _ => resolveAssert(),
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert,
-                onCallbackAddedT: onCallbackAddedConvert
-            );
-            TestHelper.AddContinueCallbacks<int, int, string>(rejectPromiseInt,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
+                    resolveDeferredInt.Resolve(1);
+                    rejectDeferredInt.Reject("Fail value");
 
-            resolveDeferredInt.Resolve(1);
-            rejectDeferredInt.Reject("Fail value");
-
-            Assert.AreEqual(
-                (TestHelper.resolveOnlyTCallbacks + TestHelper.resolveTCallbacks +
-                TestHelper.rejectTCallbacks +
-                (TestHelper.continueTCallbacks * 2)) * 2,
-                resolveCounter
-            );
-
-            resolvePromiseInt.Forget();
-            rejectPromiseInt.Forget();
+                    Assert.AreEqual(
+                        (TestHelper.resolveOnlyTCallbacks + TestHelper.resolveTCallbacks +
+                        TestHelper.rejectTCallbacks +
+                        (TestHelper.continueTCallbacks * 2)) * 2,
+                        resolveCounter
+                    );
+                }
+            }
         }
 
         [Test]
@@ -1198,60 +1213,60 @@ namespace ProtoPromiseTests.APIs
             var resolveDeferred = Promise.NewDeferred();
             var rejectDeferred = Promise.NewDeferred();
 
-            var resolvePromise = resolveDeferred.Promise.Preserve();
-            var rejectPromise = rejectDeferred.Promise.Preserve();
-
-            int expected = 100;
-
-            Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-            Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
-
-            int resolveCounter = 0;
-
-            TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
-                p.Then(v =>
+            using (var resolvePromiseRetainer = resolveDeferred.Promise.GetRetainer())
+            {
+                using (var rejectPromiseRetainer = rejectDeferred.Promise.GetRetainer())
                 {
-                    Assert.AreEqual(expected, v);
-                    ++resolveCounter;
-                }).Forget();
+                    int expected = 100;
 
-            TestHelper.AddResolveCallbacks<int, string>(resolvePromise,
-                onCallbackAddedConvert: onCallbackAddedConvert,
-                convertValue: expected
-            );
-            TestHelper.AddCallbacks<int, object, string>(resolvePromise,
-                onReject: _ => rejectAssert(),
-                onUnknownRejection: rejectAssert,
-                onCallbackAddedConvert: onCallbackAddedConvert,
-                convertValue: expected
-            );
-            TestHelper.AddContinueCallbacks<int, string>(resolvePromise,
-                onCallbackAddedConvert: onCallbackAddedConvert,
-                convertValue: expected
-            );
+                    Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
+                    Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
 
-            TestHelper.AddCallbacks<int, object, string>(rejectPromise,
-                onResolve: resolveAssert,
-                onCallbackAddedConvert: onCallbackAddedConvert,
-                convertValue: expected
-            );
-            TestHelper.AddContinueCallbacks<int, string>(rejectPromise,
-                onCallbackAddedConvert: onCallbackAddedConvert,
-                convertValue: expected
-            );
+                    int resolveCounter = 0;
 
-            resolveDeferred.Resolve();
-            rejectDeferred.Reject("Fail value");
+                    TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
+                        p.Then(v =>
+                        {
+                            Assert.AreEqual(expected, v);
+                            ++resolveCounter;
+                        }).Forget();
 
-            Assert.AreEqual(
-                (TestHelper.resolveVoidConvertCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
-                TestHelper.rejectVoidConvertCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
-                ((TestHelper.continueVoidConvertCallbacks + TestHelper.continueVoidPromiseConvertCallbacks) * 2)) * 2,
-                resolveCounter
-            );
+                    TestHelper.AddResolveCallbacks<int, string>(resolvePromiseRetainer.WaitAsync(),
+                        onCallbackAddedConvert: onCallbackAddedConvert,
+                        convertValue: expected
+                    );
+                    TestHelper.AddCallbacks<int, object, string>(resolvePromiseRetainer.WaitAsync(),
+                        onReject: _ => rejectAssert(),
+                        onUnknownRejection: rejectAssert,
+                        onCallbackAddedConvert: onCallbackAddedConvert,
+                        convertValue: expected
+                    );
+                    TestHelper.AddContinueCallbacks<int, string>(resolvePromiseRetainer.WaitAsync(),
+                        onCallbackAddedConvert: onCallbackAddedConvert,
+                        convertValue: expected
+                    );
 
-            resolvePromise.Forget();
-            rejectPromise.Forget();
+                    TestHelper.AddCallbacks<int, object, string>(rejectPromiseRetainer.WaitAsync(),
+                        onResolve: resolveAssert,
+                        onCallbackAddedConvert: onCallbackAddedConvert,
+                        convertValue: expected
+                    );
+                    TestHelper.AddContinueCallbacks<int, string>(rejectPromiseRetainer.WaitAsync(),
+                        onCallbackAddedConvert: onCallbackAddedConvert,
+                        convertValue: expected
+                    );
+
+                    resolveDeferred.Resolve();
+                    rejectDeferred.Reject("Fail value");
+
+                    Assert.AreEqual(
+                        (TestHelper.resolveVoidConvertCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
+                        TestHelper.rejectVoidConvertCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
+                        ((TestHelper.continueVoidConvertCallbacks + TestHelper.continueVoidPromiseConvertCallbacks) * 2)) * 2,
+                        resolveCounter
+                    );
+                }
+            }
         }
 
         [Test]
@@ -1260,62 +1275,62 @@ namespace ProtoPromiseTests.APIs
             var resolveDeferredInt = Promise.NewDeferred<int>();
             var rejectDeferredInt = Promise.NewDeferred<int>();
 
-            var resolvePromiseInt = resolveDeferredInt.Promise.Preserve();
-            var rejectPromiseInt = rejectDeferredInt.Promise.Preserve();
-
-            int expected = 100;
-
-            Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-            Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
-
-            int resolveCounter = 0;
-
-            TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
-                p.Then(v =>
+            using (var resolvePromiseIntRetainer = resolveDeferredInt.Promise.GetRetainer())
+            {
+                using (var rejectPromiseIntRetainer = rejectDeferredInt.Promise.GetRetainer())
                 {
-                    Assert.AreEqual(expected, v);
-                    ++resolveCounter;
-                }).Forget();
+                    int expected = 100;
 
-            TestHelper.AddResolveCallbacks<int, int, string>(resolvePromiseInt,
-                onCallbackAddedConvert: onCallbackAddedConvert,
-                convertValue: expected
-            );
-            TestHelper.AddCallbacks<int, int, object, string>(resolvePromiseInt,
-                onReject: _ => rejectAssert(),
-                onUnknownRejection: rejectAssert,
-                onCallbackAddedConvert: onCallbackAddedConvert,
-                convertValue: expected
-            );
-            TestHelper.AddContinueCallbacks<int, string>(resolvePromiseInt,
-                onCallbackAddedConvert: onCallbackAddedConvert,
-                convertValue: expected
-            );
+                    Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
+                    Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
 
-            TestHelper.AddCallbacks<int, int, object, string>(rejectPromiseInt,
-                onResolve: _ => resolveAssert(),
-                onCallbackAddedConvert: onCallbackAddedConvert,
-                onCallbackAddedT: onCallbackAddedConvert,
-                convertValue: expected,
-                TValue: expected
-            );
-            TestHelper.AddContinueCallbacks<int, string>(rejectPromiseInt,
-                onCallbackAddedConvert: onCallbackAddedConvert,
-                convertValue: expected
-            );
+                    int resolveCounter = 0;
 
-            resolveDeferredInt.Resolve(1);
-            rejectDeferredInt.Reject("Fail value");
+                    TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
+                        p.Then(v =>
+                        {
+                            Assert.AreEqual(expected, v);
+                            ++resolveCounter;
+                        }).Forget();
 
-            Assert.AreEqual(
-                (TestHelper.resolveTConvertCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
-                TestHelper.rejectTConvertCallbacks + TestHelper.rejectTTCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
-                ((TestHelper.continueTConvertCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2)) * 2,
-                resolveCounter
-            );
+                    TestHelper.AddResolveCallbacks<int, int, string>(resolvePromiseIntRetainer.WaitAsync(),
+                        onCallbackAddedConvert: onCallbackAddedConvert,
+                        convertValue: expected
+                    );
+                    TestHelper.AddCallbacks<int, int, object, string>(resolvePromiseIntRetainer.WaitAsync(),
+                        onReject: _ => rejectAssert(),
+                        onUnknownRejection: rejectAssert,
+                        onCallbackAddedConvert: onCallbackAddedConvert,
+                        convertValue: expected
+                    );
+                    TestHelper.AddContinueCallbacks<int, string>(resolvePromiseIntRetainer.WaitAsync(),
+                        onCallbackAddedConvert: onCallbackAddedConvert,
+                        convertValue: expected
+                    );
 
-            resolvePromiseInt.Forget();
-            rejectPromiseInt.Forget();
+                    TestHelper.AddCallbacks<int, int, object, string>(rejectPromiseIntRetainer.WaitAsync(),
+                        onResolve: _ => resolveAssert(),
+                        onCallbackAddedConvert: onCallbackAddedConvert,
+                        onCallbackAddedT: onCallbackAddedConvert,
+                        convertValue: expected,
+                        TValue: expected
+                    );
+                    TestHelper.AddContinueCallbacks<int, string>(rejectPromiseIntRetainer.WaitAsync(),
+                        onCallbackAddedConvert: onCallbackAddedConvert,
+                        convertValue: expected
+                    );
+
+                    resolveDeferredInt.Resolve(1);
+                    rejectDeferredInt.Reject("Fail value");
+
+                    Assert.AreEqual(
+                        (TestHelper.resolveTConvertCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
+                        TestHelper.rejectTConvertCallbacks + TestHelper.rejectTTCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
+                        ((TestHelper.continueTConvertCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2)) * 2,
+                        resolveCounter
+                    );
+                }
+            }
         }
 
         // If a promise is resolved with a thenable that participates in a circular thenable chain, such that the recursive
@@ -1324,823 +1339,380 @@ namespace ProtoPromiseTests.APIs
         // not required, to detect such recursion and reject promise with an informative Exception as the reason.
 
 #if PROMISE_DEBUG
-        [Test]
-        public void _2_3_5_IfXIsAPromiseAndItResultsInACircularPromiseChain_RejectPromiseWithInvalidReturnExceptionAsTheReason_void()
+        private static void TestCircularAwait_void(Func<Promise.Retainer, Promise> circularPromiseVoidGetter, Func<Promise<int>.Retainer, Promise<int>> circularPromiseTGetter)
         {
+            string expectedMessage = "Circular Promise chain detected.";
             var resolveDeferred = Promise.NewDeferred();
             var rejectDeferred = Promise.NewDeferred();
 
-            var resolvePromise = resolveDeferred.Promise.Preserve();
-            var rejectPromise = rejectDeferred.Promise.Preserve();
-
-            int exceptionCounter = 0;
-
-            Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-            Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
-            Action<object> catcher = (object o) =>
+            using (var resolvePromiseRetainer = resolveDeferred.Promise.GetRetainer())
             {
-                Assert.IsInstanceOf<InvalidReturnException>(o);
-                ++exceptionCounter;
-            };
+                using (var rejectPromiseRetainer = rejectDeferred.Promise.GetRetainer())
+                {
+                    int exceptionCounter = 0;
 
-            Func<Promise, Promise> promiseToPromise = promise =>
+                    Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
+                    Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
+                    Action<object> catcher = (object o) =>
+                    {
+                        Assert.IsInstanceOf<InvalidReturnException>(o);
+                        Assert.AreEqual(expectedMessage, o.UnsafeAs<Exception>().Message);
+                        ++exceptionCounter;
+                    };
+
+                    Func<Promise, Promise> promiseToPromise = promise =>
+                    {
+                        using (var promiseRetainer = promise.GetRetainer())
+                        {
+                            promiseRetainer.WaitAsync().Catch(catcher).Forget();
+                            return circularPromiseVoidGetter(promiseRetainer);
+                        }
+                    };
+
+                    Func<Promise<int>, Promise<int>> promiseToPromiseConvert = promise =>
+                    {
+                        using (var promiseRetainer = promise.GetRetainer())
+                        {
+                            promiseRetainer.WaitAsync().Catch(catcher).Forget();
+                            return circularPromiseTGetter(promiseRetainer);
+                        }
+                    };
+
+                    bool adopted = false;
+                    TestAction<Promise> onAdoptCallbackAdded = (ref Promise p) => adopted = true;
+                    TestAction<Promise<int>> onAdoptCallbackAddedConvert = (ref Promise<int> p) => adopted = true;
+                    TestAction<Promise> onCallbackAdded = (ref Promise p) =>
+                    {
+                        if (!adopted)
+                        {
+                            p.Forget();
+                        }
+                        adopted = false;
+                    };
+                    TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
+                    {
+                        if (!adopted)
+                        {
+                            p.Forget();
+                        }
+                        adopted = false;
+                    };
+
+                    TestHelper.AddResolveCallbacks<int, string>(resolvePromiseRetainer.WaitAsync(),
+                        promiseToPromise: promiseToPromise,
+                        promiseToPromiseConvert: promiseToPromiseConvert,
+                        onCallbackAdded: onCallbackAdded,
+                        onCallbackAddedConvert: onCallbackAddedConvert,
+                        onAdoptCallbackAdded: onAdoptCallbackAdded,
+                        onAdoptCallbackAddedConvert: onAdoptCallbackAddedConvert
+                    );
+                    TestHelper.AddCallbacks<int, bool, string>(resolvePromiseRetainer.WaitAsync(),
+                        onReject: _ => rejectAssert(),
+                        onUnknownRejection: rejectAssert,
+                        promiseToPromise: promiseToPromise,
+                        promiseToPromiseConvert: promiseToPromiseConvert,
+                        onCallbackAdded: onCallbackAdded,
+                        onCallbackAddedConvert: onCallbackAddedConvert,
+                        onAdoptCallbackAdded: (ref Promise p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Reject,
+                        onAdoptCallbackAddedConvert: (ref Promise<int> p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Reject
+                    );
+                    TestHelper.AddContinueCallbacks<int, string>(resolvePromiseRetainer.WaitAsync(),
+                        promiseToPromise: promiseToPromise,
+                        promiseToPromiseConvert: promiseToPromiseConvert,
+                        onCallbackAdded: onCallbackAdded,
+                        onCallbackAddedConvert: onCallbackAddedConvert,
+                        onAdoptCallbackAdded: onAdoptCallbackAdded,
+                        onAdoptCallbackAddedConvert: onAdoptCallbackAddedConvert
+                    );
+
+                    TestHelper.AddCallbacks<int, string, string>(rejectPromiseRetainer.WaitAsync(),
+                        onResolve: resolveAssert,
+                        promiseToPromise: promiseToPromise,
+                        promiseToPromiseConvert: promiseToPromiseConvert,
+                        onCallbackAdded: onCallbackAdded,
+                        onCallbackAddedConvert: onCallbackAddedConvert,
+                        onAdoptCallbackAdded: (ref Promise p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Resolve,
+                        onAdoptCallbackAddedConvert: (ref Promise<int> p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Resolve,
+                        onAdoptCallbackAddedCatch: onAdoptCallbackAdded
+                    );
+                    TestHelper.AddContinueCallbacks<int, string>(rejectPromiseRetainer.WaitAsync(),
+                        promiseToPromise: promiseToPromise,
+                        promiseToPromiseConvert: promiseToPromiseConvert,
+                        onCallbackAdded: onCallbackAdded,
+                        onCallbackAddedConvert: onCallbackAddedConvert,
+                        onAdoptCallbackAdded: onAdoptCallbackAdded,
+                        onAdoptCallbackAddedConvert: onAdoptCallbackAddedConvert
+                    );
+
+                    resolveDeferred.Resolve();
+                    rejectDeferred.Reject("Fail value");
+
+                    Assert.AreEqual(
+                        (TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
+                        TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
+                        (TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks) * 2) * 2,
+                        exceptionCounter
+                    );
+                }
+            }
+        }
+
+        private static void TestCircularAwait_T(Func<Promise.Retainer, Promise> circularPromiseVoidGetter, Func<Promise<int>.Retainer, Promise<int>> circularPromiseTGetter)
+        {
+            string expectedMessage = "Circular Promise chain detected.";
+            var resolveDeferredInt = Promise.NewDeferred<int>();
+            var rejectDeferredInt = Promise.NewDeferred<int>();
+
+            using (var resolvePromiseIntRetainer = resolveDeferredInt.Promise.GetRetainer())
             {
-                promise.Catch(catcher).Forget();
-                return promise.ThenDuplicate().ThenDuplicate().Catch(() => { });
-            };
+                using (var rejectPromiseIntRetainer = rejectDeferredInt.Promise.GetRetainer())
+                {
+                    int exceptionCounter = 0;
 
-            Func<Promise<int>, Promise<int>> promiseToPromiseConvert = promise =>
-            {
-                promise.Catch(catcher).Forget();
-                return promise.ThenDuplicate().ThenDuplicate().Catch(() => 1);
-            };
+                    Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
+                    Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
+                    Action<object> catcher = (object o) =>
+                    {
+                        Assert.IsInstanceOf<InvalidReturnException>(o);
+                        Assert.AreEqual(expectedMessage, o.UnsafeAs<Exception>().Message);
+                        ++exceptionCounter;
+                    };
 
-            TestAction<Promise> onCallbackAdded = (ref Promise p) =>
-            {
-                var preserved = p = p.Preserve();
-                preserved
-                    .Catch(() => { })
-                    .Finally(() => preserved.Forget())
-                    .Forget();
-            };
-            TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
-            {
-                var preserved = p = p.Preserve();
-                preserved
-                    .Catch(() => { })
-                    .Finally(() => preserved.Forget())
-                    .Forget();
-            };
+                    Func<Promise, Promise> promiseToPromise = promise =>
+                    {
+                        using (var promiseRetainer = promise.GetRetainer())
+                        {
+                            promiseRetainer.WaitAsync().Catch(catcher).Forget();
+                            return circularPromiseVoidGetter(promiseRetainer);
+                        }
+                    };
 
-            TestHelper.AddResolveCallbacks<int, string>(resolvePromise,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
+                    Func<Promise<int>, Promise<int>> promiseToPromiseConvert = promise =>
+                    {
+                        using (var promiseRetainer = promise.GetRetainer())
+                        {
+                            promiseRetainer.WaitAsync().Catch(catcher).Forget();
+                            return circularPromiseTGetter(promiseRetainer);
+                        }
+                    };
+
+                    bool adopted = false;
+                    TestAction<Promise> onAdoptCallbackAdded = (ref Promise p) => adopted = true;
+                    TestAction<Promise<int>> onAdoptCallbackAddedConvert = (ref Promise<int> p) => adopted = true;
+                    TestAction<Promise> onCallbackAdded = (ref Promise p) =>
+                    {
+                        if (!adopted)
+                        {
+                            p.Forget();
+                        }
+                        adopted = false;
+                    };
+                    TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
+                    {
+                        if (!adopted)
+                        {
+                            p.Forget();
+                        }
+                        adopted = false;
+                    };
+
+                    TestHelper.AddResolveCallbacks<int, int, string>(resolvePromiseIntRetainer.WaitAsync(),
+                        promiseToPromise: promiseToPromise,
+                        promiseToPromiseConvert: promiseToPromiseConvert,
+                        onCallbackAdded: onCallbackAdded,
+                        onCallbackAddedConvert: onCallbackAddedConvert,
+                        onAdoptCallbackAdded: onAdoptCallbackAdded,
+                        onAdoptCallbackAddedConvert: onAdoptCallbackAddedConvert
+                    );
+                    TestHelper.AddCallbacks<int, int, string, string>(resolvePromiseIntRetainer.WaitAsync(),
+                        onReject: _ => rejectAssert(),
+                        onUnknownRejection: rejectAssert,
+                        promiseToPromise: promiseToPromise,
+                        promiseToPromiseConvert: promiseToPromiseConvert,
+                        onCallbackAdded: onCallbackAdded,
+                        onCallbackAddedConvert: onCallbackAddedConvert,
+                        onAdoptCallbackAdded: (ref Promise p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Reject,
+                        onAdoptCallbackAddedConvert: (ref Promise<int> p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Reject
+                    );
+                    TestHelper.AddContinueCallbacks<int, int, string>(resolvePromiseIntRetainer.WaitAsync(),
+                        promiseToPromise: promiseToPromise,
+                        promiseToPromiseConvert: promiseToPromiseConvert,
+                        onCallbackAdded: onCallbackAdded,
+                        onCallbackAddedConvert: onCallbackAddedConvert,
+                        onAdoptCallbackAdded: onAdoptCallbackAdded,
+                        onAdoptCallbackAddedConvert: onAdoptCallbackAddedConvert
+                    );
+
+                    TestHelper.AddCallbacks<int, int, string, string>(rejectPromiseIntRetainer.WaitAsync(),
+                        onResolve: _ => resolveAssert(),
+                        promiseToPromise: promiseToPromise,
+                        promiseToPromiseConvert: promiseToPromiseConvert,
+                        promiseToPromiseT: promiseToPromiseConvert,
+                        onCallbackAdded: onCallbackAdded,
+                        onCallbackAddedConvert: onCallbackAddedConvert,
+                        onCallbackAddedT: onCallbackAddedConvert,
+                        onAdoptCallbackAdded: (ref Promise p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Resolve,
+                        onAdoptCallbackAddedConvert: (ref Promise<int> p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Resolve,
+                        onAdoptCallbackAddedT: onAdoptCallbackAddedConvert
+                    );
+                    TestHelper.AddContinueCallbacks<int, int, string>(rejectPromiseIntRetainer.WaitAsync(),
+                        promiseToPromise: promiseToPromise,
+                        promiseToPromiseConvert: promiseToPromiseConvert,
+                        onCallbackAdded: onCallbackAdded,
+                        onCallbackAddedConvert: onCallbackAddedConvert,
+                        onAdoptCallbackAdded: onAdoptCallbackAdded,
+                        onAdoptCallbackAddedConvert: onAdoptCallbackAddedConvert
+                    );
+
+                    resolveDeferredInt.Resolve(1);
+                    rejectDeferredInt.Reject("Fail value");
+
+                    Assert.AreEqual(
+                        (TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
+                        TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
+                        (TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2) * 2,
+                        exceptionCounter
+                    );
+                }
+            }
+        }
+
+        [Test]
+        public void _2_3_5_IfXIsAPromiseAndItResultsInACircularPromiseChain_RejectPromiseWithInvalidReturnExceptionAsTheReason_void()
+        {
+            TestCircularAwait_void(
+                promiseRetainer => promiseRetainer.WaitAsync().ThenDuplicate().ThenDuplicate().Catch(() => { }),
+                promiseRetainer => promiseRetainer.WaitAsync().ThenDuplicate().ThenDuplicate().Catch(() => 1)
             );
-            TestHelper.AddCallbacks<int, bool, string>(resolvePromise,
-                onReject: _ => rejectAssert(),
-                onUnknownRejection: rejectAssert,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-            TestHelper.AddContinueCallbacks<int, string>(resolvePromise,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-
-            TestHelper.AddCallbacks<int, string, string>(rejectPromise,
-                onResolve: resolveAssert,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-            TestHelper.AddContinueCallbacks<int, string>(rejectPromise,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-
-            resolveDeferred.Resolve();
-            rejectDeferred.Reject("Fail value");
-
-            Assert.AreEqual(
-                (TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
-                TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
-                (TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks) * 2) * 2,
-                exceptionCounter
-            );
-
-            resolvePromise.Forget();
-            rejectPromise.Forget();
         }
 
         [Test]
         public void _2_3_5_IfXIsAPromiseAndItResultsInACircularPromiseChain_RejectPromiseWithInvalidReturnExceptionAsTheReason_T()
         {
-            var resolveDeferredInt = Promise.NewDeferred<int>();
-            var rejectDeferredInt = Promise.NewDeferred<int>();
-
-            var resolvePromiseInt = resolveDeferredInt.Promise.Preserve();
-            var rejectPromiseInt = rejectDeferredInt.Promise.Preserve();
-
-            int exceptionCounter = 0;
-
-            Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-            Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
-            Action<object> catcher = (object o) =>
-            {
-                Assert.IsInstanceOf<InvalidReturnException>(o);
-                ++exceptionCounter;
-            };
-
-            Func<Promise, Promise> promiseToPromise = promise =>
-            {
-                promise.Catch(catcher).Forget();
-                return promise.ThenDuplicate().ThenDuplicate().Catch(() => { });
-            };
-
-            Func<Promise<int>, Promise<int>> promiseToPromiseConvert = promise =>
-            {
-                promise.Catch(catcher).Forget();
-                return promise.ThenDuplicate().ThenDuplicate().Catch(() => 1);
-            };
-
-            TestAction<Promise> onCallbackAdded = (ref Promise p) =>
-            {
-                var preserved = p = p.Preserve();
-                preserved
-                    .Catch(() => { })
-                    .Finally(() => preserved.Forget())
-                    .Forget();
-            };
-            TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
-            {
-                var preserved = p = p.Preserve();
-                preserved
-                    .Catch(() => { })
-                    .Finally(() => preserved.Forget())
-                    .Forget();
-            };
-
-            TestHelper.AddResolveCallbacks<int, int, string>(resolvePromiseInt,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
+            TestCircularAwait_T(
+                promiseRetainer => promiseRetainer.WaitAsync().ThenDuplicate().ThenDuplicate().Catch(() => { }),
+                promiseRetainer => promiseRetainer.WaitAsync().ThenDuplicate().ThenDuplicate().Catch(() => 1)
             );
-            TestHelper.AddCallbacks<int, int, string, string>(resolvePromiseInt,
-                onReject: _ => rejectAssert(),
-                onUnknownRejection: rejectAssert,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-            TestHelper.AddContinueCallbacks<int, int, string>(resolvePromiseInt,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-
-            TestHelper.AddCallbacks<int, int, string, string>(rejectPromiseInt,
-                onResolve: _ => resolveAssert(),
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                promiseToPromiseT: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert,
-                onCallbackAddedT: onCallbackAddedConvert
-            );
-            TestHelper.AddContinueCallbacks<int, int, string>(rejectPromiseInt,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-
-            resolveDeferredInt.Resolve(1);
-            rejectDeferredInt.Reject("Fail value");
-
-            Assert.AreEqual(
-                (TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
-                TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
-                (TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2) * 2,
-                exceptionCounter
-            );
-
-            resolvePromiseInt.Forget();
-            rejectPromiseInt.Forget();
         }
 
         [Test]
         public void _2_3_5_IfXIsAPromiseAndItResultsInACircularPromiseChain_RejectPromiseWithInvalidReturnExceptionAsTheReason_race_void()
         {
             var extraDeferred = Promise.NewDeferred<int>();
-            var extraPromise = extraDeferred.Promise.Preserve();
-
-            var resolveDeferred = Promise.NewDeferred();
-            var rejectDeferred = Promise.NewDeferred();
-
-            var resolvePromise = resolveDeferred.Promise.Preserve();
-            var rejectPromise = rejectDeferred.Promise.Preserve();
-
-            int exceptionCounter = 0;
-
-            Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-            Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
-            Action<object> catcher = (object o) =>
+            using (var extraPromiseRetainer = extraDeferred.Promise.GetRetainer())
             {
-                Assert.IsInstanceOf<InvalidReturnException>(o);
-                ++exceptionCounter;
-            };
-
-            Func<Promise, Promise> promiseToPromise = promise =>
-            {
-                promise.Catch(catcher).Forget();
-                return Promise.Race(extraPromise, promise.ThenDuplicate().ThenDuplicate()).Catch(() => { });
-            };
-
-            Func<Promise<int>, Promise<int>> promiseToPromiseConvert = promise =>
-            {
-                promise.Catch(catcher).Forget();
-                return Promise<int>.Race(extraPromise, promise.ThenDuplicate().ThenDuplicate()).Catch(() => 1);
-            };
-
-            TestAction<Promise> onCallbackAdded = (ref Promise p) =>
-            {
-                var preserved = p = p.Preserve();
-                preserved
-                    .Catch(() => { })
-                    .Finally(() => preserved.Forget())
-                    .Forget();
-            };
-            TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
-            {
-                var preserved = p = p.Preserve();
-                preserved
-                    .Catch(() => { })
-                    .Finally(() => preserved.Forget())
-                    .Forget();
-            };
-
-            TestHelper.AddResolveCallbacks<int, string>(resolvePromise,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-            TestHelper.AddCallbacks<int, bool, string>(resolvePromise,
-                onReject: _ => rejectAssert(),
-                onUnknownRejection: rejectAssert,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-            TestHelper.AddContinueCallbacks<int, string>(resolvePromise,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-
-            TestHelper.AddCallbacks<int, string, string>(rejectPromise,
-                onResolve: resolveAssert,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-            TestHelper.AddContinueCallbacks<int, string>(rejectPromise,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-
-            resolveDeferred.Resolve();
-            rejectDeferred.Reject("Fail value");
-
-            Assert.AreEqual(
-                (TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
-                TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
-                (TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks) * 2) * 2,
-                exceptionCounter
-            );
-
-            resolvePromise.Forget();
-            rejectPromise.Forget();
-            extraDeferred.Resolve(1);
-            extraPromise.Forget();
+                TestCircularAwait_void(
+                    promiseRetainer => Promise.Race(
+                        promiseRetainer.WaitAsync().ThenDuplicate().ThenDuplicate(),
+                        extraPromiseRetainer.WaitAsync()
+                    ).Catch(() => { }),
+                    promiseRetainer => Promise<int>.Race(
+                        promiseRetainer.WaitAsync().ThenDuplicate().ThenDuplicate(),
+                        extraPromiseRetainer.WaitAsync()
+                    ).Catch(() => 1)
+                );
+                extraDeferred.Resolve(1);
+            }
         }
 
         [Test]
         public void _2_3_5_IfXIsAPromiseAndItResultsInACircularPromiseChain_RejectPromiseWithInvalidReturnExceptionAsTheReason_race_T()
         {
             var extraDeferred = Promise.NewDeferred<int>();
-            var extraPromise = extraDeferred.Promise.Preserve();
-
-            var resolveDeferredInt = Promise.NewDeferred<int>();
-            var rejectDeferredInt = Promise.NewDeferred<int>();
-
-            var resolvePromiseInt = resolveDeferredInt.Promise.Preserve();
-            var rejectPromiseInt = rejectDeferredInt.Promise.Preserve();
-
-            int exceptionCounter = 0;
-
-            Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-            Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
-            Action<object> catcher = (object o) =>
+            using (var extraPromiseRetainer = extraDeferred.Promise.GetRetainer())
             {
-                Assert.IsInstanceOf<InvalidReturnException>(o);
-                ++exceptionCounter;
-            };
-
-            Func<Promise, Promise> promiseToPromise = promise =>
-            {
-                promise.Catch(catcher).Forget();
-                return Promise.Race(promise.ThenDuplicate().ThenDuplicate(), extraPromise).Catch(() => { });
-            };
-
-            Func<Promise<int>, Promise<int>> promiseToPromiseConvert = promise =>
-            {
-                promise.Catch(catcher).Forget();
-                return Promise<int>.Race(promise.ThenDuplicate().ThenDuplicate(), extraPromise).Catch(() => 1);
-            };
-
-            TestAction<Promise> onCallbackAdded = (ref Promise p) =>
-            {
-                var preserved = p = p.Preserve();
-                preserved
-                    .Catch(() => { })
-                    .Finally(() => preserved.Forget())
-                    .Forget();
-            };
-            TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
-            {
-                var preserved = p = p.Preserve();
-                preserved
-                    .Catch(() => { })
-                    .Finally(() => preserved.Forget())
-                    .Forget();
-            };
-
-            TestHelper.AddResolveCallbacks<int, int, string>(resolvePromiseInt,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-            TestHelper.AddCallbacks<int, int, string, string>(resolvePromiseInt,
-                onReject: _ => rejectAssert(),
-                onUnknownRejection: rejectAssert,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-            TestHelper.AddContinueCallbacks<int, int, string>(resolvePromiseInt,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-
-            TestHelper.AddCallbacks<int, int, string, string>(rejectPromiseInt,
-                onResolve: _ => resolveAssert(),
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                promiseToPromiseT: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert,
-                onCallbackAddedT: onCallbackAddedConvert
-            );
-            TestHelper.AddContinueCallbacks<int, int, string>(rejectPromiseInt,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-
-            resolveDeferredInt.Resolve(1);
-            rejectDeferredInt.Reject("Fail value");
-
-            Assert.AreEqual(
-                (TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
-                TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
-                (TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2) * 2,
-                exceptionCounter
-            );
-
-            resolvePromiseInt.Forget();
-            rejectPromiseInt.Forget();
-            extraDeferred.Resolve(1);
-            extraPromise.Forget();
+                TestCircularAwait_T(
+                    promiseRetainer => Promise.Race(
+                        promiseRetainer.WaitAsync().ThenDuplicate().ThenDuplicate(),
+                        extraPromiseRetainer.WaitAsync()
+                    ).Catch(() => { }),
+                    promiseRetainer => Promise<int>.Race(
+                        promiseRetainer.WaitAsync().ThenDuplicate().ThenDuplicate(),
+                        extraPromiseRetainer.WaitAsync()
+                    ).Catch(() => 1)
+                );
+                extraDeferred.Resolve(1);
+            }
         }
 
         [Test]
         public void _2_3_5_IfXIsAPromiseAndItResultsInACircularPromiseChain_RejectPromiseWithInvalidReturnExceptionAsTheReason_first_void()
         {
             var extraDeferred = Promise.NewDeferred<int>();
-            var extraPromise = extraDeferred.Promise.Preserve();
-
-            var resolveDeferred = Promise.NewDeferred();
-            var rejectDeferred = Promise.NewDeferred();
-
-            var resolvePromise = resolveDeferred.Promise.Preserve();
-            var rejectPromise = rejectDeferred.Promise.Preserve();
-
-            int exceptionCounter = 0;
-
-            Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-            Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
-            Action<object> catcher = (object o) =>
+            using (var extraPromiseRetainer = extraDeferred.Promise.GetRetainer())
             {
-                Assert.IsInstanceOf<InvalidReturnException>(o);
-                ++exceptionCounter;
-            };
-
-            Func<Promise, Promise> promiseToPromise = promise =>
-            {
-                promise.Catch(catcher).Forget();
-                return Promise.First(promise.ThenDuplicate().ThenDuplicate(), extraPromise).Catch(() => { });
-            };
-
-            Func<Promise<int>, Promise<int>> promiseToPromiseConvert = promise =>
-            {
-                promise.Catch(catcher).Forget();
-                return Promise<int>.First(promise.ThenDuplicate().ThenDuplicate(), extraPromise).Catch(() => 1);
-            };
-
-            TestAction<Promise> onCallbackAdded = (ref Promise p) =>
-            {
-                var preserved = p = p.Preserve();
-                preserved
-                    .Catch(() => { })
-                    .Finally(() => preserved.Forget())
-                    .Forget();
-            };
-            TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
-            {
-                var preserved = p = p.Preserve();
-                preserved
-                    .Catch(() => { })
-                    .Finally(() => preserved.Forget())
-                    .Forget();
-            };
-
-            TestHelper.AddResolveCallbacks<int, string>(resolvePromise,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-            TestHelper.AddCallbacks<int, bool, string>(resolvePromise,
-                onReject: _ => rejectAssert(),
-                onUnknownRejection: rejectAssert,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-            TestHelper.AddContinueCallbacks<int, string>(resolvePromise,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-
-            TestHelper.AddCallbacks<int, string, string>(rejectPromise,
-                onResolve: resolveAssert,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-            TestHelper.AddContinueCallbacks<int, string>(rejectPromise,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-
-            resolveDeferred.Resolve();
-            rejectDeferred.Reject("Fail value");
-
-            Assert.AreEqual(
-                (TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
-                TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
-                (TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks) * 2) * 2,
-                exceptionCounter
-            );
-
-            resolvePromise.Forget();
-            rejectPromise.Forget();
-            extraDeferred.Resolve(1);
-            extraPromise.Forget();
+                TestCircularAwait_void(
+                    promiseRetainer => Promise.First(
+                        promiseRetainer.WaitAsync().ThenDuplicate().ThenDuplicate(),
+                        extraPromiseRetainer.WaitAsync()
+                    ).Catch(() => { }),
+                    promiseRetainer => Promise<int>.First(
+                        promiseRetainer.WaitAsync().ThenDuplicate().ThenDuplicate(),
+                        extraPromiseRetainer.WaitAsync()
+                    ).Catch(() => 1)
+                );
+                extraDeferred.Resolve(1);
+            }
         }
 
         [Test]
         public void _2_3_5_IfXIsAPromiseAndItResultsInACircularPromiseChain_RejectPromiseWithInvalidReturnExceptionAsTheReason_first_T()
         {
             var extraDeferred = Promise.NewDeferred<int>();
-            var extraPromise = extraDeferred.Promise.Preserve();
-
-            var resolveDeferredInt = Promise.NewDeferred<int>();
-            var rejectDeferredInt = Promise.NewDeferred<int>();
-
-            var resolvePromiseInt = resolveDeferredInt.Promise.Preserve();
-            var rejectPromiseInt = rejectDeferredInt.Promise.Preserve();
-
-            int exceptionCounter = 0;
-
-            Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-            Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
-            Action<object> catcher = (object o) =>
+            using (var extraPromiseRetainer = extraDeferred.Promise.GetRetainer())
             {
-                Assert.IsInstanceOf<InvalidReturnException>(o);
-                ++exceptionCounter;
-            };
-
-            Func<Promise, Promise> promiseToPromise = promise =>
-            {
-                promise.Catch(catcher).Forget();
-                return Promise.First(extraPromise, promise.ThenDuplicate().ThenDuplicate()).Catch(() => { });
-            };
-
-            Func<Promise<int>, Promise<int>> promiseToPromiseConvert = promise =>
-            {
-                promise.Catch(catcher).Forget();
-                return Promise<int>.First(extraPromise, promise.ThenDuplicate().ThenDuplicate()).Catch(() => 1);
-            };
-
-            TestAction<Promise> onCallbackAdded = (ref Promise p) =>
-            {
-                var preserved = p = p.Preserve();
-                preserved
-                    .Catch(() => { })
-                    .Finally(() => preserved.Forget())
-                    .Forget();
-            };
-            TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
-            {
-                var preserved = p = p.Preserve();
-                preserved
-                    .Catch(() => { })
-                    .Finally(() => preserved.Forget())
-                    .Forget();
-            };
-
-            TestHelper.AddResolveCallbacks<int, int, string>(resolvePromiseInt,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-            TestHelper.AddCallbacks<int, int, string, string>(resolvePromiseInt,
-                onReject: _ => rejectAssert(),
-                onUnknownRejection: rejectAssert,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-            TestHelper.AddContinueCallbacks<int, int, string>(resolvePromiseInt,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-
-            TestHelper.AddCallbacks<int, int, string, string>(rejectPromiseInt,
-                onResolve: _ => resolveAssert(),
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                promiseToPromiseT: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert,
-                onCallbackAddedT: onCallbackAddedConvert
-            );
-            TestHelper.AddContinueCallbacks<int, int, string>(rejectPromiseInt,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-
-            resolveDeferredInt.Resolve(1);
-            rejectDeferredInt.Reject("Fail value");
-
-            Assert.AreEqual(
-                (TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
-                TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
-                (TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2) * 2,
-                exceptionCounter
-            );
-
-            resolvePromiseInt.Forget();
-            rejectPromiseInt.Forget();
-            extraDeferred.Resolve(1);
-            extraPromise.Forget();
+                TestCircularAwait_T(
+                    promiseRetainer => Promise.First(
+                        promiseRetainer.WaitAsync().ThenDuplicate().ThenDuplicate(),
+                        extraPromiseRetainer.WaitAsync()
+                    ).Catch(() => { }),
+                    promiseRetainer => Promise<int>.First(
+                        promiseRetainer.WaitAsync().ThenDuplicate().ThenDuplicate(),
+                        extraPromiseRetainer.WaitAsync()
+                    ).Catch(() => 1)
+                );
+                extraDeferred.Resolve(1);
+            }
         }
 
         [Test]
         public void _2_3_5_IfXIsAPromiseAndItResultsInACircularPromiseChain_RejectPromiseWithInvalidReturnExceptionAsTheReason_all_void()
         {
             var extraDeferred = Promise.NewDeferred<int>();
-            var extraPromise = extraDeferred.Promise.Preserve();
-
-            var resolveDeferred = Promise.NewDeferred();
-            var rejectDeferred = Promise.NewDeferred();
-
-            var resolvePromise = resolveDeferred.Promise.Preserve();
-            var rejectPromise = rejectDeferred.Promise.Preserve();
-
-            int exceptionCounter = 0;
-
-            Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-            Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
-            Action<object> catcher = (object o) =>
+            using (var extraPromiseRetainer = extraDeferred.Promise.GetRetainer())
             {
-                Assert.IsInstanceOf<InvalidReturnException>(o);
-                ++exceptionCounter;
-            };
-
-            Func<Promise, Promise> promiseToPromise = promise =>
-            {
-                promise.Catch(catcher).Forget();
-                return Promise.All(promise.ThenDuplicate().ThenDuplicate(), extraPromise).Catch(() => { });
-            };
-
-            Func<Promise<int>, Promise<int>> promiseToPromiseConvert = promise =>
-            {
-                promise.Catch(catcher).Forget();
-                return Promise<int>.All(promise.ThenDuplicate().ThenDuplicate(), extraPromise)
-                    .Catch(() => { })
-                    .Then(() => 1);
-            };
-
-            TestAction<Promise> onCallbackAdded = (ref Promise p) =>
-            {
-                var preserved = p = p.Preserve();
-                preserved
-                    .Catch(() => { })
-                    .Finally(() => preserved.Forget())
-                    .Forget();
-            };
-            TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
-            {
-                var preserved = p = p.Preserve();
-                preserved
-                    .Catch(() => { })
-                    .Finally(() => preserved.Forget())
-                    .Forget();
-            };
-
-            TestHelper.AddResolveCallbacks<int, string>(resolvePromise,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-            TestHelper.AddCallbacks<int, bool, string>(resolvePromise,
-                onReject: _ => rejectAssert(),
-                onUnknownRejection: rejectAssert,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-            TestHelper.AddContinueCallbacks<int, string>(resolvePromise,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-
-            TestHelper.AddCallbacks<int, string, string>(rejectPromise,
-                onResolve: resolveAssert,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-            TestHelper.AddContinueCallbacks<int, string>(rejectPromise,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-
-            resolveDeferred.Resolve();
-            rejectDeferred.Reject("Fail value");
-
-            Assert.AreEqual(
-                (TestHelper.resolveVoidPromiseVoidCallbacks + TestHelper.resolveVoidPromiseConvertCallbacks +
-                TestHelper.rejectVoidPromiseVoidCallbacks + TestHelper.rejectVoidPromiseConvertCallbacks +
-                (TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks) * 2) * 2,
-                exceptionCounter
-            );
-
-            resolvePromise.Forget();
-            rejectPromise.Forget();
-            extraDeferred.Resolve(1);
-            extraPromise.Forget();
+                TestCircularAwait_void(
+                    promiseRetainer => Promise.All(
+                        promiseRetainer.WaitAsync().ThenDuplicate().ThenDuplicate(),
+                        extraPromiseRetainer.WaitAsync()
+                    ).Catch(() => { }),
+                    promiseRetainer => Promise<int>.All(
+                        promiseRetainer.WaitAsync().ThenDuplicate().ThenDuplicate(),
+                        extraPromiseRetainer.WaitAsync()
+                    ).Catch(() => { }).Then(() => 1)
+                );
+                extraDeferred.Resolve(1);
+            }
         }
 
         [Test]
         public void _2_3_5_IfXIsAPromiseAndItResultsInACircularPromiseChain_RejectPromiseWithInvalidReturnExceptionAsTheReason_all_T()
         {
             var extraDeferred = Promise.NewDeferred<int>();
-            var extraPromise = extraDeferred.Promise.Preserve();
-
-            var resolveDeferredInt = Promise.NewDeferred<int>();
-            var rejectDeferredInt = Promise.NewDeferred<int>();
-
-            var resolvePromiseInt = resolveDeferredInt.Promise.Preserve();
-            var rejectPromiseInt = rejectDeferredInt.Promise.Preserve();
-
-            int exceptionCounter = 0;
-
-            Action rejectAssert = () => Assert.Fail("Promise was rejected when it should have been resolved.");
-            Action resolveAssert = () => Assert.Fail("Promise was resolved when it should have been rejected.");
-            Action<object> catcher = (object o) =>
+            using (var extraPromiseRetainer = extraDeferred.Promise.GetRetainer())
             {
-                Assert.IsInstanceOf<InvalidReturnException>(o);
-                ++exceptionCounter;
-            };
-
-            Func<Promise, Promise> promiseToPromise = promise =>
-            {
-                promise.Catch(catcher).Forget();
-                return Promise.All(extraPromise, promise.ThenDuplicate().ThenDuplicate())
-                    .Catch(() => { });
-            };
-
-            Func<Promise<int>, Promise<int>> promiseToPromiseConvert = promise =>
-            {
-                promise.Catch(catcher).Forget();
-                return Promise<int>.All(extraPromise, promise.ThenDuplicate().ThenDuplicate())
-                    .Catch(() => { })
-                    .Then(() => 1);
-            };
-
-            TestAction<Promise> onCallbackAdded = (ref Promise p) =>
-            {
-                var preserved = p = p.Preserve();
-                preserved
-                    .Catch(() => { })
-                    .Finally(() => preserved.Forget())
-                    .Forget();
-            };
-            TestAction<Promise<int>> onCallbackAddedConvert = (ref Promise<int> p) =>
-            {
-                var preserved = p = p.Preserve();
-                preserved
-                    .Catch(() => { })
-                    .Finally(() => preserved.Forget())
-                    .Forget();
-            };
-
-            TestHelper.AddResolveCallbacks<int, int, string>(resolvePromiseInt,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-            TestHelper.AddCallbacks<int, int, string, string>(resolvePromiseInt,
-                onReject: _ => rejectAssert(),
-                onUnknownRejection: rejectAssert,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-            TestHelper.AddContinueCallbacks<int, int, string>(resolvePromiseInt,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-
-            TestHelper.AddCallbacks<int, int, string, string>(rejectPromiseInt,
-                onResolve: _ => resolveAssert(),
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                promiseToPromiseT: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert,
-                onCallbackAddedT: onCallbackAddedConvert
-            );
-            TestHelper.AddContinueCallbacks<int, int, string>(rejectPromiseInt,
-                promiseToPromise: promiseToPromise,
-                promiseToPromiseConvert: promiseToPromiseConvert,
-                onCallbackAdded: onCallbackAdded,
-                onCallbackAddedConvert: onCallbackAddedConvert
-            );
-
-            resolveDeferredInt.Resolve(1);
-            rejectDeferredInt.Reject("Fail value");
-
-            Assert.AreEqual(
-                (TestHelper.resolveTPromiseVoidCallbacks + TestHelper.resolveTPromiseConvertCallbacks +
-                TestHelper.rejectTPromiseVoidCallbacks + TestHelper.rejectTPromiseConvertCallbacks + TestHelper.rejectTPromiseTCallbacks +
-                (TestHelper.continueTPromiseVoidCallbacks + TestHelper.continueTPromiseConvertCallbacks) * 2) * 2,
-                exceptionCounter
-            );
-
-            resolvePromiseInt.Forget();
-            rejectPromiseInt.Forget();
-            extraDeferred.Resolve(1);
-            extraPromise.Forget();
+                TestCircularAwait_T(
+                    promiseRetainer => Promise.All(
+                        promiseRetainer.WaitAsync().ThenDuplicate().ThenDuplicate(),
+                        extraPromiseRetainer.WaitAsync()
+                    ).Catch(() => { }),
+                    promiseRetainer => Promise<int>.All(
+                        promiseRetainer.WaitAsync().ThenDuplicate().ThenDuplicate(),
+                        extraPromiseRetainer.WaitAsync()
+                    ).Catch(() => { }).Then(() => 1)
+                );
+                extraDeferred.Resolve(1);
+            }
         }
 #endif
     }

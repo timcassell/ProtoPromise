@@ -336,39 +336,39 @@ namespace ProtoPromiseTests.APIs
             string reason = "reject";
 
             var deferred = Promise.NewDeferred();
-            var promise1 = deferred.Promise.Preserve();
-            var promise2 = Promise.Rejected(reason).Preserve();
-
-            Promise.AllSettled(promise1, promise2)
-                .Finally(() => ++invokeCount)
-                .Then(results =>
+            using (var promiseRetainer1 = deferred.Promise.GetRetainer())
+            {
+                using (var promiseRetainer2 = Promise.Rejected(reason).GetRetainer())
                 {
-                    Assert.AreEqual(2, results.Count);
-                    Assert.AreEqual(Promise.State.Resolved, results[0].State);
-                    Assert.AreEqual(Promise.State.Rejected, results[1].State);
-                    Assert.AreEqual(reason, results[1].Reason);
-                })
-                .Forget();
+                    Promise.AllSettled(promiseRetainer1.WaitAsync(), promiseRetainer2.WaitAsync())
+                        .Finally(() => ++invokeCount)
+                        .Then(results =>
+                        {
+                            Assert.AreEqual(2, results.Count);
+                            Assert.AreEqual(Promise.State.Resolved, results[0].State);
+                            Assert.AreEqual(Promise.State.Rejected, results[1].State);
+                            Assert.AreEqual(reason, results[1].Reason);
+                        })
+                        .Forget();
 
-            Promise.AllSettled(promise2, promise1)
-                .Finally(() => ++invokeCount)
-                .Then(results =>
-                {
-                    Assert.AreEqual(2, results.Count);
-                    Assert.AreEqual(Promise.State.Rejected, results[0].State);
-                    Assert.AreEqual(Promise.State.Resolved, results[1].State);
-                    Assert.AreEqual(reason, results[0].Reason);
-                })
-                .Forget();
+                    Promise.AllSettled(promiseRetainer2.WaitAsync(), promiseRetainer1.WaitAsync())
+                        .Finally(() => ++invokeCount)
+                        .Then(results =>
+                        {
+                            Assert.AreEqual(2, results.Count);
+                            Assert.AreEqual(Promise.State.Rejected, results[0].State);
+                            Assert.AreEqual(Promise.State.Resolved, results[1].State);
+                            Assert.AreEqual(reason, results[0].Reason);
+                        })
+                        .Forget();
 
-            Assert.AreEqual(0, invokeCount);
+                    Assert.AreEqual(0, invokeCount);
 
-            deferred.Resolve();
+                    deferred.Resolve();
 
-            Assert.AreEqual(2, invokeCount);
-
-            promise1.Forget();
-            promise2.Forget();
+                    Assert.AreEqual(2, invokeCount);
+                }
+            }
         }
 
         [Test]
@@ -378,41 +378,41 @@ namespace ProtoPromiseTests.APIs
             string reason = "reject";
 
             var deferred = Promise.NewDeferred<int>();
-            var promise1 = deferred.Promise.Preserve();
-            var promise2 = Promise<int>.Rejected(reason).Preserve();
-
-            Promise<int>.AllSettled(promise1, promise2)
-                .Finally(() => ++invokeCount)
-                .Then(results =>
+            using (var promiseRetainer1 = deferred.Promise.GetRetainer())
+            {
+                using (var promiseRetainer2 = Promise<int>.Rejected(reason).GetRetainer())
                 {
-                    Assert.AreEqual(2, results.Count);
-                    Assert.AreEqual(Promise.State.Resolved, results[0].State);
-                    Assert.AreEqual(Promise.State.Rejected, results[1].State);
-                    Assert.AreEqual(1, results[0].Value);
-                    Assert.AreEqual(reason, results[1].Reason);
-                })
-                .Forget();
+                    Promise<int>.AllSettled(promiseRetainer1.WaitAsync(), promiseRetainer2.WaitAsync())
+                        .Finally(() => ++invokeCount)
+                        .Then(results =>
+                        {
+                            Assert.AreEqual(2, results.Count);
+                            Assert.AreEqual(Promise.State.Resolved, results[0].State);
+                            Assert.AreEqual(Promise.State.Rejected, results[1].State);
+                            Assert.AreEqual(1, results[0].Value);
+                            Assert.AreEqual(reason, results[1].Reason);
+                        })
+                        .Forget();
 
-            Promise<int>.AllSettled(promise2, promise1)
-                .Finally(() => ++invokeCount)
-                .Then(results =>
-                {
-                    Assert.AreEqual(2, results.Count);
-                    Assert.AreEqual(Promise.State.Rejected, results[0].State);
-                    Assert.AreEqual(Promise.State.Resolved, results[1].State);
-                    Assert.AreEqual(1, results[1].Value);
-                    Assert.AreEqual(reason, results[0].Reason);
-                })
-                .Forget();
+                    Promise<int>.AllSettled(promiseRetainer2.WaitAsync(), promiseRetainer1.WaitAsync())
+                        .Finally(() => ++invokeCount)
+                        .Then(results =>
+                        {
+                            Assert.AreEqual(2, results.Count);
+                            Assert.AreEqual(Promise.State.Rejected, results[0].State);
+                            Assert.AreEqual(Promise.State.Resolved, results[1].State);
+                            Assert.AreEqual(1, results[1].Value);
+                            Assert.AreEqual(reason, results[0].Reason);
+                        })
+                        .Forget();
 
-            Assert.AreEqual(0, invokeCount);
+                    Assert.AreEqual(0, invokeCount);
 
-            deferred.Resolve(1);
+                    deferred.Resolve(1);
 
-            Assert.AreEqual(2, invokeCount);
-
-            promise1.Forget();
-            promise2.Forget();
+                    Assert.AreEqual(2, invokeCount);
+                }
+            }
         }
 
         [Test]
@@ -619,37 +619,37 @@ namespace ProtoPromiseTests.APIs
             int invokeCount = 0;
 
             var deferred = Promise.NewDeferred();
-            var promise1 = deferred.Promise.Preserve();
-            var promise2 = Promise.Canceled().Preserve();
-
-            Promise.AllSettled(promise1, promise2)
-                .Then(results =>
+            using (var promiseRetainer1 = deferred.Promise.GetRetainer())
+            {
+                using (var promiseRetainer2 = Promise.Canceled().GetRetainer())
                 {
-                    ++invokeCount;
-                    Assert.AreEqual(2, results.Count);
-                    Assert.AreEqual(Promise.State.Resolved, results[0].State);
-                    Assert.AreEqual(Promise.State.Canceled, results[1].State);
-                })
-                .Forget();
+                    Promise.AllSettled(promiseRetainer1.WaitAsync(), promiseRetainer2.WaitAsync())
+                        .Then(results =>
+                        {
+                            ++invokeCount;
+                            Assert.AreEqual(2, results.Count);
+                            Assert.AreEqual(Promise.State.Resolved, results[0].State);
+                            Assert.AreEqual(Promise.State.Canceled, results[1].State);
+                        })
+                        .Forget();
 
-            Promise.AllSettled(promise2, promise1)
-                .Then(results =>
-                {
-                    ++invokeCount;
-                    Assert.AreEqual(2, results.Count);
-                    Assert.AreEqual(Promise.State.Canceled, results[0].State);
-                    Assert.AreEqual(Promise.State.Resolved, results[1].State);
-                })
-                .Forget();
+                    Promise.AllSettled(promiseRetainer2.WaitAsync(), promiseRetainer1.WaitAsync())
+                        .Then(results =>
+                        {
+                            ++invokeCount;
+                            Assert.AreEqual(2, results.Count);
+                            Assert.AreEqual(Promise.State.Canceled, results[0].State);
+                            Assert.AreEqual(Promise.State.Resolved, results[1].State);
+                        })
+                        .Forget();
 
-            Assert.AreEqual(0, invokeCount);
+                    Assert.AreEqual(0, invokeCount);
 
-            deferred.Resolve();
+                    deferred.Resolve();
 
-            Assert.AreEqual(2, invokeCount);
-
-            promise1.Forget();
-            promise2.Forget();
+                    Assert.AreEqual(2, invokeCount);
+                }
+            }
         }
 
         [Test]
@@ -658,39 +658,39 @@ namespace ProtoPromiseTests.APIs
             int invokeCount = 0;
 
             var deferred = Promise.NewDeferred<int>();
-            var promise1 = deferred.Promise.Preserve();
-            var promise2 = Promise<int>.Canceled().Preserve();
-
-            Promise<int>.AllSettled(promise1, promise2)
-                .Then(results =>
+            using (var promiseRetainer1 = deferred.Promise.GetRetainer())
+            {
+                using (var promiseRetainer2 = Promise<int>.Canceled().GetRetainer())
                 {
-                    ++invokeCount;
-                    Assert.AreEqual(2, results.Count);
-                    Assert.AreEqual(Promise.State.Resolved, results[0].State);
-                    Assert.AreEqual(Promise.State.Canceled, results[1].State);
-                    Assert.AreEqual(1, results[0].Value);
-                })
-                .Forget();
+                    Promise<int>.AllSettled(promiseRetainer1.WaitAsync(), promiseRetainer2.WaitAsync())
+                        .Then(results =>
+                        {
+                            ++invokeCount;
+                            Assert.AreEqual(2, results.Count);
+                            Assert.AreEqual(Promise.State.Resolved, results[0].State);
+                            Assert.AreEqual(Promise.State.Canceled, results[1].State);
+                            Assert.AreEqual(1, results[0].Value);
+                        })
+                        .Forget();
 
-            Promise<int>.AllSettled(promise2, promise1)
-                .Then(results =>
-                {
-                    ++invokeCount;
-                    Assert.AreEqual(2, results.Count);
-                    Assert.AreEqual(Promise.State.Canceled, results[0].State);
-                    Assert.AreEqual(Promise.State.Resolved, results[1].State);
-                    Assert.AreEqual(1, results[1].Value);
-                })
-                .Forget();
+                    Promise<int>.AllSettled(promiseRetainer2.WaitAsync(), promiseRetainer1.WaitAsync())
+                        .Then(results =>
+                        {
+                            ++invokeCount;
+                            Assert.AreEqual(2, results.Count);
+                            Assert.AreEqual(Promise.State.Canceled, results[0].State);
+                            Assert.AreEqual(Promise.State.Resolved, results[1].State);
+                            Assert.AreEqual(1, results[1].Value);
+                        })
+                        .Forget();
 
-            Assert.AreEqual(0, invokeCount);
+                    Assert.AreEqual(0, invokeCount);
 
-            deferred.Resolve(1);
+                    deferred.Resolve(1);
 
-            Assert.AreEqual(2, invokeCount);
-
-            promise1.Forget();
-            promise2.Forget();
+                    Assert.AreEqual(2, invokeCount);
+                }
+            }
         }
     }
 }

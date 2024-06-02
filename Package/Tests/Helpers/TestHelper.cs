@@ -628,16 +628,19 @@ namespace ProtoPromiseTests
         public const int cancelTCallbacks = (72 + 8 + 8) * callbacksMultiplier;
 
         public const int onCancelCallbacks = 4 * callbacksMultiplier;
+        public const int onCancelPromiseCallbacks = 2 * callbacksMultiplier;
 
         public static IEnumerable<Promise> GetTestablePromises(Promise.Retainer promiseRetainer, bool includePreserved = true)
         {
             // This helps to test several different kinds of promises to make sure they all work with the same API.
             if (includePreserved)
             {
+#pragma warning disable CS0618 // Type or member is obsolete
                 var preservedPromise = promiseRetainer.WaitAsync().Preserve();
                 yield return preservedPromise;
                 yield return preservedPromise.Duplicate();
                 preservedPromise.Forget();
+#pragma warning restore CS0618 // Type or member is obsolete
             }
             yield return promiseRetainer.WaitAsync();
             var deferred = Promise.NewDeferred();
@@ -667,10 +670,12 @@ namespace ProtoPromiseTests
             // This helps to test several different kinds of promises to make sure they all work with the same API.
             if (includePreserved)
             {
+#pragma warning disable CS0618 // Type or member is obsolete
                 var preservedPromise = promiseRetainer.WaitAsync().Preserve();
                 yield return preservedPromise;
                 yield return preservedPromise.Duplicate();
                 preservedPromise.Forget();
+#pragma warning restore CS0618 // Type or member is obsolete
             }
             yield return promiseRetainer.WaitAsync();
             var deferred = Promise.NewDeferred<T>();
@@ -1032,17 +1037,17 @@ namespace ProtoPromiseTests
                 retainer.WaitAsync().Catch(() => { }).Forget(); // Suppress any rejections from the retained promise.
 
                 AddCallbacksWithCancelation(
-                retainer.WaitAsync(),
-                onResolve, onReject, onUnknownRejection, convertValue,
-                onResolveCapture, onRejectCapture, onUnknownRejectionCapture, captureValue,
-                promiseToPromise, promiseToPromiseConvert,
-                onCallbackAdded, onCallbackAddedConvert,
-                default(CancelationToken), default(CancelationToken),
-                onCancel,
-                onDirectCallbackAdded, onDirectCallbackAddedConvert, onDirectCallbackAddedCatch,
-                onAdoptCallbackAdded, onAdoptCallbackAddedConvert, onAdoptCallbackAddedCatch,
-                configureAwaitType, configureAwaitForceAsync
-            );
+                    retainer.WaitAsync(),
+                    onResolve, onReject, onUnknownRejection, convertValue,
+                    onResolveCapture, onRejectCapture, onUnknownRejectionCapture, captureValue,
+                    promiseToPromise, promiseToPromiseConvert,
+                    onCallbackAdded, onCallbackAddedConvert,
+                    default(CancelationToken), default(CancelationToken),
+                    onCancel,
+                    onDirectCallbackAdded, onDirectCallbackAddedConvert, onDirectCallbackAddedCatch,
+                    onAdoptCallbackAdded, onAdoptCallbackAddedConvert, onAdoptCallbackAddedCatch,
+                    configureAwaitType, configureAwaitForceAsync
+                );
 
                 CancelationSource cancelationSource = CancelationSource.New();
                 AddCallbacksWithCancelation(
@@ -3790,6 +3795,236 @@ namespace ProtoPromiseTests
                 () => Promise.Resolved().ContinueWith(1, (cv, _) => returnProvider()),
                 () => Promise.Resolved(1).ContinueWith(_ => returnProvider()),
                 () => Promise.Resolved(1).ContinueWith(1, (cv, _) => returnProvider()),
+            };
+        }
+
+        public static (Func<Promise, Promise> func, AdoptLocation adoptLocation)[] GetFunctionsAdoptingPromiseVoidToVoid<TCatch>(Func<Promise> returnProvider)
+        {
+            return new (Func<Promise, Promise>, AdoptLocation)[]
+            {
+                (promise => promise.Then(() => returnProvider()), AdoptLocation.Resolve),
+                (promise => promise.Then(1, cv => returnProvider()), AdoptLocation.Resolve),
+
+
+                (promise => promise.Then(() => returnProvider(), () => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(() => returnProvider(), (TCatch r) => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(() => returnProvider(), () => returnProvider()), AdoptLocation.Resolve),
+                (promise => promise.Then(() => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Resolve),
+
+                (promise => promise.Then(() => { }, () => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => { }, (TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(() => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, cv => returnProvider(), () => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(1, cv => returnProvider(), (TCatch r) => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(1, cv => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, cv => { }, () => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => { }, (TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(() => returnProvider(), 1, cv => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(() => returnProvider(), 1, (int cv, TCatch r) => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(() => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(() => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(() => { }, 1, cv => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => { }, 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(() => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, cv => returnProvider(), 1, cv => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(1, cv => returnProvider(), 1, (int cv, TCatch r) => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(1, cv => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, cv => { }, 1, cv => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => { }, 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+
+                (promise => promise.Catch(() => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Catch((TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Catch(1, cv => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Catch(1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Reject),
+
+
+                (promise => promise.ContinueWith(_ => returnProvider()), AdoptLocation.Both),
+                (promise => promise.ContinueWith(1, (cv, _) => returnProvider()), AdoptLocation.Both),
+            };
+        }
+
+        public static (Func<Promise<T>, Promise> func, AdoptLocation adoptLocation)[] GetFunctionsAdoptingPromiseTToVoid<T, TCatch>(Func<Promise> returnProvider)
+        {
+            return new (Func<Promise<T>, Promise> func, AdoptLocation)[]
+            {
+                (promise => promise.Then(v => returnProvider()), AdoptLocation.Resolve),
+                (promise => promise.Then(1, (cv, v) => returnProvider()), AdoptLocation.Resolve),
+
+                (promise => promise.Then(v => returnProvider(), () => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(v => returnProvider(), (TCatch r) => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(v => returnProvider(), () => returnProvider()), AdoptLocation.Resolve),
+                (promise => promise.Then(v => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Resolve),
+
+                (promise => promise.Then(1, (cv, v) => returnProvider(), () => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), (TCatch r) => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(v => returnProvider(), 1, cv => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(v => returnProvider(), 1, (int cv, TCatch r) => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(v => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(v => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, (cv, v) => returnProvider(), 1, cv => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), 1, (int cv, TCatch r) => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.ContinueWith(_ => returnProvider()), AdoptLocation.Both),
+                (promise => promise.ContinueWith(1, (cv, _) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(() => { }, () => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => { }, (TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(() => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+                                   
+                (promise => promise.Then(1, cv => { }, () => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => { }, (TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+                                   
+                (promise => promise.Then(() => { }, 1, cv => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => { }, 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(() => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+                                   
+                (promise => promise.Then(1, cv => { }, 1, cv => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => { }, 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+                                   
+                                   
+                (promise => promise.Catch(() => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Catch((TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Catch(1, cv => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Catch(1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Reject),
+            };
+        }
+
+        public static (Func<Promise, Promise<T>> func, AdoptLocation adoptLocation)[] GetFunctionsAdoptingPromiseVoidToT<T, TCatch>(Func<Promise<T>> returnProvider)
+        {
+            return new (Func<Promise, Promise<T>> func, AdoptLocation adoptLocation)[]
+            {
+                (promise => promise.Then(() => returnProvider()), AdoptLocation.Resolve),
+                (promise => promise.Then(1, cv => returnProvider()), AdoptLocation.Resolve),
+
+
+                (promise => promise.Then(() => returnProvider(), () => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(() => returnProvider(), (TCatch r) => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(() => returnProvider(), () => returnProvider()), AdoptLocation.Resolve),
+                (promise => promise.Then(() => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Resolve),
+
+                (promise => promise.Then(() => default(T), () => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => default(T), (TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(() => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, cv => returnProvider(), () => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(1, cv => returnProvider(), (TCatch r) => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(1, cv => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, cv => default(T), () => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => default(T), (TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(() => returnProvider(), 1, cv => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(() => returnProvider(), 1, (int cv, TCatch r) => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(() => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(() => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(() => default(T), 1, cv => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => default(T), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(() => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, cv => returnProvider(), 1, cv => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(1, cv => returnProvider(), 1, (int cv, TCatch r) => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(1, cv => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, cv => default(T), 1, cv => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => default(T), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+
+                (promise => promise.ContinueWith(_ => returnProvider()), AdoptLocation.Both),
+                (promise => promise.ContinueWith(1, (cv, _) => returnProvider()), AdoptLocation.Both),
+            };
+        }
+
+        public static (Func<Promise<T>, Promise<T>> func, AdoptLocation adoptLocation)[] GetFunctionsAdoptingPromiseTToT<T, TCatch>(Func<Promise<T>> returnProvider)
+        {
+            return new (Func<Promise<T>, Promise<T>> func, AdoptLocation adoptLocation)[]
+            {
+                (promise => promise.Then(v => returnProvider()), AdoptLocation.Resolve),
+                (promise => promise.Then(1, (cv, v) => returnProvider()), AdoptLocation.Resolve),
+
+                (promise => promise.Then(v => returnProvider(), () => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(v => returnProvider(), (TCatch r) => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(v => returnProvider(), () => returnProvider()), AdoptLocation.Resolve),
+                (promise => promise.Then(v => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Resolve),
+
+                (promise => promise.Then(1, (cv, v) => returnProvider(), () => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), (TCatch r) => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(v => returnProvider(), 1, cv => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(v => returnProvider(), 1, (int cv, TCatch r) => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(v => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(v => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, (cv, v) => returnProvider(), 1, cv => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), 1, (int cv, TCatch r) => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.ContinueWith(_ => returnProvider()), AdoptLocation.Both),
+                (promise => promise.ContinueWith(1, (cv, _) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(() => default(T), () => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => default(T), (TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(() => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, cv => default(T), () => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => default(T), (TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(() => default(T), 1, cv => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => default(T), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(() => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, cv => default(T), 1, cv => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => default(T), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+
+                (promise => promise.Catch(() => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Catch((TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Catch(1, cv => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Catch(1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Reject),
             };
         }
     }

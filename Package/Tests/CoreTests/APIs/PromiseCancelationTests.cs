@@ -7,6 +7,7 @@
 using NUnit.Framework;
 using Proto.Promises;
 using System;
+using System.Collections.Generic;
 
 namespace ProtoPromiseTests.APIs
 {
@@ -434,29 +435,25 @@ namespace ProtoPromiseTests.APIs
             public void ItMustBeCalledAfterPromiseIsCanceled()
             {
                 var canceled = false;
-                CancelationSource cancelationSource = CancelationSource.New();
                 var deferred = Promise.NewDeferred<int>();
-                cancelationSource.Token.Register(deferred);
-                var promise = deferred.Promise.Preserve();
+                using (var promiseRetainer = deferred.Promise.GetRetainer())
+                {
+                    TestHelper.AddCancelCallbacks<float>(promiseRetainer.WaitAsync(),
+                        onCancel: () =>
+                        {
+                            canceled = true;
+                        }
+                    );
+                    TestHelper.AddCancelCallbacks<int, float>(promiseRetainer.WaitAsync(),
+                        onCancel: () =>
+                        {
+                            canceled = true;
+                        }
+                    );
 
-                TestHelper.AddCancelCallbacks<float>(promise,
-                    onCancel: () =>
-                    {
-                        canceled = true;
-                    }
-                );
-                TestHelper.AddCancelCallbacks<int, float>(promise,
-                    onCancel: () =>
-                    {
-                        canceled = true;
-                    }
-                );
-                cancelationSource.Cancel();
-
-                Assert.True(canceled);
-
-                cancelationSource.Dispose();
-                promise.Forget();
+                    deferred.Cancel();
+                    Assert.True(canceled);
+                }
             }
 
             [Test]
@@ -607,55 +604,45 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void IfWhenPromiseCancelationIsCanceled_AllRespectiveOnCanceledCallbacksMustExecuteInTheOrderOfTheirOriginatingCallsToCatchCancelation_void()
+            public void IfWhenPromiseCanceled_AllRespectiveOnCanceledCallbacksMustExecuteInTheOrderOfTheirOriginatingCallsToCatchCancelation_void()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
                 var deferred = Promise.NewDeferred();
-                cancelationSource.Token.Register(deferred);
-                var promise = deferred.Promise.Preserve();
-
-                int counter = 0;
-
-                for (int i = 0; i < 10; ++i)
+                using (var promiseRetainer = deferred.Promise.GetRetainer())
                 {
-                    int index = i;
-                    promise
-                        .CatchCancelation(() => Assert.AreEqual(index, counter++))
-                        .Forget();
+                    int counter = 0;
+
+                    for (int i = 0; i < 10; ++i)
+                    {
+                        int index = i;
+                        promiseRetainer.WaitAsync()
+                            .CatchCancelation(() => Assert.AreEqual(index, counter++))
+                            .Forget();
+                    }
+
+                    deferred.Cancel();
+                    Assert.AreEqual(10, counter);
                 }
-
-                cancelationSource.Cancel();
-
-                Assert.AreEqual(10, counter);
-
-                cancelationSource.Dispose();
-                promise.Forget();
             }
 
             [Test]
-            public void IfWhenPromiseCancelationIsCanceled_AllRespectiveOnCanceledCallbacksMustExecuteInTheOrderOfTheirOriginatingCallsToCatchCancelation_T()
+            public void IfWhenPromiseIsCanceled_AllRespectiveOnCanceledCallbacksMustExecuteInTheOrderOfTheirOriginatingCallsToCatchCancelation_T()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
                 var deferred = Promise.NewDeferred<int>();
-                cancelationSource.Token.Register(deferred);
-                var promise = deferred.Promise.Preserve();
-
-                int counter = 0;
-
-                for (int i = 0; i < 10; ++i)
+                using (var promiseRetainer = deferred.Promise.GetRetainer())
                 {
-                    int index = i;
-                    promise
-                        .CatchCancelation(() => Assert.AreEqual(index, counter++))
-                        .Forget();
+                    int counter = 0;
+
+                    for (int i = 0; i < 10; ++i)
+                    {
+                        int index = i;
+                        promiseRetainer.WaitAsync()
+                            .CatchCancelation(() => Assert.AreEqual(index, counter++))
+                            .Forget();
+                    }
+
+                    deferred.Cancel();
+                    Assert.AreEqual(10, counter);
                 }
-
-                cancelationSource.Cancel();
-
-                Assert.AreEqual(10, counter);
-
-                cancelationSource.Dispose();
-                promise.Forget();
             }
         }
 
@@ -871,105 +858,75 @@ namespace ProtoPromiseTests.APIs
             [Test]
             public void IfPromiseAndXReferToTheSameObject_RejectPromiseWithInvalidReturnExceptionAsTheReason_void()
             {
+                string expectedMessage = "A Promise cannot wait on itself.";
                 int exceptionCounter = 0;
 
+                // When the promise awaits itself, it becomes rejected and invalidated, so the InvalidReturnException gets sent to the UncaughtRejectionHandler.
+                var currentHandler = Promise.Config.UncaughtRejectionHandler;
+                Promise.Config.UncaughtRejectionHandler = e =>
+                {
+                    Assert.IsAssignableFrom<InvalidReturnException>(e.Value);
+                    Assert.AreEqual(expectedMessage, e.Value.UnsafeAs<Exception>().Message);
+                    ++exceptionCounter;
+                };
+
                 var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
+                var promiseQueue = new Queue<Promise>();
 
-                TestAction<Promise> catchCallback = (ref Promise p) =>
-                {
-                    var preserved = p.Preserve();
-                    p = preserved;
-                    p.Finally(() => preserved.Forget())
-                    .Catch((object e) =>
+                TestHelper.AddCancelCallbacks<float>(deferred.Promise,
+                    onAdoptCallbackAdded: (ref Promise p) =>
                     {
-                        Assert.IsInstanceOf<InvalidReturnException>(e);
-                        ++exceptionCounter;
-                    }).Forget();
-                };
-                TestAction<Promise<int>> catchCallbackConvert = (ref Promise<int> p) =>
-                {
-                    var preserved = p.Preserve();
-                    p = preserved;
-                    p.Finally(() => preserved.Forget())
-                    .Catch((object e) =>
-                    {
-                        Assert.IsInstanceOf<InvalidReturnException>(e);
-                        ++exceptionCounter;
-                    }).Forget();
-                };
-
-                TestHelper.AddCancelCallbacks<float>(promise,
-                    promiseToPromise: p => p,
-                    onCallbackAdded: catchCallback
-                );
-                TestHelper.AddContinueCallbacks<int, float>(promise,
-                    promiseToPromise: p => p,
-                    promiseToPromiseConvert: p => p,
-                    onCallbackAdded: catchCallback,
-                    onCallbackAddedConvert: catchCallbackConvert
+                        promiseQueue.Enqueue(p);
+                        p = Promise.Resolved();
+                    },
+                    promiseToPromise: p => promiseQueue.Dequeue()
                 );
 
                 deferred.Cancel();
 
                 Assert.AreEqual(
-                    (TestHelper.onCancelCallbacks * 2) + TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks,
+                    TestHelper.onCancelPromiseCallbacks * 2,
                     exceptionCounter
                 );
 
-                promise.Forget();
+                Promise.Config.UncaughtRejectionHandler = currentHandler;
             }
 
             [Test]
             public void IfPromiseAndXReferToTheSameObject_RejectPromiseWithInvalidReturnExceptionAsTheReason_T()
             {
+                string expectedMessage = "A Promise cannot wait on itself.";
                 int exceptionCounter = 0;
 
+                // When the promise awaits itself, it becomes rejected and invalidated, so the InvalidReturnException gets sent to the UncaughtRejectionHandler.
+                var currentHandler = Promise.Config.UncaughtRejectionHandler;
+                Promise.Config.UncaughtRejectionHandler = e =>
+                {
+                    Assert.IsAssignableFrom<InvalidReturnException>(e.Value);
+                    Assert.AreEqual(expectedMessage, e.Value.UnsafeAs<Exception>().Message);
+                    ++exceptionCounter;
+                };
+
                 var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
+                var promiseQueue = new Queue<Promise<int>>();
 
-                TestAction<Promise> catchCallback = (ref Promise p) =>
-                {
-                    var preserved = p.Preserve();
-                    p = preserved;
-                    p.Finally(() => preserved.Forget())
-                    .Catch((object e) =>
+                TestHelper.AddCancelCallbacks<int, float>(deferred.Promise,
+                    onAdoptCallbackAdded: (ref Promise<int> p) =>
                     {
-                        Assert.IsInstanceOf<InvalidReturnException>(e);
-                        ++exceptionCounter;
-                    }).Forget();
-                };
-                TestAction<Promise<int>> catchCallbackConvert = (ref Promise<int> p) =>
-                {
-                    var preserved = p.Preserve();
-                    p = preserved;
-                    p.Finally(() => preserved.Forget())
-                    .Catch((object e) =>
-                    {
-                        Assert.IsInstanceOf<InvalidReturnException>(e);
-                        ++exceptionCounter;
-                    }).Forget();
-                };
-
-                TestHelper.AddCancelCallbacks<int, float>(promise,
-                    promiseToPromise: p => p,
-                    onCallbackAdded: catchCallbackConvert
-                );
-                TestHelper.AddContinueCallbacks<int, int, float>(promise,
-                    promiseToPromise: p => p,
-                    promiseToPromiseConvert: p => p,
-                    onCallbackAdded: catchCallback,
-                    onCallbackAddedConvert: catchCallbackConvert
+                        promiseQueue.Enqueue(p);
+                        p = Promise.Resolved(1);
+                    },
+                    promiseToPromise: p => promiseQueue.Dequeue()
                 );
 
                 deferred.Cancel();
 
                 Assert.AreEqual(
-                    (TestHelper.onCancelCallbacks * 2) + TestHelper.continueVoidPromiseVoidCallbacks + TestHelper.continueVoidPromiseConvertCallbacks,
+                    TestHelper.onCancelPromiseCallbacks * 2,
                     exceptionCounter
                 );
 
-                promise.Forget();
+                Promise.Config.UncaughtRejectionHandler = currentHandler;
             }
 #endif
 
@@ -994,15 +951,15 @@ namespace ProtoPromiseTests.APIs
                     int completeCounter = 0;
 
                     var cancelDeferred = Promise.NewDeferred();
-                    var cancelPromise = cancelDeferred.Promise.Preserve();
+                    var cancelPromiseRetainer = cancelDeferred.Promise.GetRetainer();
 
                     var resolveWaitDeferred = Promise.NewDeferred();
                     var rejectWaitDeferred = Promise.NewDeferred();
                     var cancelWaitDeferred = Promise.NewDeferred();
 
-                    var resolveWaitPromise = resolveWaitDeferred.Promise.Preserve();
-                    var rejectWaitPromise = rejectWaitDeferred.Promise.Preserve();
-                    var cancelWaitPromise = cancelWaitDeferred.Promise.Preserve();
+                    var resolveWaitPromiseRetainer = resolveWaitDeferred.Promise.GetRetainer();
+                    var rejectWaitPromiseRetainer = rejectWaitDeferred.Promise.GetRetainer();
+                    var cancelWaitPromiseRetainer = cancelWaitDeferred.Promise.GetRetainer();
 
                     TestAction<Promise> onAdoptCallbackAdded = (ref Promise p) =>
                     {
@@ -1010,16 +967,16 @@ namespace ProtoPromiseTests.APIs
                             .Catch(() => { });
                     };
 
-                    TestHelper.AddCancelCallbacks<float>(cancelPromise,
-                        promiseToPromise: p => resolveWaitPromise,
+                    TestHelper.AddCancelCallbacks<float>(cancelPromiseRetainer.WaitAsync(),
+                        promiseToPromise: p => resolveWaitPromiseRetainer.WaitAsync(),
                         onAdoptCallbackAdded: onAdoptCallbackAdded
                     );
-                    TestHelper.AddCancelCallbacks<float>(cancelPromise,
-                        promiseToPromise: p => rejectWaitPromise,
+                    TestHelper.AddCancelCallbacks<float>(cancelPromiseRetainer.WaitAsync(),
+                        promiseToPromise: p => rejectWaitPromiseRetainer.WaitAsync(),
                         onAdoptCallbackAdded: onAdoptCallbackAdded
                     );
-                    TestHelper.AddCancelCallbacks<float>(cancelPromise,
-                        promiseToPromise: p => cancelWaitPromise,
+                    TestHelper.AddCancelCallbacks<float>(cancelPromiseRetainer.WaitAsync(),
+                        promiseToPromise: p => cancelWaitPromiseRetainer.WaitAsync(),
                         onAdoptCallbackAdded: onAdoptCallbackAdded
                     );
 
@@ -1038,10 +995,10 @@ namespace ProtoPromiseTests.APIs
                     expectedCompleteCount += TestHelper.onCancelCallbacks;
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
-                    cancelPromise.Forget();
-                    resolveWaitPromise.Forget();
-                    rejectWaitPromise.Forget();
-                    cancelWaitPromise.Forget();
+                    cancelPromiseRetainer.Dispose();
+                    resolveWaitPromiseRetainer.Dispose();
+                    rejectWaitPromiseRetainer.Dispose();
+                    cancelWaitPromiseRetainer.Dispose();
                 }
 
                 [Test]
@@ -1051,15 +1008,15 @@ namespace ProtoPromiseTests.APIs
                     int completeCounter = 0;
 
                     var cancelDeferred = Promise.NewDeferred<int>();
-                    var cancelPromise = cancelDeferred.Promise.Preserve();
+                    var cancelPromiseRetainer = cancelDeferred.Promise.GetRetainer();
 
                     var resolveWaitDeferred = Promise.NewDeferred<int>();
                     var rejectWaitDeferred = Promise.NewDeferred<int>();
                     var cancelWaitDeferred = Promise.NewDeferred<int>();
 
-                    var resolveWaitPromise = resolveWaitDeferred.Promise.Preserve();
-                    var rejectWaitPromise = rejectWaitDeferred.Promise.Preserve();
-                    var cancelWaitPromise = cancelWaitDeferred.Promise.Preserve();
+                    var resolveWaitPromiseRetainer = resolveWaitDeferred.Promise.GetRetainer();
+                    var rejectWaitPromiseRetainer = rejectWaitDeferred.Promise.GetRetainer();
+                    var cancelWaitPromiseRetainer = cancelWaitDeferred.Promise.GetRetainer();
 
                     TestAction<Promise<int>> onAdoptCallbackAdded = (ref Promise<int> p) =>
                     {
@@ -1067,16 +1024,16 @@ namespace ProtoPromiseTests.APIs
                             .Catch(() => 1);
                     };
 
-                    TestHelper.AddCancelCallbacks<int, float>(cancelPromise,
-                        promiseToPromise: p => resolveWaitPromise,
+                    TestHelper.AddCancelCallbacks<int, float>(cancelPromiseRetainer.WaitAsync(),
+                        promiseToPromise: p => resolveWaitPromiseRetainer.WaitAsync(),
                         onAdoptCallbackAdded: onAdoptCallbackAdded
                     );
-                    TestHelper.AddCancelCallbacks<int, float>(cancelPromise,
-                        promiseToPromise: p => rejectWaitPromise,
+                    TestHelper.AddCancelCallbacks<int, float>(cancelPromiseRetainer.WaitAsync(),
+                        promiseToPromise: p => rejectWaitPromiseRetainer.WaitAsync(),
                         onAdoptCallbackAdded: onAdoptCallbackAdded
                     );
-                    TestHelper.AddCancelCallbacks<int, float>(cancelPromise,
-                        promiseToPromise: p => cancelWaitPromise,
+                    TestHelper.AddCancelCallbacks<int, float>(cancelPromiseRetainer.WaitAsync(),
+                        promiseToPromise: p => cancelWaitPromiseRetainer.WaitAsync(),
                         onAdoptCallbackAdded: onAdoptCallbackAdded
                     );
 
@@ -1095,10 +1052,10 @@ namespace ProtoPromiseTests.APIs
                     expectedCompleteCount += TestHelper.onCancelCallbacks;
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
-                    cancelPromise.Forget();
-                    resolveWaitPromise.Forget();
-                    rejectWaitPromise.Forget();
-                    cancelWaitPromise.Forget();
+                    cancelPromiseRetainer.Dispose();
+                    resolveWaitPromiseRetainer.Dispose();
+                    rejectWaitPromiseRetainer.Dispose();
+                    cancelWaitPromiseRetainer.Dispose();
                 }
 
                 [Test]
@@ -1107,7 +1064,7 @@ namespace ProtoPromiseTests.APIs
                     var cancelDeferred = Promise.NewDeferred();
                     cancelDeferred.Cancel();
 
-                    var cancelPromise = cancelDeferred.Promise.Preserve();
+                    var cancelPromiseRetainer = cancelDeferred.Promise.GetRetainer();
 
                     int resolveCounter = 0;
 
@@ -1120,16 +1077,16 @@ namespace ProtoPromiseTests.APIs
                     };
 
                     var resolveWaitDeferred = Promise.NewDeferred();
-                    var resolveWaitPromise = resolveWaitDeferred.Promise.Preserve();
+                    var resolveWaitPromiseRetainer = resolveWaitDeferred.Promise.GetRetainer();
 
-                    Func<Promise, Promise> promiseToPromise = p => resolveWaitPromise;
+                    Func<Promise, Promise> promiseToPromise = p => resolveWaitPromiseRetainer.WaitAsync();
 
                     // Test pending -> resolved and already resolved.
                     bool firstRun = true;
                 RunAgain:
                     resolveCounter = 0;
 
-                    TestHelper.AddCancelCallbacks<float>(cancelPromise,
+                    TestHelper.AddCancelCallbacks<float>(cancelPromiseRetainer.WaitAsync(),
                         promiseToPromise: promiseToPromise,
                         onAdoptCallbackAdded: onAdoptCallbackAdded
                     );
@@ -1148,8 +1105,8 @@ namespace ProtoPromiseTests.APIs
                         goto RunAgain;
                     }
 
-                    cancelPromise.Forget();
-                    resolveWaitPromise.Forget();
+                    cancelPromiseRetainer.Dispose();
+                    resolveWaitPromiseRetainer.Dispose();
                 }
 
                 [Test]
@@ -1158,7 +1115,7 @@ namespace ProtoPromiseTests.APIs
                     var cancelDeferred = Promise.NewDeferred<int>();
                     cancelDeferred.Cancel();
 
-                    var cancelPromise = cancelDeferred.Promise.Preserve();
+                    var cancelPromiseRetainer = cancelDeferred.Promise.GetRetainer();
 
                     int resolveValue = 100;
                     int resolveCounter = 0;
@@ -1174,16 +1131,16 @@ namespace ProtoPromiseTests.APIs
                     };
 
                     var resolveWaitDeferred = Promise.NewDeferred<int>();
-                    var resolveWaitPromise = resolveWaitDeferred.Promise.Preserve();
+                    var resolveWaitPromiseRetainer = resolveWaitDeferred.Promise.GetRetainer();
 
-                    Func<Promise<int>, Promise<int>> promiseToPromise = p => resolveWaitPromise;
+                    Func<Promise<int>, Promise<int>> promiseToPromise = p => resolveWaitPromiseRetainer.WaitAsync();
 
                     // Test pending -> resolved and already resolved.
                     bool firstRun = true;
                 RunAgain:
                     resolveCounter = 0;
 
-                    TestHelper.AddCancelCallbacks<int, float>(cancelPromise,
+                    TestHelper.AddCancelCallbacks<int, float>(cancelPromiseRetainer.WaitAsync(),
                         promiseToPromise: promiseToPromise,
                         onAdoptCallbackAdded: onAdoptCallbackAdded
                     );
@@ -1202,8 +1159,8 @@ namespace ProtoPromiseTests.APIs
                         goto RunAgain;
                     }
 
-                    cancelPromise.Forget();
-                    resolveWaitPromise.Forget();
+                    cancelPromiseRetainer.Dispose();
+                    resolveWaitPromiseRetainer.Dispose();
                 }
 
                 [Test]
@@ -1212,7 +1169,7 @@ namespace ProtoPromiseTests.APIs
                     var cancelDeferred = Promise.NewDeferred();
                     cancelDeferred.Cancel();
 
-                    var cancelPromise = cancelDeferred.Promise.Preserve();
+                    var cancelPromiseRetainer = cancelDeferred.Promise.GetRetainer();
 
                     float rejectReason = 1.5f;
                     int rejectCounter = 0;
@@ -1227,16 +1184,16 @@ namespace ProtoPromiseTests.APIs
                     };
 
                     var rejectWaitDeferred = Promise.NewDeferred();
-                    var rejectWaitPromise = rejectWaitDeferred.Promise.Preserve();
+                    var rejectWaitPromiseRetainer = rejectWaitDeferred.Promise.GetRetainer();
 
-                    Func<Promise, Promise> promiseToPromise = p => rejectWaitPromise;
+                    Func<Promise, Promise> promiseToPromise = p => rejectWaitPromiseRetainer.WaitAsync();
 
                     // Test pending -> rejected and already rejected.
                     bool firstRun = true;
                 RunAgain:
                     rejectCounter = 0;
 
-                    TestHelper.AddCancelCallbacks<float>(cancelPromise,
+                    TestHelper.AddCancelCallbacks<float>(cancelPromiseRetainer.WaitAsync(),
                         promiseToPromise: promiseToPromise,
                         onAdoptCallbackAdded: onAdoptCallbackAdded
                     );
@@ -1255,8 +1212,8 @@ namespace ProtoPromiseTests.APIs
                         goto RunAgain;
                     }
 
-                    cancelPromise.Forget();
-                    rejectWaitPromise.Forget();
+                    cancelPromiseRetainer.Dispose();
+                    rejectWaitPromiseRetainer.Dispose();
                 }
 
                 [Test]
@@ -1265,7 +1222,7 @@ namespace ProtoPromiseTests.APIs
                     var cancelDeferred = Promise.NewDeferred<int>();
                     cancelDeferred.Cancel();
 
-                    var cancelPromise = cancelDeferred.Promise.Preserve();
+                    var cancelPromiseRetainer = cancelDeferred.Promise.GetRetainer();
 
                     float rejectReason = 1.5f;
                     int rejectCounter = 0;
@@ -1281,16 +1238,16 @@ namespace ProtoPromiseTests.APIs
                     };
 
                     var rejectWaitDeferred = Promise.NewDeferred<int>();
-                    var rejectWaitPromise = rejectWaitDeferred.Promise.Preserve();
+                    var rejectWaitPromiseRetainer = rejectWaitDeferred.Promise.GetRetainer();
 
-                    Func<Promise<int>, Promise<int>> promiseToPromise = p => rejectWaitPromise;
+                    Func<Promise<int>, Promise<int>> promiseToPromise = p => rejectWaitPromiseRetainer.WaitAsync();
 
                     // Test pending -> rejected and already rejected.
                     bool firstRun = true;
                 RunAgain:
                     rejectCounter = 0;
 
-                    TestHelper.AddCancelCallbacks<int, float>(cancelPromise,
+                    TestHelper.AddCancelCallbacks<int, float>(cancelPromiseRetainer.WaitAsync(),
                         promiseToPromise: promiseToPromise,
                         onAdoptCallbackAdded: onAdoptCallbackAdded
                     );
@@ -1309,8 +1266,8 @@ namespace ProtoPromiseTests.APIs
                         goto RunAgain;
                     }
 
-                    cancelPromise.Forget();
-                    rejectWaitPromise.Forget();
+                    cancelPromiseRetainer.Dispose();
+                    rejectWaitPromiseRetainer.Dispose();
                 }
             }
 
@@ -1375,6 +1332,7 @@ namespace ProtoPromiseTests.APIs
             [Test]
             public void IfXIsAPromiseAndItResultsInACircularPromiseChain_RejectPromiseWithInvalidReturnExceptionAsTheReason_void()
             {
+                string expectedMessage = "Circular Promise chain detected.";
                 var deferred = Promise.NewDeferred();
 
                 int exceptionCounter = 0;
@@ -1382,26 +1340,33 @@ namespace ProtoPromiseTests.APIs
                 Action<object> catcher = (object o) =>
                 {
                     Assert.IsInstanceOf<InvalidReturnException>(o);
+                    Assert.AreEqual(expectedMessage, o.UnsafeAs<Exception>().Message);
                     ++exceptionCounter;
                 };
 
                 Func<Promise, Promise> promiseToPromise = p =>
                 {
-                    p.Catch(catcher).Forget();
-                    return p.ThenDuplicate().ThenDuplicate().Catch(() => { });
+                    using (var promiseRetainer = p.GetRetainer())
+                    {
+                        promiseRetainer.WaitAsync().Catch(catcher).Forget();
+                        return promiseRetainer.WaitAsync().ThenDuplicate().ThenDuplicate().Catch(() => { });
+                    }
                 };
 
+                bool adopted = false;
+                TestAction<Promise> onAdoptCallbackAdded = (ref Promise p) => adopted = true;
                 TestAction<Promise> onCallbackAdded = (ref Promise p) =>
                 {
-                    var preserved = p = p.Preserve();
-                    preserved
-                        .Catch(() => { })
-                        .Finally(() => preserved.Forget())
-                        .Forget();
+                    if (!adopted)
+                    {
+                        p.Forget();
+                    }
+                    adopted = false;
                 };
 
                 TestHelper.AddCancelCallbacks<float>(deferred.Promise,
                     promiseToPromise: promiseToPromise,
+                    onAdoptCallbackAdded: onAdoptCallbackAdded,
                     onCallbackAdded: onCallbackAdded
                 );
 
@@ -1413,6 +1378,7 @@ namespace ProtoPromiseTests.APIs
             [Test]
             public void IfXIsAPromiseAndItResultsInACircularPromiseChain_RejectPromiseWithInvalidReturnExceptionAsTheReason_T()
             {
+                string expectedMessage = "Circular Promise chain detected.";
                 var deferred = Promise.NewDeferred<int>();
 
                 int exceptionCounter = 0;
@@ -1420,26 +1386,33 @@ namespace ProtoPromiseTests.APIs
                 Action<object> catcher = (object o) =>
                 {
                     Assert.IsInstanceOf<InvalidReturnException>(o);
+                    Assert.AreEqual(expectedMessage, o.UnsafeAs<Exception>().Message);
                     ++exceptionCounter;
                 };
 
                 Func<Promise<int>, Promise<int>> promiseToPromise = p =>
                 {
-                    p.Catch(catcher).Forget();
-                    return p.ThenDuplicate().ThenDuplicate().Catch(() => 1);
+                    using (var promiseRetainer = p.GetRetainer())
+                    {
+                        promiseRetainer.WaitAsync().Catch(catcher).Forget();
+                        return promiseRetainer.WaitAsync().ThenDuplicate().ThenDuplicate().Catch(() => 1);
+                    }
                 };
 
+                bool adopted = false;
+                TestAction<Promise<int>> onAdoptCallbackAdded = (ref Promise<int> p) => adopted = true;
                 TestAction<Promise<int>> onCallbackAdded = (ref Promise<int> p) =>
                 {
-                    var preserved = p = p.Preserve();
-                    preserved
-                        .Catch(() => { })
-                        .Finally(() => preserved.Forget())
-                        .Forget();
+                    if (!adopted)
+                    {
+                        p.Forget();
+                    }
+                    adopted = false;
                 };
 
                 TestHelper.AddCancelCallbacks<int, float>(deferred.Promise,
                     promiseToPromise: promiseToPromise,
+                    onAdoptCallbackAdded: onAdoptCallbackAdded,
                     onCallbackAdded: onCallbackAdded
                 );
 
@@ -1581,13 +1554,13 @@ namespace ProtoPromiseTests.APIs
             CancelationSource cancelationSource = CancelationSource.New();
             int captureValue = 100;
             var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
+            var promiseRetainer = deferred.Promise.GetRetainer();
 
-            promise
+            promiseRetainer.WaitAsync()
                 .Then(() => { }, cancelationSource.Token)
                 .CatchCancelation(captureValue, cv => Assert.AreEqual(captureValue, cv))
                 .Forget();
-            promise
+            promiseRetainer.WaitAsync()
                 .Then(() => 1f, cancelationSource.Token)
                 .CatchCancelation(captureValue, cv => Assert.AreEqual(captureValue, cv))
                 .Forget();
@@ -1596,7 +1569,7 @@ namespace ProtoPromiseTests.APIs
             deferred.Resolve();
 
             cancelationSource.Dispose();
-            promise.Forget();
+            promiseRetainer.Dispose();
         }
 
         public class CancelationToken
@@ -1833,16 +1806,16 @@ namespace ProtoPromiseTests.APIs
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
+                var promiseRetainer = deferred.Promise.GetRetainer();
 
                 TestHelper.AddResolveCallbacksWithCancelation<float, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     onResolve: () => Assert.Fail("OnResolved was invoked."),
                     onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
                     cancelationToken: cancelationSource.Token
                 );
                 TestHelper.AddCallbacksWithCancelation<float, object, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     onResolve: () => Assert.Fail("OnResolved was invoked."),
                     onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
                     cancelationToken: cancelationSource.Token
@@ -1852,7 +1825,7 @@ namespace ProtoPromiseTests.APIs
                 deferred.Resolve();
 
                 cancelationSource.Dispose();
-                promise.Forget();
+                promiseRetainer.Dispose();
             }
 
             [Test]
@@ -1860,16 +1833,16 @@ namespace ProtoPromiseTests.APIs
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
+                var promiseRetainer = deferred.Promise.GetRetainer();
 
                 TestHelper.AddResolveCallbacksWithCancelation<int, float, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     onResolve: _ => Assert.Fail("OnResolved was invoked."),
                     onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
                     cancelationToken: cancelationSource.Token
                 );
                 TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     onResolve: _ => Assert.Fail("OnResolved was invoked."),
                     onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
                     cancelationToken: cancelationSource.Token
@@ -1879,7 +1852,7 @@ namespace ProtoPromiseTests.APIs
                 deferred.Resolve(1);
 
                 cancelationSource.Dispose();
-                promise.Forget();
+                promiseRetainer.Dispose();
             }
 
             [Test]
@@ -1889,16 +1862,16 @@ namespace ProtoPromiseTests.APIs
                 cancelationSource.Cancel();
 
                 var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
+                var promiseRetainer = deferred.Promise.GetRetainer();
 
                 TestHelper.AddResolveCallbacksWithCancelation<float, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     onResolve: () => Assert.Fail("OnResolved was invoked."),
                     onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
                     cancelationToken: cancelationSource.Token
                 );
                 TestHelper.AddCallbacksWithCancelation<float, object, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     onResolve: () => Assert.Fail("OnResolved was invoked."),
                     onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
                     cancelationToken: cancelationSource.Token
@@ -1907,31 +1880,30 @@ namespace ProtoPromiseTests.APIs
                 deferred.Resolve();
 
                 cancelationSource.Dispose();
-                promise.Forget();
+                promiseRetainer.Dispose();
             }
 
             [Test]
             public void OnResolvedIsNotInvokedIfTokenIsAlreadyCanceled_void1()
             {
                 var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
+                var promiseRetainer = deferred.Promise.GetRetainer();
 
                 TestHelper.AddResolveCallbacksWithCancelation<float, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     onResolve: () => Assert.Fail("OnResolved was invoked."),
                     onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
                     cancelationToken: Proto.Promises.CancelationToken.Canceled()
                 );
                 TestHelper.AddCallbacksWithCancelation<float, object, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     onResolve: () => Assert.Fail("OnResolved was invoked."),
                     onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
                     cancelationToken: Proto.Promises.CancelationToken.Canceled()
                 );
 
                 deferred.Resolve();
-
-                promise.Forget();
+                promiseRetainer.Dispose();
             }
 
             [Test]
@@ -1941,16 +1913,16 @@ namespace ProtoPromiseTests.APIs
                 cancelationSource.Cancel();
 
                 var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
+                var promiseRetainer = deferred.Promise.GetRetainer();
 
                 TestHelper.AddResolveCallbacksWithCancelation<int, float, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     onResolve: _ => Assert.Fail("OnResolved was invoked."),
                     onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
                     cancelationToken: cancelationSource.Token
                 );
                 TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     onResolve: _ => Assert.Fail("OnResolved was invoked."),
                     onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
                     cancelationToken: cancelationSource.Token
@@ -1959,31 +1931,30 @@ namespace ProtoPromiseTests.APIs
                 deferred.Resolve(1);
 
                 cancelationSource.Dispose();
-                promise.Forget();
+                promiseRetainer.Dispose();
             }
 
             [Test]
             public void OnResolvedIsNotInvokedIfTokenIsAlreadyCanceled_T1()
             {
                 var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
+                var promiseRetainer = deferred.Promise.GetRetainer();
 
                 TestHelper.AddResolveCallbacksWithCancelation<int, float, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     onResolve: _ => Assert.Fail("OnResolved was invoked."),
                     onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
                     cancelationToken: Proto.Promises.CancelationToken.Canceled()
                 );
                 TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     onResolve: _ => Assert.Fail("OnResolved was invoked."),
                     onResolveCapture: _ => Assert.Fail("OnResolved was invoked."),
                     cancelationToken: Proto.Promises.CancelationToken.Canceled()
                 );
 
                 deferred.Resolve(1);
-
-                promise.Forget();
+                promiseRetainer.Dispose();
             }
 
             public class Reject
@@ -2248,22 +2219,22 @@ namespace ProtoPromiseTests.APIs
                 CancelationSource cancelationSource = CancelationSource.New();
 
                 var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
+                var promiseRetainer = deferred.Promise.GetRetainer();
 
                 int cancelCallbacks = 0;
 
                 TestHelper.AddResolveCallbacksWithCancelation<float, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     cancelationToken: cancelationSource.Token,
                     onCancel: () => ++cancelCallbacks
                 );
                 TestHelper.AddCallbacksWithCancelation<float, object, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     cancelationToken: cancelationSource.Token,
                     onCancel: () => ++cancelCallbacks
                 );
                 TestHelper.AddContinueCallbacksWithCancelation<float, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     cancelationToken: cancelationSource.Token,
                     onCancel: () => ++cancelCallbacks
                 );
@@ -2277,7 +2248,7 @@ namespace ProtoPromiseTests.APIs
                 );
 
                 cancelationSource.Dispose();
-                promise.Forget();
+                promiseRetainer.Dispose();
             }
 
             [Test]
@@ -2286,22 +2257,22 @@ namespace ProtoPromiseTests.APIs
                 CancelationSource cancelationSource = CancelationSource.New();
 
                 var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
+                var promiseRetainer = deferred.Promise.GetRetainer();
 
                 int cancelCallbacks = 0;
 
                 TestHelper.AddResolveCallbacksWithCancelation<int, float, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     cancelationToken: cancelationSource.Token,
                     onCancel: () => ++cancelCallbacks
                 );
                 TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     cancelationToken: cancelationSource.Token,
                     onCancel: () => ++cancelCallbacks
                 );
                 TestHelper.AddContinueCallbacksWithCancelation<int, float, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     cancelationToken: cancelationSource.Token,
                     onCancel: () => ++cancelCallbacks
                 );
@@ -2315,7 +2286,7 @@ namespace ProtoPromiseTests.APIs
                 );
 
                 cancelationSource.Dispose();
-                promise.Forget();
+                promiseRetainer.Dispose();
             }
 
             [Test]
@@ -2325,22 +2296,22 @@ namespace ProtoPromiseTests.APIs
                 cancelationSource.Cancel();
 
                 var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
+                var promiseRetainer = deferred.Promise.GetRetainer();
 
                 int cancelCallbacks = 0;
 
                 TestHelper.AddResolveCallbacksWithCancelation<float, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     cancelationToken: cancelationSource.Token,
                     onCancel: () => ++cancelCallbacks
                 );
                 TestHelper.AddCallbacksWithCancelation<float, object, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     cancelationToken: cancelationSource.Token,
                     onCancel: () => ++cancelCallbacks
                 );
                 TestHelper.AddContinueCallbacksWithCancelation<float, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     cancelationToken: cancelationSource.Token,
                     onCancel: () => ++cancelCallbacks
                 );
@@ -2353,7 +2324,7 @@ namespace ProtoPromiseTests.APIs
                 );
 
                 cancelationSource.Dispose();
-                promise.Forget();
+                promiseRetainer.Dispose();
             }
 
             [Test]
@@ -2363,22 +2334,22 @@ namespace ProtoPromiseTests.APIs
                 cancelationSource.Cancel();
 
                 var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
+                var promiseRetainer = deferred.Promise.GetRetainer();
 
                 int cancelCallbacks = 0;
 
                 TestHelper.AddResolveCallbacksWithCancelation<int, float, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     cancelationToken: cancelationSource.Token,
                     onCancel: () => ++cancelCallbacks
                 );
                 TestHelper.AddCallbacksWithCancelation<int, float, object, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     cancelationToken: cancelationSource.Token,
                     onCancel: () => ++cancelCallbacks
                 );
                 TestHelper.AddContinueCallbacksWithCancelation<int, float, string>(
-                    promise,
+                    promiseRetainer.WaitAsync(),
                     cancelationToken: cancelationSource.Token,
                     onCancel: () => ++cancelCallbacks
                 );
@@ -2391,7 +2362,7 @@ namespace ProtoPromiseTests.APIs
                 );
 
                 cancelationSource.Dispose();
-                promise.Forget();
+                promiseRetainer.Dispose();
             }
         }
     }

@@ -110,29 +110,28 @@ namespace ProtoPromiseTests.APIs
                 string RejectValue = "Rejected";
 
                 var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
+                using (var promiseRetainer = deferred.Promise.GetRetainer())
+                {
+                    bool voidResolved = false, voidRejected = false;
+                    promiseRetainer.WaitAsync()
+                        .Then(() => voidResolved = true, () => voidRejected = true)
+                        .Forget();
 
-                bool voidResolved = false, voidRejected = false;
-                promise
-                    .Then(() => voidResolved = true, () => voidRejected = true)
-                    .Forget();
+                    deferred.Resolve();
+                    Assert.IsTrue(voidResolved);
+                    Assert.IsFalse(voidRejected);
 
-                deferred.Resolve();
-                Assert.IsTrue(voidResolved);
-                Assert.IsFalse(voidRejected);
+                    Assert.IsFalse(deferred.TryResolve());
+                    Assert.Throws<InvalidOperationException>(() => deferred.Resolve());
+                    Assert.IsFalse(deferred.TryReject(RejectValue));
+                    Assert.Throws<InvalidOperationException>(() => deferred.Reject(RejectValue));
 
-                Assert.IsFalse(deferred.TryResolve());
-                Assert.Throws<InvalidOperationException>(() => deferred.Resolve());
-                Assert.IsFalse(deferred.TryReject(RejectValue));
-                Assert.Throws<InvalidOperationException>(() => deferred.Reject(RejectValue));
-
-                promise
-                    .Then(() => voidResolved = true, () => voidRejected = true)
-                    .Forget();
-                Assert.IsTrue(voidResolved);
-                Assert.IsFalse(voidRejected);
-
-                promise.Forget();
+                    promiseRetainer.WaitAsync()
+                        .Then(() => voidResolved = true, () => voidRejected = true)
+                        .Forget();
+                    Assert.IsTrue(voidResolved);
+                    Assert.IsFalse(voidRejected);
+                }
             }
 
             [Test]
@@ -141,28 +140,28 @@ namespace ProtoPromiseTests.APIs
                 string RejectValue = "Rejected";
 
                 var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
-                bool intResolved = false, intRejected = false;
-                promise
-                    .Then(_ => intResolved = true, () => intRejected = true)
-                    .Forget();
+                using (var promiseRetainer = deferred.Promise.GetRetainer())
+                {
+                    bool intResolved = false, intRejected = false;
+                    promiseRetainer.WaitAsync()
+                        .Then(_ => intResolved = true, () => intRejected = true)
+                        .Forget();
 
-                deferred.Resolve(1);
-                Assert.IsTrue(intResolved);
-                Assert.IsFalse(intRejected);
+                    deferred.Resolve(1);
+                    Assert.IsTrue(intResolved);
+                    Assert.IsFalse(intRejected);
 
-                Assert.IsFalse(deferred.TryResolve(1));
-                Assert.Throws<InvalidOperationException>(() => deferred.Resolve(1));
-                Assert.IsFalse(deferred.TryReject(RejectValue));
-                Assert.Throws<InvalidOperationException>(() => deferred.Reject(RejectValue));
+                    Assert.IsFalse(deferred.TryResolve(1));
+                    Assert.Throws<InvalidOperationException>(() => deferred.Resolve(1));
+                    Assert.IsFalse(deferred.TryReject(RejectValue));
+                    Assert.Throws<InvalidOperationException>(() => deferred.Reject(RejectValue));
 
-                promise
-                    .Then(_ => intResolved = true, () => intRejected = true)
-                    .Forget();
-                Assert.IsTrue(intResolved);
-                Assert.IsFalse(intRejected);
-
-                promise.Forget();
+                    promiseRetainer.WaitAsync()
+                        .Then(_ => intResolved = true, () => intRejected = true)
+                        .Forget();
+                    Assert.IsTrue(intResolved);
+                    Assert.IsFalse(intRejected);
+                }
             }
 
             [Test]
@@ -216,29 +215,28 @@ namespace ProtoPromiseTests.APIs
                 string RejectValue = "Rejected";
 
                 var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
+                using (var promiseRetainer = deferred.Promise.GetRetainer())
+                {
+                    bool voidResolved = false, voidRejected = false;
+                    promiseRetainer.WaitAsync()
+                        .Then(() => voidResolved = true, () => voidRejected = true)
+                        .Forget();
 
-                bool voidResolved = false, voidRejected = false;
-                promise
-                    .Then(() => voidResolved = true, () => voidRejected = true)
-                    .Forget();
+                    deferred.Reject(RejectValue);
+                    Assert.IsFalse(voidResolved);
+                    Assert.IsTrue(voidRejected);
 
-                deferred.Reject(RejectValue);
-                Assert.IsFalse(voidResolved);
-                Assert.IsTrue(voidRejected);
+                    Assert.IsFalse(deferred.TryResolve());
+                    Assert.Throws<InvalidOperationException>(() => deferred.Resolve());
+                    Assert.IsFalse(deferred.TryReject(RejectValue));
+                    Assert.Throws<InvalidOperationException>(() => deferred.Reject(RejectValue));
 
-                Assert.IsFalse(deferred.TryResolve());
-                Assert.Throws<InvalidOperationException>(() => deferred.Resolve());
-                Assert.IsFalse(deferred.TryReject(RejectValue));
-                Assert.Throws<InvalidOperationException>(() => deferred.Reject(RejectValue));
-
-                promise
-                    .Then(() => voidResolved = true, () => voidRejected = true)
-                    .Forget();
-                Assert.IsFalse(voidResolved);
-                Assert.IsTrue(voidRejected);
-
-                promise.Forget();
+                    promiseRetainer.WaitAsync()
+                        .Then(() => voidResolved = true, () => voidRejected = true)
+                        .Forget();
+                    Assert.IsFalse(voidResolved);
+                    Assert.IsTrue(voidRejected);
+                }
             }
 
             [Test]
@@ -247,96 +245,94 @@ namespace ProtoPromiseTests.APIs
                 string RejectValue = "Rejected";
 
                 var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
-                bool intResolved = false, intRejected = false;
-                promise
-                    .Then(_ => intResolved = true, () => intRejected = true)
-                    .Forget();
+                using (var promiseRetainer = deferred.Promise.GetRetainer())
+                {
+                    bool intResolved = false, intRejected = false;
+                    promiseRetainer.WaitAsync()
+                        .Then(_ => intResolved = true, () => intRejected = true)
+                        .Forget();
 
-                deferred.Reject(RejectValue);
-                Assert.IsFalse(intResolved);
-                Assert.IsTrue(intRejected);
+                    deferred.Reject(RejectValue);
+                    Assert.IsFalse(intResolved);
+                    Assert.IsTrue(intRejected);
 
-                Assert.IsFalse(deferred.TryResolve(1));
-                Assert.Throws<InvalidOperationException>(() => deferred.Resolve(1));
-                Assert.IsFalse(deferred.TryReject(RejectValue));
-                Assert.Throws<InvalidOperationException>(() => deferred.Reject(RejectValue));
+                    Assert.IsFalse(deferred.TryResolve(1));
+                    Assert.Throws<InvalidOperationException>(() => deferred.Resolve(1));
+                    Assert.IsFalse(deferred.TryReject(RejectValue));
+                    Assert.Throws<InvalidOperationException>(() => deferred.Reject(RejectValue));
 
-                promise
-                    .Then(_ => intResolved = true, () => intRejected = true)
-                    .Forget();
-                Assert.IsFalse(intResolved);
-                Assert.IsTrue(intRejected);
-
-                promise.Forget();
+                    promiseRetainer.WaitAsync()
+                        .Then(_ => intResolved = true, () => intRejected = true)
+                        .Forget();
+                    Assert.IsFalse(intResolved);
+                    Assert.IsTrue(intRejected);
+                }
             }
 
             [Test]
             public void _2_1_3_2_MustHaveAReasonWhichMustNotChange_void()
             {
                 var deferred = Promise.NewDeferred();
-                var promise = deferred.Promise.Preserve();
+                using (var promiseRetainer = deferred.Promise.GetRetainer())
+                {
+                    string rejection = null;
+                    string expected = "Fail Value";
+                    TestHelper.AddCallbacks<int, string, string>(promiseRetainer.WaitAsync(),
+                        onResolve: () => Assert.Fail("Promise was resolved when it should have been rejected."),
+                        onReject: failValue =>
+                        {
+                            Assert.AreEqual(expected, failValue);
+                            rejection = failValue;
+                        });
+                    deferred.Reject(expected);
 
-                string rejection = null;
-                string expected = "Fail Value";
-                TestHelper.AddCallbacks<int, string, string>(promise,
-                    onResolve: () => Assert.Fail("Promise was resolved when it should have been rejected."),
-                    onReject: failValue =>
-                    {
-                        Assert.AreEqual(expected, failValue);
-                        rejection = failValue;
-                    });
-                deferred.Reject(expected);
+                    Assert.AreEqual(expected, rejection);
 
-                Assert.AreEqual(expected, rejection);
+                    Assert.IsFalse(deferred.TryReject("Different Fail Value"));
+                    Assert.Throws<InvalidOperationException>(() => deferred.Reject("Different Fail Value"));
+                    TestHelper.AddCallbacks<int, string, string>(promiseRetainer.WaitAsync(),
+                        onResolve: () => Assert.Fail("Promise was resolved when it should have been rejected."),
+                        onReject: failValue =>
+                        {
+                            Assert.AreEqual(expected, failValue);
+                            rejection = failValue;
+                        });
 
-                Assert.IsFalse(deferred.TryReject("Different Fail Value"));
-                Assert.Throws<InvalidOperationException>(() => deferred.Reject("Different Fail Value"));
-                TestHelper.AddCallbacks<int, string, string>(promise,
-                    onResolve: () => Assert.Fail("Promise was resolved when it should have been rejected."),
-                    onReject: failValue =>
-                    {
-                        Assert.AreEqual(expected, failValue);
-                        rejection = failValue;
-                    });
-
-                Assert.AreEqual(expected, rejection);
-
-                promise.Forget();
+                    Assert.AreEqual(expected, rejection);
+                }
             }
 
             [Test]
             public void _2_1_3_2_MustHaveAReasonWhichMustNotChange_T()
             {
                 var deferred = Promise.NewDeferred<int>();
-                var promise = deferred.Promise.Preserve();
+                using (var promiseRetainer = deferred.Promise.GetRetainer())
+                {
+                    string rejection = null;
+                    string expected = "Fail Value";
+                    TestHelper.AddCallbacks<int, bool, string, string>(promiseRetainer.WaitAsync(),
+                        onResolve: v => Assert.Fail("Promise was resolved when it should have been rejected."),
+                        onReject: failValue =>
+                        {
+                            Assert.AreEqual(expected, failValue);
+                            rejection = failValue;
+                        });
+                    deferred.Reject(expected);
 
-                string rejection = null;
-                string expected = "Fail Value";
-                TestHelper.AddCallbacks<int, bool, string, string>(promise,
-                    onResolve: v => Assert.Fail("Promise was resolved when it should have been rejected."),
-                    onReject: failValue =>
-                    {
-                        Assert.AreEqual(expected, failValue);
-                        rejection = failValue;
-                    });
-                deferred.Reject(expected);
+                    Assert.AreEqual(expected, rejection);
 
-                Assert.AreEqual(expected, rejection);
+                    Assert.IsFalse(deferred.TryReject("Different Fail Value"));
+                    Assert.Throws<InvalidOperationException>(() => deferred.Reject("Different Fail Value"));
+                    TestHelper.AddCallbacks<int, bool, string, string>(promiseRetainer.WaitAsync(),
+                        onResolve: v => Assert.Fail("Promise was resolved when it should have been rejected."),
+                        onReject: failValue =>
+                        {
+                            Assert.AreEqual(expected, failValue);
+                            rejection = failValue;
+                        });
 
-                Assert.IsFalse(deferred.TryReject("Different Fail Value"));
-                Assert.Throws<InvalidOperationException>(() => deferred.Reject("Different Fail Value"));
-                TestHelper.AddCallbacks<int, bool, string, string>(promise,
-                    onResolve: v => Assert.Fail("Promise was resolved when it should have been rejected."),
-                    onReject: failValue =>
-                    {
-                        Assert.AreEqual(expected, failValue);
-                        rejection = failValue;
-                    });
-
-                Assert.AreEqual(expected, rejection);
-
-                promise.Forget();
+                    Assert.AreEqual(expected, rejection);
+                }
             }
         }
     }

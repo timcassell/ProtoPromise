@@ -51,146 +51,144 @@ namespace ProtoPromiseTests.APIs.Linq
         public void AsyncEnumerableMerge_MergesConcurrently_Async()
         {
             var deferred = Promise.NewDeferred();
-            var yieldPromise = deferred.Promise.Preserve();
-
-            Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsync = (int start, int count) =>
+            using (var promiseRetainer = deferred.Promise.GetRetainer())
             {
-                return AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
+                Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsync = (int start, int count) =>
                 {
-                    for (int i = start; i < start + count; i++)
+                    return AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
                     {
-                        if (i > start)
+                        for (int i = start; i < start + count; i++)
                         {
-                            await yieldPromise;
+                            if (i > start)
+                            {
+                                await promiseRetainer;
+                            }
+
+                            await writer.YieldAsync(i);
                         }
+                    });
+                };
 
-                        await writer.YieldAsync(i);
-                    }
-                });
-            };
-
-            var enumerablesAsync = AsyncEnumerable.Create<AsyncEnumerable<int>>(async (writer, cancelationToken) =>
-            {
-                await writer.YieldAsync(EnumerableRangeAsync(0, 1));
-                await writer.YieldAsync(EnumerableRangeAsync(0, 2));
-                await writer.YieldAsync(EnumerableRangeAsync(0, 3));
-                await writer.YieldAsync(EnumerableRangeAsync(0, 4));
-            });
-
-            int totalCount = 0;
-            int zeroCount = 0;
-            int oneCount = 0;
-            int twoCount = 0;
-            int threeCount = 0;
-
-            var runPromise = AsyncEnumerable.Merge(enumerablesAsync)
-                .ForEachAsync(num =>
+                var enumerablesAsync = AsyncEnumerable.Create<AsyncEnumerable<int>>(async (writer, cancelationToken) =>
                 {
-                    ++totalCount;
-                    if (totalCount <= 4)
-                    {
-                        Assert.AreEqual(0, num);
-                        ++zeroCount;
-                    }
-                    else if (totalCount <= 4 + 3)
-                    {
-                        ++oneCount;
-                    }
-                    else if (totalCount <= 4 + 3 + 2)
-                    {
-                        ++twoCount;
-                    }
-                    else
-                    {
-                        ++threeCount;
-                    }
+                    await writer.YieldAsync(EnumerableRangeAsync(0, 1));
+                    await writer.YieldAsync(EnumerableRangeAsync(0, 2));
+                    await writer.YieldAsync(EnumerableRangeAsync(0, 3));
+                    await writer.YieldAsync(EnumerableRangeAsync(0, 4));
                 });
 
-            Assert.AreEqual(4, totalCount);
-            deferred.Resolve();
+                int totalCount = 0;
+                int zeroCount = 0;
+                int oneCount = 0;
+                int twoCount = 0;
+                int threeCount = 0;
 
-            runPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+                var runPromise = AsyncEnumerable.Merge(enumerablesAsync)
+                    .ForEachAsync(num =>
+                    {
+                        ++totalCount;
+                        if (totalCount <= 4)
+                        {
+                            Assert.AreEqual(0, num);
+                            ++zeroCount;
+                        }
+                        else if (totalCount <= 4 + 3)
+                        {
+                            ++oneCount;
+                        }
+                        else if (totalCount <= 4 + 3 + 2)
+                        {
+                            ++twoCount;
+                        }
+                        else
+                        {
+                            ++threeCount;
+                        }
+                    });
 
-            Assert.AreEqual(zeroCount, 4);
-            Assert.AreEqual(oneCount, 3);
-            Assert.AreEqual(twoCount, 2);
-            Assert.AreEqual(threeCount, 1);
-            Assert.AreEqual(4 + 3 + 2 + 1, totalCount);
+                Assert.AreEqual(4, totalCount);
+                deferred.Resolve();
 
-            yieldPromise.Forget();
+                runPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+                Assert.AreEqual(zeroCount, 4);
+                Assert.AreEqual(oneCount, 3);
+                Assert.AreEqual(twoCount, 2);
+                Assert.AreEqual(threeCount, 1);
+                Assert.AreEqual(4 + 3 + 2 + 1, totalCount);
+            }
         }
 
         [Test]
         public void AsyncEnumerableMerge_MergesConcurrently_Array_Sync()
         {
             var deferred = Promise.NewDeferred();
-            var yieldPromise = deferred.Promise.Preserve();
-
-            Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsync = (int start, int count) =>
+            using (var promiseRetainer = deferred.Promise.GetRetainer())
             {
-                return AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
+                Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsync = (int start, int count) =>
                 {
-                    for (int i = start; i < start + count; i++)
+                    return AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
                     {
-                        if (i > start)
+                        for (int i = start; i < start + count; i++)
                         {
-                            await yieldPromise;
+                            if (i > start)
+                            {
+                                await promiseRetainer;
+                            }
+
+                            await writer.YieldAsync(i);
                         }
+                    });
+                };
 
-                        await writer.YieldAsync(i);
-                    }
-                });
-            };
-
-            var enumerables = new AsyncEnumerable<int>[4]
-            {
-                EnumerableRangeAsync(0, 1),
-                EnumerableRangeAsync(0, 2),
-                EnumerableRangeAsync(0, 3),
-                EnumerableRangeAsync(0, 4)
-            };
-
-            int totalCount = 0;
-            int zeroCount = 0;
-            int oneCount = 0;
-            int twoCount = 0;
-            int threeCount = 0;
-
-            var runPromise = AsyncEnumerable.Merge(enumerables)
-                .ForEachAsync(num =>
+                var enumerables = new AsyncEnumerable<int>[4]
                 {
-                    ++totalCount;
-                    if (totalCount <= 4)
-                    {
-                        Assert.AreEqual(0, num);
-                        ++zeroCount;
-                    }
-                    else if (totalCount <= 4 + 3)
-                    {
-                        ++oneCount;
-                    }
-                    else if (totalCount <= 4 + 3 + 2)
-                    {
-                        ++twoCount;
-                    }
-                    else
-                    {
-                        ++threeCount;
-                    }
-                });
+                    EnumerableRangeAsync(0, 1),
+                    EnumerableRangeAsync(0, 2),
+                    EnumerableRangeAsync(0, 3),
+                    EnumerableRangeAsync(0, 4)
+                };
 
-            Assert.AreEqual(4, totalCount);
-            deferred.Resolve();
+                int totalCount = 0;
+                int zeroCount = 0;
+                int oneCount = 0;
+                int twoCount = 0;
+                int threeCount = 0;
 
-            runPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+                var runPromise = AsyncEnumerable.Merge(enumerables)
+                    .ForEachAsync(num =>
+                    {
+                        ++totalCount;
+                        if (totalCount <= 4)
+                        {
+                            Assert.AreEqual(0, num);
+                            ++zeroCount;
+                        }
+                        else if (totalCount <= 4 + 3)
+                        {
+                            ++oneCount;
+                        }
+                        else if (totalCount <= 4 + 3 + 2)
+                        {
+                            ++twoCount;
+                        }
+                        else
+                        {
+                            ++threeCount;
+                        }
+                    });
 
-            Assert.AreEqual(zeroCount, 4);
-            Assert.AreEqual(oneCount, 3);
-            Assert.AreEqual(twoCount, 2);
-            Assert.AreEqual(threeCount, 1);
-            Assert.AreEqual(4 + 3 + 2 + 1, totalCount);
+                Assert.AreEqual(4, totalCount);
+                deferred.Resolve();
 
-            yieldPromise.Forget();
+                runPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+                Assert.AreEqual(zeroCount, 4);
+                Assert.AreEqual(oneCount, 3);
+                Assert.AreEqual(twoCount, 2);
+                Assert.AreEqual(threeCount, 1);
+                Assert.AreEqual(4 + 3 + 2 + 1, totalCount);
+            }
         }
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
@@ -200,73 +198,72 @@ namespace ProtoPromiseTests.APIs.Linq
         public void AsyncEnumerableMerge_MergesConcurrently_Span_Sync()
         {
             var deferred = Promise.NewDeferred();
-            var yieldPromise = deferred.Promise.Preserve();
-
-            Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsync = (int start, int count) =>
+            using (var promiseRetainer = deferred.Promise.GetRetainer())
             {
-                return AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
+                Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsync = (int start, int count) =>
                 {
-                    for (int i = start; i < start + count; i++)
+                    return AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
                     {
-                        if (i > start)
+                        for (int i = start; i < start + count; i++)
                         {
-                            await yieldPromise;
+                            if (i > start)
+                            {
+                                await promiseRetainer;
+                            }
+
+                            await writer.YieldAsync(i);
                         }
+                    });
+                };
 
-                        await writer.YieldAsync(i);
-                    }
-                });
-            };
-
-            ReadOnlySpan<AsyncEnumerable<int>> enumerables = new AsyncEnumerable<int>[4]
-            {
-                EnumerableRangeAsync(0, 1),
-                EnumerableRangeAsync(0, 2),
-                EnumerableRangeAsync(0, 3),
-                EnumerableRangeAsync(0, 4)
-            };
-
-            int totalCount = 0;
-            int zeroCount = 0;
-            int oneCount = 0;
-            int twoCount = 0;
-            int threeCount = 0;
-
-            var runPromise = AsyncEnumerable.Merge(enumerables)
-                .ForEachAsync(num =>
+                ReadOnlySpan<AsyncEnumerable<int>> enumerables = new AsyncEnumerable<int>[4]
                 {
-                    ++totalCount;
-                    if (totalCount <= 4)
-                    {
-                        Assert.AreEqual(0, num);
-                        ++zeroCount;
-                    }
-                    else if (totalCount <= 4 + 3)
-                    {
-                        ++oneCount;
-                    }
-                    else if (totalCount <= 4 + 3 + 2)
-                    {
-                        ++twoCount;
-                    }
-                    else
-                    {
-                        ++threeCount;
-                    }
-                });
+                    EnumerableRangeAsync(0, 1),
+                    EnumerableRangeAsync(0, 2),
+                    EnumerableRangeAsync(0, 3),
+                    EnumerableRangeAsync(0, 4)
+                };
 
-            Assert.AreEqual(4, totalCount);
-            deferred.Resolve();
+                int totalCount = 0;
+                int zeroCount = 0;
+                int oneCount = 0;
+                int twoCount = 0;
+                int threeCount = 0;
 
-            runPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+                var runPromise = AsyncEnumerable.Merge(enumerables)
+                    .ForEachAsync(num =>
+                    {
+                        ++totalCount;
+                        if (totalCount <= 4)
+                        {
+                            Assert.AreEqual(0, num);
+                            ++zeroCount;
+                        }
+                        else if (totalCount <= 4 + 3)
+                        {
+                            ++oneCount;
+                        }
+                        else if (totalCount <= 4 + 3 + 2)
+                        {
+                            ++twoCount;
+                        }
+                        else
+                        {
+                            ++threeCount;
+                        }
+                    });
 
-            Assert.AreEqual(zeroCount, 4);
-            Assert.AreEqual(oneCount, 3);
-            Assert.AreEqual(twoCount, 2);
-            Assert.AreEqual(threeCount, 1);
-            Assert.AreEqual(4 + 3 + 2 + 1, totalCount);
+                Assert.AreEqual(4, totalCount);
+                deferred.Resolve();
 
-            yieldPromise.Forget();
+                runPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+                Assert.AreEqual(zeroCount, 4);
+                Assert.AreEqual(oneCount, 3);
+                Assert.AreEqual(twoCount, 2);
+                Assert.AreEqual(threeCount, 1);
+                Assert.AreEqual(4 + 3 + 2 + 1, totalCount);
+            }
         }
 #endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
 
@@ -274,316 +271,311 @@ namespace ProtoPromiseTests.APIs.Linq
         public void AsyncEnumerableMerge_MergesConcurrently_2()
         {
             var deferred = Promise.NewDeferred();
-            var yieldPromise = deferred.Promise.Preserve();
-
-            Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsync = (int start, int count) =>
+            using (var promiseRetainer = deferred.Promise.GetRetainer())
             {
-                return AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
+                Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsync = (int start, int count) =>
                 {
-                    for (int i = start; i < start + count; i++)
+                    return AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
                     {
-                        if (i > start)
+                        for (int i = start; i < start + count; i++)
                         {
-                            await yieldPromise;
+                            if (i > start)
+                            {
+                                await promiseRetainer;
+                            }
+
+                            await writer.YieldAsync(i);
                         }
+                    });
+                };
 
-                        await writer.YieldAsync(i);
-                    }
-                });
-            };
+                int totalCount = 0;
+                int zeroCount = 0;
+                int oneCount = 0;
 
-            int totalCount = 0;
-            int zeroCount = 0;
-            int oneCount = 0;
-
-            var runPromise = AsyncEnumerable.Merge(
-                EnumerableRangeAsync(0, 1),
-                EnumerableRangeAsync(0, 2)
-            )
-                .ForEachAsync(num =>
-                {
-                    ++totalCount;
-                    if (totalCount <= 2)
+                var runPromise = AsyncEnumerable.Merge(
+                    EnumerableRangeAsync(0, 1),
+                    EnumerableRangeAsync(0, 2)
+                )
+                    .ForEachAsync(num =>
                     {
-                        Assert.AreEqual(0, num);
-                        ++zeroCount;
-                    }
-                    else
-                    {
-                        ++oneCount;
-                    }
-                });
+                        ++totalCount;
+                        if (totalCount <= 2)
+                        {
+                            Assert.AreEqual(0, num);
+                            ++zeroCount;
+                        }
+                        else
+                        {
+                            ++oneCount;
+                        }
+                    });
 
-            Assert.AreEqual(2, totalCount);
-            deferred.Resolve();
+                Assert.AreEqual(2, totalCount);
+                deferred.Resolve();
 
-            runPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+                runPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
 
-            Assert.AreEqual(zeroCount, 2);
-            Assert.AreEqual(oneCount, 1);
-            Assert.AreEqual(2 + 1, totalCount);
-
-            yieldPromise.Forget();
+                Assert.AreEqual(zeroCount, 2);
+                Assert.AreEqual(oneCount, 1);
+                Assert.AreEqual(2 + 1, totalCount);
+            }
         }
 
         [Test]
         public void AsyncEnumerableMerge_MergesConcurrently_3()
         {
             var deferred = Promise.NewDeferred();
-            var yieldPromise = deferred.Promise.Preserve();
-
-            Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsync = (int start, int count) =>
+            using (var promiseRetainer = deferred.Promise.GetRetainer())
             {
-                return AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
+                Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsync = (int start, int count) =>
                 {
-                    for (int i = start; i < start + count; i++)
+                    return AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
                     {
-                        if (i > start)
+                        for (int i = start; i < start + count; i++)
                         {
-                            await yieldPromise;
+                            if (i > start)
+                            {
+                                await promiseRetainer;
+                            }
+
+                            await writer.YieldAsync(i);
                         }
+                    });
+                };
 
-                        await writer.YieldAsync(i);
-                    }
-                });
-            };
+                int totalCount = 0;
+                int zeroCount = 0;
+                int oneCount = 0;
+                int twoCount = 0;
 
-            int totalCount = 0;
-            int zeroCount = 0;
-            int oneCount = 0;
-            int twoCount = 0;
-
-            var runPromise = AsyncEnumerable.Merge(
-                EnumerableRangeAsync(0, 1),
-                EnumerableRangeAsync(0, 2),
-                EnumerableRangeAsync(0, 3)
-            )
-                .ForEachAsync(num =>
-                {
-                    ++totalCount;
-                    if (totalCount <= 3)
+                var runPromise = AsyncEnumerable.Merge(
+                    EnumerableRangeAsync(0, 1),
+                    EnumerableRangeAsync(0, 2),
+                    EnumerableRangeAsync(0, 3)
+                )
+                    .ForEachAsync(num =>
                     {
-                        Assert.AreEqual(0, num);
-                        ++zeroCount;
-                    }
-                    else if (totalCount <= 3 + 2)
-                    {
-                        ++oneCount;
-                    }
-                    else
-                    {
-                        ++twoCount;
-                    }
-                });
+                        ++totalCount;
+                        if (totalCount <= 3)
+                        {
+                            Assert.AreEqual(0, num);
+                            ++zeroCount;
+                        }
+                        else if (totalCount <= 3 + 2)
+                        {
+                            ++oneCount;
+                        }
+                        else
+                        {
+                            ++twoCount;
+                        }
+                    });
 
-            Assert.AreEqual(3, totalCount);
-            deferred.Resolve();
+                Assert.AreEqual(3, totalCount);
+                deferred.Resolve();
 
-            runPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+                runPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
 
-            Assert.AreEqual(zeroCount, 3);
-            Assert.AreEqual(oneCount, 2);
-            Assert.AreEqual(twoCount, 1);
-            Assert.AreEqual(3 + 2 + 1, totalCount);
-
-            yieldPromise.Forget();
+                Assert.AreEqual(zeroCount, 3);
+                Assert.AreEqual(oneCount, 2);
+                Assert.AreEqual(twoCount, 1);
+                Assert.AreEqual(3 + 2 + 1, totalCount);
+            }
         }
 
         [Test]
         public void AsyncEnumerableMerge_MergesConcurrently_4()
         {
             var deferred = Promise.NewDeferred();
-            var yieldPromise = deferred.Promise.Preserve();
-
-            Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsync = (int start, int count) =>
+            using (var promiseRetainer = deferred.Promise.GetRetainer())
             {
-                return AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
+                Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsync = (int start, int count) =>
                 {
-                    for (int i = start; i < start + count; i++)
+                    return AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
                     {
-                        if (i > start)
+                        for (int i = start; i < start + count; i++)
                         {
-                            await yieldPromise;
+                            if (i > start)
+                            {
+                                await promiseRetainer;
+                            }
+
+                            await writer.YieldAsync(i);
                         }
+                    });
+                };
 
-                        await writer.YieldAsync(i);
-                    }
-                });
-            };
+                int totalCount = 0;
+                int zeroCount = 0;
+                int oneCount = 0;
+                int twoCount = 0;
+                int threeCount = 0;
 
-            int totalCount = 0;
-            int zeroCount = 0;
-            int oneCount = 0;
-            int twoCount = 0;
-            int threeCount = 0;
-
-            var runPromise = AsyncEnumerable.Merge(
-                EnumerableRangeAsync(0, 1),
-                EnumerableRangeAsync(0, 2),
-                EnumerableRangeAsync(0, 3),
-                EnumerableRangeAsync(0, 4)
-            )
-                .ForEachAsync(num =>
-                {
-                    ++totalCount;
-                    if (totalCount <= 4)
+                var runPromise = AsyncEnumerable.Merge(
+                    EnumerableRangeAsync(0, 1),
+                    EnumerableRangeAsync(0, 2),
+                    EnumerableRangeAsync(0, 3),
+                    EnumerableRangeAsync(0, 4)
+                )
+                    .ForEachAsync(num =>
                     {
-                        Assert.AreEqual(0, num);
-                        ++zeroCount;
-                    }
-                    else if (totalCount <= 4 + 3)
-                    {
-                        ++oneCount;
-                    }
-                    else if (totalCount <= 4 + 3 + 2)
-                    {
-                        ++twoCount;
-                    }
-                    else
-                    {
-                        ++threeCount;
-                    }
-                });
+                        ++totalCount;
+                        if (totalCount <= 4)
+                        {
+                            Assert.AreEqual(0, num);
+                            ++zeroCount;
+                        }
+                        else if (totalCount <= 4 + 3)
+                        {
+                            ++oneCount;
+                        }
+                        else if (totalCount <= 4 + 3 + 2)
+                        {
+                            ++twoCount;
+                        }
+                        else
+                        {
+                            ++threeCount;
+                        }
+                    });
 
-            Assert.AreEqual(4, totalCount);
-            deferred.Resolve();
+                Assert.AreEqual(4, totalCount);
+                deferred.Resolve();
 
-            runPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+                runPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
 
-            Assert.AreEqual(zeroCount, 4);
-            Assert.AreEqual(oneCount, 3);
-            Assert.AreEqual(twoCount, 2);
-            Assert.AreEqual(threeCount, 1);
-            Assert.AreEqual(4 + 3 + 2 + 1, totalCount);
-
-            yieldPromise.Forget();
+                Assert.AreEqual(zeroCount, 4);
+                Assert.AreEqual(oneCount, 3);
+                Assert.AreEqual(twoCount, 2);
+                Assert.AreEqual(threeCount, 1);
+                Assert.AreEqual(4 + 3 + 2 + 1, totalCount);
+            }
         }
 
         [Test]
         public void AsyncEnumerableMerge_CanceledAsyncEnumerable_NotifiesOthersAndCancelsConsumer()
         {
             var deferred = Promise.NewDeferred();
-            var yieldPromise = deferred.Promise.Preserve();
-
-            int notifiedCount = 0;
-
-            Func<AsyncEnumerable<int>> ObserveCancelation = () => AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
+            using (var promiseRetainer = deferred.Promise.GetRetainer())
             {
-                await yieldPromise;
+                int notifiedCount = 0;
 
-                if (cancelationToken.IsCancelationRequested)
+                Func<AsyncEnumerable<int>> ObserveCancelation = () => AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
                 {
-                    ++notifiedCount;
-                }
-            });
+                    await promiseRetainer;
 
-            Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsyncWithCancelation = (int start, int count) => AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
-            {
-                for (int i = start; i < start + count; i++)
-                {
-                    cancelationToken.ThrowIfCancelationRequested();
-
-                    if (i > start)
+                    if (cancelationToken.IsCancelationRequested)
                     {
-                        throw Promise.CancelException();
+                        ++notifiedCount;
                     }
+                });
 
-                    await writer.YieldAsync(i);
-                }
-            });
+                Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsyncWithCancelation = (int start, int count) => AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
+                {
+                    for (int i = start; i < start + count; i++)
+                    {
+                        cancelationToken.ThrowIfCancelationRequested();
 
-            Promise.Run(async () =>
-            {
-                var asyncEnumerator = AsyncEnumerable.Merge(
-                    ObserveCancelation(),
-                    EnumerableRangeAsyncWithCancelation(0, 2),
-                    ObserveCancelation(),
-                    ObserveCancelation()
-                )
-                    .GetAsyncEnumerator();
-                Assert.True(await asyncEnumerator.MoveNextAsync());
-                Assert.AreEqual(0, asyncEnumerator.Current);
-                var moveNextPromise = asyncEnumerator.MoveNextAsync();
-                deferred.Resolve();
-                await TestHelper.AssertCanceledAsync(() => moveNextPromise);
+                        if (i > start)
+                        {
+                            throw Promise.CancelException();
+                        }
 
-                await asyncEnumerator.DisposeAsync();
-            }, SynchronizationOption.Synchronous)
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+                        await writer.YieldAsync(i);
+                    }
+                });
 
-            Assert.AreEqual(3, notifiedCount);
+                Promise.Run(async () =>
+                {
+                    var asyncEnumerator = AsyncEnumerable.Merge(
+                        ObserveCancelation(),
+                        EnumerableRangeAsyncWithCancelation(0, 2),
+                        ObserveCancelation(),
+                        ObserveCancelation()
+                    )
+                        .GetAsyncEnumerator();
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(0, asyncEnumerator.Current);
+                    var moveNextPromise = asyncEnumerator.MoveNextAsync();
+                    deferred.Resolve();
+                    await TestHelper.AssertCanceledAsync(() => moveNextPromise);
 
-            yieldPromise.Forget();
+                    await asyncEnumerator.DisposeAsync();
+                }, SynchronizationOption.Synchronous)
+                    .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+                Assert.AreEqual(3, notifiedCount);
+            }
         }
 
         [Test]
         public void AsyncEnumerableMerge_RejectedAsyncEnumerable_NotifiesOthersAndRejectsConsumer()
         {
             var deferred = Promise.NewDeferred();
-            var yieldPromise = deferred.Promise.Preserve();
-
-            Exception expectedException = new Exception("expected");
-            int notifiedCount = 0;
-
-            Func<AsyncEnumerable<int>> ObserveCancelation = () => AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
+            using (var promiseRetainer = deferred.Promise.GetRetainer())
             {
-                await yieldPromise;
+                Exception expectedException = new Exception("expected");
+                int notifiedCount = 0;
 
-                if (cancelationToken.IsCancelationRequested)
+                Func<AsyncEnumerable<int>> ObserveCancelation = () => AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
                 {
-                    ++notifiedCount;
-                }
-            });
+                    await promiseRetainer;
 
-            Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsyncWithCancelation = (int start, int count) => AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
-            {
-                for (int i = start; i < start + count; i++)
-                {
-                    cancelationToken.ThrowIfCancelationRequested();
-
-                    if (i > start)
+                    if (cancelationToken.IsCancelationRequested)
                     {
-                        throw expectedException;
+                        ++notifiedCount;
                     }
+                });
 
-                    await writer.YieldAsync(i);
-                }
-            });
-
-            Promise.Run(async () =>
-            {
-                var asyncEnumerator = AsyncEnumerable.Merge(
-                    ObserveCancelation(),
-                    EnumerableRangeAsyncWithCancelation(0, 2),
-                    ObserveCancelation(),
-                    ObserveCancelation()
-                )
-                    .GetAsyncEnumerator();
-                Assert.True(await asyncEnumerator.MoveNextAsync());
-                Assert.AreEqual(0, asyncEnumerator.Current);
-                var moveNextPromise = asyncEnumerator.MoveNextAsync();
-                deferred.Resolve();
-
-                bool rejected = false;
-                try
+                Func<int, int, AsyncEnumerable<int>> EnumerableRangeAsyncWithCancelation = (int start, int count) => AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
                 {
-                    await moveNextPromise;
-                }
-                catch (System.AggregateException e)
+                    for (int i = start; i < start + count; i++)
+                    {
+                        cancelationToken.ThrowIfCancelationRequested();
+
+                        if (i > start)
+                        {
+                            throw expectedException;
+                        }
+
+                        await writer.YieldAsync(i);
+                    }
+                });
+
+                Promise.Run(async () =>
                 {
-                    Assert.AreEqual(1, e.InnerExceptions.Count);
-                    Assert.AreEqual(expectedException, e.InnerException);
-                    rejected = true;
-                }
-                Assert.True(rejected);
+                    var asyncEnumerator = AsyncEnumerable.Merge(
+                        ObserveCancelation(),
+                        EnumerableRangeAsyncWithCancelation(0, 2),
+                        ObserveCancelation(),
+                        ObserveCancelation()
+                    )
+                        .GetAsyncEnumerator();
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    Assert.AreEqual(0, asyncEnumerator.Current);
+                    var moveNextPromise = asyncEnumerator.MoveNextAsync();
+                    deferred.Resolve();
 
-                await asyncEnumerator.DisposeAsync();
-            }, SynchronizationOption.Synchronous)
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+                    bool rejected = false;
+                    try
+                    {
+                        await moveNextPromise;
+                    }
+                    catch (System.AggregateException e)
+                    {
+                        Assert.AreEqual(1, e.InnerExceptions.Count);
+                        Assert.AreEqual(expectedException, e.InnerException);
+                        rejected = true;
+                    }
+                    Assert.True(rejected);
 
-            Assert.AreEqual(3, notifiedCount);
+                    await asyncEnumerator.DisposeAsync();
+                }, SynchronizationOption.Synchronous)
+                    .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
 
-            yieldPromise.Forget();
+                Assert.AreEqual(3, notifiedCount);
+            }
         }
 
         [Test]
