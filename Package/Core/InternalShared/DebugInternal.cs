@@ -233,7 +233,6 @@ namespace Proto.Promises
         {
             if (!promise.IsValid)
             {
-                // TODO: update error message to use GetRetainer.
                 throw new InvalidOperationException("Promise is invalid." +
                     " Call `GetRetainer()` if you intend to await multiple times.",
                     GetFormattedStacktrace(skipFrames + 1));

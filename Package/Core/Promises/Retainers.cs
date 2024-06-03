@@ -22,10 +22,20 @@ namespace Proto.Promises
         {
             ValidateOperation(1);
             var promiseRef = _ref;
-            // TODO: call MaybeMarkAwaitedAndDispose and return a default Retainer if the promise is already complete, in RELEASE mode only.
-            return promiseRef == null
-                ? default
-                : new Retainer(Internal.PromiseRefBase.PromiseRetainer<Internal.VoidResult>.GetOrCreateAndHookup(promiseRef, _id));
+            if (promiseRef == null)
+            {
+                return default;
+            }
+#if !PROMISE_DEBUG
+            // In RELEASE mode, we can return a default retainer if this is already resolved.
+            // In DEBUG mode, we always want to create a backing reference for validation purposes.
+            if (promiseRef.State == State.Resolved)
+            {
+                promiseRef.MaybeMarkAwaitedAndDispose(_id);
+                return default;
+            }
+#endif
+            return new Retainer(Internal.PromiseRefBase.PromiseRetainer<Internal.VoidResult>.GetOrCreateAndHookup(promiseRef, _id));
         }
 
         /// <summary>
@@ -79,8 +89,16 @@ namespace Proto.Promises
             {
                 return new Retainer(_result);
             }
-
-            // TODO: call MaybeMarkAwaitedAndDispose and return a Retainer from its result if the promise is already complete, in RELEASE mode only.
+#if !PROMISE_DEBUG
+            // In RELEASE mode, we can return a retainer with only the result if this is already resolved.
+            // In DEBUG mode, we always want to create a backing reference for validation purposes.
+            if (promiseRef.State == Promise.State.Resolved)
+            {
+                var retainer = new Retainer(promiseRef._result);
+                promiseRef.MaybeMarkAwaitedAndDispose(_id);
+                return retainer;
+            }
+#endif
             var retainerRef = Internal.PromiseRefBase.PromiseRetainer<T>.GetOrCreateAndHookup(promiseRef, _id);
             return new Retainer(retainerRef, retainerRef.Id);
         }
