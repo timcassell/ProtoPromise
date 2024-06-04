@@ -579,7 +579,7 @@ namespace ProtoPromiseTests
         // The distance between 1 and the largest value smaller than 1.
         public static readonly float progressEpsilon = 1f - 0.99999994f;
 
-        public const int callbacksMultiplier = 4;
+        public const int callbacksMultiplier = 5;
 
         public const int resolveVoidCallbacks = 72 * callbacksMultiplier;
         public const int resolveTCallbacks = 72 * callbacksMultiplier;
@@ -628,14 +628,23 @@ namespace ProtoPromiseTests
         public const int cancelTCallbacks = (72 + 8 + 8) * callbacksMultiplier;
 
         public const int onCancelCallbacks = 4 * callbacksMultiplier;
+        public const int onCancelPromiseCallbacks = 2 * callbacksMultiplier;
 
-        public static IEnumerable<Promise> GetTestablePromises(Promise preservedPromise)
+        public static IEnumerable<Promise> GetTestablePromises(Promise.Retainer promiseRetainer, bool includePreserved = true)
         {
             // This helps to test several different kinds of promises to make sure they all work with the same API.
-            yield return preservedPromise;
-            yield return preservedPromise.Duplicate();
+            if (includePreserved)
+            {
+#pragma warning disable CS0618 // Type or member is obsolete
+                var preservedPromise = promiseRetainer.WaitAsync().Preserve();
+                yield return preservedPromise;
+                yield return preservedPromise.Duplicate();
+                preservedPromise.Forget();
+#pragma warning restore CS0618 // Type or member is obsolete
+            }
+            yield return promiseRetainer.WaitAsync();
             var deferred = Promise.NewDeferred();
-            preservedPromise
+            promiseRetainer.WaitAsync()
                 .ContinueWith(deferred, (d, result) =>
                 {
                     if (result.State == Promise.State.Resolved)
@@ -653,16 +662,24 @@ namespace ProtoPromiseTests
                 })
                 .Forget();
             yield return deferred.Promise;
-            yield return Await(preservedPromise);
+            yield return Await(promiseRetainer.WaitAsync());
         }
 
-        public static IEnumerable<Promise<T>> GetTestablePromises<T>(Promise<T> preservedPromise)
+        public static IEnumerable<Promise<T>> GetTestablePromises<T>(Promise<T>.Retainer promiseRetainer, bool includePreserved = true)
         {
             // This helps to test several different kinds of promises to make sure they all work with the same API.
-            yield return preservedPromise;
-            yield return preservedPromise.Duplicate();
+            if (includePreserved)
+            {
+#pragma warning disable CS0618 // Type or member is obsolete
+                var preservedPromise = promiseRetainer.WaitAsync().Preserve();
+                yield return preservedPromise;
+                yield return preservedPromise.Duplicate();
+                preservedPromise.Forget();
+#pragma warning restore CS0618 // Type or member is obsolete
+            }
+            yield return promiseRetainer.WaitAsync();
             var deferred = Promise.NewDeferred<T>();
-            preservedPromise
+            promiseRetainer.WaitAsync()
                 .ContinueWith(deferred, (d, result) =>
                 {
                     if (result.State == Promise.State.Resolved)
@@ -680,7 +697,7 @@ namespace ProtoPromiseTests
                 })
                 .Forget();
             yield return deferred.Promise;
-            yield return Await(preservedPromise);
+            yield return Await(promiseRetainer.WaitAsync());
         }
 
         private static async Promise Await(Promise promise)
@@ -702,36 +719,36 @@ namespace ProtoPromiseTests
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
         {
-            promise = promise.Preserve();
-            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
+            using (var retainer = promise.GetRetainer())
+            {
+                retainer.WaitAsync().Catch(() => { }).Forget(); // Suppress any rejections from the retained promise.
 
-            AddResolveCallbacksWithCancelation(
-                promise,
-                onResolve, convertValue,
-                onResolveCapture, captureValue,
-                promiseToPromise, promiseToPromiseConvert,
-                onCallbackAdded, onCallbackAddedConvert,
-                default(CancelationToken), default(CancelationToken),
-                onCancel,
-                onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                configureAwaitType, configureAwaitForceAsync
-            );
+                AddResolveCallbacksWithCancelation(
+                    retainer.WaitAsync(),
+                    onResolve, convertValue,
+                    onResolveCapture, captureValue,
+                    promiseToPromise, promiseToPromiseConvert,
+                    onCallbackAdded, onCallbackAddedConvert,
+                    default(CancelationToken), default(CancelationToken),
+                    onCancel,
+                    onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
+                    configureAwaitType, configureAwaitForceAsync
+                );
 
-            CancelationSource cancelationSource = CancelationSource.New();
-            AddResolveCallbacksWithCancelation(
-                promise,
-                onResolve, convertValue,
-                onResolveCapture, captureValue,
-                promiseToPromise, promiseToPromiseConvert,
-                onCallbackAdded, onCallbackAddedConvert,
-                cancelationSource.Token, cancelationSource.Token,
-                onCancel,
-                onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                configureAwaitType, configureAwaitForceAsync
-            );
-            cancelationSource.Dispose();
-
-            promise.Forget();
+                CancelationSource cancelationSource = CancelationSource.New();
+                AddResolveCallbacksWithCancelation(
+                    retainer.WaitAsync(),
+                    onResolve, convertValue,
+                    onResolveCapture, captureValue,
+                    promiseToPromise, promiseToPromiseConvert,
+                    onCallbackAdded, onCallbackAddedConvert,
+                    cancelationSource.Token, cancelationSource.Token,
+                    onCancel,
+                    onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
+                    configureAwaitType, configureAwaitForceAsync
+                );
+                cancelationSource.Dispose();
+            }
         }
 
         public static void AddResolveCallbacksWithCancelation<TConvert, TCapture>(Promise promise,
@@ -744,109 +761,109 @@ namespace ProtoPromiseTests
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
         {
-            promise = promise.Preserve();
-            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
+            using (var retainer = promise.GetRetainer())
+            {
+                retainer.WaitAsync().Catch(() => { }).Forget(); // Suppress any rejections from the retained promise.
 
-            // Add empty delegates so no need for null check.
-            onResolve += () => { };
-            onResolveCapture += _ => { };
-            if (promiseToPromise == null)
-            {
-                promiseToPromise = _ => Promise.Resolved();
-            }
-            if (promiseToPromiseConvert == null)
-            {
-                promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
-            }
-            if (onCallbackAdded == null)
-            {
-                onCallbackAdded = (ref Promise p) => p.Forget();
-            }
-            if (onCallbackAddedConvert == null)
-            {
-                onCallbackAddedConvert = (ref Promise<TConvert> p) => p.Forget();
-            }
-            if (onAdoptCallbackAdded == null)
-            {
-                onAdoptCallbackAdded = (ref Promise p) => { };
-            }
-            if (onAdoptCallbackAddedConvert == null)
-            {
-                onAdoptCallbackAddedConvert = (ref Promise<TConvert> p) => { };
-            }
-            onCancel += () => { };
+                // Add empty delegates so no need for null check.
+                onResolve += () => { };
+                onResolveCapture += _ => { };
+                if (promiseToPromise == null)
+                {
+                    promiseToPromise = _ => Promise.Resolved();
+                }
+                if (promiseToPromiseConvert == null)
+                {
+                    promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
+                }
+                if (onCallbackAdded == null)
+                {
+                    onCallbackAdded = (ref Promise p) => p.Forget();
+                }
+                if (onCallbackAddedConvert == null)
+                {
+                    onCallbackAddedConvert = (ref Promise<TConvert> p) => p.Forget();
+                }
+                if (onAdoptCallbackAdded == null)
+                {
+                    onAdoptCallbackAdded = (ref Promise p) => { };
+                }
+                if (onAdoptCallbackAddedConvert == null)
+                {
+                    onAdoptCallbackAddedConvert = (ref Promise<TConvert> p) => { };
+                }
+                onCancel += () => { };
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p1 = default(Promise);
-                p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onCallbackAdded(ref p1);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p2 = default(Promise<TConvert>);
-                p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onCallbackAddedConvert(ref p2);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p3 = default(Promise);
-                p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return promiseToPromise(p3); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p3);
-                onCallbackAdded(ref p3);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p4 = default(Promise<TConvert>);
-                p4 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return promiseToPromiseConvert(p4); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p4);
-                onCallbackAddedConvert(ref p4);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p1 = default(Promise);
+                    p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onCallbackAdded(ref p1);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p2 = default(Promise<TConvert>);
+                    p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onCallbackAddedConvert(ref p2);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p3 = default(Promise);
+                    p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return promiseToPromise(p3); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p3);
+                    onCallbackAdded(ref p3);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p4 = default(Promise<TConvert>);
+                    p4 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return promiseToPromiseConvert(p4); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p4);
+                    onCallbackAddedConvert(ref p4);
+                }
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p5 = default(Promise);
-                p5 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onCallbackAdded(ref p5);
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p5 = default(Promise);
+                    p5 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onCallbackAdded(ref p5);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p6 = default(Promise<TConvert>);
+                    p6 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onCallbackAddedConvert(ref p6);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p7 = default(Promise);
+                    p7 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p7); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p7);
+                    onCallbackAdded(ref p7);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p8 = default(Promise<TConvert>);
+                    p8 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p8); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p8);
+                    onCallbackAddedConvert(ref p8);
+                }
             }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p6 = default(Promise<TConvert>);
-                p6 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onCallbackAddedConvert(ref p6);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p7 = default(Promise);
-                p7 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p7); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p7);
-                onCallbackAdded(ref p7);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p8 = default(Promise<TConvert>);
-                p8 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p8); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p8);
-                onCallbackAddedConvert(ref p8);
-            }
-
-            promise.Forget();
         }
 
         public static void AddResolveCallbacks<T, TConvert, TCapture>(Promise<T> promise,
@@ -858,11 +875,12 @@ namespace ProtoPromiseTests
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
         {
-            promise = promise.Preserve();
-            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
+            using (var retainer = promise.GetRetainer())
+            {
+                retainer.WaitAsync().Catch(() => { }).Forget(); // Suppress any rejections from the retained promise.
 
-            AddResolveCallbacksWithCancelation(
-                promise,
+                AddResolveCallbacksWithCancelation(
+                retainer.WaitAsync(),
                 onResolve, convertValue,
                 onResolveCapture, captureValue,
                 promiseToPromise, promiseToPromiseConvert,
@@ -873,21 +891,20 @@ namespace ProtoPromiseTests
                 configureAwaitType, configureAwaitForceAsync
             );
 
-            CancelationSource cancelationSource = CancelationSource.New();
-            AddResolveCallbacksWithCancelation(
-                promise,
-                onResolve, convertValue,
-                onResolveCapture, captureValue,
-                promiseToPromise, promiseToPromiseConvert,
-                onCallbackAdded, onCallbackAddedConvert,
-                cancelationSource.Token, cancelationSource.Token,
-                onCancel,
-                onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                configureAwaitType, configureAwaitForceAsync
-            );
-            cancelationSource.Dispose();
-
-            promise.Forget();
+                CancelationSource cancelationSource = CancelationSource.New();
+                AddResolveCallbacksWithCancelation(
+                    retainer.WaitAsync(),
+                    onResolve, convertValue,
+                    onResolveCapture, captureValue,
+                    promiseToPromise, promiseToPromiseConvert,
+                    onCallbackAdded, onCallbackAddedConvert,
+                    cancelationSource.Token, cancelationSource.Token,
+                    onCancel,
+                    onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
+                    configureAwaitType, configureAwaitForceAsync
+                );
+                cancelationSource.Dispose();
+            }
         }
 
         public static void AddResolveCallbacksWithCancelation<T, TConvert, TCapture>(Promise<T> promise,
@@ -900,109 +917,109 @@ namespace ProtoPromiseTests
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
         {
-            promise = promise.Preserve();
-            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
+            using (var retainer = promise.GetRetainer())
+            {
+                retainer.WaitAsync().Catch(() => { }).Forget(); // Suppress any rejections from the retained promise.
 
-            // Add empty delegates so no need for null check.
-            onResolve += _ => { };
-            onResolveCapture += _ => { };
-            if (promiseToPromise == null)
-            {
-                promiseToPromise = _ => Promise.Resolved();
-            }
-            if (promiseToPromiseConvert == null)
-            {
-                promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
-            }
-            if (onCallbackAdded == null)
-            {
-                onCallbackAdded = (ref Promise p) => p.Forget();
-            }
-            if (onCallbackAddedConvert == null)
-            {
-                onCallbackAddedConvert = (ref Promise<TConvert> p) => p.Forget();
-            }
-            if (onAdoptCallbackAdded == null)
-            {
-                onAdoptCallbackAdded = (ref Promise p) => { };
-            }
-            if (onAdoptCallbackAddedConvert == null)
-            {
-                onAdoptCallbackAddedConvert = (ref Promise<TConvert> p) => { };
-            }
-            onCancel += () => { };
+                // Add empty delegates so no need for null check.
+                onResolve += _ => { };
+                onResolveCapture += _ => { };
+                if (promiseToPromise == null)
+                {
+                    promiseToPromise = _ => Promise.Resolved();
+                }
+                if (promiseToPromiseConvert == null)
+                {
+                    promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
+                }
+                if (onCallbackAdded == null)
+                {
+                    onCallbackAdded = (ref Promise p) => p.Forget();
+                }
+                if (onCallbackAddedConvert == null)
+                {
+                    onCallbackAddedConvert = (ref Promise<TConvert> p) => p.Forget();
+                }
+                if (onAdoptCallbackAdded == null)
+                {
+                    onAdoptCallbackAdded = (ref Promise p) => { };
+                }
+                if (onAdoptCallbackAddedConvert == null)
+                {
+                    onAdoptCallbackAddedConvert = (ref Promise<TConvert> p) => { };
+                }
+                onCancel += () => { };
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p1 = default(Promise);
-                p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onCallbackAdded(ref p1);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p2 = default(Promise<TConvert>);
-                p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onCallbackAddedConvert(ref p2);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p3 = default(Promise);
-                p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return promiseToPromise(p3); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p3);
-                onCallbackAdded(ref p3);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p4 = default(Promise<TConvert>);
-                p4 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return promiseToPromiseConvert(p4); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p4);
-                onCallbackAddedConvert(ref p4);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p1 = default(Promise);
+                    p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onCallbackAdded(ref p1);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p2 = default(Promise<TConvert>);
+                    p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onCallbackAddedConvert(ref p2);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p3 = default(Promise);
+                    p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return promiseToPromise(p3); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p3);
+                    onCallbackAdded(ref p3);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p4 = default(Promise<TConvert>);
+                    p4 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return promiseToPromiseConvert(p4); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p4);
+                    onCallbackAddedConvert(ref p4);
+                }
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p5 = default(Promise);
-                p5 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onCallbackAdded(ref p5);
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p5 = default(Promise);
+                    p5 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onCallbackAdded(ref p5);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p6 = default(Promise<TConvert>);
+                    p6 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onCallbackAddedConvert(ref p6);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p7 = default(Promise);
+                    p7 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p7); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p7);
+                    onCallbackAdded(ref p7);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p8 = default(Promise<TConvert>);
+                    p8 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p8); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p8);
+                    onCallbackAddedConvert(ref p8);
+                }
             }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p6 = default(Promise<TConvert>);
-                p6 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onCallbackAddedConvert(ref p6);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p7 = default(Promise);
-                p7 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p7); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p7);
-                onCallbackAdded(ref p7);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p8 = default(Promise<TConvert>);
-                p8 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p8); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p8);
-                onCallbackAddedConvert(ref p8);
-            }
-
-            promise.Forget();
         }
 
         public static void AddCallbacks<TConvert, TReject, TCapture>(Promise promise,
@@ -1015,38 +1032,38 @@ namespace ProtoPromiseTests
             TestAction<Promise, AdoptLocation> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>, AdoptLocation> onAdoptCallbackAddedConvert = null, TestAction<Promise> onAdoptCallbackAddedCatch = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
         {
-            promise = promise.Preserve();
-            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
+            using (var retainer = promise.GetRetainer())
+            {
+                retainer.WaitAsync().Catch(() => { }).Forget(); // Suppress any rejections from the retained promise.
 
-            AddCallbacksWithCancelation(
-                promise,
-                onResolve, onReject, onUnknownRejection, convertValue,
-                onResolveCapture, onRejectCapture, onUnknownRejectionCapture, captureValue,
-                promiseToPromise, promiseToPromiseConvert,
-                onCallbackAdded, onCallbackAddedConvert,
-                default(CancelationToken), default(CancelationToken),
-                onCancel,
-                onDirectCallbackAdded, onDirectCallbackAddedConvert, onDirectCallbackAddedCatch,
-                onAdoptCallbackAdded, onAdoptCallbackAddedConvert, onAdoptCallbackAddedCatch,
-                configureAwaitType, configureAwaitForceAsync
-            );
+                AddCallbacksWithCancelation(
+                    retainer.WaitAsync(),
+                    onResolve, onReject, onUnknownRejection, convertValue,
+                    onResolveCapture, onRejectCapture, onUnknownRejectionCapture, captureValue,
+                    promiseToPromise, promiseToPromiseConvert,
+                    onCallbackAdded, onCallbackAddedConvert,
+                    default(CancelationToken), default(CancelationToken),
+                    onCancel,
+                    onDirectCallbackAdded, onDirectCallbackAddedConvert, onDirectCallbackAddedCatch,
+                    onAdoptCallbackAdded, onAdoptCallbackAddedConvert, onAdoptCallbackAddedCatch,
+                    configureAwaitType, configureAwaitForceAsync
+                );
 
-            CancelationSource cancelationSource = CancelationSource.New();
-            AddCallbacksWithCancelation(
-                promise,
-                onResolve, onReject, onUnknownRejection, convertValue,
-                onResolveCapture, onRejectCapture, onUnknownRejectionCapture, captureValue,
-                promiseToPromise, promiseToPromiseConvert,
-                onCallbackAdded, onCallbackAddedConvert,
-                cancelationSource.Token, cancelationSource.Token,
-                onCancel,
-                onDirectCallbackAdded, onDirectCallbackAddedConvert, onDirectCallbackAddedCatch,
-                onAdoptCallbackAdded, onAdoptCallbackAddedConvert, onAdoptCallbackAddedCatch,
-                configureAwaitType, configureAwaitForceAsync
-            );
-            cancelationSource.Dispose();
-
-            promise.Forget();
+                CancelationSource cancelationSource = CancelationSource.New();
+                AddCallbacksWithCancelation(
+                    retainer.WaitAsync(),
+                    onResolve, onReject, onUnknownRejection, convertValue,
+                    onResolveCapture, onRejectCapture, onUnknownRejectionCapture, captureValue,
+                    promiseToPromise, promiseToPromiseConvert,
+                    onCallbackAdded, onCallbackAddedConvert,
+                    cancelationSource.Token, cancelationSource.Token,
+                    onCancel,
+                    onDirectCallbackAdded, onDirectCallbackAddedConvert, onDirectCallbackAddedCatch,
+                    onAdoptCallbackAdded, onAdoptCallbackAddedConvert, onAdoptCallbackAddedCatch,
+                    configureAwaitType, configureAwaitForceAsync
+                );
+                cancelationSource.Dispose();
+            }
         }
 
         public static void AddCallbacksWithCancelation<TConvert, TReject, TCapture>(Promise promise,
@@ -1060,730 +1077,730 @@ namespace ProtoPromiseTests
             TestAction<Promise, AdoptLocation> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>, AdoptLocation> onAdoptCallbackAddedConvert = null, TestAction<Promise> onAdoptCallbackAddedCatch = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
         {
-            promise = promise.Preserve();
-            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
+            using (var retainer = promise.GetRetainer())
+            {
+                retainer.WaitAsync().Catch(() => { }).Forget(); // Suppress any rejections from the retained promise.
 
-            // Add empty delegates so no need for null check.
-            onResolve += () => { };
-            onReject += s => { };
-            onUnknownRejection += () => { };
-            onResolveCapture += _ => { };
-            onRejectCapture += _ => { };
-            onUnknownRejectionCapture += _ => { };
-            if (promiseToPromise == null)
-            {
-                promiseToPromise = _ => Promise.Resolved();
-            }
-            if (promiseToPromiseConvert == null)
-            {
-                promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
-            }
-            if (onCallbackAdded == null)
-            {
-                onCallbackAdded = (ref Promise p) => p.Forget();
-            }
-            if (onCallbackAddedConvert == null)
-            {
-                onCallbackAddedConvert = (ref Promise<TConvert> p) => p.Forget();
-            }
-            if (onDirectCallbackAdded == null)
-            {
-                onDirectCallbackAdded = (ref Promise p) => { };
-            }
-            if (onDirectCallbackAddedConvert == null)
-            {
-                onDirectCallbackAddedConvert = (ref Promise<TConvert> p) => { };
-            }
-            if (onDirectCallbackAddedCatch == null)
-            {
-                onDirectCallbackAddedCatch = (ref Promise p) => { };
-            }
-            if (onAdoptCallbackAdded == null)
-            {
-                onAdoptCallbackAdded = (ref Promise p, AdoptLocation _) => { };
-            }
-            if (onAdoptCallbackAddedConvert == null)
-            {
-                onAdoptCallbackAddedConvert = (ref Promise<TConvert> p, AdoptLocation _) => { };
-            }
-            if (onAdoptCallbackAddedCatch == null)
-            {
-                onAdoptCallbackAddedCatch = (ref Promise p) => { };
-            }
-            onCancel += () => { };
+                // Add empty delegates so no need for null check.
+                onResolve += () => { };
+                onReject += s => { };
+                onUnknownRejection += () => { };
+                onResolveCapture += _ => { };
+                onRejectCapture += _ => { };
+                onUnknownRejectionCapture += _ => { };
+                if (promiseToPromise == null)
+                {
+                    promiseToPromise = _ => Promise.Resolved();
+                }
+                if (promiseToPromiseConvert == null)
+                {
+                    promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
+                }
+                if (onCallbackAdded == null)
+                {
+                    onCallbackAdded = (ref Promise p) => p.Forget();
+                }
+                if (onCallbackAddedConvert == null)
+                {
+                    onCallbackAddedConvert = (ref Promise<TConvert> p) => p.Forget();
+                }
+                if (onDirectCallbackAdded == null)
+                {
+                    onDirectCallbackAdded = (ref Promise p) => { };
+                }
+                if (onDirectCallbackAddedConvert == null)
+                {
+                    onDirectCallbackAddedConvert = (ref Promise<TConvert> p) => { };
+                }
+                if (onDirectCallbackAddedCatch == null)
+                {
+                    onDirectCallbackAddedCatch = (ref Promise p) => { };
+                }
+                if (onAdoptCallbackAdded == null)
+                {
+                    onAdoptCallbackAdded = (ref Promise p, AdoptLocation _) => { };
+                }
+                if (onAdoptCallbackAddedConvert == null)
+                {
+                    onAdoptCallbackAddedConvert = (ref Promise<TConvert> p, AdoptLocation _) => { };
+                }
+                if (onAdoptCallbackAddedCatch == null)
+                {
+                    onAdoptCallbackAddedCatch = (ref Promise p) => { };
+                }
+                onCancel += () => { };
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p1 = default(Promise);
-                p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); }, () => { onUnknownRejection(); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onDirectCallbackAdded(ref p1);
-                onCallbackAdded(ref p1);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p2 = default(Promise);
-                p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onDirectCallbackAdded(ref p2);
-                onCallbackAdded(ref p2);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p3 = default(Promise);
-                p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); }, () => { onUnknownRejection(); return promiseToPromise(p3); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p3, AdoptLocation.Reject);
-                onCallbackAdded(ref p3);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p4 = default(Promise);
-                p4 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p4); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p4, AdoptLocation.Reject);
-                onCallbackAdded(ref p4);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p1 = default(Promise);
+                    p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); }, () => { onUnknownRejection(); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onDirectCallbackAdded(ref p1);
+                    onCallbackAdded(ref p1);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p2 = default(Promise);
+                    p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onDirectCallbackAdded(ref p2);
+                    onCallbackAdded(ref p2);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p3 = default(Promise);
+                    p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); }, () => { onUnknownRejection(); return promiseToPromise(p3); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p3, AdoptLocation.Reject);
+                    onCallbackAdded(ref p3);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p4 = default(Promise);
+                    p4 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p4); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p4, AdoptLocation.Reject);
+                    onCallbackAdded(ref p4);
+                }
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p5 = default(Promise<TConvert>);
-                p5 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return convertValue; }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onDirectCallbackAddedConvert(ref p5);
-                onCallbackAddedConvert(ref p5);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p6 = default(Promise<TConvert>);
-                p6 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return convertValue; }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onDirectCallbackAddedConvert(ref p6);
-                onCallbackAddedConvert(ref p6);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p7 = default(Promise<TConvert>);
-                p7 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return convertValue; }, () => { onUnknownRejection(); return promiseToPromiseConvert(p7); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p7, AdoptLocation.Reject);
-                onCallbackAddedConvert(ref p7);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p8 = default(Promise<TConvert>);
-                p8 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return convertValue; }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p8); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p8, AdoptLocation.Reject);
-                onCallbackAddedConvert(ref p8);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p5 = default(Promise<TConvert>);
+                    p5 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return convertValue; }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onDirectCallbackAddedConvert(ref p5);
+                    onCallbackAddedConvert(ref p5);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p6 = default(Promise<TConvert>);
+                    p6 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return convertValue; }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onDirectCallbackAddedConvert(ref p6);
+                    onCallbackAddedConvert(ref p6);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p7 = default(Promise<TConvert>);
+                    p7 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return convertValue; }, () => { onUnknownRejection(); return promiseToPromiseConvert(p7); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p7, AdoptLocation.Reject);
+                    onCallbackAddedConvert(ref p7);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p8 = default(Promise<TConvert>);
+                    p8 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return convertValue; }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p8); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p8, AdoptLocation.Reject);
+                    onCallbackAddedConvert(ref p8);
+                }
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p9 = default(Promise);
-                p9 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return promiseToPromise(p9); }, () => { onUnknownRejection(); return promiseToPromise(p9); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p9, AdoptLocation.Both);
-                onCallbackAdded(ref p9);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p10 = default(Promise);
-                p10 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return promiseToPromise(p10); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p10); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p10, AdoptLocation.Both);
-                onCallbackAdded(ref p10);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p11 = default(Promise);
-                p11 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return promiseToPromise(p11); }, () => { onUnknownRejection(); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p11, AdoptLocation.Resolve);
-                onCallbackAdded(ref p11);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p12 = default(Promise);
-                p12 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return promiseToPromise(p12); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p12, AdoptLocation.Resolve);
-                onCallbackAdded(ref p12);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p9 = default(Promise);
+                    p9 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return promiseToPromise(p9); }, () => { onUnknownRejection(); return promiseToPromise(p9); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p9, AdoptLocation.Both);
+                    onCallbackAdded(ref p9);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p10 = default(Promise);
+                    p10 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return promiseToPromise(p10); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p10); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p10, AdoptLocation.Both);
+                    onCallbackAdded(ref p10);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p11 = default(Promise);
+                    p11 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return promiseToPromise(p11); }, () => { onUnknownRejection(); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p11, AdoptLocation.Resolve);
+                    onCallbackAdded(ref p11);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p12 = default(Promise);
+                    p12 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return promiseToPromise(p12); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p12, AdoptLocation.Resolve);
+                    onCallbackAdded(ref p12);
+                }
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p13 = default(Promise<TConvert>);
-                p13 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return promiseToPromiseConvert(p13); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p13); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p13, AdoptLocation.Both);
-                onCallbackAddedConvert(ref p13);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p14 = default(Promise<TConvert>);
-                p14 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return promiseToPromiseConvert(p14); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p14); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p14, AdoptLocation.Both);
-                onCallbackAddedConvert(ref p14);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p15 = default(Promise<TConvert>);
-                p15 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return promiseToPromiseConvert(p15); }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p15, AdoptLocation.Resolve);
-                onCallbackAddedConvert(ref p15);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p16 = default(Promise<TConvert>);
-                p16 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return promiseToPromiseConvert(p16); }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p16, AdoptLocation.Resolve);
-                onCallbackAddedConvert(ref p16);
-            }
-
-
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p17 = default(Promise);
-                p17 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Catch(() => { onUnknownRejection(); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onDirectCallbackAddedCatch(ref p17);
-                onCallbackAdded(ref p17);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p18 = default(Promise);
-                p18 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Catch((TReject failValue) => { onReject(failValue); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onDirectCallbackAddedCatch(ref p18);
-                onCallbackAdded(ref p18);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p19 = default(Promise);
-                p19 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Catch(() => { onUnknownRejection(); return promiseToPromise(p19); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAddedCatch(ref p19);
-                onCallbackAdded(ref p19);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p20 = default(Promise);
-                p20 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Catch((TReject failValue) => { onReject(failValue); return promiseToPromise(p20); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAddedCatch(ref p20);
-                onCallbackAdded(ref p20);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p13 = default(Promise<TConvert>);
+                    p13 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return promiseToPromiseConvert(p13); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p13); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p13, AdoptLocation.Both);
+                    onCallbackAddedConvert(ref p13);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p14 = default(Promise<TConvert>);
+                    p14 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return promiseToPromiseConvert(p14); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p14); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p14, AdoptLocation.Both);
+                    onCallbackAddedConvert(ref p14);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p15 = default(Promise<TConvert>);
+                    p15 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return promiseToPromiseConvert(p15); }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p15, AdoptLocation.Resolve);
+                    onCallbackAddedConvert(ref p15);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p16 = default(Promise<TConvert>);
+                    p16 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return promiseToPromiseConvert(p16); }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p16, AdoptLocation.Resolve);
+                    onCallbackAddedConvert(ref p16);
+                }
 
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p21 = default(Promise);
-                p21 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onDirectCallbackAdded(ref p21);
-                onCallbackAdded(ref p21);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p22 = default(Promise);
-                p22 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onDirectCallbackAdded(ref p22);
-                onCallbackAdded(ref p22);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p23 = default(Promise);
-                p23 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p23); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p23, AdoptLocation.Reject);
-                onCallbackAdded(ref p23);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p24 = default(Promise);
-                p24 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p24); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p24, AdoptLocation.Reject);
-                onCallbackAdded(ref p24);
-            }
-
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p25 = default(Promise<TConvert>);
-                p25 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onDirectCallbackAddedConvert(ref p25);
-                onCallbackAddedConvert(ref p25);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p26 = default(Promise<TConvert>);
-                p26 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onDirectCallbackAddedConvert(ref p26);
-                onCallbackAddedConvert(ref p26);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p27 = default(Promise<TConvert>);
-                p27 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p27); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p27, AdoptLocation.Reject);
-                onCallbackAddedConvert(ref p27);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p28 = default(Promise<TConvert>);
-                p28 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p28); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p28, AdoptLocation.Reject);
-                onCallbackAddedConvert(ref p28);
-            }
-
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p29 = default(Promise);
-                p29 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p29); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p29); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p29, AdoptLocation.Both);
-                onCallbackAdded(ref p29);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p30 = default(Promise);
-                p30 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p30); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p30); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p30, AdoptLocation.Both);
-                onCallbackAdded(ref p30);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p31 = default(Promise);
-                p31 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p31); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p31, AdoptLocation.Resolve);
-                onCallbackAdded(ref p31);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p32 = default(Promise);
-                p32 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p32); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p32, AdoptLocation.Resolve);
-                onCallbackAdded(ref p32);
-            }
-
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p33 = default(Promise<TConvert>);
-                p33 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p33); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p33); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p33, AdoptLocation.Both);
-                onCallbackAddedConvert(ref p33);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p34 = default(Promise<TConvert>);
-                p34 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p34); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p34); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p34, AdoptLocation.Both);
-                onCallbackAddedConvert(ref p34);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p35 = default(Promise<TConvert>);
-                p35 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p35); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p35, AdoptLocation.Resolve);
-                onCallbackAddedConvert(ref p35);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p36 = default(Promise<TConvert>);
-                p36 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p36); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p36, AdoptLocation.Resolve);
-                onCallbackAddedConvert(ref p36);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p17 = default(Promise);
+                    p17 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Catch(() => { onUnknownRejection(); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onDirectCallbackAddedCatch(ref p17);
+                    onCallbackAdded(ref p17);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p18 = default(Promise);
+                    p18 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Catch((TReject failValue) => { onReject(failValue); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onDirectCallbackAddedCatch(ref p18);
+                    onCallbackAdded(ref p18);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p19 = default(Promise);
+                    p19 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Catch(() => { onUnknownRejection(); return promiseToPromise(p19); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAddedCatch(ref p19);
+                    onCallbackAdded(ref p19);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p20 = default(Promise);
+                    p20 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Catch((TReject failValue) => { onReject(failValue); return promiseToPromise(p20); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAddedCatch(ref p20);
+                    onCallbackAdded(ref p20);
+                }
 
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p37 = default(Promise);
-                p37 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Catch(captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onDirectCallbackAddedCatch(ref p37);
-                onCallbackAdded(ref p37);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p38 = default(Promise);
-                p38 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Catch(captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onDirectCallbackAddedCatch(ref p38);
-                onCallbackAdded(ref p38);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p39 = default(Promise);
-                p39 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Catch(captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p39); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAddedCatch(ref p39);
-                onCallbackAdded(ref p39);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p40 = default(Promise);
-                p40 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Catch(captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p40); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAddedCatch(ref p40);
-                onCallbackAdded(ref p40);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p21 = default(Promise);
+                    p21 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onDirectCallbackAdded(ref p21);
+                    onCallbackAdded(ref p21);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p22 = default(Promise);
+                    p22 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onDirectCallbackAdded(ref p22);
+                    onCallbackAdded(ref p22);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p23 = default(Promise);
+                    p23 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p23); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p23, AdoptLocation.Reject);
+                    onCallbackAdded(ref p23);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p24 = default(Promise);
+                    p24 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p24); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p24, AdoptLocation.Reject);
+                    onCallbackAdded(ref p24);
+                }
+
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p25 = default(Promise<TConvert>);
+                    p25 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onDirectCallbackAddedConvert(ref p25);
+                    onCallbackAddedConvert(ref p25);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p26 = default(Promise<TConvert>);
+                    p26 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onDirectCallbackAddedConvert(ref p26);
+                    onCallbackAddedConvert(ref p26);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p27 = default(Promise<TConvert>);
+                    p27 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p27); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p27, AdoptLocation.Reject);
+                    onCallbackAddedConvert(ref p27);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p28 = default(Promise<TConvert>);
+                    p28 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p28); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p28, AdoptLocation.Reject);
+                    onCallbackAddedConvert(ref p28);
+                }
+
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p29 = default(Promise);
+                    p29 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p29); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p29); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p29, AdoptLocation.Both);
+                    onCallbackAdded(ref p29);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p30 = default(Promise);
+                    p30 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p30); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p30); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p30, AdoptLocation.Both);
+                    onCallbackAdded(ref p30);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p31 = default(Promise);
+                    p31 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p31); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p31, AdoptLocation.Resolve);
+                    onCallbackAdded(ref p31);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p32 = default(Promise);
+                    p32 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p32); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p32, AdoptLocation.Resolve);
+                    onCallbackAdded(ref p32);
+                }
+
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p33 = default(Promise<TConvert>);
+                    p33 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p33); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p33); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p33, AdoptLocation.Both);
+                    onCallbackAddedConvert(ref p33);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p34 = default(Promise<TConvert>);
+                    p34 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p34); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p34); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p34, AdoptLocation.Both);
+                    onCallbackAddedConvert(ref p34);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p35 = default(Promise<TConvert>);
+                    p35 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p35); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p35, AdoptLocation.Resolve);
+                    onCallbackAddedConvert(ref p35);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p36 = default(Promise<TConvert>);
+                    p36 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p36); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p36, AdoptLocation.Resolve);
+                    onCallbackAddedConvert(ref p36);
+                }
 
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p41 = default(Promise);
-                p41 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, () => { onUnknownRejection(); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onDirectCallbackAdded(ref p41);
-                onCallbackAdded(ref p41);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p42 = default(Promise);
-                p42 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onDirectCallbackAdded(ref p42);
-                onCallbackAdded(ref p42);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p43 = default(Promise);
-                p43 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, () => { onUnknownRejection(); return promiseToPromise(p43); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p43, AdoptLocation.Reject);
-                onCallbackAdded(ref p43);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p44 = default(Promise);
-                p44 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p44); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p44, AdoptLocation.Reject);
-                onCallbackAdded(ref p44);
-            }
-
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p45 = default(Promise<TConvert>);
-                p45 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onDirectCallbackAddedConvert(ref p45);
-                onCallbackAddedConvert(ref p45);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p46 = default(Promise<TConvert>);
-                p46 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onDirectCallbackAddedConvert(ref p46);
-                onCallbackAddedConvert(ref p46);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p47 = default(Promise<TConvert>);
-                p47 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, () => { onUnknownRejection(); return promiseToPromiseConvert(p47); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p47, AdoptLocation.Reject);
-                onCallbackAddedConvert(ref p47);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p48 = default(Promise<TConvert>);
-                p48 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p48); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p48, AdoptLocation.Reject);
-                onCallbackAddedConvert(ref p48);
-            }
-
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p49 = default(Promise);
-                p49 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p49); }, () => { onUnknownRejection(); return promiseToPromise(p49); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p49, AdoptLocation.Both);
-                onCallbackAdded(ref p49);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p50 = default(Promise);
-                p50 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p50); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p50); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p50, AdoptLocation.Both);
-                onCallbackAdded(ref p50);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p51 = default(Promise);
-                p51 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p51); }, () => { onUnknownRejection(); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p51, AdoptLocation.Resolve);
-                onCallbackAdded(ref p51);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p52 = default(Promise);
-                p52 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p52); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p52, AdoptLocation.Resolve);
-                onCallbackAdded(ref p52);
-            }
-
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p53 = default(Promise<TConvert>);
-                p53 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p53); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p53); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p53, AdoptLocation.Both);
-                onCallbackAddedConvert(ref p53);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p54 = default(Promise<TConvert>);
-                p54 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p54); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p54); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p54, AdoptLocation.Both);
-                onCallbackAddedConvert(ref p54);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p55 = default(Promise<TConvert>);
-                p55 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p55); }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p55, AdoptLocation.Resolve);
-                onCallbackAddedConvert(ref p55);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p56 = default(Promise<TConvert>);
-                p56 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p56); }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p56, AdoptLocation.Resolve);
-                onCallbackAddedConvert(ref p56);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p37 = default(Promise);
+                    p37 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Catch(captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onDirectCallbackAddedCatch(ref p37);
+                    onCallbackAdded(ref p37);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p38 = default(Promise);
+                    p38 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Catch(captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onDirectCallbackAddedCatch(ref p38);
+                    onCallbackAdded(ref p38);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p39 = default(Promise);
+                    p39 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Catch(captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p39); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAddedCatch(ref p39);
+                    onCallbackAdded(ref p39);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p40 = default(Promise);
+                    p40 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Catch(captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p40); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAddedCatch(ref p40);
+                    onCallbackAdded(ref p40);
+                }
 
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p57 = default(Promise);
-                p57 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onDirectCallbackAdded(ref p57);
-                onCallbackAdded(ref p57);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p58 = default(Promise);
-                p58 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onDirectCallbackAdded(ref p58);
-                onCallbackAdded(ref p58);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p59 = default(Promise);
-                p59 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p59); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p59, AdoptLocation.Reject);
-                onCallbackAdded(ref p59);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p60 = default(Promise);
-                p60 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p60); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p60, AdoptLocation.Reject);
-                onCallbackAdded(ref p60);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p41 = default(Promise);
+                    p41 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, () => { onUnknownRejection(); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onDirectCallbackAdded(ref p41);
+                    onCallbackAdded(ref p41);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p42 = default(Promise);
+                    p42 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onDirectCallbackAdded(ref p42);
+                    onCallbackAdded(ref p42);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p43 = default(Promise);
+                    p43 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, () => { onUnknownRejection(); return promiseToPromise(p43); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p43, AdoptLocation.Reject);
+                    onCallbackAdded(ref p43);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p44 = default(Promise);
+                    p44 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p44); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p44, AdoptLocation.Reject);
+                    onCallbackAdded(ref p44);
+                }
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p61 = default(Promise<TConvert>);
-                p61 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onDirectCallbackAddedConvert(ref p61);
-                onCallbackAddedConvert(ref p61);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p62 = default(Promise<TConvert>);
-                p62 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onDirectCallbackAddedConvert(ref p62);
-                onCallbackAddedConvert(ref p62);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p63 = default(Promise<TConvert>);
-                p63 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p63); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p63, AdoptLocation.Reject);
-                onCallbackAddedConvert(ref p63);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p64 = default(Promise<TConvert>);
-                p64 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p64); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p64, AdoptLocation.Reject);
-                onCallbackAddedConvert(ref p64);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p45 = default(Promise<TConvert>);
+                    p45 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onDirectCallbackAddedConvert(ref p45);
+                    onCallbackAddedConvert(ref p45);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p46 = default(Promise<TConvert>);
+                    p46 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onDirectCallbackAddedConvert(ref p46);
+                    onCallbackAddedConvert(ref p46);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p47 = default(Promise<TConvert>);
+                    p47 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, () => { onUnknownRejection(); return promiseToPromiseConvert(p47); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p47, AdoptLocation.Reject);
+                    onCallbackAddedConvert(ref p47);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p48 = default(Promise<TConvert>);
+                    p48 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p48); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p48, AdoptLocation.Reject);
+                    onCallbackAddedConvert(ref p48);
+                }
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p65 = default(Promise);
-                p65 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return promiseToPromise(p65); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p65); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p65, AdoptLocation.Both);
-                onCallbackAdded(ref p65);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p66 = default(Promise);
-                p66 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return promiseToPromise(p66); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p66); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p66, AdoptLocation.Both);
-                onCallbackAdded(ref p66);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p67 = default(Promise);
-                p67 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return promiseToPromise(p67); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p67, AdoptLocation.Resolve);
-                onCallbackAdded(ref p67);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p68 = default(Promise);
-                p68 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return promiseToPromise(p68); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p68, AdoptLocation.Resolve);
-                onCallbackAdded(ref p68);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p49 = default(Promise);
+                    p49 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p49); }, () => { onUnknownRejection(); return promiseToPromise(p49); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p49, AdoptLocation.Both);
+                    onCallbackAdded(ref p49);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p50 = default(Promise);
+                    p50 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p50); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p50); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p50, AdoptLocation.Both);
+                    onCallbackAdded(ref p50);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p51 = default(Promise);
+                    p51 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p51); }, () => { onUnknownRejection(); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p51, AdoptLocation.Resolve);
+                    onCallbackAdded(ref p51);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p52 = default(Promise);
+                    p52 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p52); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p52, AdoptLocation.Resolve);
+                    onCallbackAdded(ref p52);
+                }
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p69 = default(Promise<TConvert>);
-                p69 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return promiseToPromiseConvert(p69); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p69); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p69, AdoptLocation.Both);
-                onCallbackAddedConvert(ref p69);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p70 = default(Promise<TConvert>);
-                p70 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return promiseToPromiseConvert(p70); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p70); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p70, AdoptLocation.Both);
-                onCallbackAddedConvert(ref p70);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p71 = default(Promise<TConvert>);
-                p71 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return promiseToPromiseConvert(p71); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p71, AdoptLocation.Resolve);
-                onCallbackAddedConvert(ref p71);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p72 = default(Promise<TConvert>);
-                p72 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(() => { onResolve(); return promiseToPromiseConvert(p72); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p72, AdoptLocation.Resolve);
-                onCallbackAddedConvert(ref p72);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p53 = default(Promise<TConvert>);
+                    p53 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p53); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p53); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p53, AdoptLocation.Both);
+                    onCallbackAddedConvert(ref p53);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p54 = default(Promise<TConvert>);
+                    p54 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p54); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p54); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p54, AdoptLocation.Both);
+                    onCallbackAddedConvert(ref p54);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p55 = default(Promise<TConvert>);
+                    p55 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p55); }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p55, AdoptLocation.Resolve);
+                    onCallbackAddedConvert(ref p55);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p56 = default(Promise<TConvert>);
+                    p56 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p56); }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p56, AdoptLocation.Resolve);
+                    onCallbackAddedConvert(ref p56);
+                }
 
-            promise.Forget();
+
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p57 = default(Promise);
+                    p57 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onDirectCallbackAdded(ref p57);
+                    onCallbackAdded(ref p57);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p58 = default(Promise);
+                    p58 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onDirectCallbackAdded(ref p58);
+                    onCallbackAdded(ref p58);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p59 = default(Promise);
+                    p59 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p59); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p59, AdoptLocation.Reject);
+                    onCallbackAdded(ref p59);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p60 = default(Promise);
+                    p60 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p60); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p60, AdoptLocation.Reject);
+                    onCallbackAdded(ref p60);
+                }
+
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p61 = default(Promise<TConvert>);
+                    p61 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onDirectCallbackAddedConvert(ref p61);
+                    onCallbackAddedConvert(ref p61);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p62 = default(Promise<TConvert>);
+                    p62 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onDirectCallbackAddedConvert(ref p62);
+                    onCallbackAddedConvert(ref p62);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p63 = default(Promise<TConvert>);
+                    p63 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p63); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p63, AdoptLocation.Reject);
+                    onCallbackAddedConvert(ref p63);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p64 = default(Promise<TConvert>);
+                    p64 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p64); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p64, AdoptLocation.Reject);
+                    onCallbackAddedConvert(ref p64);
+                }
+
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p65 = default(Promise);
+                    p65 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return promiseToPromise(p65); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p65); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p65, AdoptLocation.Both);
+                    onCallbackAdded(ref p65);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p66 = default(Promise);
+                    p66 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return promiseToPromise(p66); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p66); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p66, AdoptLocation.Both);
+                    onCallbackAdded(ref p66);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p67 = default(Promise);
+                    p67 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return promiseToPromise(p67); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p67, AdoptLocation.Resolve);
+                    onCallbackAdded(ref p67);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p68 = default(Promise);
+                    p68 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return promiseToPromise(p68); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p68, AdoptLocation.Resolve);
+                    onCallbackAdded(ref p68);
+                }
+
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p69 = default(Promise<TConvert>);
+                    p69 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return promiseToPromiseConvert(p69); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p69); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p69, AdoptLocation.Both);
+                    onCallbackAddedConvert(ref p69);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p70 = default(Promise<TConvert>);
+                    p70 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return promiseToPromiseConvert(p70); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p70); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p70, AdoptLocation.Both);
+                    onCallbackAddedConvert(ref p70);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p71 = default(Promise<TConvert>);
+                    p71 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return promiseToPromiseConvert(p71); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p71, AdoptLocation.Resolve);
+                    onCallbackAddedConvert(ref p71);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p72 = default(Promise<TConvert>);
+                    p72 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(() => { onResolve(); return promiseToPromiseConvert(p72); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p72, AdoptLocation.Resolve);
+                    onCallbackAddedConvert(ref p72);
+                }
+            }
         }
 
         public static void AddCallbacks<T, TConvert, TReject, TCapture>(Promise<T> promise,
@@ -1796,38 +1813,38 @@ namespace ProtoPromiseTests
             TestAction<Promise, AdoptLocation> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>, AdoptLocation> onAdoptCallbackAddedConvert = null, TestAction<Promise<T>> onAdoptCallbackAddedT = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
         {
-            promise = promise.Preserve();
-            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
+            using (var retainer = promise.GetRetainer())
+            {
+                retainer.WaitAsync().Catch(() => { }).Forget(); // Suppress any rejections from the retained promise.
 
-            AddCallbacksWithCancelation(
-                promise,
-                onResolve, onReject, onUnknownRejection, convertValue, TValue,
-                onResolveCapture, onRejectCapture, onUnknownRejectionCapture, captureValue,
-                promiseToPromise, promiseToPromiseConvert, promiseToPromiseT,
-                onCallbackAdded, onCallbackAddedConvert, onCallbackAddedT,
-                default(CancelationToken), default(CancelationToken),
-                onCancel,
-                onDirectCallbackAdded, onDirectCallbackAddedConvert, onDirectCallbackAddedT,
-                onAdoptCallbackAdded, onAdoptCallbackAddedConvert, onAdoptCallbackAddedT,
-                configureAwaitType, configureAwaitForceAsync
-            );
+                AddCallbacksWithCancelation(
+                    retainer.WaitAsync(),
+                    onResolve, onReject, onUnknownRejection, convertValue, TValue,
+                    onResolveCapture, onRejectCapture, onUnknownRejectionCapture, captureValue,
+                    promiseToPromise, promiseToPromiseConvert, promiseToPromiseT,
+                    onCallbackAdded, onCallbackAddedConvert, onCallbackAddedT,
+                    default(CancelationToken), default(CancelationToken),
+                    onCancel,
+                    onDirectCallbackAdded, onDirectCallbackAddedConvert, onDirectCallbackAddedT,
+                    onAdoptCallbackAdded, onAdoptCallbackAddedConvert, onAdoptCallbackAddedT,
+                    configureAwaitType, configureAwaitForceAsync
+                );
 
-            CancelationSource cancelationSource = CancelationSource.New();
-            AddCallbacksWithCancelation(
-                promise,
-                onResolve, onReject, onUnknownRejection, convertValue, TValue,
-                onResolveCapture, onRejectCapture, onUnknownRejectionCapture, captureValue,
-                promiseToPromise, promiseToPromiseConvert, promiseToPromiseT,
-                onCallbackAdded, onCallbackAddedConvert, onCallbackAddedT,
-                cancelationSource.Token, cancelationSource.Token,
-                onCancel,
-                onDirectCallbackAdded, onDirectCallbackAddedConvert, onDirectCallbackAddedT,
-                onAdoptCallbackAdded, onAdoptCallbackAddedConvert, onAdoptCallbackAddedT,
-                configureAwaitType, configureAwaitForceAsync
-            );
-            cancelationSource.Dispose();
-
-            promise.Forget();
+                CancelationSource cancelationSource = CancelationSource.New();
+                AddCallbacksWithCancelation(
+                    retainer.WaitAsync(),
+                    onResolve, onReject, onUnknownRejection, convertValue, TValue,
+                    onResolveCapture, onRejectCapture, onUnknownRejectionCapture, captureValue,
+                    promiseToPromise, promiseToPromiseConvert, promiseToPromiseT,
+                    onCallbackAdded, onCallbackAddedConvert, onCallbackAddedT,
+                    cancelationSource.Token, cancelationSource.Token,
+                    onCancel,
+                    onDirectCallbackAdded, onDirectCallbackAddedConvert, onDirectCallbackAddedT,
+                    onAdoptCallbackAdded, onAdoptCallbackAddedConvert, onAdoptCallbackAddedT,
+                    configureAwaitType, configureAwaitForceAsync
+                );
+                cancelationSource.Dispose();
+            }
         }
 
         public static void AddCallbacksWithCancelation<T, TConvert, TReject, TCapture>(Promise<T> promise,
@@ -1841,739 +1858,739 @@ namespace ProtoPromiseTests
             TestAction<Promise, AdoptLocation> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>, AdoptLocation> onAdoptCallbackAddedConvert = null, TestAction<Promise<T>> onAdoptCallbackAddedT = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
         {
-            promise = promise.Preserve();
-            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
+            using (var retainer = promise.GetRetainer())
+            {
+                retainer.WaitAsync().Catch(() => { }).Forget(); // Suppress any rejections from the retained promise.
 
-            // Add empty delegates so no need for null check.
-            onResolve += x => { };
-            onReject += s => { };
-            onUnknownRejection += () => { };
-            onResolveCapture += _ => { };
-            onRejectCapture += _ => { };
-            onUnknownRejectionCapture += _ => { };
-            if (promiseToPromiseT == null)
-            {
-                promiseToPromiseT = _ => Promise.Resolved(TValue);
-            }
-            if (promiseToPromise == null)
-            {
-                promiseToPromise = _ => Promise.Resolved();
-            }
-            if (promiseToPromiseConvert == null)
-            {
-                promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
-            }
-            if (onCallbackAdded == null)
-            {
-                onCallbackAdded = (ref Promise p) => p.Forget();
-            }
-            if (onCallbackAddedConvert == null)
-            {
-                onCallbackAddedConvert = (ref Promise<TConvert> p) => p.Forget();
-            }
-            if (onCallbackAddedT == null)
-            {
-                onCallbackAddedT = (ref Promise<T> p) => p.Forget();
-            }
-            if (onDirectCallbackAdded == null)
-            {
-                onDirectCallbackAdded = (ref Promise p) => { };
-            }
-            if (onDirectCallbackAddedConvert == null)
-            {
-                onDirectCallbackAddedConvert = (ref Promise<TConvert> p) => { };
-            }
-            if (onDirectCallbackAddedT == null)
-            {
-                onDirectCallbackAddedT = (ref Promise<T> p) => { };
-            }
-            if (onAdoptCallbackAdded == null)
-            {
-                onAdoptCallbackAdded = (ref Promise p, AdoptLocation _) => { };
-            }
-            if (onAdoptCallbackAddedConvert == null)
-            {
-                onAdoptCallbackAddedConvert = (ref Promise<TConvert> p, AdoptLocation _) => { };
-            }
-            if (onAdoptCallbackAddedT == null)
-            {
-                onAdoptCallbackAddedT = (ref Promise<T> p) => { };
-            }
-            onCancel += () => { };
+                // Add empty delegates so no need for null check.
+                onResolve += x => { };
+                onReject += s => { };
+                onUnknownRejection += () => { };
+                onResolveCapture += _ => { };
+                onRejectCapture += _ => { };
+                onUnknownRejectionCapture += _ => { };
+                if (promiseToPromiseT == null)
+                {
+                    promiseToPromiseT = _ => Promise.Resolved(TValue);
+                }
+                if (promiseToPromise == null)
+                {
+                    promiseToPromise = _ => Promise.Resolved();
+                }
+                if (promiseToPromiseConvert == null)
+                {
+                    promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
+                }
+                if (onCallbackAdded == null)
+                {
+                    onCallbackAdded = (ref Promise p) => p.Forget();
+                }
+                if (onCallbackAddedConvert == null)
+                {
+                    onCallbackAddedConvert = (ref Promise<TConvert> p) => p.Forget();
+                }
+                if (onCallbackAddedT == null)
+                {
+                    onCallbackAddedT = (ref Promise<T> p) => p.Forget();
+                }
+                if (onDirectCallbackAdded == null)
+                {
+                    onDirectCallbackAdded = (ref Promise p) => { };
+                }
+                if (onDirectCallbackAddedConvert == null)
+                {
+                    onDirectCallbackAddedConvert = (ref Promise<TConvert> p) => { };
+                }
+                if (onDirectCallbackAddedT == null)
+                {
+                    onDirectCallbackAddedT = (ref Promise<T> p) => { };
+                }
+                if (onAdoptCallbackAdded == null)
+                {
+                    onAdoptCallbackAdded = (ref Promise p, AdoptLocation _) => { };
+                }
+                if (onAdoptCallbackAddedConvert == null)
+                {
+                    onAdoptCallbackAddedConvert = (ref Promise<TConvert> p, AdoptLocation _) => { };
+                }
+                if (onAdoptCallbackAddedT == null)
+                {
+                    onAdoptCallbackAddedT = (ref Promise<T> p) => { };
+                }
+                onCancel += () => { };
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p1 = default(Promise);
-                p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); }, () => { onUnknownRejection(); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onDirectCallbackAdded(ref p1);
-                onCallbackAdded(ref p1);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p2 = default(Promise);
-                p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onDirectCallbackAdded(ref p2);
-                onCallbackAdded(ref p2);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p3 = default(Promise);
-                p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); }, () => { onUnknownRejection(); return promiseToPromise(p3); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p3, AdoptLocation.Reject);
-                onCallbackAdded(ref p3);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p4 = default(Promise);
-                p4 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p4); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p4, AdoptLocation.Reject);
-                onCallbackAdded(ref p4);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p1 = default(Promise);
+                    p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); }, () => { onUnknownRejection(); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onDirectCallbackAdded(ref p1);
+                    onCallbackAdded(ref p1);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p2 = default(Promise);
+                    p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onDirectCallbackAdded(ref p2);
+                    onCallbackAdded(ref p2);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p3 = default(Promise);
+                    p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); }, () => { onUnknownRejection(); return promiseToPromise(p3); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p3, AdoptLocation.Reject);
+                    onCallbackAdded(ref p3);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p4 = default(Promise);
+                    p4 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p4); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p4, AdoptLocation.Reject);
+                    onCallbackAdded(ref p4);
+                }
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p5 = default(Promise<TConvert>);
-                p5 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return convertValue; }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onDirectCallbackAddedConvert(ref p5);
-                onCallbackAddedConvert(ref p5);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p6 = default(Promise<TConvert>);
-                p6 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return convertValue; }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onDirectCallbackAddedConvert(ref p6);
-                onCallbackAddedConvert(ref p6);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p7 = default(Promise<TConvert>);
-                p7 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return convertValue; }, () => { onUnknownRejection(); return promiseToPromiseConvert(p7); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p7, AdoptLocation.Reject);
-                onCallbackAddedConvert(ref p7);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p8 = default(Promise<TConvert>);
-                p8 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return convertValue; }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p8); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p8, AdoptLocation.Reject);
-                onCallbackAddedConvert(ref p8);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p5 = default(Promise<TConvert>);
+                    p5 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return convertValue; }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onDirectCallbackAddedConvert(ref p5);
+                    onCallbackAddedConvert(ref p5);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p6 = default(Promise<TConvert>);
+                    p6 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return convertValue; }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onDirectCallbackAddedConvert(ref p6);
+                    onCallbackAddedConvert(ref p6);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p7 = default(Promise<TConvert>);
+                    p7 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return convertValue; }, () => { onUnknownRejection(); return promiseToPromiseConvert(p7); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p7, AdoptLocation.Reject);
+                    onCallbackAddedConvert(ref p7);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p8 = default(Promise<TConvert>);
+                    p8 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return convertValue; }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p8); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p8, AdoptLocation.Reject);
+                    onCallbackAddedConvert(ref p8);
+                }
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p9 = default(Promise);
-                p9 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return promiseToPromise(p9); }, () => { onUnknownRejection(); return promiseToPromise(p9); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p9, AdoptLocation.Both);
-                onCallbackAdded(ref p9);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p10 = default(Promise);
-                p10 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return promiseToPromise(p10); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p10); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p10, AdoptLocation.Both);
-                onCallbackAdded(ref p10);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p11 = default(Promise);
-                p11 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return promiseToPromise(p11); }, () => { onUnknownRejection(); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p11, AdoptLocation.Resolve);
-                onCallbackAdded(ref p11);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p12 = default(Promise);
-                p12 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return promiseToPromise(p12); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p12, AdoptLocation.Resolve);
-                onCallbackAdded(ref p12);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p9 = default(Promise);
+                    p9 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return promiseToPromise(p9); }, () => { onUnknownRejection(); return promiseToPromise(p9); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p9, AdoptLocation.Both);
+                    onCallbackAdded(ref p9);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p10 = default(Promise);
+                    p10 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return promiseToPromise(p10); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p10); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p10, AdoptLocation.Both);
+                    onCallbackAdded(ref p10);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p11 = default(Promise);
+                    p11 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return promiseToPromise(p11); }, () => { onUnknownRejection(); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p11, AdoptLocation.Resolve);
+                    onCallbackAdded(ref p11);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p12 = default(Promise);
+                    p12 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return promiseToPromise(p12); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p12, AdoptLocation.Resolve);
+                    onCallbackAdded(ref p12);
+                }
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p13 = default(Promise<TConvert>);
-                p13 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return promiseToPromiseConvert(p13); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p13); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p13, AdoptLocation.Both);
-                onCallbackAddedConvert(ref p13);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p14 = default(Promise<TConvert>);
-                p14 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return promiseToPromiseConvert(p14); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p14); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p14, AdoptLocation.Both);
-                onCallbackAddedConvert(ref p14);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p15 = default(Promise<TConvert>);
-                p15 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return promiseToPromiseConvert(p15); }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p15, AdoptLocation.Resolve);
-                onCallbackAddedConvert(ref p15);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p16 = default(Promise<TConvert>);
-                p16 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return promiseToPromiseConvert(p16); }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p16, AdoptLocation.Resolve);
-                onCallbackAddedConvert(ref p16);
-            }
-
-
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<T> p17 = default(Promise<T>);
-                p17 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Catch(() => { onUnknownRejection(); return TValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return TValue; });
-                onDirectCallbackAddedT(ref p17);
-                onCallbackAddedT(ref p17);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<T> p18 = default(Promise<T>);
-                p18 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Catch((TReject failValue) => { onReject(failValue); return TValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return TValue; });
-                onDirectCallbackAddedT(ref p18);
-                onCallbackAddedT(ref p18);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<T> p19 = default(Promise<T>);
-                p19 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Catch(() => { onUnknownRejection(); return promiseToPromiseT(p19); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return TValue; });
-                onAdoptCallbackAddedT(ref p19);
-                onCallbackAddedT(ref p19);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<T> p20 = default(Promise<T>);
-                p20 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Catch((TReject failValue) => { onReject(failValue); return promiseToPromiseT(p20); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return TValue; });
-                onAdoptCallbackAddedT(ref p20);
-                onCallbackAddedT(ref p20);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p13 = default(Promise<TConvert>);
+                    p13 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return promiseToPromiseConvert(p13); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p13); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p13, AdoptLocation.Both);
+                    onCallbackAddedConvert(ref p13);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p14 = default(Promise<TConvert>);
+                    p14 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return promiseToPromiseConvert(p14); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p14); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p14, AdoptLocation.Both);
+                    onCallbackAddedConvert(ref p14);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p15 = default(Promise<TConvert>);
+                    p15 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return promiseToPromiseConvert(p15); }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p15, AdoptLocation.Resolve);
+                    onCallbackAddedConvert(ref p15);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p16 = default(Promise<TConvert>);
+                    p16 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return promiseToPromiseConvert(p16); }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p16, AdoptLocation.Resolve);
+                    onCallbackAddedConvert(ref p16);
+                }
 
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p21 = default(Promise);
-                p21 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onDirectCallbackAdded(ref p21);
-                onCallbackAdded(ref p21);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p22 = default(Promise);
-                p22 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onDirectCallbackAdded(ref p22);
-                onCallbackAdded(ref p22);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p23 = default(Promise);
-                p23 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p23); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p23, AdoptLocation.Reject);
-                onCallbackAdded(ref p23);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p24 = default(Promise);
-                p24 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p24); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p24, AdoptLocation.Reject);
-                onCallbackAdded(ref p24);
-            }
-
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p25 = default(Promise<TConvert>);
-                p25 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onDirectCallbackAddedConvert(ref p25);
-                onCallbackAddedConvert(ref p25);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p26 = default(Promise<TConvert>);
-                p26 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onDirectCallbackAddedConvert(ref p26);
-                onCallbackAddedConvert(ref p26);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p27 = default(Promise<TConvert>);
-                p27 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p27); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p27, AdoptLocation.Reject);
-                onCallbackAddedConvert(ref p27);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p28 = default(Promise<TConvert>);
-                p28 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p28); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p28, AdoptLocation.Reject);
-                onCallbackAddedConvert(ref p28);
-            }
-
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p29 = default(Promise);
-                p29 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p29); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p29); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p29, AdoptLocation.Both);
-                onCallbackAdded(ref p29);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p30 = default(Promise);
-                p30 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p30); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p30); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p30, AdoptLocation.Both);
-                onCallbackAdded(ref p30);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p31 = default(Promise);
-                p31 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p31); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p31, AdoptLocation.Resolve);
-                onCallbackAdded(ref p31);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p32 = default(Promise);
-                p32 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p32); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p32, AdoptLocation.Resolve);
-                onCallbackAdded(ref p32);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<T> p17 = default(Promise<T>);
+                    p17 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Catch(() => { onUnknownRejection(); return TValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return TValue; });
+                    onDirectCallbackAddedT(ref p17);
+                    onCallbackAddedT(ref p17);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<T> p18 = default(Promise<T>);
+                    p18 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Catch((TReject failValue) => { onReject(failValue); return TValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return TValue; });
+                    onDirectCallbackAddedT(ref p18);
+                    onCallbackAddedT(ref p18);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<T> p19 = default(Promise<T>);
+                    p19 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Catch(() => { onUnknownRejection(); return promiseToPromiseT(p19); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return TValue; });
+                    onAdoptCallbackAddedT(ref p19);
+                    onCallbackAddedT(ref p19);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<T> p20 = default(Promise<T>);
+                    p20 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Catch((TReject failValue) => { onReject(failValue); return promiseToPromiseT(p20); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return TValue; });
+                    onAdoptCallbackAddedT(ref p20);
+                    onCallbackAddedT(ref p20);
+                }
 
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p33 = default(Promise<TConvert>);
-                p33 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p33); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p33); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p33, AdoptLocation.Both);
-                onCallbackAddedConvert(ref p33);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p34 = default(Promise<TConvert>);
-                p34 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p34); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p34); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p34, AdoptLocation.Both);
-                onCallbackAddedConvert(ref p34);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p35 = default(Promise<TConvert>);
-                p35 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p35); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p35, AdoptLocation.Resolve);
-                onCallbackAddedConvert(ref p35);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p36 = default(Promise<TConvert>);
-                p36 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p36); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p36, AdoptLocation.Resolve);
-                onCallbackAddedConvert(ref p36);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p21 = default(Promise);
+                    p21 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onDirectCallbackAdded(ref p21);
+                    onCallbackAdded(ref p21);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p22 = default(Promise);
+                    p22 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onDirectCallbackAdded(ref p22);
+                    onCallbackAdded(ref p22);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p23 = default(Promise);
+                    p23 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p23); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p23, AdoptLocation.Reject);
+                    onCallbackAdded(ref p23);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p24 = default(Promise);
+                    p24 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p24); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p24, AdoptLocation.Reject);
+                    onCallbackAdded(ref p24);
+                }
+
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p25 = default(Promise<TConvert>);
+                    p25 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onDirectCallbackAddedConvert(ref p25);
+                    onCallbackAddedConvert(ref p25);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p26 = default(Promise<TConvert>);
+                    p26 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onDirectCallbackAddedConvert(ref p26);
+                    onCallbackAddedConvert(ref p26);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p27 = default(Promise<TConvert>);
+                    p27 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p27); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p27, AdoptLocation.Reject);
+                    onCallbackAddedConvert(ref p27);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p28 = default(Promise<TConvert>);
+                    p28 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p28); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p28, AdoptLocation.Reject);
+                    onCallbackAddedConvert(ref p28);
+                }
+
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p29 = default(Promise);
+                    p29 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p29); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p29); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p29, AdoptLocation.Both);
+                    onCallbackAdded(ref p29);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p30 = default(Promise);
+                    p30 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p30); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p30); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p30, AdoptLocation.Both);
+                    onCallbackAdded(ref p30);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p31 = default(Promise);
+                    p31 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p31); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p31, AdoptLocation.Resolve);
+                    onCallbackAdded(ref p31);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p32 = default(Promise);
+                    p32 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p32); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p32, AdoptLocation.Resolve);
+                    onCallbackAdded(ref p32);
+                }
 
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<T> p37 = default(Promise<T>);
-                p37 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Catch(captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return TValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return TValue; });
-                onDirectCallbackAddedT(ref p37);
-                onCallbackAddedT(ref p37);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<T> p38 = default(Promise<T>);
-                p38 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Catch(captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return TValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return TValue; });
-                onDirectCallbackAddedT(ref p38);
-                onCallbackAddedT(ref p38);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<T> p39 = default(Promise<T>);
-                p39 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Catch(captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseT(p39); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return TValue; });
-                onAdoptCallbackAddedT(ref p39);
-                onCallbackAddedT(ref p39);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<T> p40 = default(Promise<T>);
-                p40 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Catch(captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseT(p40); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return TValue; });
-                onAdoptCallbackAddedT(ref p40);
-                onCallbackAddedT(ref p40);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p33 = default(Promise<TConvert>);
+                    p33 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p33); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p33); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p33, AdoptLocation.Both);
+                    onCallbackAddedConvert(ref p33);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p34 = default(Promise<TConvert>);
+                    p34 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p34); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p34); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p34, AdoptLocation.Both);
+                    onCallbackAddedConvert(ref p34);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p35 = default(Promise<TConvert>);
+                    p35 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p35); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p35, AdoptLocation.Resolve);
+                    onCallbackAddedConvert(ref p35);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p36 = default(Promise<TConvert>);
+                    p36 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p36); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p36, AdoptLocation.Resolve);
+                    onCallbackAddedConvert(ref p36);
+                }
 
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p41 = default(Promise);
-                p41 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, () => { onUnknownRejection(); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onDirectCallbackAdded(ref p41);
-                onCallbackAdded(ref p41);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p42 = default(Promise);
-                p42 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onDirectCallbackAdded(ref p42);
-                onCallbackAdded(ref p42);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p43 = default(Promise);
-                p43 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, () => { onUnknownRejection(); return promiseToPromise(p43); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p43, AdoptLocation.Reject);
-                onCallbackAdded(ref p43);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p44 = default(Promise);
-                p44 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p44); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p44, AdoptLocation.Reject);
-                onCallbackAdded(ref p44);
-            }
-
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p45 = default(Promise<TConvert>);
-                p45 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onDirectCallbackAddedConvert(ref p45);
-                onCallbackAddedConvert(ref p45);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p46 = default(Promise<TConvert>);
-                p46 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onDirectCallbackAddedConvert(ref p46);
-                onCallbackAddedConvert(ref p46);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p47 = default(Promise<TConvert>);
-                p47 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, () => { onUnknownRejection(); return promiseToPromiseConvert(p47); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p47, AdoptLocation.Reject);
-                onCallbackAddedConvert(ref p47);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p48 = default(Promise<TConvert>);
-                p48 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p48); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p48, AdoptLocation.Reject);
-                onCallbackAddedConvert(ref p48);
-            }
-
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p49 = default(Promise);
-                p49 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p49); }, () => { onUnknownRejection(); return promiseToPromise(p49); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p49, AdoptLocation.Both);
-                onCallbackAdded(ref p49);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p50 = default(Promise);
-                p50 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p50); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p50); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p50, AdoptLocation.Both);
-                onCallbackAdded(ref p50);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p51 = default(Promise);
-                p51 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p51); }, () => { onUnknownRejection(); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p51, AdoptLocation.Resolve);
-                onCallbackAdded(ref p51);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p52 = default(Promise);
-                p52 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p52); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p52, AdoptLocation.Resolve);
-                onCallbackAdded(ref p52);
-            }
-
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p53 = default(Promise<TConvert>);
-                p53 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p53); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p53); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p53, AdoptLocation.Both);
-                onCallbackAddedConvert(ref p53);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p54 = default(Promise<TConvert>);
-                p54 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p54); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p54); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p54, AdoptLocation.Both);
-                onCallbackAddedConvert(ref p54);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p55 = default(Promise<TConvert>);
-                p55 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p55); }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p55, AdoptLocation.Resolve);
-                onCallbackAddedConvert(ref p55);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p56 = default(Promise<TConvert>);
-                p56 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p56); }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p56, AdoptLocation.Resolve);
-                onCallbackAddedConvert(ref p56);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<T> p37 = default(Promise<T>);
+                    p37 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Catch(captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return TValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return TValue; });
+                    onDirectCallbackAddedT(ref p37);
+                    onCallbackAddedT(ref p37);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<T> p38 = default(Promise<T>);
+                    p38 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Catch(captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return TValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return TValue; });
+                    onDirectCallbackAddedT(ref p38);
+                    onCallbackAddedT(ref p38);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<T> p39 = default(Promise<T>);
+                    p39 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Catch(captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseT(p39); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return TValue; });
+                    onAdoptCallbackAddedT(ref p39);
+                    onCallbackAddedT(ref p39);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<T> p40 = default(Promise<T>);
+                    p40 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Catch(captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseT(p40); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return TValue; });
+                    onAdoptCallbackAddedT(ref p40);
+                    onCallbackAddedT(ref p40);
+                }
 
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p57 = default(Promise);
-                p57 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onDirectCallbackAdded(ref p57);
-                onCallbackAdded(ref p57);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p58 = default(Promise);
-                p58 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onDirectCallbackAdded(ref p58);
-                onCallbackAdded(ref p58);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p59 = default(Promise);
-                p59 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p59); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p59, AdoptLocation.Reject);
-                onCallbackAdded(ref p59);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p60 = default(Promise);
-                p60 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p60); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p60, AdoptLocation.Reject);
-                onCallbackAdded(ref p60);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p41 = default(Promise);
+                    p41 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, () => { onUnknownRejection(); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onDirectCallbackAdded(ref p41);
+                    onCallbackAdded(ref p41);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p42 = default(Promise);
+                    p42 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onDirectCallbackAdded(ref p42);
+                    onCallbackAdded(ref p42);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p43 = default(Promise);
+                    p43 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, () => { onUnknownRejection(); return promiseToPromise(p43); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p43, AdoptLocation.Reject);
+                    onCallbackAdded(ref p43);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p44 = default(Promise);
+                    p44 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p44); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p44, AdoptLocation.Reject);
+                    onCallbackAdded(ref p44);
+                }
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p61 = default(Promise<TConvert>);
-                p61 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onDirectCallbackAddedConvert(ref p61);
-                onCallbackAddedConvert(ref p61);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p62 = default(Promise<TConvert>);
-                p62 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onDirectCallbackAddedConvert(ref p62);
-                onCallbackAddedConvert(ref p62);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p63 = default(Promise<TConvert>);
-                p63 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p63); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p63, AdoptLocation.Reject);
-                onCallbackAddedConvert(ref p63);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p64 = default(Promise<TConvert>);
-                p64 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p64); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p64, AdoptLocation.Reject);
-                onCallbackAddedConvert(ref p64);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p45 = default(Promise<TConvert>);
+                    p45 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onDirectCallbackAddedConvert(ref p45);
+                    onCallbackAddedConvert(ref p45);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p46 = default(Promise<TConvert>);
+                    p46 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onDirectCallbackAddedConvert(ref p46);
+                    onCallbackAddedConvert(ref p46);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p47 = default(Promise<TConvert>);
+                    p47 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, () => { onUnknownRejection(); return promiseToPromiseConvert(p47); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p47, AdoptLocation.Reject);
+                    onCallbackAddedConvert(ref p47);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p48 = default(Promise<TConvert>);
+                    p48 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p48); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p48, AdoptLocation.Reject);
+                    onCallbackAddedConvert(ref p48);
+                }
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p65 = default(Promise);
-                p65 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return promiseToPromise(p65); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p65); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p65, AdoptLocation.Both);
-                onCallbackAdded(ref p65);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p66 = default(Promise);
-                p66 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return promiseToPromise(p66); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p66); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p66, AdoptLocation.Both);
-                onCallbackAdded(ref p66);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p67 = default(Promise);
-                p67 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return promiseToPromise(p67); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p67, AdoptLocation.Resolve);
-                onCallbackAdded(ref p67);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p68 = default(Promise);
-                p68 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return promiseToPromise(p68); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p68, AdoptLocation.Resolve);
-                onCallbackAdded(ref p68);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p49 = default(Promise);
+                    p49 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p49); }, () => { onUnknownRejection(); return promiseToPromise(p49); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p49, AdoptLocation.Both);
+                    onCallbackAdded(ref p49);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p50 = default(Promise);
+                    p50 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p50); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p50); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p50, AdoptLocation.Both);
+                    onCallbackAdded(ref p50);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p51 = default(Promise);
+                    p51 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p51); }, () => { onUnknownRejection(); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p51, AdoptLocation.Resolve);
+                    onCallbackAdded(ref p51);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p52 = default(Promise);
+                    p52 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p52); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p52, AdoptLocation.Resolve);
+                    onCallbackAdded(ref p52);
+                }
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p69 = default(Promise<TConvert>);
-                p69 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return promiseToPromiseConvert(p69); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p69); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p69, AdoptLocation.Both);
-                onCallbackAddedConvert(ref p69);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p70 = default(Promise<TConvert>);
-                p70 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return promiseToPromiseConvert(p70); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p70); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p70, AdoptLocation.Both);
-                onCallbackAddedConvert(ref p70);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p71 = default(Promise<TConvert>);
-                p71 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return promiseToPromiseConvert(p71); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p71, AdoptLocation.Resolve);
-                onCallbackAddedConvert(ref p71);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p72 = default(Promise<TConvert>);
-                p72 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .Then(x => { onResolve(x); return promiseToPromiseConvert(p72); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p72, AdoptLocation.Resolve);
-                onCallbackAddedConvert(ref p72);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p53 = default(Promise<TConvert>);
+                    p53 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p53); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p53); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p53, AdoptLocation.Both);
+                    onCallbackAddedConvert(ref p53);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p54 = default(Promise<TConvert>);
+                    p54 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p54); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p54); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p54, AdoptLocation.Both);
+                    onCallbackAddedConvert(ref p54);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p55 = default(Promise<TConvert>);
+                    p55 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p55); }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p55, AdoptLocation.Resolve);
+                    onCallbackAddedConvert(ref p55);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p56 = default(Promise<TConvert>);
+                    p56 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p56); }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p56, AdoptLocation.Resolve);
+                    onCallbackAddedConvert(ref p56);
+                }
 
-            promise.Forget();
+
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p57 = default(Promise);
+                    p57 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onDirectCallbackAdded(ref p57);
+                    onCallbackAdded(ref p57);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p58 = default(Promise);
+                    p58 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onDirectCallbackAdded(ref p58);
+                    onCallbackAdded(ref p58);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p59 = default(Promise);
+                    p59 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p59); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p59, AdoptLocation.Reject);
+                    onCallbackAdded(ref p59);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p60 = default(Promise);
+                    p60 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p60); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p60, AdoptLocation.Reject);
+                    onCallbackAdded(ref p60);
+                }
+
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p61 = default(Promise<TConvert>);
+                    p61 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onDirectCallbackAddedConvert(ref p61);
+                    onCallbackAddedConvert(ref p61);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p62 = default(Promise<TConvert>);
+                    p62 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onDirectCallbackAddedConvert(ref p62);
+                    onCallbackAddedConvert(ref p62);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p63 = default(Promise<TConvert>);
+                    p63 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p63); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p63, AdoptLocation.Reject);
+                    onCallbackAddedConvert(ref p63);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p64 = default(Promise<TConvert>);
+                    p64 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p64); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p64, AdoptLocation.Reject);
+                    onCallbackAddedConvert(ref p64);
+                }
+
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p65 = default(Promise);
+                    p65 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return promiseToPromise(p65); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p65); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p65, AdoptLocation.Both);
+                    onCallbackAdded(ref p65);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p66 = default(Promise);
+                    p66 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return promiseToPromise(p66); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p66); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p66, AdoptLocation.Both);
+                    onCallbackAdded(ref p66);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p67 = default(Promise);
+                    p67 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return promiseToPromise(p67); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p67, AdoptLocation.Resolve);
+                    onCallbackAdded(ref p67);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p68 = default(Promise);
+                    p68 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return promiseToPromise(p68); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p68, AdoptLocation.Resolve);
+                    onCallbackAdded(ref p68);
+                }
+
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p69 = default(Promise<TConvert>);
+                    p69 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return promiseToPromiseConvert(p69); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p69); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p69, AdoptLocation.Both);
+                    onCallbackAddedConvert(ref p69);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p70 = default(Promise<TConvert>);
+                    p70 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return promiseToPromiseConvert(p70); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p70); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p70, AdoptLocation.Both);
+                    onCallbackAddedConvert(ref p70);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p71 = default(Promise<TConvert>);
+                    p71 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return promiseToPromiseConvert(p71); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p71, AdoptLocation.Resolve);
+                    onCallbackAddedConvert(ref p71);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p72 = default(Promise<TConvert>);
+                    p72 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .Then(x => { onResolve(x); return promiseToPromiseConvert(p72); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p72, AdoptLocation.Resolve);
+                    onCallbackAddedConvert(ref p72);
+                }
+            }
         }
 
         public static void AddContinueCallbacks<TConvert, TCapture>(Promise promise,
@@ -2585,11 +2602,12 @@ namespace ProtoPromiseTests
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
         {
-            promise = promise.Preserve();
-            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
+            using (var retainer = promise.GetRetainer())
+            {
+                retainer.WaitAsync().Catch(() => { }).Forget(); // Suppress any rejections from the retained promise.
 
-            AddContinueCallbacksWithCancelation(
-                promise,
+                AddContinueCallbacksWithCancelation(
+                retainer.WaitAsync(),
                 onContinue, convertValue,
                 onContinueCapture, captureValue,
                 promiseToPromise, promiseToPromiseConvert,
@@ -2600,21 +2618,20 @@ namespace ProtoPromiseTests
                 configureAwaitType, configureAwaitForceAsync
             );
 
-            CancelationSource cancelationSource = CancelationSource.New();
-            AddContinueCallbacksWithCancelation(
-                promise,
-                onContinue, convertValue,
-                onContinueCapture, captureValue,
-                promiseToPromise, promiseToPromiseConvert,
-                onCallbackAdded, onCallbackAddedConvert,
-                cancelationSource.Token, cancelationSource.Token,
-                onCancel,
-                onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                configureAwaitType, configureAwaitForceAsync
-            );
-            cancelationSource.Dispose();
-
-            promise.Forget();
+                CancelationSource cancelationSource = CancelationSource.New();
+                AddContinueCallbacksWithCancelation(
+                    retainer.WaitAsync(),
+                    onContinue, convertValue,
+                    onContinueCapture, captureValue,
+                    promiseToPromise, promiseToPromiseConvert,
+                    onCallbackAdded, onCallbackAddedConvert,
+                    cancelationSource.Token, cancelationSource.Token,
+                    onCancel,
+                    onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
+                    configureAwaitType, configureAwaitForceAsync
+                );
+                cancelationSource.Dispose();
+            }
         }
 
         public static void AddContinueCallbacksWithCancelation<TConvert, TCapture>(Promise promise,
@@ -2627,109 +2644,109 @@ namespace ProtoPromiseTests
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
         {
-            promise = promise.Preserve();
-            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
+            using (var retainer = promise.GetRetainer())
+            {
+                retainer.WaitAsync().Catch(() => { }).Forget(); // Suppress any rejections from the retained promise.
 
-            // Add empty delegate so no need for null check.
-            onContinue += _ => { };
-            onContinueCapture += (_, __) => { };
-            if (promiseToPromise == null)
-            {
-                promiseToPromise = _ => Promise.Resolved();
-            }
-            if (promiseToPromiseConvert == null)
-            {
-                promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
-            }
-            if (onCallbackAdded == null)
-            {
-                onCallbackAdded = (ref Promise p) => p.Forget();
-            }
-            if (onCallbackAddedConvert == null)
-            {
-                onCallbackAddedConvert = (ref Promise<TConvert> p) => p.Forget();
-            }
-            if (onAdoptCallbackAdded == null)
-            {
-                onAdoptCallbackAdded = (ref Promise p) => { };
-            }
-            if (onAdoptCallbackAddedConvert == null)
-            {
-                onAdoptCallbackAddedConvert = (ref Promise<TConvert> p) => { };
-            }
-            onCancel += () => { };
+                // Add empty delegate so no need for null check.
+                onContinue += _ => { };
+                onContinueCapture += (_, __) => { };
+                if (promiseToPromise == null)
+                {
+                    promiseToPromise = _ => Promise.Resolved();
+                }
+                if (promiseToPromiseConvert == null)
+                {
+                    promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
+                }
+                if (onCallbackAdded == null)
+                {
+                    onCallbackAdded = (ref Promise p) => p.Forget();
+                }
+                if (onCallbackAddedConvert == null)
+                {
+                    onCallbackAddedConvert = (ref Promise<TConvert> p) => p.Forget();
+                }
+                if (onAdoptCallbackAdded == null)
+                {
+                    onAdoptCallbackAdded = (ref Promise p) => { };
+                }
+                if (onAdoptCallbackAddedConvert == null)
+                {
+                    onAdoptCallbackAddedConvert = (ref Promise<TConvert> p) => { };
+                }
+                onCancel += () => { };
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p1 = default(Promise);
-                p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(r => { onContinue(r); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onCallbackAdded(ref p1);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p2 = default(Promise<TConvert>);
-                p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(r => { onContinue(r); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onCallbackAddedConvert(ref p2);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p3 = default(Promise);
-                p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(r => { onContinue(r); return promiseToPromise(p3); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p3);
-                onCallbackAdded(ref p3);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p4 = default(Promise<TConvert>);
-                p4 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(r => { onContinue(r); return promiseToPromiseConvert(p4); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p4);
-                onCallbackAddedConvert(ref p4);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p1 = default(Promise);
+                    p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .ContinueWith(r => { onContinue(r); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onCallbackAdded(ref p1);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p2 = default(Promise<TConvert>);
+                    p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .ContinueWith(r => { onContinue(r); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onCallbackAddedConvert(ref p2);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p3 = default(Promise);
+                    p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .ContinueWith(r => { onContinue(r); return promiseToPromise(p3); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p3);
+                    onCallbackAdded(ref p3);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p4 = default(Promise<TConvert>);
+                    p4 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .ContinueWith(r => { onContinue(r); return promiseToPromiseConvert(p4); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p4);
+                    onCallbackAddedConvert(ref p4);
+                }
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p5 = default(Promise);
-                p5 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onCallbackAdded(ref p5);
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p5 = default(Promise);
+                    p5 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onCallbackAdded(ref p5);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p6 = default(Promise<TConvert>);
+                    p6 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onCallbackAddedConvert(ref p6);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p7 = default(Promise);
+                    p7 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromise(p7); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p7);
+                    onCallbackAdded(ref p7);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p8 = default(Promise<TConvert>);
+                    p8 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromiseConvert(p8); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p8);
+                    onCallbackAddedConvert(ref p8);
+                }
             }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p6 = default(Promise<TConvert>);
-                p6 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onCallbackAddedConvert(ref p6);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p7 = default(Promise);
-                p7 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromise(p7); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p7);
-                onCallbackAdded(ref p7);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p8 = default(Promise<TConvert>);
-                p8 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromiseConvert(p8); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p8);
-                onCallbackAddedConvert(ref p8);
-            }
-
-            promise.Forget();
         }
 
         public static void AddContinueCallbacks<T, TConvert, TCapture>(Promise<T> promise,
@@ -2741,36 +2758,36 @@ namespace ProtoPromiseTests
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
         {
-            promise = promise.Preserve();
-            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
+            using (var retainer = promise.GetRetainer())
+            {
+                retainer.WaitAsync().Catch(() => { }).Forget(); // Suppress any rejections from the retained promise.
 
-            AddContinueCallbacksWithCancelation(
-                promise,
-                onContinue, convertValue,
-                onContinueCapture, captureValue,
-                promiseToPromise, promiseToPromiseConvert,
-                onCallbackAdded, onCallbackAddedConvert,
-                default(CancelationToken), default(CancelationToken),
-                onCancel,
-                onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                configureAwaitType, configureAwaitForceAsync
-            );
+                AddContinueCallbacksWithCancelation(
+                    retainer.WaitAsync(),
+                    onContinue, convertValue,
+                    onContinueCapture, captureValue,
+                    promiseToPromise, promiseToPromiseConvert,
+                    onCallbackAdded, onCallbackAddedConvert,
+                    default(CancelationToken), default(CancelationToken),
+                    onCancel,
+                    onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
+                    configureAwaitType, configureAwaitForceAsync
+                );
 
-            CancelationSource cancelationSource = CancelationSource.New();
-            AddContinueCallbacksWithCancelation(
-                promise,
-                onContinue, convertValue,
-                onContinueCapture, captureValue,
-                promiseToPromise, promiseToPromiseConvert,
-                onCallbackAdded, onCallbackAddedConvert,
-                cancelationSource.Token, cancelationSource.Token,
-                onCancel,
-                onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                configureAwaitType, configureAwaitForceAsync
-            );
-            cancelationSource.Dispose();
-
-            promise.Forget();
+                CancelationSource cancelationSource = CancelationSource.New();
+                AddContinueCallbacksWithCancelation(
+                    retainer.WaitAsync(),
+                    onContinue, convertValue,
+                    onContinueCapture, captureValue,
+                    promiseToPromise, promiseToPromiseConvert,
+                    onCallbackAdded, onCallbackAddedConvert,
+                    cancelationSource.Token, cancelationSource.Token,
+                    onCancel,
+                    onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
+                    configureAwaitType, configureAwaitForceAsync
+                );
+                cancelationSource.Dispose();
+            }
         }
 
         public static void AddContinueCallbacksWithCancelation<T, TConvert, TCapture>(Promise<T> promise,
@@ -2783,109 +2800,109 @@ namespace ProtoPromiseTests
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
         {
-            promise = promise.Preserve();
-            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
+            using (var retainer = promise.GetRetainer())
+            {
+                retainer.WaitAsync().Catch(() => { }).Forget(); // Suppress any rejections from the retained promise.
 
-            // Add empty delegate so no need for null check.
-            onContinue += _ => { };
-            onContinueCapture += (_, __) => { };
-            if (promiseToPromise == null)
-            {
-                promiseToPromise = _ => Promise.Resolved();
-            }
-            if (promiseToPromiseConvert == null)
-            {
-                promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
-            }
-            if (onCallbackAdded == null)
-            {
-                onCallbackAdded = (ref Promise p) => p.Forget();
-            }
-            if (onCallbackAddedConvert == null)
-            {
-                onCallbackAddedConvert = (ref Promise<TConvert> p) => p.Forget();
-            }
-            if (onAdoptCallbackAdded == null)
-            {
-                onAdoptCallbackAdded = (ref Promise p) => { };
-            }
-            if (onAdoptCallbackAddedConvert == null)
-            {
-                onAdoptCallbackAddedConvert = (ref Promise<TConvert> p) => { };
-            }
-            onCancel += () => { };
+                // Add empty delegate so no need for null check.
+                onContinue += _ => { };
+                onContinueCapture += (_, __) => { };
+                if (promiseToPromise == null)
+                {
+                    promiseToPromise = _ => Promise.Resolved();
+                }
+                if (promiseToPromiseConvert == null)
+                {
+                    promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
+                }
+                if (onCallbackAdded == null)
+                {
+                    onCallbackAdded = (ref Promise p) => p.Forget();
+                }
+                if (onCallbackAddedConvert == null)
+                {
+                    onCallbackAddedConvert = (ref Promise<TConvert> p) => p.Forget();
+                }
+                if (onAdoptCallbackAdded == null)
+                {
+                    onAdoptCallbackAdded = (ref Promise p) => { };
+                }
+                if (onAdoptCallbackAddedConvert == null)
+                {
+                    onAdoptCallbackAddedConvert = (ref Promise<TConvert> p) => { };
+                }
+                onCancel += () => { };
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p1 = default(Promise);
-                p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(r => { onContinue(r); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onCallbackAdded(ref p1);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p2 = default(Promise<TConvert>);
-                p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(r => { onContinue(r); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onCallbackAddedConvert(ref p2);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p3 = default(Promise);
-                p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(r => { onContinue(r); return promiseToPromise(p3); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p3);
-                onCallbackAdded(ref p3);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p4 = default(Promise<TConvert>);
-                p4 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(r => { onContinue(r); return promiseToPromiseConvert(p4); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p4);
-                onCallbackAddedConvert(ref p4);
-            }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p1 = default(Promise);
+                    p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .ContinueWith(r => { onContinue(r); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onCallbackAdded(ref p1);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p2 = default(Promise<TConvert>);
+                    p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .ContinueWith(r => { onContinue(r); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onCallbackAddedConvert(ref p2);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p3 = default(Promise);
+                    p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .ContinueWith(r => { onContinue(r); return promiseToPromise(p3); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p3);
+                    onCallbackAdded(ref p3);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p4 = default(Promise<TConvert>);
+                    p4 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .ContinueWith(r => { onContinue(r); return promiseToPromiseConvert(p4); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p4);
+                    onCallbackAddedConvert(ref p4);
+                }
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p5 = default(Promise);
-                p5 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onCallbackAdded(ref p5);
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p5 = default(Promise);
+                    p5 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onCallbackAdded(ref p5);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p6 = default(Promise<TConvert>);
+                    p6 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return convertValue; }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onCallbackAddedConvert(ref p6);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p7 = default(Promise);
+                    p7 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromise(p7); }, cancelationToken)
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p7);
+                    onCallbackAdded(ref p7);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p8 = default(Promise<TConvert>);
+                    p8 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromiseConvert(p8); }, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p8);
+                    onCallbackAddedConvert(ref p8);
+                }
             }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p6 = default(Promise<TConvert>);
-                p6 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return convertValue; }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onCallbackAddedConvert(ref p6);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p7 = default(Promise);
-                p7 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromise(p7); }, cancelationToken)
-                    .CatchCancelation(onCancel);
-                onAdoptCallbackAdded(ref p7);
-                onCallbackAdded(ref p7);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<TConvert> p8 = default(Promise<TConvert>);
-                p8 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromiseConvert(p8); }, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); return convertValue; });
-                onAdoptCallbackAddedConvert(ref p8);
-                onCallbackAddedConvert(ref p8);
-            }
-
-            promise.Forget();
         }
 
         public static void AddCancelCallbacks<TCapture>(Promise promise,
@@ -2896,38 +2913,38 @@ namespace ProtoPromiseTests
             TestAction<Promise> onAdoptCallbackAdded = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
         {
-            promise = promise.Preserve();
-            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
+            using (var retainer = promise.GetRetainer())
+            {
+                retainer.WaitAsync().Catch(() => { }).Forget(); // Suppress any rejections from the retained promise.
 
-            AddCancelCallbacks(
-                promise,
-                default(CancelationToken),
-                onCancel, onCancelCapture,
-                captureValue,
-                promiseToPromise,
-                onCallbackAdded,
-                onAdoptCallbackAdded,
-                default(CancelationToken),
-                configureAwaitType,
-                configureAwaitForceAsync
-            );
+                AddCancelCallbacks(
+                    retainer.WaitAsync(),
+                    default(CancelationToken),
+                    onCancel, onCancelCapture,
+                    captureValue,
+                    promiseToPromise,
+                    onCallbackAdded,
+                    onAdoptCallbackAdded,
+                    default(CancelationToken),
+                    configureAwaitType,
+                    configureAwaitForceAsync
+                );
 
-            CancelationSource cancelationSource = CancelationSource.New();
-            AddCancelCallbacks(
-                promise,
-                cancelationSource.Token,
-                onCancel, onCancelCapture,
-                captureValue,
-                promiseToPromise,
-                onCallbackAdded,
-                onAdoptCallbackAdded,
-                cancelationSource.Token,
-                configureAwaitType,
-                configureAwaitForceAsync
-            );
-            cancelationSource.Dispose();
-
-            promise.Forget();
+                CancelationSource cancelationSource = CancelationSource.New();
+                AddCancelCallbacks(
+                    retainer.WaitAsync(),
+                    cancelationSource.Token,
+                    onCancel, onCancelCapture,
+                    captureValue,
+                    promiseToPromise,
+                    onCallbackAdded,
+                    onAdoptCallbackAdded,
+                    cancelationSource.Token,
+                    configureAwaitType,
+                    configureAwaitForceAsync
+                );
+                cancelationSource.Dispose();
+            }
         }
 
         public static void AddCancelCallbacks<TCapture>(Promise promise,
@@ -2940,57 +2957,57 @@ namespace ProtoPromiseTests
             CancelationToken waitAsyncCancelationToken = default(CancelationToken),
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
         {
-            promise = promise.Preserve();
-            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
+            using (var retainer = promise.GetRetainer())
+            {
+                retainer.WaitAsync().Catch(() => { }).Forget(); // Suppress any rejections from the retained promise.
 
-            // Add empty delegate so no need for null check.
-            if (promiseToPromise == null)
-            {
-                promiseToPromise = _ => Promise.Resolved();
-            }
-            if (onCallbackAdded == null)
-            {
-                onCallbackAdded = (ref Promise p) => p.Forget();
-            }
-            if (onAdoptCallbackAdded == null)
-            {
-                onAdoptCallbackAdded = (ref Promise p) => { };
-            }
-            onCancel += () => { };
-            onCancelCapture += cv => { };
+                // Add empty delegate so no need for null check.
+                if (promiseToPromise == null)
+                {
+                    promiseToPromise = _ => Promise.Resolved();
+                }
+                if (onCallbackAdded == null)
+                {
+                    onCallbackAdded = (ref Promise p) => p.Forget();
+                }
+                if (onAdoptCallbackAdded == null)
+                {
+                    onAdoptCallbackAdded = (ref Promise p) => { };
+                }
+                onCancel += () => { };
+                onCancelCapture += cv => { };
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p1 = default(Promise);
-                p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, cancelationToken)
-                    .CatchCancelation(() => { onCancel(); }, cancelationToken);
-                onCallbackAdded(ref p1);
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p1 = default(Promise);
+                    p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, cancelationToken)
+                        .CatchCancelation(() => { onCancel(); }, cancelationToken);
+                    onCallbackAdded(ref p1);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p2 = default(Promise);
+                    p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .CatchCancelation(captureValue, cv => { onCancelCapture(cv); }, cancelationToken);
+                    onCallbackAdded(ref p2);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p3 = default(Promise);
+                    p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .CatchCancelation(() => { onCancel(); return promiseToPromise(p3); }, cancelationToken);
+                    onAdoptCallbackAdded(ref p3);
+                    onCallbackAdded(ref p3);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p3 = default(Promise);
+                    p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .CatchCancelation(captureValue, cv => { onCancelCapture(cv); return promiseToPromise(p3); }, cancelationToken);
+                    onAdoptCallbackAdded(ref p3);
+                    onCallbackAdded(ref p3);
+                }
             }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p2 = default(Promise);
-                p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .CatchCancelation(captureValue, cv => { onCancelCapture(cv); }, cancelationToken);
-                onCallbackAdded(ref p2);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p3 = default(Promise);
-                p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .CatchCancelation(() => { onCancel(); return promiseToPromise(p3); }, cancelationToken);
-                onAdoptCallbackAdded(ref p3);
-                onCallbackAdded(ref p3);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise p3 = default(Promise);
-                p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .CatchCancelation(captureValue, cv => { onCancelCapture(cv); return promiseToPromise(p3); }, cancelationToken);
-                onAdoptCallbackAdded(ref p3);
-                onCallbackAdded(ref p3);
-            }
-
-            promise.Forget();
         }
 
         public static void AddCancelCallbacks<T, TCapture>(Promise<T> promise, T TValue = default(T),
@@ -3001,38 +3018,38 @@ namespace ProtoPromiseTests
             TestAction<Promise<T>> onAdoptCallbackAdded = null,
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
         {
-            promise = promise.Preserve();
-            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
+            using (var retainer = promise.GetRetainer())
+            {
+                retainer.WaitAsync().Catch(() => { }).Forget(); // Suppress any rejections from the retained promise.
 
-            AddCancelCallbacks(
-                promise,
-                default(CancelationToken), TValue,
-                onCancel, onCancelCapture,
-                captureValue,
-                promiseToPromise,
-                onCallbackAdded,
-                onAdoptCallbackAdded,
-                default(CancelationToken),
-                configureAwaitType,
-                configureAwaitForceAsync
-            );
+                AddCancelCallbacks(
+                    retainer.WaitAsync(),
+                    default(CancelationToken), TValue,
+                    onCancel, onCancelCapture,
+                    captureValue,
+                    promiseToPromise,
+                    onCallbackAdded,
+                    onAdoptCallbackAdded,
+                    default(CancelationToken),
+                    configureAwaitType,
+                    configureAwaitForceAsync
+                );
 
-            CancelationSource cancelationSource = CancelationSource.New();
-            AddCancelCallbacks(
-                promise,
-                cancelationSource.Token, TValue,
-                onCancel, onCancelCapture,
-                captureValue,
-                promiseToPromise,
-                onCallbackAdded,
-                onAdoptCallbackAdded,
-                cancelationSource.Token,
-                configureAwaitType,
-                configureAwaitForceAsync
-            );
-            cancelationSource.Dispose();
-
-            promise.Forget();
+                CancelationSource cancelationSource = CancelationSource.New();
+                AddCancelCallbacks(
+                    retainer.WaitAsync(),
+                    cancelationSource.Token, TValue,
+                    onCancel, onCancelCapture,
+                    captureValue,
+                    promiseToPromise,
+                    onCallbackAdded,
+                    onAdoptCallbackAdded,
+                    cancelationSource.Token,
+                    configureAwaitType,
+                    configureAwaitForceAsync
+                );
+                cancelationSource.Dispose();
+            }
         }
 
         public static void AddCancelCallbacks<T, TCapture>(Promise<T> promise,
@@ -3045,57 +3062,57 @@ namespace ProtoPromiseTests
             CancelationToken waitAsyncCancelationToken = default(CancelationToken),
             ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
         {
-            promise = promise.Preserve();
-            promise.Catch(() => { }).Forget(); // Suppress any rejections from the preserved promise.
+            using (var retainer = promise.GetRetainer())
+            {
+                retainer.WaitAsync().Catch(() => { }).Forget(); // Suppress any rejections from the retained promise.
 
-            // Add empty delegate so no need for null check.
-            if (promiseToPromise == null)
-            {
-                promiseToPromise = _ => Promise.Resolved(TValue);
-            }
-            if (onCallbackAdded == null)
-            {
-                onCallbackAdded = (ref Promise<T> p) => p.Forget();
-            }
-            if (onAdoptCallbackAdded == null)
-            {
-                onAdoptCallbackAdded = (ref Promise<T> p) => { };
-            }
-            onCancel += () => { };
-            onCancelCapture += cv => { };
+                // Add empty delegate so no need for null check.
+                if (promiseToPromise == null)
+                {
+                    promiseToPromise = _ => Promise.Resolved(TValue);
+                }
+                if (onCallbackAdded == null)
+                {
+                    onCallbackAdded = (ref Promise<T> p) => p.Forget();
+                }
+                if (onAdoptCallbackAdded == null)
+                {
+                    onAdoptCallbackAdded = (ref Promise<T> p) => { };
+                }
+                onCancel += () => { };
+                onCancelCapture += cv => { };
 
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<T> p1 = default(Promise<T>);
-                p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .CatchCancelation(() => { onCancel(); return TValue; }, cancelationToken);
-                onCallbackAdded(ref p1);
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<T> p1 = default(Promise<T>);
+                    p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .CatchCancelation(() => { onCancel(); return TValue; }, cancelationToken);
+                    onCallbackAdded(ref p1);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<T> p2 = default(Promise<T>);
+                    p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .CatchCancelation(captureValue, cv => { onCancelCapture(cv); return TValue; }, cancelationToken);
+                    onCallbackAdded(ref p2);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<T> p3 = default(Promise<T>);
+                    p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .CatchCancelation(() => { onCancel(); return promiseToPromise(p3); }, cancelationToken);
+                    onAdoptCallbackAdded(ref p3);
+                    onCallbackAdded(ref p3);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<T> p3 = default(Promise<T>);
+                    p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                        .CatchCancelation(captureValue, cv => { onCancelCapture(cv); return promiseToPromise(p3); }, cancelationToken);
+                    onAdoptCallbackAdded(ref p3);
+                    onCallbackAdded(ref p3);
+                }
             }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<T> p2 = default(Promise<T>);
-                p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .CatchCancelation(captureValue, cv => { onCancelCapture(cv); return TValue; }, cancelationToken);
-                onCallbackAdded(ref p2);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<T> p3 = default(Promise<T>);
-                p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .CatchCancelation(() => { onCancel(); return promiseToPromise(p3); }, cancelationToken);
-                onAdoptCallbackAdded(ref p3);
-                onCallbackAdded(ref p3);
-            }
-            foreach (var p in GetTestablePromises(promise))
-            {
-                Promise<T> p3 = default(Promise<T>);
-                p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
-                    .CatchCancelation(captureValue, cv => { onCancelCapture(cv); return promiseToPromise(p3); }, cancelationToken);
-                onAdoptCallbackAdded(ref p3);
-                onCallbackAdded(ref p3);
-            }
-
-            promise.Forget();
         }
 
         public static Action<Promise>[] ResolveActionsVoid(Action onResolved = null)
@@ -3778,6 +3795,236 @@ namespace ProtoPromiseTests
                 () => Promise.Resolved().ContinueWith(1, (cv, _) => returnProvider()),
                 () => Promise.Resolved(1).ContinueWith(_ => returnProvider()),
                 () => Promise.Resolved(1).ContinueWith(1, (cv, _) => returnProvider()),
+            };
+        }
+
+        public static (Func<Promise, Promise> func, AdoptLocation adoptLocation)[] GetFunctionsAdoptingPromiseVoidToVoid<TCatch>(Func<Promise> returnProvider)
+        {
+            return new (Func<Promise, Promise>, AdoptLocation)[]
+            {
+                (promise => promise.Then(() => returnProvider()), AdoptLocation.Resolve),
+                (promise => promise.Then(1, cv => returnProvider()), AdoptLocation.Resolve),
+
+
+                (promise => promise.Then(() => returnProvider(), () => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(() => returnProvider(), (TCatch r) => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(() => returnProvider(), () => returnProvider()), AdoptLocation.Resolve),
+                (promise => promise.Then(() => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Resolve),
+
+                (promise => promise.Then(() => { }, () => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => { }, (TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(() => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, cv => returnProvider(), () => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(1, cv => returnProvider(), (TCatch r) => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(1, cv => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, cv => { }, () => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => { }, (TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(() => returnProvider(), 1, cv => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(() => returnProvider(), 1, (int cv, TCatch r) => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(() => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(() => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(() => { }, 1, cv => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => { }, 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(() => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, cv => returnProvider(), 1, cv => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(1, cv => returnProvider(), 1, (int cv, TCatch r) => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(1, cv => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, cv => { }, 1, cv => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => { }, 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+
+                (promise => promise.Catch(() => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Catch((TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Catch(1, cv => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Catch(1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Reject),
+
+
+                (promise => promise.ContinueWith(_ => returnProvider()), AdoptLocation.Both),
+                (promise => promise.ContinueWith(1, (cv, _) => returnProvider()), AdoptLocation.Both),
+            };
+        }
+
+        public static (Func<Promise<T>, Promise> func, AdoptLocation adoptLocation)[] GetFunctionsAdoptingPromiseTToVoid<T, TCatch>(Func<Promise> returnProvider)
+        {
+            return new (Func<Promise<T>, Promise> func, AdoptLocation)[]
+            {
+                (promise => promise.Then(v => returnProvider()), AdoptLocation.Resolve),
+                (promise => promise.Then(1, (cv, v) => returnProvider()), AdoptLocation.Resolve),
+
+                (promise => promise.Then(v => returnProvider(), () => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(v => returnProvider(), (TCatch r) => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(v => returnProvider(), () => returnProvider()), AdoptLocation.Resolve),
+                (promise => promise.Then(v => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Resolve),
+
+                (promise => promise.Then(1, (cv, v) => returnProvider(), () => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), (TCatch r) => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(v => returnProvider(), 1, cv => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(v => returnProvider(), 1, (int cv, TCatch r) => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(v => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(v => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, (cv, v) => returnProvider(), 1, cv => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), 1, (int cv, TCatch r) => { }), AdoptLocation.Resolve),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.ContinueWith(_ => returnProvider()), AdoptLocation.Both),
+                (promise => promise.ContinueWith(1, (cv, _) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(() => { }, () => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => { }, (TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(() => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+                                   
+                (promise => promise.Then(1, cv => { }, () => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => { }, (TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+                                   
+                (promise => promise.Then(() => { }, 1, cv => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => { }, 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(() => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+                                   
+                (promise => promise.Then(1, cv => { }, 1, cv => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => { }, 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+                                   
+                                   
+                (promise => promise.Catch(() => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Catch((TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Catch(1, cv => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Catch(1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Reject),
+            };
+        }
+
+        public static (Func<Promise, Promise<T>> func, AdoptLocation adoptLocation)[] GetFunctionsAdoptingPromiseVoidToT<T, TCatch>(Func<Promise<T>> returnProvider)
+        {
+            return new (Func<Promise, Promise<T>> func, AdoptLocation adoptLocation)[]
+            {
+                (promise => promise.Then(() => returnProvider()), AdoptLocation.Resolve),
+                (promise => promise.Then(1, cv => returnProvider()), AdoptLocation.Resolve),
+
+
+                (promise => promise.Then(() => returnProvider(), () => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(() => returnProvider(), (TCatch r) => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(() => returnProvider(), () => returnProvider()), AdoptLocation.Resolve),
+                (promise => promise.Then(() => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Resolve),
+
+                (promise => promise.Then(() => default(T), () => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => default(T), (TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(() => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, cv => returnProvider(), () => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(1, cv => returnProvider(), (TCatch r) => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(1, cv => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, cv => default(T), () => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => default(T), (TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(() => returnProvider(), 1, cv => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(() => returnProvider(), 1, (int cv, TCatch r) => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(() => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(() => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(() => default(T), 1, cv => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => default(T), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(() => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, cv => returnProvider(), 1, cv => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(1, cv => returnProvider(), 1, (int cv, TCatch r) => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(1, cv => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, cv => default(T), 1, cv => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => default(T), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+
+                (promise => promise.ContinueWith(_ => returnProvider()), AdoptLocation.Both),
+                (promise => promise.ContinueWith(1, (cv, _) => returnProvider()), AdoptLocation.Both),
+            };
+        }
+
+        public static (Func<Promise<T>, Promise<T>> func, AdoptLocation adoptLocation)[] GetFunctionsAdoptingPromiseTToT<T, TCatch>(Func<Promise<T>> returnProvider)
+        {
+            return new (Func<Promise<T>, Promise<T>> func, AdoptLocation adoptLocation)[]
+            {
+                (promise => promise.Then(v => returnProvider()), AdoptLocation.Resolve),
+                (promise => promise.Then(1, (cv, v) => returnProvider()), AdoptLocation.Resolve),
+
+                (promise => promise.Then(v => returnProvider(), () => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(v => returnProvider(), (TCatch r) => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(v => returnProvider(), () => returnProvider()), AdoptLocation.Resolve),
+                (promise => promise.Then(v => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Resolve),
+
+                (promise => promise.Then(1, (cv, v) => returnProvider(), () => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), (TCatch r) => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(v => returnProvider(), 1, cv => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(v => returnProvider(), 1, (int cv, TCatch r) => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(v => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(v => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, (cv, v) => returnProvider(), 1, cv => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), 1, (int cv, TCatch r) => default(T)), AdoptLocation.Resolve),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, (cv, v) => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.ContinueWith(_ => returnProvider()), AdoptLocation.Both),
+                (promise => promise.ContinueWith(1, (cv, _) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(() => default(T), () => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => default(T), (TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(() => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, cv => default(T), () => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => default(T), (TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => returnProvider(), () => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), (TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(() => default(T), 1, cv => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => default(T), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(() => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(() => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+                (promise => promise.Then(1, cv => default(T), 1, cv => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => default(T), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Then(1, cv => returnProvider(), 1, cv => returnProvider()), AdoptLocation.Both),
+                (promise => promise.Then(1, cv => returnProvider(), 1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Both),
+
+
+                (promise => promise.Catch(() => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Catch((TCatch r) => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Catch(1, cv => returnProvider()), AdoptLocation.Reject),
+                (promise => promise.Catch(1, (int cv, TCatch r) => returnProvider()), AdoptLocation.Reject),
             };
         }
     }

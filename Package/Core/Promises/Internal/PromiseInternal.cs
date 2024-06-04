@@ -93,6 +93,16 @@ namespace Proto.Promises
                 }
             }
 
+            partial class PromiseRetainer<TResult>
+            {
+                public override System.Threading.Tasks.Sources.ValueTaskSourceStatus GetStatus(short token)
+                {
+                    ValidateId(token, this, 2);
+                    ThrowIfInPool(this);
+                    return (System.Threading.Tasks.Sources.ValueTaskSourceStatus) State;
+                }
+            }
+
             partial class CanceledPromiseSentinel<TResult>
             {
                 public override System.Threading.Tasks.Sources.ValueTaskSourceStatus GetStatus(short token)
@@ -295,8 +305,12 @@ namespace Proto.Promises
                 }
             }
 
+            // TODO: If/when we remove `Promise.Preserve()`, we can also remove this MaybeMarkAwaitedAndDispose method, and just use Forget instead.
             internal abstract void MaybeMarkAwaitedAndDispose(short promiseId);
             internal abstract void MaybeDispose();
+            // TODO: We can remove this virtual GetIsCompleted call and make it a simple State check instead.
+            // Doing so will require removing `Promise.Preserve()` API, so it will need a major version update.
+            // We will also need to move the `_state = Promise.State.Pending` from ResetWithoutStacktrace() to Dispose().
             internal abstract bool GetIsCompleted(short promiseId);
             internal abstract void Forget(short promiseId);
             internal abstract PromiseRefBase GetDuplicate(short promiseId);
@@ -762,7 +776,7 @@ namespace Proto.Promises
                     {
                         if (!GetIsValid(promiseId))
                         {
-                            throw new InvalidOperationException("Cannot forget a promise more than once.", GetFormattedStacktrace(3));
+                            throw new InvalidOperationException("Cannot forget a promise more than once.", GetFormattedStacktrace(2));
                         }
                         WasAwaitedOrForgotten = true;
                         MaybeDispose();

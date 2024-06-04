@@ -29,24 +29,12 @@ namespace ProtoPromiseTests.APIs
         public void IfOnContinueIsNullThrow_void()
         {
             var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
+            var promise = deferred.Promise;
 
-            Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
-            {
-                promise.ContinueWith(default(Action<Promise.ResultContainer>));
-            });
-            Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
-            {
-                promise.ContinueWith(default(Func<Promise.ResultContainer, bool>));
-            });
-            Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
-            {
-                promise.ContinueWith(default(Func<Promise.ResultContainer, Promise>));
-            });
-            Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
-            {
-                promise.ContinueWith(default(Func<Promise.ResultContainer, Promise<bool>>));
-            });
+            Assert.Throws<Proto.Promises.ArgumentNullException>(() => promise.ContinueWith(default(Action<Promise.ResultContainer>)));
+            Assert.Throws<Proto.Promises.ArgumentNullException>(() => promise.ContinueWith(default(Func<Promise.ResultContainer, bool>)));
+            Assert.Throws<Proto.Promises.ArgumentNullException>(() => promise.ContinueWith(default(Func<Promise.ResultContainer, Promise>)));
+            Assert.Throws<Proto.Promises.ArgumentNullException>(() => promise.ContinueWith(default(Func<Promise.ResultContainer, Promise<bool>>)));
 
             deferred.Resolve();
             promise.Forget();
@@ -56,24 +44,12 @@ namespace ProtoPromiseTests.APIs
         public void IfOnContinueIsNullThrow_T()
         {
             var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
+            var promise = deferred.Promise;
 
-            Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
-            {
-                promise.ContinueWith(default(Action<Promise<int>.ResultContainer>));
-            });
-            Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
-            {
-                promise.ContinueWith(default(Func<Promise<int>.ResultContainer, bool>));
-            });
-            Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
-            {
-                promise.ContinueWith(default(Func<Promise<int>.ResultContainer, Promise>));
-            });
-            Assert.Throws<Proto.Promises.ArgumentNullException>(() =>
-            {
-                promise.ContinueWith(default(Func<Promise<int>.ResultContainer, Promise<bool>>));
-            });
+            Assert.Throws<Proto.Promises.ArgumentNullException>(() => promise.ContinueWith(default(Action<Promise<int>.ResultContainer>)));
+            Assert.Throws<Proto.Promises.ArgumentNullException>(() => promise.ContinueWith(default(Func<Promise<int>.ResultContainer, bool>)));
+            Assert.Throws<Proto.Promises.ArgumentNullException>(() => promise.ContinueWith(default(Func<Promise<int>.ResultContainer, Promise>)));
+            Assert.Throws<Proto.Promises.ArgumentNullException>(() => promise.ContinueWith(default(Func<Promise<int>.ResultContainer, Promise<bool>>)));
 
             deferred.Resolve(1);
             promise.Forget();
@@ -84,64 +60,54 @@ namespace ProtoPromiseTests.APIs
         public void OnContinueIsInvokedWhenPromiseIsResolved_void()
         {
             var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
 
             int finallyCount = 0;
 
-            TestHelper.AddContinueCallbacks<int, string>(promise,
+            TestHelper.AddContinueCallbacks<int, string>(deferred.Promise,
                 onContinue: r => ++finallyCount
             );
 
             deferred.Resolve();
 
             Assert.AreEqual(TestHelper.continueVoidCallbacks * 2, finallyCount);
-
-            promise.Forget();
         }
 
         [Test]
         public void OnContinueIsInvokedWhenPromiseIsResolved_T()
         {
             var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
 
             int finallyCount = 0;
 
-            TestHelper.AddContinueCallbacks<int, int, string>(promise,
+            TestHelper.AddContinueCallbacks<int, int, string>(deferred.Promise,
                 onContinue: r => ++finallyCount
             );
 
             deferred.Resolve(50);
 
             Assert.AreEqual(TestHelper.continueTCallbacks * 2, finallyCount);
-
-            promise.Forget();
         }
 
         [Test]
         public void OnContinueStateWhenPromiseIsResolved()
         {
             var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
 
-            TestHelper.AddContinueCallbacks<int, string>(promise,
+            TestHelper.AddContinueCallbacks<int, string>(deferred.Promise,
                 onContinue: r => Assert.AreEqual(r.State, Promise.State.Resolved)
             );
 
             deferred.Resolve();
-
-            promise.Forget();
         }
 
         [Test]
         public void OnContinueResultWhenPromiseIsResolved()
         {
             var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
 
             int expected = 50;
 
-            TestHelper.AddContinueCallbacks<int, bool, string>(promise,
+            TestHelper.AddContinueCallbacks<int, bool, string>(deferred.Promise,
                 onContinue: r =>
                 {
                     Assert.AreEqual(r.State, Promise.State.Resolved);
@@ -150,55 +116,46 @@ namespace ProtoPromiseTests.APIs
             );
 
             deferred.Resolve(expected);
-
-            promise.Forget();
         }
 
         [Test]
         public void OnContinueIsInvokedWhenPromiseIsRejected_void()
         {
             var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
 
             int finallyCount = 0;
 
-            TestHelper.AddContinueCallbacks<int, string>(promise,
+            TestHelper.AddContinueCallbacks<int, string>(deferred.Promise,
                 onContinue: r => ++finallyCount
             );
 
             deferred.Reject("Reject");
             Assert.AreEqual(TestHelper.continueVoidCallbacks * 2, finallyCount);
-
-            promise.Forget();
         }
 
         [Test]
         public void OnContinueIsInvokedWhenPromiseIsRejected_T()
         {
             var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
 
             int finallyCount = 0;
 
-            TestHelper.AddContinueCallbacks<int, int, string>(promise,
+            TestHelper.AddContinueCallbacks<int, int, string>(deferred.Promise,
                 onContinue: r => ++finallyCount
             );
 
             deferred.Reject("Reject");
             Assert.AreEqual(TestHelper.continueTCallbacks * 2, finallyCount);
-
-            promise.Forget();
         }
 
         [Test]
         public void OnContinueRejectReasonWhenPromiseIsRejected_void()
         {
             var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
 
             string rejection = "Reject";
 
-            TestHelper.AddContinueCallbacks<int, string>(promise,
+            TestHelper.AddContinueCallbacks<int, string>(deferred.Promise,
                 onContinue: r =>
                 {
                     Assert.AreEqual(r.State, Promise.State.Rejected);
@@ -207,19 +164,16 @@ namespace ProtoPromiseTests.APIs
             );
 
             deferred.Reject(rejection);
-
-            promise.Forget();
         }
 
         [Test]
         public void OnContinueRejectReasonWhenPromiseIsRejected_T()
         {
             var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
 
             string rejection = "Reject";
 
-            TestHelper.AddContinueCallbacks<int, int, string>(promise,
+            TestHelper.AddContinueCallbacks<int, int, string>(deferred.Promise,
                 onContinue: r =>
                 {
                     Assert.AreEqual(r.State, Promise.State.Rejected);
@@ -228,20 +182,17 @@ namespace ProtoPromiseTests.APIs
             );
 
             deferred.Reject(rejection);
-
-            promise.Forget();
         }
 
         [Test]
         public void OnContinueRethrowRejectReasonWhenPromiseIsRejected_void()
         {
             var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
 
             int rejections = 0;
             string rejection = "Reject";
 
-            TestHelper.AddContinueCallbacks<int, string>(promise,
+            TestHelper.AddContinueCallbacks<int, string>(deferred.Promise,
                 onContinue: r => r.RethrowIfRejected(),
                 onCallbackAdded: (ref Promise p) => p.Catch((object e) => { Assert.AreEqual(rejection, e); ++rejections; }).Forget(),
                 onCallbackAddedConvert: (ref Promise<int> p) => p.Catch((object e) => { Assert.AreEqual(rejection, e); ++rejections; }).Forget()
@@ -253,20 +204,17 @@ namespace ProtoPromiseTests.APIs
                 TestHelper.continueVoidCallbacks * 2,
                 rejections
             );
-
-            promise.Forget();
         }
 
         [Test]
         public void OnContinueRethrowRejectReasonWhenPromiseIsRejected_T()
         {
             var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
 
             int rejections = 0;
             string rejection = "Reject";
 
-            TestHelper.AddContinueCallbacks<int, int, string>(promise,
+            TestHelper.AddContinueCallbacks<int, int, string>(deferred.Promise,
                 onContinue: r => r.RethrowIfRejected(),
                 onCallbackAdded: (ref Promise p) => p.Catch((object e) => { Assert.AreEqual(rejection, e); ++rejections; }).Forget(),
                 onCallbackAddedConvert: (ref Promise<int> p) => p.Catch((object e) => { Assert.AreEqual(rejection, e); ++rejections; }).Forget()
@@ -278,144 +226,106 @@ namespace ProtoPromiseTests.APIs
                 TestHelper.continueTCallbacks * 2,
                 rejections
             );
-
-            promise.Forget();
         }
 
         [Test]
         public void OnContinueIsInvokedWhenPromiseIsCanceled_void()
         {
-            CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred();
-            cancelationSource.Token.Register(deferred);
-            var promise = deferred.Promise.Preserve();
 
             int finallyCount = 0;
 
-            TestHelper.AddContinueCallbacks<int, string>(promise,
+            TestHelper.AddContinueCallbacks<int, string>(deferred.Promise,
                 onContinue: r => ++finallyCount
             );
 
-            cancelationSource.Cancel();
+            deferred.Cancel();
             Assert.AreEqual(TestHelper.continueVoidCallbacks * 2, finallyCount);
-
-            cancelationSource.Dispose();
-            promise.Forget();
         }
 
         [Test]
         public void OnContinueIsInvokedWhenPromiseIsCanceled_T()
         {
-            CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred<int>();
-            cancelationSource.Token.Register(deferred);
-            var promise = deferred.Promise.Preserve();
 
             int finallyCount = 0;
 
-            TestHelper.AddContinueCallbacks<int, int, string>(promise,
+            TestHelper.AddContinueCallbacks<int, int, string>(deferred.Promise,
                 onContinue: r => ++finallyCount
             );
 
-            cancelationSource.Cancel();
+            deferred.Cancel();
             Assert.AreEqual(TestHelper.continueTCallbacks * 2, finallyCount);
-
-            cancelationSource.Dispose();
-            promise.Forget();
         }
 
         [Test]
         public void OnContinueCancelStateWhenPromiseIsCanceled_void()
         {
-            CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred();
-            cancelationSource.Token.Register(deferred);
-            var promise = deferred.Promise.Preserve();
 
-            TestHelper.AddContinueCallbacks<int, string>(promise,
+            TestHelper.AddContinueCallbacks<int, string>(deferred.Promise,
                 onContinue: r =>
                 {
                     Assert.AreEqual(r.State, Promise.State.Canceled);
                 }
             );
 
-            cancelationSource.Cancel();
-
-            cancelationSource.Dispose();
-            promise.Forget();
+            deferred.Cancel();
         }
 
         [Test]
         public void OnContinueCancelStateWhenPromiseIsCanceled_T()
         {
-            CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred<int>();
-            cancelationSource.Token.Register(deferred);
-            var promise = deferred.Promise.Preserve();
 
-            TestHelper.AddContinueCallbacks<int, int, string>(promise,
+            TestHelper.AddContinueCallbacks<int, int, string>(deferred.Promise,
                 onContinue: r =>
                 {
                     Assert.AreEqual(r.State, Promise.State.Canceled);
                 }
             );
 
-            cancelationSource.Cancel();
-
-            cancelationSource.Dispose();
-            promise.Forget();
+            deferred.Cancel();
         }
 
         [Test]
         public void OnContinueRethrowCancelWhenPromiseIsCanceled_void()
         {
-            CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred();
-            cancelationSource.Token.Register(deferred);
-            var promise = deferred.Promise.Preserve();
 
             int cancelCount = 0;
 
-            TestHelper.AddContinueCallbacks<int, string>(promise,
+            TestHelper.AddContinueCallbacks<int, string>(deferred.Promise,
                 onContinue: r => r.RethrowIfCanceled(),
                 onCancel: () => { ++cancelCount; }
             );
 
-            cancelationSource.Cancel();
+            deferred.Cancel();
 
             Assert.AreEqual(
                 TestHelper.continueVoidCallbacks * 2,
                 cancelCount
             );
-
-            cancelationSource.Dispose();
-            promise.Forget();
         }
 
         [Test]
         public void OnContinueRethrowCancelReasonWhenPromiseIsCanceled_T()
         {
-            CancelationSource cancelationSource = CancelationSource.New();
             var deferred = Promise.NewDeferred<int>();
-            cancelationSource.Token.Register(deferred);
-            var promise = deferred.Promise.Preserve();
 
             int cancelCount = 0;
 
-            TestHelper.AddContinueCallbacks<int, int, string>(promise,
+            TestHelper.AddContinueCallbacks<int, int, string>(deferred.Promise,
                 onContinue: r => r.RethrowIfCanceled(),
                 onCancel: () => { ++cancelCount; }
             );
 
-            cancelationSource.Cancel();
+            deferred.Cancel();
 
             Assert.AreEqual(
                 TestHelper.continueTCallbacks * 2,
                 cancelCount
             );
-
-            cancelationSource.Dispose();
-            promise.Forget();
         }
     }
 }

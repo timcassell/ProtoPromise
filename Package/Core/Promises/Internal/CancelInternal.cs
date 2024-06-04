@@ -29,6 +29,14 @@ namespace Proto.Promises
                     => MaybeDispose();
             }
 
+            partial class PromiseRetainer<TResult>
+            {
+                internal override void MaybeReportUnhandledAndDispose(Promise.State state)
+                    // We don't report unhandled rejection here unless none of the waiters suppressed.
+                    // This way we only report it once in case multiple waiters were canceled.
+                    => MaybeDispose();
+            }
+
             internal partial struct CancelationHelper
             {
                 [MethodImpl(InlineOption)]

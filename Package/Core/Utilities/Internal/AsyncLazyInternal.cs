@@ -84,7 +84,8 @@ namespace Proto.Promises
         private sealed class LazyPromiseNoProgress : Internal.PromiseRefBase.LazyPromise<T>
         {
             private AsyncLazy<T> _owner;
-            internal PromiseMultiAwait<T> _preservedPromise;
+            // TODO: make LazyPromise implement multi await handling directly, instead of allocating a separate object.
+            internal PromiseRetainer<T> _promiseRetainer;
 
             [MethodImpl(Internal.InlineOption)]
             private static LazyPromiseNoProgress GetOrCreate()
@@ -113,7 +114,7 @@ namespace Proto.Promises
             internal static Promise<T> GetOrStartPromise(AsyncLazy<T> owner, LazyFieldsNoProgress lazyFields)
             {
                 LazyPromiseNoProgress lazyPromise;
-                PromiseMultiAwait<T> preservedPromise;
+                PromiseRetainer<T> promiseRetainer;
                 lock (lazyFields)
                 {
                     if (lazyFields.IsComplete)
@@ -123,16 +124,17 @@ namespace Proto.Promises
 
                     if (lazyFields.IsStarted)
                     {
-                        return GetDuplicate(lazyFields._lazyPromise.UnsafeAs<LazyPromiseNoProgress>()._preservedPromise);
+                        promiseRetainer = lazyFields._lazyPromise.UnsafeAs<LazyPromiseNoProgress>()._promiseRetainer;
+                        return promiseRetainer.WaitAsyncSkipValidation();
                     }
 
                     lazyPromise = GetOrCreate(owner);
                     lazyFields._lazyPromise = lazyPromise;
-                    // Same thing as Promise.Preserve(), but more direct.
-                    lazyPromise._preservedPromise = preservedPromise = PromiseMultiAwait<T>.GetOrCreateAndHookup(lazyPromise, lazyPromise.Id);
+                    // Same thing as Promise.GetRetainer(), but more direct.
+                    lazyPromise._promiseRetainer = promiseRetainer = PromiseRetainer<T>.GetOrCreateAndHookup(lazyPromise, lazyPromise.Id);
                     // Exit the lock before invoking the factory.
                 }
-                var promise = GetDuplicate(preservedPromise);
+                var promise = promiseRetainer.WaitAsyncSkipValidation();
                 lazyPromise.Start(lazyFields._factory);
                 return promise;
             }
@@ -150,18 +152,18 @@ namespace Proto.Promises
             protected override void OnComplete(Promise.State state)
             {
                 var lazyFields = _owner._lazyFields;
-                PromiseMultiAwait<T> preservedPromise;
+                PromiseRetainer<T> promiseRetainer;
                 if (state != Promises.Promise.State.Resolved)
                 {
                     lock (lazyFields)
                     {
                         // Reset the state so that the factory will be ran again the next time the Promise is accessed.
-                        preservedPromise = _preservedPromise;
-                        _preservedPromise = null;
+                        promiseRetainer = _promiseRetainer;
+                        _promiseRetainer = null;
                         lazyFields._lazyPromise = null;
                     }
 
-                    preservedPromise.Forget(preservedPromise.Id);
+                    promiseRetainer.Dispose(promiseRetainer.Id);
                     HandleNextInternal(state);
                     return;
                 }
@@ -173,12 +175,12 @@ namespace Proto.Promises
 
                 lock (lazyFields)
                 {
-                    preservedPromise = _preservedPromise;
-                    _preservedPromise = null;
+                    promiseRetainer = _promiseRetainer;
+                    _promiseRetainer = null;
                     lazyFields.UnsafeAs<LazyFieldsNoProgress>()._factory = null;
                 }
 
-                preservedPromise.Forget(preservedPromise.Id);
+                promiseRetainer.Dispose(promiseRetainer.Id);
                 HandleNextInternal(state);
             }
         } // class LazyPromiseNoProgress
@@ -189,7 +191,7 @@ namespace Proto.Promises
         private sealed class LazyWithProgressPromise : Internal.PromiseRefBase.LazyPromise<T>
         {
             private AsyncLazy<T> _owner;
-            internal PromiseMultiAwait<T> _preservedPromise;
+            internal PromiseRetainer<T> _promiseRetainer;
             internal Internal.ProgressMultiHandler _progressHandler;
 
             [MethodImpl(Internal.InlineOption)]
@@ -219,7 +221,7 @@ namespace Proto.Promises
             internal static Promise<T> GetOrStartPromise(AsyncLazy<T> owner, LazyFieldsWithProgress lazyFields, ProgressToken progressToken)
             {
                 LazyWithProgressPromise lazyPromise;
-                PromiseMultiAwait<T> preservedPromise;
+                PromiseRetainer<T> promiseRetainer;
                 lock (lazyFields)
                 {
                     if (lazyFields.IsComplete)
@@ -232,18 +234,19 @@ namespace Proto.Promises
                     {
                         var castedPromise = lazyFields._lazyPromise.UnsafeAs<LazyWithProgressPromise>();
                         castedPromise._progressHandler.Add(progressToken, castedPromise._progressHandler.Id);
-                        return GetDuplicate(castedPromise._preservedPromise);
+                        promiseRetainer = castedPromise._promiseRetainer;
+                        return promiseRetainer.WaitAsyncSkipValidation();
                     }
 
                     lazyPromise = GetOrCreate(owner);
                     lazyFields._lazyPromise = lazyPromise;
                     // Same thing as Progress.NewMultiHandler(), but more direct.
                     lazyPromise._progressHandler = Internal.ProgressMultiHandler.GetOrCreate();
-                    // Same thing as Promise.Preserve(), but more direct.
-                    lazyPromise._preservedPromise = preservedPromise = PromiseMultiAwait<T>.GetOrCreateAndHookup(lazyPromise, lazyPromise.Id);
+                    // Same thing as Promise.GetRetainer(), but more direct.
+                    lazyPromise._promiseRetainer = promiseRetainer = PromiseRetainer<T>.GetOrCreateAndHookup(lazyPromise, lazyPromise.Id);
                     // Exit the lock before invoking the factory.
                 }
-                var promise = GetDuplicate(preservedPromise);
+                var promise = promiseRetainer.WaitAsyncSkipValidation();
                 lazyPromise._progressHandler.Add(progressToken, lazyPromise._progressHandler.Id);
                 lazyPromise.Start(lazyFields._factory, new ProgressToken(lazyPromise._progressHandler, lazyPromise._progressHandler.Id, 0d, 1d));
                 return promise;
@@ -266,22 +269,22 @@ namespace Proto.Promises
             protected override void OnComplete(Promise.State state)
             {
                 var lazyFields = _owner._lazyFields;
-                PromiseMultiAwait<T> preservedPromise;
+                PromiseRetainer<T> promiseRetainer;
                 Internal.ProgressMultiHandler progressHandler;
                 if (state != Promises.Promise.State.Resolved)
                 {
                     lock (lazyFields)
                     {
                         // Reset the state so that the factory will be ran again the next time GetResultAsync is called.
-                        preservedPromise = _preservedPromise;
-                        _preservedPromise = null;
+                        promiseRetainer = _promiseRetainer;
+                        _promiseRetainer = null;
                         progressHandler = _progressHandler;
                         _progressHandler = null;
                         lazyFields._lazyPromise = null;
                     }
 
                     progressHandler.Dispose(progressHandler.Id);
-                    preservedPromise.Forget(preservedPromise.Id);
+                    promiseRetainer.Dispose(promiseRetainer.Id);
                     HandleNextInternal(state);
                     return;
                 }
@@ -293,8 +296,8 @@ namespace Proto.Promises
 
                 lock (lazyFields)
                 {
-                    preservedPromise = _preservedPromise;
-                    _preservedPromise = null;
+                    promiseRetainer = _promiseRetainer;
+                    _promiseRetainer = null;
                     progressHandler = _progressHandler;
                     _progressHandler = null;
                     lazyFields.UnsafeAs<LazyFieldsWithProgress>()._factory = null;
@@ -302,7 +305,7 @@ namespace Proto.Promises
 
                 progressHandler.Report(1d, progressHandler.Id);
                 progressHandler.Dispose(progressHandler.Id);
-                preservedPromise.Forget(preservedPromise.Id);
+                promiseRetainer.Dispose(promiseRetainer.Id);
                 HandleNextInternal(state);
             }
         } // class LazyWithProgressPromise
@@ -317,14 +320,6 @@ namespace Proto.Promises
 #endif
             internal abstract class LazyPromise<TResult> : PromiseWaitPromise<TResult>
             {
-                protected static Promise<TResult> GetDuplicate(PromiseMultiAwait<TResult> preservedPromise)
-                {
-                    // Same thing as Promise.Duplicate(), but more direct.
-                    var p = preservedPromise;
-                    var duplicate = p.GetDuplicateT(p.Id);
-                    return new Promise<TResult>(duplicate, duplicate.Id);
-                }
-
                 [MethodImpl(InlineOption)]
                 protected void Start(Func<Promise<TResult>> factory)
                 {

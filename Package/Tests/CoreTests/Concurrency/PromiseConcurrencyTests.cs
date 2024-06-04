@@ -33,10 +33,70 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test]
+        public void PromiseRetainerWithReferenceBacking_DisposeMayOnlyBeCalledOnce_void()
+        {
+            var deferred = Promise.NewDeferred();
+            var promiseRetainer = deferred.Promise.GetRetainer();
+
+            int successCount = 0, invalidCount = 0;
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteMultiActionParallel(
+                () =>
+                {
+                    try
+                    {
+                        promiseRetainer.Dispose();
+                        Interlocked.Increment(ref successCount);
+                    }
+                    catch
+                    {
+                        Interlocked.Increment(ref invalidCount);
+                    }
+                }
+            );
+
+            deferred.Resolve();
+            Assert.AreEqual(1, successCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
+        }
+
+        [Test]
+        public void PromiseRetainerWithReferenceBacking_DisposeMayOnlyBeCalledOnce_T()
+        {
+            var deferred = Promise.NewDeferred<int>();
+            var promiseRetainer = deferred.Promise.GetRetainer();
+
+            int successCount = 0, invalidCount = 0;
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteMultiActionParallel(
+                () =>
+                {
+                    try
+                    {
+                        promiseRetainer.Dispose();
+                        Interlocked.Increment(ref successCount);
+                    }
+                    catch
+                    {
+                        Interlocked.Increment(ref invalidCount);
+                    }
+                }
+            );
+
+            deferred.Resolve(1);
+            Assert.AreEqual(1, successCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
+        }
+
+        [Test]
         public void PreservedPromiseWithReferenceBacking_ForgetMayOnlyBeCalledOnce_void()
         {
             var deferred = Promise.NewDeferred();
+#pragma warning disable CS0618 // Type or member is obsolete
             var promise = deferred.Promise.Preserve();
+#pragma warning restore CS0618 // Type or member is obsolete
 
             int successCount = 0, invalidCount = 0;
 
@@ -65,7 +125,9 @@ namespace ProtoPromiseTests.Concurrency
         public void PreservedPromiseWithReferenceBacking_ForgetMayOnlyBeCalledOnce_T()
         {
             var deferred = Promise.NewDeferred<int>();
+#pragma warning disable CS0618 // Type or member is obsolete
             var promise = deferred.Promise.Preserve();
+#pragma warning restore CS0618 // Type or member is obsolete
 
             int successCount = 0, invalidCount = 0;
 
@@ -93,6 +155,7 @@ namespace ProtoPromiseTests.Concurrency
         [Test]
         public void PreservedPromiseWithReferenceBacking_DuplicateCalledConcurrentlyAlwaysReturnsUnique_void()
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             var deferred = Promise.NewDeferred();
             var promise = deferred.Promise.Preserve();
 
@@ -116,11 +179,13 @@ namespace ProtoPromiseTests.Concurrency
             {
                 Assert.Fail("Duplicate returned at least one of the same promise instance. Duplicate should always return a unique instance from a reference-backed promise.");
             }
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         [Test]
         public void PreservedPromiseWithReferenceBacking_DuplicateCalledConcurrentlyAlwaysReturnsUnique_T()
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             var deferred = Promise.NewDeferred<int>();
             var promise = deferred.Promise.Preserve();
 
@@ -144,11 +209,13 @@ namespace ProtoPromiseTests.Concurrency
             {
                 Assert.Fail("Duplicate returned at least one of the same promise instance. Duplicate should always return a unique instance from a reference-backed promise.");
             }
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         [Test]
         public void PreservedPromiseWithReferenceBacking_PreserveCalledConcurrentlyAlwaysReturnsUnique_void()
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             var deferred = Promise.NewDeferred();
             var promise = deferred.Promise.Preserve();
 
@@ -172,11 +239,13 @@ namespace ProtoPromiseTests.Concurrency
             {
                 Assert.Fail("Duplicate returned at least one of the same promise instance. Duplicate should always return a unique instance from a reference-backed promise.");
             }
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         [Test]
         public void PreservedPromiseWithReferenceBacking_PreserveCalledConcurrentlyAlwaysReturnsUnique_T()
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             var deferred = Promise.NewDeferred<int>();
             var promise = deferred.Promise.Preserve();
 
@@ -200,6 +269,7 @@ namespace ProtoPromiseTests.Concurrency
             {
                 Assert.Fail("Duplicate returned at least one of the same promise instance. Duplicate should always return a unique instance from a reference-backed promise.");
             }
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         [Test]
@@ -323,211 +393,102 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test]
-        public void PreservedPromiseThenMayBeCalledConcurrently_PendingThenResolved_void()
+        public void PreservedPromise_ThenMayBeCalledConcurrently_void(
+            [Values(CompleteType.Resolve, CompleteType.Reject)] CompleteType completeType,
+            [Values] bool isAlreadyComplete)
         {
             int invokedCount = 0;
-            var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
+#pragma warning disable CS0618 // Type or member is obsolete
+            var promise = TestHelper.BuildPromise(completeType, isAlreadyComplete, "Rejected", out var tryCompleter).Preserve();
+#pragma warning restore CS0618 // Type or member is obsolete
 
-            var resolveActions = TestHelper.ResolveActionsVoid(() => Interlocked.Increment(ref invokedCount));
-            var thenActions = TestHelper.ThenActionsVoid(() => Interlocked.Increment(ref invokedCount), null);
+            var actions = TestHelper.ThenActionsVoid(() => Interlocked.Increment(ref invokedCount), () => Interlocked.Increment(ref invokedCount))
+                .Concat(completeType == CompleteType.Resolve
+                    ? TestHelper.ResolveActionsVoid(() => Interlocked.Increment(ref invokedCount))
+                    : TestHelper.CatchActionsVoid(() => Interlocked.Increment(ref invokedCount))
+                );
             var threadHelper = new ThreadHelper();
-            foreach (var action in resolveActions.Concat(thenActions))
+            int expectedMultiplier = 0;
+            foreach (var action in actions)
             {
+                ++expectedMultiplier;
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            deferred.Resolve();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.resolveVoidCallbacks / TestHelper.callbacksMultiplier, invokedCount);
+            tryCompleter();
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * expectedMultiplier, invokedCount);
         }
 
         [Test]
-        public void PreservedPromiseThenMayBeCalledConcurrently_Resolved_void()
+        public void PreservedPromise_ThenMayBeCalledConcurrently_T(
+            [Values(CompleteType.Resolve, CompleteType.Reject)] CompleteType completeType,
+            [Values] bool isAlreadyComplete)
         {
             int invokedCount = 0;
-            var promise = Promise.Resolved().Preserve();
+#pragma warning disable CS0618 // Type or member is obsolete
+            var promise = TestHelper.BuildPromise(completeType, isAlreadyComplete, 42, "Rejected", out var tryCompleter).Preserve();
+#pragma warning restore CS0618 // Type or member is obsolete
 
-            var resolveActions = TestHelper.ResolveActionsVoid(() => Interlocked.Increment(ref invokedCount));
-            var thenActions = TestHelper.ThenActionsVoid(() => Interlocked.Increment(ref invokedCount), null);
+            var actions = TestHelper.ThenActions<int>(v => Interlocked.Increment(ref invokedCount), () => Interlocked.Increment(ref invokedCount))
+                .Concat(completeType == CompleteType.Resolve
+                    ? TestHelper.ResolveActions<int>(v => Interlocked.Increment(ref invokedCount))
+                    : TestHelper.CatchActions<int>(() => Interlocked.Increment(ref invokedCount))
+                );
             var threadHelper = new ThreadHelper();
-            foreach (var action in resolveActions.Concat(thenActions))
+            int expectedMultiplier = 0;
+            foreach (var action in actions)
             {
+                ++expectedMultiplier;
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.resolveVoidCallbacks / TestHelper.callbacksMultiplier, invokedCount);
+            tryCompleter();
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * expectedMultiplier, invokedCount);
         }
 
         [Test]
-        public void PreservedPromiseThenMayBeCalledConcurrently_PendingThenResolved_T()
+        public void PreservedPromise_CatchCancelationMayBeCalledConcurrently_void(
+            [Values] bool isAlreadyComplete)
         {
             int invokedCount = 0;
-            var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
-
-            var resolveActions = TestHelper.ResolveActions<int>(v => Interlocked.Increment(ref invokedCount));
-            var thenActions = TestHelper.ThenActions<int>(v => Interlocked.Increment(ref invokedCount), null);
-            var threadHelper = new ThreadHelper();
-            foreach (var action in resolveActions.Concat(thenActions))
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            promise.Forget();
-            deferred.Resolve(1);
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.resolveTCallbacks / TestHelper.callbacksMultiplier, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseThenMayBeCalledConcurrently_Resolved_T()
-        {
-            int invokedCount = 0;
-            var promise = Promise.Resolved(1).Preserve();
-
-            var resolveActions = TestHelper.ResolveActions<int>(v => Interlocked.Increment(ref invokedCount));
-            var thenActions = TestHelper.ThenActions<int>(v => Interlocked.Increment(ref invokedCount), null);
-            var threadHelper = new ThreadHelper();
-            foreach (var action in resolveActions.Concat(thenActions))
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.resolveTCallbacks / TestHelper.callbacksMultiplier, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseThenMayBeCalledConcurrently_PendingThenRejected_void()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
-
-            var catchActions = TestHelper.CatchActionsVoid(() => Interlocked.Increment(ref invokedCount));
-            var thenActions = TestHelper.ThenActionsVoid(null, () => Interlocked.Increment(ref invokedCount));
-            var threadHelper = new ThreadHelper();
-            foreach (var action in catchActions.Concat(thenActions))
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            promise.Forget();
-            deferred.Reject("Reject");
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.rejectVoidCallbacks / TestHelper.callbacksMultiplier, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseThenMayBeCalledConcurrently_Rejected_void()
-        {
-            int invokedCount = 0;
-            var promise = Promise.Rejected("Reject").Preserve();
-
-            var catchActions = TestHelper.CatchActionsVoid(() => Interlocked.Increment(ref invokedCount));
-            var thenActions = TestHelper.ThenActionsVoid(null, () => Interlocked.Increment(ref invokedCount));
-            var threadHelper = new ThreadHelper();
-            foreach (var action in catchActions.Concat(thenActions))
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.rejectVoidCallbacks / TestHelper.callbacksMultiplier, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseThenMayBeCalledConcurrently_PendingThenRejected_T()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
-
-            var catchActions = TestHelper.CatchActions<int>(() => Interlocked.Increment(ref invokedCount));
-            var thenActions = TestHelper.ThenActions<int>(null, () => Interlocked.Increment(ref invokedCount));
-            var threadHelper = new ThreadHelper();
-            foreach (var action in catchActions.Concat(thenActions))
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            promise.Forget();
-            deferred.Reject("Reject");
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.rejectTCallbacks / TestHelper.callbacksMultiplier, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseThenMayBeCalledConcurrently_Rejected_T()
-        {
-            int invokedCount = 0;
-            var promise = Promise<int>.Rejected("Reject").Preserve();
-
-            var catchActions = TestHelper.CatchActions<int>(() => Interlocked.Increment(ref invokedCount));
-            var thenActions = TestHelper.ThenActions<int>(null, () => Interlocked.Increment(ref invokedCount));
-            var threadHelper = new ThreadHelper();
-            foreach (var action in catchActions.Concat(thenActions))
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.rejectTCallbacks / TestHelper.callbacksMultiplier, invokedCount);
-        }
-
-        [Test]
-        public void PromiseCatchCancelationnMayBeCalledConcurrently_PendingThenCanceled_void()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
+#pragma warning disable CS0618 // Type or member is obsolete
+            var promise = TestHelper.BuildPromise(CompleteType.Cancel, isAlreadyComplete, "Rejected", out var tryCompleter).Preserve();
+#pragma warning restore CS0618 // Type or member is obsolete
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(() => Interlocked.Increment(ref invokedCount)).Forget());
             threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
-            deferred.Cancel();
+            tryCompleter();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
         }
 
         [Test]
-        public void PromiseCatchCancelationnMayBeCalledConcurrently_Canceled_void()
+        public void PreservedPromise_CatchCancelationMayBeCalledConcurrently_T(
+            [Values] bool isAlreadyComplete)
         {
             int invokedCount = 0;
-            var promise = Promise.Canceled().Preserve();
+#pragma warning disable CS0618 // Type or member is obsolete
+            var promise = TestHelper.BuildPromise(CompleteType.Cancel, isAlreadyComplete, "Rejected", out var tryCompleter).Preserve();
+#pragma warning restore CS0618 // Type or member is obsolete
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(() => Interlocked.Increment(ref invokedCount)).Forget());
             threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
             promise.Forget();
+            tryCompleter();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
         }
 
         [Test]
-        public void PromiseCatchCancelationnMayBeCalledConcurrently_PendingThenCanceled_T()
+        public void PreservedPromise_ContinueWithMayBeCalledConcurrently_void(
+            [Values] CompleteType completeType,
+            [Values] bool isAlreadyComplete)
         {
             int invokedCount = 0;
-            var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(() => Interlocked.Increment(ref invokedCount)).Forget());
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
-            promise.Forget();
-            deferred.Cancel();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
-        }
-
-        [Test]
-        public void PromiseCatchCancelationnMayBeCalledConcurrently_Canceled_T()
-        {
-            int invokedCount = 0;
-            var promise = Promise<int>.Canceled().Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(() => Interlocked.Increment(ref invokedCount)).Forget());
-            threadHelper.ExecuteMultiActionParallel(() => promise.CatchCancelation(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
-            promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseContinueWithMayBeCalledConcurrently_PendingThenResolved_void()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
+#pragma warning disable CS0618 // Type or member is obsolete
+            var promise = TestHelper.BuildPromise(completeType, isAlreadyComplete, "Rejected", out var tryCompleter).Preserve();
+#pragma warning restore CS0618 // Type or member is obsolete
 
             var continueActions = TestHelper.ContinueWithActionsVoid(() => Interlocked.Increment(ref invokedCount));
             var threadHelper = new ThreadHelper();
@@ -536,32 +497,19 @@ namespace ProtoPromiseTests.Concurrency
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            deferred.Resolve();
+            tryCompleter();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks / TestHelper.callbacksMultiplier, invokedCount);
         }
 
         [Test]
-        public void PreservedPromiseContinueWithMayBeCalledConcurrently_Resolved_void()
+        public void PreservedPromise_ContinueWithMayBeCalledConcurrently_T(
+            [Values] CompleteType completeType,
+            [Values] bool isAlreadyComplete)
         {
             int invokedCount = 0;
-            var promise = Promise.Resolved().Preserve();
-
-            var continueActions = TestHelper.ContinueWithActionsVoid(() => Interlocked.Increment(ref invokedCount));
-            var threadHelper = new ThreadHelper();
-            foreach (var action in continueActions)
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks / TestHelper.callbacksMultiplier, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseContinueWithMayBeCalledConcurrently_PendingThenResolved_T()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
+#pragma warning disable CS0618 // Type or member is obsolete
+            var promise = TestHelper.BuildPromise(completeType, isAlreadyComplete, 42, "Rejected", out var tryCompleter).Preserve();
+#pragma warning restore CS0618 // Type or member is obsolete
 
             var continueActions = TestHelper.ContinueWithActions<int>(() => Interlocked.Increment(ref invokedCount));
             var threadHelper = new ThreadHelper();
@@ -570,328 +518,101 @@ namespace ProtoPromiseTests.Concurrency
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            deferred.Resolve(1);
+            tryCompleter();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks / TestHelper.callbacksMultiplier, invokedCount);
         }
 
         [Test]
-        public void PreservedPromiseContinueWithMayBeCalledConcurrently_Resolved_T()
+        public void PreservedPromise_FinallyMayBeCalledConcurrently_void(
+            [Values] CompleteType completeType,
+            [Values] bool isAlreadyComplete)
         {
             int invokedCount = 0;
-            var promise = Promise.Resolved(1).Preserve();
-
-            var continueActions = TestHelper.ContinueWithActions<int>(() => Interlocked.Increment(ref invokedCount));
-            var threadHelper = new ThreadHelper();
-            foreach (var action in continueActions)
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks / TestHelper.callbacksMultiplier, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseContinueWithMayBeCalledConcurrently_PendingThenRejected_void()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
-
-            var continueActions = TestHelper.ContinueWithActionsVoid(() => Interlocked.Increment(ref invokedCount));
-            var threadHelper = new ThreadHelper();
-            foreach (var action in continueActions)
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            promise.Forget();
-            deferred.Reject("Reject");
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks / TestHelper.callbacksMultiplier, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseContinueWithMayBeCalledConcurrently_Rejected_void()
-        {
-            int invokedCount = 0;
-            var promise = Promise.Rejected("Reject").Preserve();
-
-            var continueActions = TestHelper.ContinueWithActionsVoid(() => Interlocked.Increment(ref invokedCount));
-            var threadHelper = new ThreadHelper();
-            foreach (var action in continueActions)
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks / TestHelper.callbacksMultiplier, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseContinueWithMayBeCalledConcurrently_PendingThenRejected_T()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
-
-            var continueActions = TestHelper.ContinueWithActions<int>(() => Interlocked.Increment(ref invokedCount));
-            var threadHelper = new ThreadHelper();
-            foreach (var action in continueActions)
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            promise.Forget();
-            deferred.Reject("Reject");
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks / TestHelper.callbacksMultiplier, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseContinueWithMayBeCalledConcurrently_Rejected_T()
-        {
-            int invokedCount = 0;
-            var promise = Promise<int>.Rejected("Reject").Preserve();
-
-            var continueActions = TestHelper.ContinueWithActions<int>(() => Interlocked.Increment(ref invokedCount));
-            var threadHelper = new ThreadHelper();
-            foreach (var action in continueActions)
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks / TestHelper.callbacksMultiplier, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseContinueWithMayBeCalledConcurrently_PendingThenCanceled_void()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
-
-            var continueActions = TestHelper.ContinueWithActionsVoid(() => Interlocked.Increment(ref invokedCount));
-            var threadHelper = new ThreadHelper();
-            foreach (var action in continueActions)
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            promise.Forget();
-            deferred.Cancel();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks / TestHelper.callbacksMultiplier, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseContinueWithMayBeCalledConcurrently_Canceled_void()
-        {
-            int invokedCount = 0;
-            var promise = Promise.Canceled().Preserve();
-
-            var continueActions = TestHelper.ContinueWithActionsVoid(() => Interlocked.Increment(ref invokedCount));
-            var threadHelper = new ThreadHelper();
-            foreach (var action in continueActions)
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueVoidCallbacks / TestHelper.callbacksMultiplier, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseContinueWithMayBeCalledConcurrently_PendingThenCanceled_T()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
-
-            var continueActions = TestHelper.ContinueWithActions<int>(() => Interlocked.Increment(ref invokedCount));
-            var threadHelper = new ThreadHelper();
-            foreach (var action in continueActions)
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            promise.Forget();
-            deferred.Cancel();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks / TestHelper.callbacksMultiplier, invokedCount);
-        }
-
-        [Test]
-        public void PreservedPromiseContinueWithMayBeCalledConcurrently_Canceled_T()
-        {
-            int invokedCount = 0;
-            var promise = Promise<int>.Canceled().Preserve();
-
-            var continueActions = TestHelper.ContinueWithActions<int>(() => Interlocked.Increment(ref invokedCount));
-            var threadHelper = new ThreadHelper();
-            foreach (var action in continueActions)
-            {
-                threadHelper.ExecuteMultiActionParallel(() => action(promise));
-            }
-            promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.continueTCallbacks / TestHelper.callbacksMultiplier, invokedCount);
-        }
-
-        [Test]
-        public void PromiseFinallyMayBeCalledConcurrently_PendingThenResolved_void()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
-            promise.Forget();
-            deferred.Resolve();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
-        }
-
-        [Test]
-        public void PromiseFinallyMayBeCalledConcurrently_Resolved_void()
-        {
-            int invokedCount = 0;
-            var promise = Promise.Resolved().Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
-            promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
-        }
-
-        [Test]
-        public void PromiseFinallyMayBeCalledConcurrently_PendingThenResolved_T()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
-            promise.Forget();
-            deferred.Resolve(1);
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
-        }
-
-        [Test]
-        public void PromiseFinallyMayBeCalledConcurrently_Resolved_T()
-        {
-            int invokedCount = 0;
-            var promise = Promise.Resolved(1).Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
-            promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
-        }
-
-        [Test]
-        public void PromiseFinallyMayBeCalledConcurrently_PendingThenRejected_void()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
+#pragma warning disable CS0618 // Type or member is obsolete
+            var promise = TestHelper.BuildPromise(completeType, isAlreadyComplete, "Rejected", out var tryCompleter).Preserve();
+#pragma warning restore CS0618 // Type or member is obsolete
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
             promise.Forget();
-            deferred.Reject("Reject");
+            tryCompleter();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
         }
 
         [Test]
-        public void PromiseFinallyMayBeCalledConcurrently_Rejected_void()
+        public void PreservedPromise_FinallyMayBeCalledConcurrently_T(
+            [Values] CompleteType completeType,
+            [Values] bool isAlreadyComplete)
         {
             int invokedCount = 0;
-            var promise = Promise.Rejected("Reject").Preserve();
+#pragma warning disable CS0618 // Type or member is obsolete
+            var promise = TestHelper.BuildPromise(completeType, isAlreadyComplete, 42, "Rejected", out var tryCompleter).Preserve();
+#pragma warning restore CS0618 // Type or member is obsolete
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
             threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
             promise.Forget();
+            tryCompleter();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
         }
 
         [Test]
-        public void PromiseFinallyMayBeCalledConcurrently_PendingThenRejected_T()
+        public void PromiseRetainer_WaitAsyncMayBeCalledConcurrently_void(
+            [Values] CompleteType completeType,
+            [Values] bool isAlreadyComplete)
         {
+            var expectedRejection = "Rejected";
             int invokedCount = 0;
-            var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
-            promise.Forget();
-            deferred.Reject("Reject");
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
+            using (var promiseRetainer = TestHelper.BuildPromise(completeType, isAlreadyComplete, expectedRejection, out var tryCompleter)
+                .GetRetainer())
+            {
+                new ThreadHelper().ExecuteMultiActionParallel(() =>
+                    promiseRetainer.WaitAsync()
+                        .ContinueWith(resultContainer =>
+                        {
+                            Interlocked.Increment(ref invokedCount);
+                            Assert.AreEqual((Promise.State) completeType, resultContainer.State);
+                            if (completeType == CompleteType.Reject)
+                            {
+                                Assert.AreEqual(expectedRejection, resultContainer.Reason);
+                            }
+                        })
+                        .Forget()
+                    );
+                tryCompleter();
+            }
+            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
         [Test]
-        public void PromiseFinallyMayBeCalledConcurrently_Rejected_T()
+        public void PromiseRetainer_WaitAsyncMayBeCalledConcurrently_T(
+            [Values] CompleteType completeType,
+            [Values] bool isAlreadyComplete)
         {
+            var expectedRejection = "Rejected";
+            var expectedResult = 42;
             int invokedCount = 0;
-            var promise = Promise<int>.Rejected("Reject").Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
-            promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
-        }
-
-        [Test]
-        public void PromiseFinallyMayBeCalledConcurrently_PendingThenCanceled_void()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
-            promise.Forget();
-            deferred.Cancel();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
-        }
-
-        [Test]
-        public void PromiseFinallyMayBeCalledConcurrently_Canceled_void()
-        {
-            int invokedCount = 0;
-            var promise = Promise.Canceled().Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
-            promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
-        }
-
-        [Test]
-        public void PromiseFinallyMayBeCalledConcurrently_PendingThenCanceled_T()
-        {
-            int invokedCount = 0;
-            var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
-            promise.Forget();
-            deferred.Cancel();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
-        }
-
-        [Test]
-        public void PromiseFinallyMayBeCalledConcurrently_Canceled_T()
-        {
-            int invokedCount = 0;
-            var promise = Promise<int>.Canceled().Preserve();
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
-            promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
+            using (var promiseRetainer = TestHelper.BuildPromise(completeType, isAlreadyComplete, expectedResult, expectedRejection, out var tryCompleter)
+                .GetRetainer())
+            {
+                new ThreadHelper().ExecuteMultiActionParallel(() =>
+                    promiseRetainer.WaitAsync()
+                        .ContinueWith(resultContainer =>
+                        {
+                            Interlocked.Increment(ref invokedCount);
+                            Assert.AreEqual((Promise.State) completeType, resultContainer.State);
+                            if (completeType == CompleteType.Reject)
+                            {
+                                Assert.AreEqual(expectedRejection, resultContainer.Reason);
+                            }
+                        })
+                        .Forget()
+                    );
+                tryCompleter();
+            }
+            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
     }
 }

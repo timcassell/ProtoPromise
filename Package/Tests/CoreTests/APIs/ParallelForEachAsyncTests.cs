@@ -137,23 +137,23 @@ namespace ProtoPromiseTests.APIs
 
             int activeWorkers = 0;
             var block = Promise.NewDeferred();
-            var blockPromise = block.Promise.Preserve();
-
-            Promise t = Promise.ParallelForEachAsync(iterateUntilSetAsync, (item, cancelationToken) =>
+            using (var blockPromiseRetainer = block.Promise.GetRetainer())
             {
-                Interlocked.Increment(ref activeWorkers);
-                return blockPromise;
-            }, maxDegreeOfParallelism: dop);
+                Promise t = Promise.ParallelForEachAsync(iterateUntilSetAsync, (item, cancelationToken) =>
+                {
+                    Interlocked.Increment(ref activeWorkers);
+                    return blockPromiseRetainer.WaitAsync();
+                }, maxDegreeOfParallelism: dop);
 
-            Thread.Sleep(20); // give the loop some time to run
+                Thread.Sleep(20); // give the loop some time to run
 
-            box.Value = true;
-            block.Resolve();
-            int maxWorkers = dop == -1 ? Environment.ProcessorCount : dop;
-            t.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(maxWorkers));
+                box.Value = true;
+                block.Resolve();
+                int maxWorkers = dop == -1 ? Environment.ProcessorCount : dop;
+                t.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(maxWorkers));
 
-            blockPromise.Forget();
-            Assert.LessOrEqual(activeWorkers, maxWorkers);
+                Assert.LessOrEqual(activeWorkers, maxWorkers);
+            }
         }
 
         [Test]
@@ -358,39 +358,39 @@ namespace ProtoPromiseTests.APIs
         public void Exceptions_HavePriorityOverCancelation_Async()
         {
             var deferred = Promise.NewDeferred();
-            var promisePreserved = deferred.Promise.Preserve();
-            var cts = CancelationSource.New();
-
-            Exception expected = new Exception();
-            Exception actual = null;
-
-            Promise.ParallelForEachAsync(Infinite(), (item, cancelationToken) =>
+            using (var promiseRetainer = deferred.Promise.GetRetainer())
             {
-                if (item == 0)
-                {
-                    return promisePreserved
-                        .Then(() =>
-                        {
-                            cts.Cancel();
-                            throw expected;
-                        });
-                }
-                else
-                {
-                    deferred.TryResolve();
-                    return Promise.Resolved();
-                }
-            }, cts.Token, maxDegreeOfParallelism: 2)
-                .Catch((Exception e) => actual = e)
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(2));
+                var cts = CancelationSource.New();
 
-            promisePreserved.Forget();
-            cts.Dispose();
+                Exception expected = new Exception();
+                Exception actual = null;
 
-            Assert.IsInstanceOf<AggregateException>(actual);
-            var aggregate = (AggregateException) actual;
-            Assert.AreEqual(1, aggregate.InnerExceptions.Count);
-            Assert.AreEqual(expected, aggregate.InnerException);
+                Promise.ParallelForEachAsync(Infinite(), (item, cancelationToken) =>
+                {
+                    if (item == 0)
+                    {
+                        return promiseRetainer.WaitAsync()
+                            .Then(() =>
+                            {
+                                cts.Cancel();
+                                throw expected;
+                            });
+                    }
+                    else
+                    {
+                        deferred.TryResolve();
+                        return Promise.Resolved();
+                    }
+                }, cts.Token, maxDegreeOfParallelism: 2)
+                    .Catch((Exception e) => actual = e)
+                    .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(2));
+                cts.Dispose();
+
+                Assert.IsInstanceOf<AggregateException>(actual);
+                var aggregate = (AggregateException) actual;
+                Assert.AreEqual(1, aggregate.InnerExceptions.Count);
+                Assert.AreEqual(expected, aggregate.InnerException);
+            }
         }
 
         [Test]
@@ -576,41 +576,42 @@ namespace ProtoPromiseTests.APIs
                 : TestHelper._backgroundContext;
 
             var deferred = Promise.NewDeferred();
-            var blockPromise = deferred.Promise.Preserve();
-            int readyCount = 0;
-
-            var parallelPromise = Promise.ParallelForEachAsync(AsyncEnumerable.Range(0, 3), (index, cancelationToken) =>
+            using (var blockPromiseRetainer = deferred.Promise.GetRetainer())
             {
-                cancelationToken.Register(() => throw new Exception("Error in cancelation!"));
-                Interlocked.Increment(ref readyCount);
-                if (index == 2)
+                int readyCount = 0;
+
+                var parallelPromise = Promise.ParallelForEachAsync(AsyncEnumerable.Range(0, 3), (index, cancelationToken) =>
                 {
-                    // Wait until all iterations are ready, otherwise the token could be canceled before a worker registered, causing it to throw synchronously.
-                    TestHelper.SpinUntil(() => readyCount == 3, TimeSpan.FromSeconds(2));
-                    throw new System.InvalidOperationException("Error in loop body!");
+                    cancelationToken.Register(() => throw new Exception("Error in cancelation!"));
+                    Interlocked.Increment(ref readyCount);
+                    if (index == 2)
+                    {
+                        // Wait until all iterations are ready, otherwise the token could be canceled before a worker registered, causing it to throw synchronously.
+                        TestHelper.SpinUntil(() => readyCount == 3, TimeSpan.FromSeconds(2));
+                        throw new System.InvalidOperationException("Error in loop body!");
+                    }
+                    return blockPromiseRetainer.WaitAsync();
+                }, context);
+
+                TestHelper.SpinUntilWhileExecutingForegroundContext(() => readyCount == 3, TimeSpan.FromSeconds(3));
+
+                bool didThrow = false;
+                try
+                {
+                    deferred.Resolve();
+                    parallelPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
                 }
-                return blockPromise;
-            }, context);
+                catch (AggregateException e)
+                {
+                    didThrow = true;
+                    Assert.AreEqual(2, e.InnerExceptions.Count);
+                    Assert.IsInstanceOf<System.InvalidOperationException>(e.InnerExceptions[0]);
+                    Assert.IsInstanceOf<AggregateException>(e.InnerExceptions[1]);
+                    Assert.AreEqual(3, ((AggregateException) e.InnerExceptions[1]).InnerExceptions.Count);
+                }
 
-            TestHelper.SpinUntilWhileExecutingForegroundContext(() => readyCount == 3, TimeSpan.FromSeconds(3));
-
-            bool didThrow = false;
-            try
-            {
-                deferred.Resolve();
-                parallelPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
+                Assert.True(didThrow);
             }
-            catch (AggregateException e)
-            {
-                didThrow = true;
-                Assert.AreEqual(2, e.InnerExceptions.Count);
-                Assert.IsInstanceOf<System.InvalidOperationException>(e.InnerExceptions[0]);
-                Assert.IsInstanceOf<AggregateException>(e.InnerExceptions[1]);
-                Assert.AreEqual(3, ((AggregateException) e.InnerExceptions[1]).InnerExceptions.Count);
-            }
-
-            Assert.True(didThrow);
-            blockPromise.Forget();
         }
 
 #if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER

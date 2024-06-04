@@ -151,6 +151,12 @@ namespace Proto.Promises
                 private int _retainCounter;
             }
 
+            partial class PromiseRetainer<TResult> : PromiseRef<TResult>
+            {
+                private TempCollectionBuilder<HandleablePromiseBase> _nextBranches;
+                private int _retainCounter;
+            }
+
             partial class PromiseWaitPromise<TResult> : PromiseSingleAwait<TResult>
             {
             }

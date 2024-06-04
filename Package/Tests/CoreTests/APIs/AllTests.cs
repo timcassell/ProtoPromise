@@ -222,65 +222,71 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void AllPromiseIsRejectedWhenBothPromisesAreRejected_void()
         {
+            // All does not suppress rejections if one of the promises is rejected before the others complete.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            bool uncaughtHandled = false;
+            Promise.Config.UncaughtRejectionHandler = e =>
+            {
+                uncaughtHandled = true;
+                Assert.AreEqual("Error 2", e.Value);
+            };
+
             var deferred1 = Promise.NewDeferred();
             var deferred2 = Promise.NewDeferred();
-            var promise1 = deferred1.Promise.Preserve();
-            var promise2 = deferred2.Promise.Preserve();
-
-            // All does not suppress rejections if one of the promises is rejected before the others complete.
-            promise1.Catch((string _) => { }).Forget();
-            promise2.Catch((string _) => { }).Forget();
 
             bool errored = false;
 
-            Promise.All(promise1, promise2)
+            Promise.All(deferred1.Promise, deferred2.Promise)
                 .Then(
                     () => Assert.Fail("Promise was resolved when it should have been rejected."),
                     (string e) => { errored = true; })
                 .Forget();
 
-            deferred1.Reject("Error!");
+            deferred1.Reject("Error 1");
 
             Assert.IsTrue(errored);
 
-            deferred2.Reject("Error!");
+            deferred2.Reject("Error 2");
 
             Assert.IsTrue(errored);
 
-            promise1.Forget();
-            promise2.Forget();
+            Assert.True(uncaughtHandled);
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test]
         public void AllPromiseIsRejectedWhenBothPromisesAreRejected_T()
         {
+            // All does not suppress rejections if one of the promises is rejected before the others complete.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            bool uncaughtHandled = false;
+            Promise.Config.UncaughtRejectionHandler = e =>
+            {
+                uncaughtHandled = true;
+                Assert.AreEqual("Error 2", e.Value);
+            };
+
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<int>();
-            var promise1 = deferred1.Promise.Preserve();
-            var promise2 = deferred2.Promise.Preserve();
-
-            // All does not suppress rejections if one of the promises is rejected before the others complete.
-            promise1.Catch((string _) => { }).Forget();
-            promise2.Catch((string _) => { }).Forget();
 
             bool errored = false;
 
-            Promise<int>.All(promise1, promise2)
+            Promise<int>.All(deferred1.Promise, deferred2.Promise)
                 .Then(
                     v => Assert.Fail("Promise was resolved when it should have been rejected."),
                     (string e) => { errored = true; })
                 .Forget();
 
-            deferred1.Reject("Error!");
+            deferred1.Reject("Error 1");
 
             Assert.IsTrue(errored);
 
-            deferred2.Reject("Error!");
+            deferred2.Reject("Error 2");
 
             Assert.IsTrue(errored);
 
-            promise1.Forget();
-            promise2.Forget();
+            Assert.True(uncaughtHandled);
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test]
@@ -290,37 +296,37 @@ namespace ProtoPromiseTests.APIs
             string rejection = "Error!";
 
             var deferred = Promise.NewDeferred();
-            var promise1 = deferred.Promise.Preserve();
-            var promise2 = Promise.Rejected(rejection).Preserve();
+            using (var promiseRetainer1 = deferred.Promise.GetRetainer())
+            {
+                using (var promiseRetainer2 = Promise.Rejected(rejection).GetRetainer())
+                {
+                    Promise.All(promiseRetainer1.WaitAsync(), promiseRetainer2.WaitAsync())
+                        .Then(
+                            () => Assert.Fail("Promise was resolved when it should have been rejected."),
+                            (string ex) =>
+                            {
+                                Assert.AreEqual(rejection, ex);
+                                ++rejectCount;
+                            })
+                        .Forget();
 
-            Promise.All(promise1, promise2)
-                .Then(
-                    () => Assert.Fail("Promise was resolved when it should have been rejected."),
-                    (string ex) =>
-                    {
-                        Assert.AreEqual(rejection, ex);
-                        ++rejectCount;
-                    })
-                .Forget();
+                    Promise.All(promiseRetainer2.WaitAsync(), promiseRetainer1.WaitAsync())
+                        .Then(
+                            () => Assert.Fail("Promise was resolved when it should have been rejected."),
+                            (string ex) =>
+                            {
+                                Assert.AreEqual(rejection, ex);
+                                ++rejectCount;
+                            })
+                        .Forget();
 
-            Promise.All(promise2, promise1)
-                .Then(
-                    () => Assert.Fail("Promise was resolved when it should have been rejected."),
-                    (string ex) =>
-                    {
-                        Assert.AreEqual(rejection, ex);
-                        ++rejectCount;
-                    })
-                .Forget();
+                    Assert.AreEqual(2, rejectCount);
 
-            Assert.AreEqual(2, rejectCount);
+                    deferred.Resolve();
 
-            deferred.Resolve();
-
-            Assert.AreEqual(2, rejectCount);
-
-            promise1.Forget();
-            promise2.Forget();
+                    Assert.AreEqual(2, rejectCount);
+                }
+            }
         }
 
         [Test]
@@ -330,37 +336,37 @@ namespace ProtoPromiseTests.APIs
             string rejection = "Error!";
 
             var deferred = Promise.NewDeferred<int>();
-            var promise1 = deferred.Promise.Preserve();
-            var promise2 = Promise<int>.Rejected(rejection).Preserve();
+            using (var promiseRetainer1 = deferred.Promise.GetRetainer())
+            {
+                using (var promiseRetainer2 = Promise<int>.Rejected(rejection).GetRetainer())
+                {
+                    Promise<int>.All(promiseRetainer1.WaitAsync(), promiseRetainer2.WaitAsync())
+                        .Then(
+                            v => Assert.Fail("Promise was resolved when it should have been rejected."),
+                            (string ex) =>
+                            {
+                                Assert.AreEqual(rejection, ex);
+                                ++rejectCount;
+                            })
+                        .Forget();
 
-            Promise<int>.All(promise1, promise2)
-                .Then(
-                    v => Assert.Fail("Promise was resolved when it should have been rejected."),
-                    (string ex) =>
-                    {
-                        Assert.AreEqual(rejection, ex);
-                        ++rejectCount;
-                    })
-                .Forget();
+                    Promise<int>.All(promiseRetainer2.WaitAsync(), promiseRetainer1.WaitAsync())
+                        .Then(
+                            v => Assert.Fail("Promise was resolved when it should have been rejected."),
+                            (string ex) =>
+                            {
+                                Assert.AreEqual(rejection, ex);
+                                ++rejectCount;
+                            })
+                        .Forget();
 
-            Promise<int>.All(promise2, promise1)
-                .Then(
-                    v => Assert.Fail("Promise was resolved when it should have been rejected."),
-                    (string ex) =>
-                    {
-                        Assert.AreEqual(rejection, ex);
-                        ++rejectCount;
-                    })
-                .Forget();
+                    Assert.AreEqual(2, rejectCount);
 
-            Assert.AreEqual(2, rejectCount);
+                    deferred.Resolve(1);
 
-            deferred.Resolve(1);
-
-            Assert.AreEqual(2, rejectCount);
-
-            promise1.Forget();
-            promise2.Forget();
+                    Assert.AreEqual(2, rejectCount);
+                }
+            }
         }
 
         [Test]
@@ -535,31 +541,31 @@ namespace ProtoPromiseTests.APIs
             int cancelCount = 0;
 
             var deferred = Promise.NewDeferred();
-            var promise1 = deferred.Promise.Preserve();
-            var promise2 = Promise.Canceled().Preserve();
-
-            Promise.All(promise1, promise2)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation(() =>
+            using (var promiseRetainer1 = deferred.Promise.GetRetainer())
+            {
+                using (var promiseRetainer2 = Promise.Canceled().GetRetainer())
                 {
-                    ++cancelCount;
-                })
-                .Forget();
+                    Promise.All(promiseRetainer1.WaitAsync(), promiseRetainer2.WaitAsync())
+                        .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
+                        .CatchCancelation(() =>
+                        {
+                            ++cancelCount;
+                        })
+                        .Forget();
 
-            Promise.All(promise2, promise1)
-                .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation(() =>
-                {
-                    ++cancelCount;
-                })
-                .Forget();
+                    Promise.All(promiseRetainer2.WaitAsync(), promiseRetainer1.WaitAsync())
+                        .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."))
+                        .CatchCancelation(() =>
+                        {
+                            ++cancelCount;
+                        })
+                        .Forget();
 
-            deferred.Resolve();
+                    deferred.Resolve();
 
-            Assert.AreEqual(2, cancelCount);
-
-            promise1.Forget();
-            promise2.Forget();
+                    Assert.AreEqual(2, cancelCount);
+                }
+            }
         }
 
         [Test]
@@ -568,31 +574,31 @@ namespace ProtoPromiseTests.APIs
             int cancelCount = 0;
 
             var deferred = Promise.NewDeferred<int>();
-            var promise1 = deferred.Promise.Preserve();
-            var promise2 = Promise<int>.Canceled().Preserve();
-
-            Promise<int>.All(promise1, promise2)
-                .Then(v => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation(() =>
+            using (var promiseRetainer1 = deferred.Promise.GetRetainer())
+            {
+                using (var promiseRetainer2 = Promise<int>.Canceled().GetRetainer())
                 {
-                    ++cancelCount;
-                })
-                .Forget();
+                    Promise<int>.All(promiseRetainer1.WaitAsync(), promiseRetainer2.WaitAsync())
+                        .Then(v => Assert.Fail("Promise was resolved when it should have been canceled."))
+                        .CatchCancelation(() =>
+                        {
+                            ++cancelCount;
+                        })
+                        .Forget();
 
-            Promise<int>.All(promise2, promise1)
-                .Then(v => Assert.Fail("Promise was resolved when it should have been canceled."))
-                .CatchCancelation(() =>
-                {
-                    ++cancelCount;
-                })
-                .Forget();
+                    Promise<int>.All(promiseRetainer2.WaitAsync(), promiseRetainer1.WaitAsync())
+                        .Then(v => Assert.Fail("Promise was resolved when it should have been canceled."))
+                        .CatchCancelation(() =>
+                        {
+                            ++cancelCount;
+                        })
+                        .Forget();
 
-            deferred.Resolve(1);
+                    deferred.Resolve(1);
 
-            Assert.AreEqual(2, cancelCount);
-
-            promise1.Forget();
-            promise2.Forget();
+                    Assert.AreEqual(2, cancelCount);
+                }
+            }
         }
     }
 }

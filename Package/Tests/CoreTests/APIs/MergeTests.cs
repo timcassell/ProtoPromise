@@ -120,30 +120,34 @@ namespace ProtoPromiseTests.APIs
             var deferred1 = Promise.NewDeferred<int>();
             var deferred2 = Promise.NewDeferred<string>();
 
-            var promise1 = deferred1.Promise.Preserve();
-            var promise2 = deferred2.Promise.Preserve();
-
-            promise1.Catch((string _) => { }).Forget();
-            promise2.Catch((string _) => { }).Forget();
-
-            string expected = "Error";
+            string reject1 = "Error 1";
+            string reject2 = "Error 2";
             bool rejected = false;
 
-            Promise.Merge(promise1, promise2)
+            // The second rejection gets sent to the UncaughtRejectionHandler.
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            bool uncaught = false;
+            Promise.Config.UncaughtRejectionHandler = e =>
+            {
+                Assert.AreEqual(reject2, e.Value);
+                uncaught = true;
+            };
+
+            Promise.Merge(deferred1.Promise, deferred2.Promise)
                 .Catch((string e) =>
                 {
-                    Assert.AreEqual(expected, e);
+                    Assert.AreEqual(reject1, e);
                     rejected = true;
                 })
                 .Forget();
 
-            deferred1.Reject(expected);
-            deferred2.Reject(expected);
+            deferred1.Reject(reject1);
+            deferred2.Reject(reject2);
 
             Assert.IsTrue(rejected);
+            Assert.True(uncaught);
 
-            promise1.Forget();
-            promise2.Forget();
+            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test]
