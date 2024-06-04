@@ -98,6 +98,8 @@ namespace Proto.Promises
                         {
                             throw new ObjectDisposedException("The promise retainer was already disposed.", GetFormattedStacktrace(2));
                         }
+                        ThrowIfInPool(this);
+
                         WasAwaitedOrForgotten = true;
                     }
                     MaybeDispose();
@@ -142,7 +144,7 @@ namespace Proto.Promises
                 {
                     lock (this)
                     {
-                        if (promiseId != Id | WasAwaitedOrForgotten)
+                        if (promiseId != Id)
                         {
                             previousWaiter = InvalidAwaitSentinel.s_instance;
                             return InvalidAwaitSentinel.s_instance;
@@ -190,9 +192,27 @@ namespace Proto.Promises
                         {
                             throw new ObjectDisposedException("The promise retainer was already disposed.", GetFormattedStacktrace(2));
                         }
+                        ThrowIfInPool(this);
 
                         Retain();
                     }
+                    return GetWaitAsync(promiseId);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal Promise<TResult> WaitAsyncSkipValidation()
+                {
+#if PROMISE_DEBUG
+                    return WaitAsync(Id);
+#else
+                    Retain();
+                    return GetWaitAsync(Id);
+#endif
+                }
+
+                [MethodImpl(InlineOption)]
+                private Promise<TResult> GetWaitAsync(short promiseId)
+                {
 #if PROMISE_DEBUG
                     // In DEBUG mode, we return a duplicate so that its usage will be validated properly.
                     var duplicatePromise = PromiseDuplicate<TResult>.GetOrCreate();

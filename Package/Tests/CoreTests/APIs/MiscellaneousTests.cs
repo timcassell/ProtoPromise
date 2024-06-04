@@ -1476,5 +1476,51 @@ namespace ProtoPromiseTests.APIs
 
             Promise.Manager.ClearObjectPool();
         }
+
+        [Test]
+        public void PromiseRetainer_CanAddCallbacksToWaitAsyncPromiseAfterDisposed_void()
+        {
+            var deferred = Promise.NewDeferred();
+            var promiseRetainer = deferred.Promise.GetRetainer();
+            var promises = new Queue<Promise>();
+            var actions = TestHelper.ResolveActionsVoid()
+                .Concat(TestHelper.ThenActionsVoid())
+                .Concat(TestHelper.CatchActionsVoid())
+                .Concat(TestHelper.ContinueWithActionsVoid());
+            foreach (var action in actions)
+            {
+                promises.Enqueue(promiseRetainer.WaitAsync());
+            }
+            promiseRetainer.Dispose();
+            foreach (var action in actions)
+            {
+                action.Invoke(promises.Dequeue());
+            }
+
+            deferred.Resolve();
+        }
+
+        [Test]
+        public void PromiseRetainer_CanAddCallbacksToWaitAsyncPromiseAfterDisposed_T()
+        {
+            var deferred = Promise.NewDeferred<int>();
+            var promiseRetainer = deferred.Promise.GetRetainer();
+            var promises = new Queue<Promise<int>>();
+            var actions = TestHelper.ResolveActions<int>()
+                .Concat(TestHelper.ThenActions<int>())
+                .Concat(TestHelper.CatchActions<int>())
+                .Concat(TestHelper.ContinueWithActions<int>());
+            foreach (var action in actions)
+            {
+                promises.Enqueue(promiseRetainer.WaitAsync());
+            }
+            promiseRetainer.Dispose();
+            foreach (var action in actions)
+            {
+                action.Invoke(promises.Dequeue());
+            }
+
+            deferred.Resolve(1);
+        }
     }
 }
