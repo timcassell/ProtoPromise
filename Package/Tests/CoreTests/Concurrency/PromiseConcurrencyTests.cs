@@ -399,21 +399,24 @@ namespace ProtoPromiseTests.Concurrency
         {
             int invokedCount = 0;
 #pragma warning disable CS0618 // Type or member is obsolete
-            var promise = TestHelper.BuildPromise(CompleteType.Cancel, isAlreadyComplete, "Rejected", out var tryCompleter).Preserve();
+            var promise = TestHelper.BuildPromise(completeType, isAlreadyComplete, "Rejected", out var tryCompleter).Preserve();
 #pragma warning restore CS0618 // Type or member is obsolete
 
-            var actions = TestHelper.ThenActionsVoid(null, () => Interlocked.Increment(ref invokedCount))
+            var actions = TestHelper.ThenActionsVoid(() => Interlocked.Increment(ref invokedCount), () => Interlocked.Increment(ref invokedCount))
                 .Concat(completeType == CompleteType.Resolve
                     ? TestHelper.ResolveActionsVoid(() => Interlocked.Increment(ref invokedCount))
                     : TestHelper.CatchActionsVoid(() => Interlocked.Increment(ref invokedCount))
                 );
             var threadHelper = new ThreadHelper();
+            int expectedMultiplier = 0;
             foreach (var action in actions)
             {
+                ++expectedMultiplier;
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.rejectVoidCallbacks / TestHelper.callbacksMultiplier, invokedCount);
+            tryCompleter();
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * expectedMultiplier, invokedCount);
         }
 
         [Test]
@@ -423,22 +426,24 @@ namespace ProtoPromiseTests.Concurrency
         {
             int invokedCount = 0;
 #pragma warning disable CS0618 // Type or member is obsolete
-            var promise = TestHelper.BuildPromise(CompleteType.Cancel, isAlreadyComplete, 42, "Rejected", out var tryCompleter).Preserve();
+            var promise = TestHelper.BuildPromise(completeType, isAlreadyComplete, 42, "Rejected", out var tryCompleter).Preserve();
 #pragma warning restore CS0618 // Type or member is obsolete
 
-            var actions = TestHelper.ThenActions<int>(null, () => Interlocked.Increment(ref invokedCount))
+            var actions = TestHelper.ThenActions<int>(v => Interlocked.Increment(ref invokedCount), () => Interlocked.Increment(ref invokedCount))
                 .Concat(completeType == CompleteType.Resolve
                     ? TestHelper.ResolveActions<int>(v => Interlocked.Increment(ref invokedCount))
                     : TestHelper.CatchActions<int>(() => Interlocked.Increment(ref invokedCount))
                 );
             var threadHelper = new ThreadHelper();
+            int expectedMultiplier = 0;
             foreach (var action in actions)
             {
+                ++expectedMultiplier;
                 threadHelper.ExecuteMultiActionParallel(() => action(promise));
             }
             promise.Forget();
             tryCompleter();
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * TestHelper.rejectTCallbacks / TestHelper.callbacksMultiplier, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount * expectedMultiplier, invokedCount);
         }
 
         [Test]
@@ -528,8 +533,8 @@ namespace ProtoPromiseTests.Concurrency
 #pragma warning restore CS0618 // Type or member is obsolete
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
             promise.Forget();
             tryCompleter();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
@@ -546,8 +551,8 @@ namespace ProtoPromiseTests.Concurrency
 #pragma warning restore CS0618 // Type or member is obsolete
 
             var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Forget());
-            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(() => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
+            threadHelper.ExecuteMultiActionParallel(() => promise.Finally(1, cv => Interlocked.Increment(ref invokedCount)).Catch(() => { }).Forget());
             promise.Forget();
             tryCompleter();
             Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
@@ -578,7 +583,7 @@ namespace ProtoPromiseTests.Concurrency
                     );
                 tryCompleter();
             }
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
         [Test]
@@ -607,7 +612,7 @@ namespace ProtoPromiseTests.Concurrency
                     );
                 tryCompleter();
             }
-            Assert.AreEqual(ThreadHelper.multiExecutionCount * 2, invokedCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
     }
 }
