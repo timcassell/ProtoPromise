@@ -327,7 +327,7 @@ namespace Proto.Promises
                     try
                     {
                         var promise = factory.Invoke();
-                        WaitFor(promise._ref, promise._result, promise._id, null, new CompleteHandler(this));
+                        WaitFor(promise._ref, promise._result, promise._id, new CompleteHandler(this));
                     }
                     catch (OperationCanceledException)
                     {
@@ -348,7 +348,7 @@ namespace Proto.Promises
                     try
                     {
                         var promise = factory.Invoke(progressToken);
-                        WaitFor(promise._ref, promise._result, promise._id, null, new CompleteHandler(this));
+                        WaitFor(promise._ref, promise._result, promise._id, new CompleteHandler(this));
                     }
                     catch (OperationCanceledException)
                     {
