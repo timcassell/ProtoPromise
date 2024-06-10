@@ -397,10 +397,8 @@ namespace Proto.Promises
             protected void IncrementPromiseIdAndClearPrevious()
             {
                 IncrementPromiseId();
-#if PROMISE_DEBUG
-                _previous = null;
-#endif
                 _rejectContainer = null;
+                SetPrevious(null);
             }
 
             [MethodImpl(InlineOption)]
@@ -415,24 +413,21 @@ namespace Proto.Promises
             internal TPromise HookupCancelablePromise<TPromise>(TPromise promise, short promiseId, CancelationToken cancelationToken, ref CancelationHelper cancelationHelper)
                 where TPromise : PromiseRefBase, ICancelable
             {
-                promise.SetNewPrevious(this);
+                promise.SetPrevious(this);
                 cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
                 HookupNewWaiter(promiseId, promise);
                 return promise;
             }
 
-            // TODO: Make this method partial, rename to SetPrevious.
-            [MethodImpl(InlineOption)]
-            internal void SetNewPrevious(PromiseRefBase previous)
-            {
+            partial void SetPrevious(PromiseRefBase previous);
 #if PROMISE_DEBUG
-                _previous = previous;
+            partial void SetPrevious(PromiseRefBase previous)
+                => _previous = previous;
 #endif
-            }
 
             internal void HookupNewPromise(short promiseId, PromiseRefBase newPromise)
             {
-                newPromise.SetNewPrevious(this);
+                newPromise.SetPrevious(this);
                 HookupNewWaiter(promiseId, newPromise);
             }
 
@@ -1291,19 +1286,19 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal void WaitFor(Promise other, PromiseRefBase handler)
+            internal void WaitFor(Promise other)
             {
                 ThrowIfInPool(this);
                 ValidateReturn(other);
-                this.UnsafeAs<PromiseWaitPromise<VoidResult>>().WaitFor(other._ref, other._id, handler);
+                this.UnsafeAs<PromiseWaitPromise<VoidResult>>().WaitFor(other._ref, other._id);
             }
 
             [MethodImpl(InlineOption)]
-            internal void WaitFor<TResult>(in Promise<TResult> other, PromiseRefBase handler)
+            internal void WaitFor<TResult>(in Promise<TResult> other)
             {
                 ThrowIfInPool(this);
                 ValidateReturn(other);
-                this.UnsafeAs<PromiseWaitPromise<TResult>>().WaitFor(other._ref, other._result, other._id, handler);
+                this.UnsafeAs<PromiseWaitPromise<TResult>>().WaitFor(other._ref, other._result, other._id);
             }
 
             // This is only used in PromiseWaitPromise<TResult>, but we pulled it out to prevent excess generated generic interface types.
@@ -1311,20 +1306,6 @@ namespace Proto.Promises
             {
                 void HandleHookup(PromiseRefBase handler);
                 void HandleNull();
-            }
-
-            // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
-            [MethodImpl(MethodImplOptions.NoInlining)]
-            private static void VerifyAndHandleSelf<TCompleteHandler>(PromiseRefBase other, PromiseRefBase promiseSingleAwait, TCompleteHandler completeHandler)
-                where TCompleteHandler : IWaitForCompleteHandler
-            {
-                if (!VerifyWaiter(promiseSingleAwait))
-                {
-                    throw new InvalidReturnException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", string.Empty);
-                }
-
-                other.WaitUntilStateIsNotPending();
-                completeHandler.HandleHookup(other);
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -1355,62 +1336,64 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal void WaitFor(PromiseRefBase other, short id, PromiseRefBase handler)
-                    => WaitFor(other, id, handler, new DefaultCompleteHandler(this));
+                internal void WaitFor(PromiseRefBase other, short id)
+                    => WaitFor(other, id, new DefaultCompleteHandler(this));
 
                 [MethodImpl(InlineOption)]
-                internal void WaitFor(PromiseRefBase other, in TResult maybeResult, short id, PromiseRefBase handler)
-                    => WaitFor(other, maybeResult, id, handler, new DefaultCompleteHandler(this));
+                internal void WaitFor(PromiseRefBase other, in TResult maybeResult, short id)
+                    => WaitFor(other, maybeResult, id, new DefaultCompleteHandler(this));
 
                 [MethodImpl(InlineOption)]
-                protected void WaitFor<TCompleteHandler>(PromiseRefBase other, short id, PromiseRefBase handler, TCompleteHandler completeHandler)
+                protected void WaitFor<TCompleteHandler>(PromiseRefBase other, short id, TCompleteHandler completeHandler)
                     where TCompleteHandler : IWaitForCompleteHandler
                 {
                     if (other == null)
                     {
-                        SetSecondPrevious(null, handler);
+                        SetPrevious(null);
                         completeHandler.HandleNull();
                         return;
                     }
-                    SetSecondPreviousAndWaitFor(other, id, handler, completeHandler);
+                    SetSecondPreviousAndWaitFor(other, id, completeHandler);
                 }
 
                 [MethodImpl(InlineOption)]
-                protected void WaitFor<TCompleteHandler>(PromiseRefBase other, in TResult maybeResult, short id, PromiseRefBase handler, TCompleteHandler completeHandler)
+                protected void WaitFor<TCompleteHandler>(PromiseRefBase other, in TResult maybeResult, short id, TCompleteHandler completeHandler)
                     where TCompleteHandler : IWaitForCompleteHandler
                 {
                     if (other == null)
                     {
                         _result = maybeResult;
-                        SetSecondPrevious(null, handler);
+                        SetPrevious(null);
                         completeHandler.HandleNull();
                         return;
                     }
-                    SetSecondPreviousAndWaitFor(other, id, handler, completeHandler);
+                    SetSecondPreviousAndWaitFor(other, id, completeHandler);
                 }
 
-                [MethodImpl(InlineOption)]
-                internal void SetSecondPreviousAndWaitFor(PromiseRefBase secondPrevious, short id, PromiseRefBase handler)
-                    => SetSecondPreviousAndWaitFor(secondPrevious, id, handler, new DefaultCompleteHandler(this));
-
-                private void SetSecondPreviousAndWaitFor<TCompleteHandler>(PromiseRefBase secondPrevious, short id, PromiseRefBase handler, TCompleteHandler completeHandler)
+                private void SetSecondPreviousAndWaitFor<TCompleteHandler>(PromiseRefBase secondPrevious, short id, TCompleteHandler completeHandler)
                     where TCompleteHandler : IWaitForCompleteHandler
                 {
                     PromiseRefBase promiseSingleAwait = secondPrevious.AddWaiter(id, this, out var previousWaiter);
-                    SetSecondPrevious(secondPrevious, handler);
+                    SetPrevious(secondPrevious);
                     if (previousWaiter != PendingAwaitSentinel.s_instance)
                     {
                         VerifyAndHandleSelf(secondPrevious, promiseSingleAwait, completeHandler);
                     }
                 }
 
-                // TODO: Clean this up, just use SetPrevious.
-                partial void SetSecondPrevious(PromiseRefBase secondPrevious, PromiseRefBase handler);
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static void VerifyAndHandleSelf<TCompleteHandler>(PromiseRefBase other, PromiseRefBase promiseSingleAwait, TCompleteHandler completeHandler)
+                    where TCompleteHandler : IWaitForCompleteHandler
+                {
+                    if (!VerifyWaiter(promiseSingleAwait))
+                    {
+                        throw new InvalidReturnException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", string.Empty);
+                    }
 
-#if PROMISE_DEBUG
-                partial void SetSecondPrevious(PromiseRefBase secondPrevious, PromiseRefBase handler)
-                    => _previous = secondPrevious;
-#endif
+                    other.WaitUntilStateIsNotPending();
+                    completeHandler.HandleHookup(other);
+                }
             }
 
             // IDelegate to reduce the amount of classes I would have to write (Composition Over Inheritance).
@@ -1855,7 +1838,7 @@ namespace Proto.Promises
                     }
                     // Store the state until the returned promise is complete.
                     _previousState = state;
-                    WaitFor(result._ref, result._id, handler, new CompleteHandler(this));
+                    WaitFor(result._ref, result._id, new CompleteHandler(this));
                 }
 
                 private void HandleFromReturnedPromise(PromiseRefBase handler, Promise.State state)
