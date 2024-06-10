@@ -283,6 +283,9 @@ namespace Proto.Promises
                     => MarkReady(totalWaiters, ref _waitCount, Promise.State.Resolved);
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             internal sealed partial class MergePromise<TResult> : MergePromiseBase<TResult>
             {
                 private static GetResultDelegate<TResult> s_getResult;
@@ -406,6 +409,9 @@ namespace Proto.Promises
                 uint waitCount)
                 => MergePromise<IList<TResult>>.GetOrCreateAll(value, getResultFunc, passthroughs, unchecked((int) waitCount));
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             internal sealed partial class MergeSettledPromise<TResult> : MergePromiseBase<TResult>
             {
                 private static GetResultDelegate<TResult> s_getResult;
