@@ -51,6 +51,7 @@ namespace Proto.Promises
                 else
                 {
                     // The promise may still be pending, hook this up to continue when it completes.
+                    // TODO: hook up circular await detection.
                     var passthrough = PromisePassThrough.GetOrCreate(moveNextPromise._ref, this, index);
                     moveNextPromise._ref.HookupNewWaiter(moveNextPromise._id, passthrough);
                     return;
@@ -223,10 +224,7 @@ namespace Proto.Promises
                     return;
                 }
 
-                // We only set _previous to support circular await detection.
-#if PROMISE_DEBUG
-                _previous = iteratorPromise._ref;
-#endif
+                this.SetPrevious(iteratorPromise._ref);
                 // We hook this up directly to the returned promise so we can know when the iteration is complete, and use this for the DisposeAsync promise.
                 iteratorPromise._ref.HookupExistingWaiter(iteratorPromise._id, this);
             }
@@ -462,10 +460,7 @@ namespace Proto.Promises
                     return;
                 }
 
-                // We only set _previous to support circular await detection.
-#if PROMISE_DEBUG
-                _previous = iteratorPromise._ref;
-#endif
+                this.SetPrevious(iteratorPromise._ref);
                 // We hook this up directly to the returned promise so we can know when the iteration is complete, and use this for the DisposeAsync promise.
                 iteratorPromise._ref.HookupExistingWaiter(iteratorPromise._id, this);
             }

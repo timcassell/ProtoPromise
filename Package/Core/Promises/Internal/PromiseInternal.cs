@@ -398,7 +398,7 @@ namespace Proto.Promises
             {
                 IncrementPromiseId();
                 _rejectContainer = null;
-                SetPrevious(null);
+                this.SetPrevious(null);
             }
 
             [MethodImpl(InlineOption)]
@@ -418,12 +418,6 @@ namespace Proto.Promises
                 HookupNewWaiter(promiseId, promise);
                 return promise;
             }
-
-            partial void SetPrevious(PromiseRefBase previous);
-#if PROMISE_DEBUG
-            partial void SetPrevious(PromiseRefBase previous)
-                => _previous = previous;
-#endif
 
             internal void HookupNewPromise(short promiseId, PromiseRefBase newPromise)
             {
@@ -1349,7 +1343,7 @@ namespace Proto.Promises
                 {
                     if (other == null)
                     {
-                        SetPrevious(null);
+                        this.SetPrevious(null);
                         completeHandler.HandleNull();
                         return;
                     }
@@ -1363,7 +1357,7 @@ namespace Proto.Promises
                     if (other == null)
                     {
                         _result = maybeResult;
-                        SetPrevious(null);
+                        this.SetPrevious(null);
                         completeHandler.HandleNull();
                         return;
                     }
@@ -1374,7 +1368,7 @@ namespace Proto.Promises
                     where TCompleteHandler : IWaitForCompleteHandler
                 {
                     PromiseRefBase promiseSingleAwait = secondPrevious.AddWaiter(id, this, out var previousWaiter);
-                    SetPrevious(secondPrevious);
+                    this.SetPrevious(secondPrevious);
                     if (previousWaiter != PendingAwaitSentinel.s_instance)
                     {
                         VerifyAndHandleSelf(secondPrevious, promiseSingleAwait, completeHandler);

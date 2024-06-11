@@ -419,10 +419,7 @@ namespace Proto.Promises
                     return;
                 }
 
-                // We only set _previous to support circular await detection.
-#if PROMISE_DEBUG
-                _previous = iteratorPromise._ref;
-#endif
+                this.SetPrevious(iteratorPromise._ref);
                 // We hook this up directly to the returned promise so we can know when the iteration is complete, and use this for the DisposeAsync promise.
                 iteratorPromise._ref.HookupExistingWaiter(iteratorPromise._id, this);
             }

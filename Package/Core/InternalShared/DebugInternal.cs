@@ -96,10 +96,16 @@ namespace Proto.Promises
         private const ITraceable SynchronousTraceable = null;
 #endif
 
+        static partial void SetPrevious(this PromiseRefBase promise, PromiseRefBase previous);
         static partial void SetCreatedStacktrace(ITraceable traceable, int skipFrames);
         static partial void SetCurrentInvoker(ITraceable current);
         static partial void ClearCurrentInvoker();
+
 #if PROMISE_DEBUG
+        // We only set _previous to support circular await detection in DEBUG mode.
+        static partial void SetPrevious(this PromiseRefBase promise, PromiseRefBase previous)
+            => promise._previous = previous;
+
         static partial void SetCreatedStacktrace(ITraceable traceable, int skipFrames)
             => SetCreatedStacktraceImpl(traceable, skipFrames);
 
