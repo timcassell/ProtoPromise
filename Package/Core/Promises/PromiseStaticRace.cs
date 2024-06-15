@@ -52,6 +52,7 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise Race(params Promise[] promises)
+            // TODO: validate argument before calling GetEnumerator. (Do the same for First, Merge, etc).
             => Race(promises.GetGenericEnumerator());
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
@@ -70,6 +71,7 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise Race(IEnumerable<Promise> promises)
+            // TODO: validate argument before calling GetEnumerator. (Do the same for First, Merge, etc).
             => Race(promises.GetEnumerator());
 
         /// <summary>

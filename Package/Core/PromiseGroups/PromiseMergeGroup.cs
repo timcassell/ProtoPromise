@@ -74,6 +74,8 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise"/> to add to this group.</param>
         public PromiseMergeGroup Add(Promise promise)
         {
+            // TODO: add argument validation (for all promise groups).
+
             var cancelationRef = _cancelationRef;
             var group = _group;
             uint count = _count;

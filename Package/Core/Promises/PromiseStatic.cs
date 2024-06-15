@@ -147,7 +147,7 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="forceAsync">If true, forces the context switch to happen asynchronously.</param>
         /// <remarks>
-        /// This method is equivalent to <see cref="SwitchToBackground(bool)"/>, butbut is more efficient when used directly with the <see langword="await"/> keyword.
+        /// This method is equivalent to <see cref="SwitchToBackground(bool)"/>, but is more efficient when used directly with the <see langword="await"/> keyword.
         /// </remarks>
         public static PromiseSwitchToContextAwaiter SwitchToBackgroundAwait(bool forceAsync = false)
             => new PromiseSwitchToContextAwaiter(Config.BackgroundContext, forceAsync);
