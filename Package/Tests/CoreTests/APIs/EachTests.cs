@@ -157,6 +157,50 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
+        public void EachPromiseResultsAreYieldedInCompletionOrder_MoveNextAsyncBeforeComplete_void()
+        {
+            Promise.Run(async () =>
+            {
+                var args = new (CompleteType completeType, bool isAlreadyComplete, int completeIndex)[]
+                {
+                    (CompleteType.Resolve, false, 1),
+                    (CompleteType.Resolve, false, 0),
+                    (CompleteType.Resolve, false, 3),
+                    (CompleteType.Resolve, false, 2),
+                };
+                var rejections = new Exception[args.Length];
+                var tryCompleters = new Action[args.Length];
+                var promises = new Promise[args.Length];
+                for (int i = 0; i < args.Length; ++i)
+                {
+                    var (completeType, isAlreadyComplete, completeIndex) = args[i];
+                    rejections[completeIndex] = new Exception($"Rejected completeIndex: {completeIndex}");
+                    promises[i] = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejections[completeIndex], out tryCompleters[completeIndex]);
+                }
+
+                var asyncEnumerator = Promise.Each(promises).GetAsyncEnumerator();
+                foreach (var (completeType, _, completeIndex) in args.OrderBy(x => x.completeIndex))
+                {
+                    bool movedNext = false;
+                    var moveNextPromise = asyncEnumerator.MoveNextAsync()
+                        .Finally(() => movedNext = true);
+                    Assert.False(movedNext);
+                    tryCompleters[completeIndex].Invoke();
+                    Assert.True(await moveNextPromise);
+                    var resultContainer = asyncEnumerator.Current;
+                    Assert.AreEqual((Promise.State) completeType, resultContainer.State);
+                    if (resultContainer.State == Promise.State.Rejected)
+                    {
+                        Assert.AreEqual(rejections[completeIndex], resultContainer.Reason);
+                    }
+                }
+                Assert.False(await asyncEnumerator.MoveNextAsync());
+                await asyncEnumerator.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
         public void EachDisposeEarly_void()
         {
             Promise.Run(async () =>
@@ -336,6 +380,54 @@ namespace ProtoPromiseTests.APIs
                 {
                     tryCompleters[completeIndex].Invoke();
                     Assert.True(await asyncEnumerator.MoveNextAsync());
+                    var resultContainer = asyncEnumerator.Current;
+                    Assert.AreEqual((Promise.State) completeType, resultContainer.State);
+                    if (resultContainer.State == Promise.State.Resolved)
+                    {
+                        Assert.AreEqual(completeIndex, resultContainer.Value);
+                    }
+                    else if (resultContainer.State == Promise.State.Rejected)
+                    {
+                        Assert.AreEqual(rejections[completeIndex], resultContainer.Reason);
+                    }
+                }
+                Assert.False(await asyncEnumerator.MoveNextAsync());
+                await asyncEnumerator.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void EachPromiseResultsAreYieldedInCompletionOrder_MoveNextAsyncBeforeComplete_T()
+        {
+            Promise.Run(async () =>
+            {
+                var args = new (CompleteType completeType, bool isAlreadyComplete, int completeIndex)[]
+                {
+                    (CompleteType.Resolve, false, 1),
+                    (CompleteType.Resolve, false, 0),
+                    (CompleteType.Resolve, false, 3),
+                    (CompleteType.Resolve, false, 2),
+                };
+                var rejections = new Exception[args.Length];
+                var tryCompleters = new Action[args.Length];
+                var promises = new Promise<int>[args.Length];
+                for (int i = 0; i < args.Length; ++i)
+                {
+                    var (completeType, isAlreadyComplete, completeIndex) = args[i];
+                    rejections[completeIndex] = new Exception($"Rejected completeIndex: {completeIndex}");
+                    promises[i] = TestHelper.BuildPromise(completeType, isAlreadyComplete, completeIndex, rejections[completeIndex], out tryCompleters[completeIndex]);
+                }
+
+                var asyncEnumerator = Promise.Each(promises).GetAsyncEnumerator();
+                foreach (var (completeType, _, completeIndex) in args.OrderBy(x => x.completeIndex))
+                {
+                    bool movedNext = false;
+                    var moveNextPromise = asyncEnumerator.MoveNextAsync()
+                        .Finally(() => movedNext = true);
+                    Assert.False(movedNext);
+                    tryCompleters[completeIndex].Invoke();
+                    Assert.True(await moveNextPromise);
                     var resultContainer = asyncEnumerator.Current;
                     Assert.AreEqual((Promise.State) completeType, resultContainer.State);
                     if (resultContainer.State == Promise.State.Resolved)

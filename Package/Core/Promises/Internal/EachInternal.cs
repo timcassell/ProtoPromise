@@ -87,6 +87,9 @@ namespace Proto.Promises
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     SetCompletionState(Promise.State.Resolved);
 #endif
+                    // MoveNextAsync/DisposeAsync may have completed synchronously, in which case this will never have had a waiter added to it.
+                    // So we need to mark it awaited to prevent the finalizer from reporting it as not awaited.
+                    WasAwaitedOrForgotten = true;
                     base.Dispose();
                     _disposed = true;
                     _current = default;
@@ -143,15 +146,15 @@ namespace Proto.Promises
                             return Promise<bool>.Canceled();
                         }
                     }
-                    else if (_remaining == 0)
-                    {
-                        _enumerableId = id;
-                        return Promise.Resolved(false);
-                    }
                     else if (_cancelationToken.IsCancelationRequested | State == Promise.State.Canceled)
                     {
                         _enumerableId = id;
                         return Promise<bool>.Canceled();
+                    }
+                    else if (_remaining == 0)
+                    {
+                        _enumerableId = id;
+                        return Promise.Resolved(false);
                     }
                     --_remaining;
 
@@ -162,6 +165,10 @@ namespace Proto.Promises
 
                     if (_isMoveNextAsyncWaiting)
                     {
+                        // Invalidate the previous awaiter.
+                        IncrementPromiseIdAndClearPrevious();
+                        // Reset for the next awaiter.
+                        ResetWithoutStacktrace();
                         return new Promise<bool>(this, Id);
                     }
                     else
@@ -182,12 +189,13 @@ namespace Proto.Promises
 
                     lock (this)
                     {
-                        _queue.Enqueue(result);
                         if (_isMoveNextAsyncWaiting)
                         {
+                            // MoveNextAsync is waiting, so we can skip the queue and just set the current directly.
                             _isMoveNextAsyncWaiting = false;
                             goto HandleNext;
                         }
+                        _queue.Enqueue(result);
                     }
                     MaybeDispose();
                     return;
@@ -195,6 +203,7 @@ namespace Proto.Promises
                 HandleNext:
                     --_enumerableId;
                     _result = true;
+                    _current = result;
                     HandleNextInternal(Promise.State.Resolved);
                 }
 
