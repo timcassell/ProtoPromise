@@ -48,6 +48,7 @@ namespace Proto.Promises
 
                     var enumerable = GetOrCreate();
                     enumerable.Reset();
+                    enumerable._remaining = 0;
                     enumerable._retainCount = 1;
                     enumerable._queue = new PoolBackedQueue<TResult>(0);
                     return enumerable;
@@ -68,6 +69,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal void AddResult(in TResult result)
                 {
+                    ++_remaining;
                     lock (this)
                     {
                         _queue.Enqueue(result);

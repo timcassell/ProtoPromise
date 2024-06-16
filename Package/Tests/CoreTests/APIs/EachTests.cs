@@ -53,30 +53,23 @@ namespace ProtoPromiseTests.APIs
                 {
                     args[i] = (CompleteType.Resolve, false, completeIndices[i]);
                 }
+                generatedCombos.Add(args);
 
-                foreach (var completeType in completeTypes)
-                {
-                    foreach (var alreadyComplete in alreadyCompletes)
-                    {
-                        args[0].completeType = completeType;
-                        args[0].isAlreadyComplete = alreadyComplete;
-                        generatedCombos.Add(args.ToArray());
-                    }
-                }
-
-                for (int i = 1; i < args.Length; ++i)
+                for (int i = 0; i < completeIndices.Length; ++i)
                 {
                     for (int j = 0, max = generatedCombos.Count; j < max; j++)
                     {
-                        var combo = generatedCombos[j];
-                        Array.Copy(combo, args, args.Length);
                         foreach (var completeType in completeTypes)
                         {
                             foreach (var alreadyComplete in alreadyCompletes)
                             {
-                                args[i].completeType = completeType;
-                                args[i].isAlreadyComplete = alreadyComplete;
-                                generatedCombos.Add(args.ToArray());
+                                var combo = generatedCombos[j].ToArray();
+                                combo[i].completeType = completeType;
+                                combo[i].isAlreadyComplete = alreadyComplete;
+                                if (!generatedCombos.Any(c => Enumerable.SequenceEqual(c, combo)))
+                                {
+                                    generatedCombos.Add(combo);
+                                }
                             }
                         }
                     }
