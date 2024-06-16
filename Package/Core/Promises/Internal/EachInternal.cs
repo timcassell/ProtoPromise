@@ -6,10 +6,10 @@
 
 #pragma warning disable IDE0090 // Use 'new(...)'
 
-using Proto.Promises.Linq;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Proto.Promises
 {
@@ -20,15 +20,16 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class PromiseEachAsyncEnumerable<TResult> : AsyncEnumerableWithIterator<TResult>
+            internal sealed partial class PromiseEachAsyncEnumerable<TResult> : AsyncEnumerableBase<TResult>, ICancelable
             {
                 private static GetResultDelegate<TResult> s_getResult;
 
-                // These must not be readonly.
-                private DeferredPromise<VoidResult> _queuePromise;
+                private CancelationRegistration _cancelationRegistration;
+                // This must not be readonly.
                 private PoolBackedQueue<TResult> _queue;
                 private int _remaining;
                 private int _retainCount;
+                private bool _isMoveNextAsyncWaiting;
 
                 private PromiseEachAsyncEnumerable() { }
 
@@ -48,22 +49,16 @@ namespace Proto.Promises
 
                     var enumerable = GetOrCreate();
                     enumerable.Reset();
-                    enumerable._remaining = 0;
-                    enumerable._retainCount = 1;
-                    enumerable._queue = new PoolBackedQueue<TResult>(0);
                     return enumerable;
                 }
 
-                internal void AddPromise(PromiseRefBase promise, short id)
+                new private void Reset()
                 {
-                    AddPending(promise);
-
-                    ++_remaining;
-                    InterlockedAddWithUnsignedOverflowCheck(ref _retainCount, 1);
-                    // The base AsyncEnumerableWithIterator type has a sealed Handle implementation for the async iterator,
-                    // so we have to create a passthrough to hook the promise up to this, even though the index isn't used.
-                    var passthrough = PromisePassThrough.GetOrCreate(promise, this, 0);
-                    promise.HookupNewWaiter(id, passthrough);
+                    base.Reset();
+                    _remaining = 0;
+                    // 1 retain for DisposeAsync, and 1 retain for cancelation registration.
+                    _retainCount = 2;
+                    _queue = new PoolBackedQueue<TResult>(0);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -76,7 +71,107 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
+                internal void AddPromise(PromiseRefBase promise, short id)
+                {
+                    AddPending(promise);
+
+                    ++_remaining;
+                    InterlockedAddWithUnsignedOverflowCheck(ref _retainCount, 1);
+                    promise.HookupNewWaiter(id, this);
+                }
+
+                new private void Dispose()
+                {
+                    ValidateNoPending();
+
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    SetCompletionState(Promise.State.Resolved);
+#endif
+                    base.Dispose();
+                    _disposed = true;
+                    _current = default;
+                    _queue.Dispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                internal override Promise DisposeAsync(int id)
+                {
+                    int newId = id + 2;
+                    int oldId = Interlocked.CompareExchange(ref _enumerableId, newId, id);
+                    if (oldId != id)
+                    {
+                        if (oldId == id + 1)
+                        {
+                            throw new InvalidOperationException("AsyncEnumerator.DisposeAsync: the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace(2));
+                        }
+                        // IAsyncDisposable.DisposeAsync must not throw if it's called multiple times, according to MSDN documentation.
+                        return Promise.Resolved();
+                    }
+
+                    // Same as calling MaybeDispose twice, but without the extra interlocked and branch.
+                    int releaseCount = TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) & State != Promise.State.Canceled ? -2 : -1;
+                    _cancelationRegistration = default;
+                    if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCount, releaseCount) == 0)
+                    {
+                        Dispose();
+                    }
+                    return Promise.Resolved();
+                }
+
+                internal override void MaybeDispose()
+                {
+                    if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCount, -1) == 0)
+                    {
+                        Dispose();
+                    }
+                }
+
+                internal override Promise<bool> MoveNextAsync(int id)
+                {
+                    if (Interlocked.CompareExchange(ref _enumerableId, id + 1, id) != id)
+                    {
+                        throw new InvalidOperationException("AsyncEnumerable.MoveNextAsync: instance is not valid, or the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace(2));
+                    }
+
+                    if (!_isStarted)
+                    {
+                        _isStarted = true;
+                        _cancelationToken.TryRegisterWithoutImmediateInvoke<ICancelable>(this, out _cancelationRegistration, out bool alreadyCanceled);
+                        if (alreadyCanceled)
+                        {
+                            _enumerableId = id;
+                            return Promise<bool>.Canceled();
+                        }
+                    }
+                    else if (_remaining == 0)
+                    {
+                        _enumerableId = id;
+                        return Promise.Resolved(false);
+                    }
+                    else if (_cancelationToken.IsCancelationRequested | State == Promise.State.Canceled)
+                    {
+                        _enumerableId = id;
+                        return Promise<bool>.Canceled();
+                    }
+                    --_remaining;
+
+                    lock (this)
+                    {
+                        _isMoveNextAsyncWaiting = !_queue.TryDequeue(out _current);
+                    }
+
+                    if (_isMoveNextAsyncWaiting)
+                    {
+                        return new Promise<bool>(this, Id);
+                    }
+                    else
+                    {
+                        _enumerableId = id;
+                        return Promise.Resolved(true);
+                    }
+                }
+
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
                     RemoveComplete(handler);
 
@@ -85,85 +180,43 @@ namespace Proto.Promises
                     s_getResult.Invoke(handler, 0, ref result);
                     handler.MaybeDispose();
 
-                    DeferredPromise<VoidResult> queuePromise;
                     lock (this)
                     {
                         _queue.Enqueue(result);
-                        queuePromise = _queuePromise;
-                        _queuePromise = null;
-                    }
-                    DisposeAndReturnToPool();
-                    queuePromise?.ResolveDirectVoid();
-                }
-
-                protected override void DisposeAndReturnToPool()
-                {
-                    if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCount, -1) == 0)
-                    {
-                        ValidateNoPending();
-
-                        Dispose();
-                        _queue.Dispose();
-                        ObjectPool.MaybeRepool(this);
-                    }
-                }
-
-                protected override Promise DisposeAsyncWithoutStart()
-                {
-                    DisposeAndReturnToPool();
-                    return Promise.Resolved();
-                }
-
-                internal override void MaybeDispose()
-                {
-                    // This is called on every MoveNextAsync, we only fully dispose and return to pool after DisposeAsync is called.
-                    if (_disposed)
-                    {
-                        DisposeAndReturnToPool();
-                    }
-                }
-
-                protected override void Start(int enumerableId)
-                {
-                    var iteratorPromise = Iterate(enumerableId)._promise;
-                    if (iteratorPromise._ref == null)
-                    {
-                        // Already complete.
-                        HandleFromSynchronouslyCompletedIterator();
-                        return;
-                    }
-
-                    this.SetPrevious(iteratorPromise._ref);
-                    // We hook this up directly to the returned promise so we can know when the iteration is complete, and use this for the DisposeAsync promise.
-                    iteratorPromise._ref.HookupExistingWaiter(iteratorPromise._id, this);
-                }
-
-                // TODO: we may be able to optimize this by handling the logic directly in MoveNextAsync instead of using an async function and queuePromise.
-                private async AsyncIteratorMethod Iterate(int streamWriterId)
-                {
-                    do
-                    {
-                        _cancelationToken.ThrowIfCancelationRequested();
-
-                        DeferredPromise<VoidResult> queuePromise;
-                        TResult result;
-                        lock (this)
+                        if (_isMoveNextAsyncWaiting)
                         {
-                            if (_queue.TryDequeue(out result))
-                            {
-                                goto YieldResult;
-                            }
-                            _queuePromise = queuePromise = DeferredPromise<VoidResult>.GetOrCreate();
+                            _isMoveNextAsyncWaiting = false;
+                            goto HandleNext;
                         }
-                        await new Promise(queuePromise, queuePromise.Id).WaitAsync(_cancelationToken);
-                        lock (this)
-                        {
-                            result = _queue.Dequeue();
-                        }
+                    }
+                    MaybeDispose();
+                    return;
 
-                    YieldResult:
-                        await YieldAsync(result, streamWriterId);
-                    } while (--_remaining != 0);
+                HandleNext:
+                    --_enumerableId;
+                    _result = true;
+                    HandleNextInternal(Promise.State.Resolved);
+                }
+
+                void ICancelable.Cancel()
+                {
+                    SetCompletionState(Promise.State.Canceled);
+
+                    lock (this)
+                    {
+                        if (_isMoveNextAsyncWaiting)
+                        {
+                            _isMoveNextAsyncWaiting = false;
+                            goto HandleNext;
+                        }
+                    }
+                    MaybeDispose();
+                    return;
+
+                HandleNext:
+                    --_enumerableId;
+                    _result = false;
+                    HandleNextInternal(Promise.State.Canceled);
                 }
 
                 partial void AddPending(PromiseRefBase pendingPromise);
@@ -214,7 +267,7 @@ namespace Proto.Promises
                     }
                 }
             }
-#endif
+#endif // PROMISE_DEBUG
         } // class PromiseRefBase
 
         [MethodImpl(InlineOption)]
