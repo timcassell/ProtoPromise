@@ -59,7 +59,10 @@ namespace Proto.Promises
 
                     ++_remaining;
                     InterlockedAddWithUnsignedOverflowCheck(ref _retainCount, 1);
-                    promise.HookupExistingWaiter(id, this);
+                    // The base AsyncEnumerableWithIterator type has a sealed Handle implementation for the async iterator,
+                    // so we have to create a passthrough to hook the promise up to this, even though the index isn't used.
+                    var passthrough = PromisePassThrough.GetOrCreate(promise, this, 0);
+                    promise.HookupNewWaiter(id, passthrough);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -71,7 +74,7 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
                     RemoveComplete(handler);
 
@@ -87,31 +90,26 @@ namespace Proto.Promises
                         queuePromise = _queuePromise;
                         _queuePromise = null;
                     }
-                    ReleaseAndMaybeDispose();
+                    DisposeAndReturnToPool();
                     queuePromise?.ResolveDirectVoid();
                 }
 
                 protected override void DisposeAndReturnToPool()
                 {
-                    ValidateNoPending();
+                    if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCount, -1) == 0)
+                    {
+                        ValidateNoPending();
 
-                    Dispose();
-                    _queue.Dispose();
-                    ObjectPool.MaybeRepool(this);
+                        Dispose();
+                        _queue.Dispose();
+                        ObjectPool.MaybeRepool(this);
+                    }
                 }
 
                 protected override Promise DisposeAsyncWithoutStart()
                 {
-                    ReleaseAndMaybeDispose();
+                    DisposeAndReturnToPool();
                     return Promise.Resolved();
-                }
-
-                private void ReleaseAndMaybeDispose()
-                {
-                    if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCount, -1) == 0)
-                    {
-                        DisposeAndReturnToPool();
-                    }
                 }
 
                 internal override void MaybeDispose()
@@ -119,7 +117,7 @@ namespace Proto.Promises
                     // This is called on every MoveNextAsync, we only fully dispose and return to pool after DisposeAsync is called.
                     if (_disposed)
                     {
-                        ReleaseAndMaybeDispose();
+                        DisposeAndReturnToPool();
                     }
                 }
 

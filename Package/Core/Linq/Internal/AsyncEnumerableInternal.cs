@@ -293,7 +293,7 @@ namespace Proto.Promises
                     return new Promise(this, Id);
                 }
 
-                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                internal override sealed void Handle(PromiseRefBase handler, Promise.State state)
                 {
                     // This is called when the async iterator function completes.
                     ThrowIfInPool(this);
