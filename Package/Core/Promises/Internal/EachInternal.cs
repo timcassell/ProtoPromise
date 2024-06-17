@@ -30,6 +30,7 @@ namespace Proto.Promises
                 private int _remaining;
                 private int _retainCount;
                 private bool _isMoveNextAsyncWaiting;
+                private bool _isCanceled;
 
                 private PromiseEachAsyncEnumerable() { }
 
@@ -58,6 +59,7 @@ namespace Proto.Promises
                     _remaining = 0;
                     // 1 retain for DisposeAsync, and 1 retain for cancelation registration.
                     _retainCount = 2;
+                    _isCanceled = false;
                     _queue = new PoolBackedQueue<TResult>(0);
                 }
 
@@ -112,7 +114,7 @@ namespace Proto.Promises
                     }
 
                     // Same as calling MaybeDispose twice, but without the extra interlocked and branch.
-                    int releaseCount = TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) & State != Promise.State.Canceled ? -2 : -1;
+                    int releaseCount = TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) & !_isCanceled ? -2 : -1;
                     _cancelationRegistration = default;
                     if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCount, releaseCount) == 0)
                     {
@@ -146,7 +148,7 @@ namespace Proto.Promises
                             return Promise<bool>.Canceled();
                         }
                     }
-                    else if (_cancelationToken.IsCancelationRequested | State == Promise.State.Canceled)
+                    else if (_cancelationToken.IsCancelationRequested | _isCanceled)
                     {
                         _enumerableId = id;
                         return Promise<bool>.Canceled();
@@ -206,7 +208,7 @@ namespace Proto.Promises
 
                 void ICancelable.Cancel()
                 {
-                    SetCompletionState(Promise.State.Canceled);
+                    _isCanceled = true;
 
                     lock (this)
                     {
