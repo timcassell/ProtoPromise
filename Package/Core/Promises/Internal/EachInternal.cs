@@ -161,21 +161,18 @@ namespace Proto.Promises
                     lock (this)
                     {
                         _isMoveNextAsyncWaiting = !_queue.TryDequeue(out _current);
+                        if (_isMoveNextAsyncWaiting)
+                        {
+                            // Invalidate the previous awaiter.
+                            IncrementPromiseIdAndClearPrevious();
+                            // Reset for the next awaiter.
+                            ResetWithoutStacktrace();
+                            return new Promise<bool>(this, Id);
+                        }
                     }
 
-                    if (_isMoveNextAsyncWaiting)
-                    {
-                        // Invalidate the previous awaiter.
-                        IncrementPromiseIdAndClearPrevious();
-                        // Reset for the next awaiter.
-                        ResetWithoutStacktrace();
-                        return new Promise<bool>(this, Id);
-                    }
-                    else
-                    {
-                        _enumerableId = id;
-                        return Promise.Resolved(true);
-                    }
+                    _enumerableId = id;
+                    return Promise.Resolved(true);
                 }
 
                 internal override void Handle(PromiseRefBase handler, Promise.State state)
