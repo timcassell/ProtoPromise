@@ -1,7 +1,4 @@
 # Multiple Consumers
 
-Most promises can only be awaited once, and if they are not awaited, they must be returned or forgotten (see [Forget](the-basics.md#forget)).
-You can preserve a promise so that it can be awaited multiple times via the `promise.Preserve()` API. When you are finished with the promise, you must call `promise.Forget()`.
-Callbacks added to a preserved promise will be invoked in the order that they are added.
-
-Note: a preserved promise should not be returned from a public API, because the consumer could immediately call `Forget()` and invalidate the promise. Instead, you should use `promise.Duplicate()` to get a promise that will adopt its state, but can only be awaited once.
+Promises may only be awaited once, and if they are not awaited, they must be returned or forgotten (see [Forget](the-basics.md#forget)).
+You may wish to cache the result of the promise so that multiple consumers can retrieve the same result. You can do so via the `promise.GetRetainer()` API, which returns a `Promise.Retainer` or `Promise<T>.Retainer`. You can await the retainer multiple times until it is disposed. You can `await` it directly in async functions, or you can call `retainer.WaitAsync()` to get a promise that adopts the state of the retained promise. Dispose the retainer when you are finished with it.
