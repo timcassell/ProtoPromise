@@ -11,12 +11,12 @@ Robust and efficient library for management of asynchronous operations.
 - Cancelable operations with custom allocation-free CancelationToken/Source
 - Allocation-free async iterators with async Linq
 - Progress with enforced normalization
+- Structured concurrency
 - async/await support and .Then API
 - Thread safe
-- Full causality traces
 - Easily switch to foreground or background context
-- Combine async operations
 - Circular await detection
+- Full causality traces
 - Interoperable with Tasks and Unity's Coroutines/Awaitables
 - CLS compliant
 

@@ -1,5 +1,7 @@
 # Combining Multiple Async Operations
 
+Note: It is recommended to use [Structured Concurrency Groups](structured-concurrency.md) instead of these methods.
+
 ## All
 
 The `All` function combines multiple async operations that are currently running. It converts a collection of promises or a variable length parameter list of promises into a single promise, and if those promises are non-void, it yields a list containing the results of those promises in the same order.
