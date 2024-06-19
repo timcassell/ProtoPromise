@@ -338,7 +338,7 @@ namespace Proto.Promises
                             // Reset in case the async iterator function completes synchronously from Start.
                             ResetWithoutStacktrace();
                             // Throw this special exception so that the async iterator function will run any finally blocks and complete.
-                            throw AsyncEnumerableDisposedException.s_instance;
+                            throw AsyncEnumerableDisposedException.GetOrCreate();
                         }
                         throw new InvalidOperationException("AsyncStreamYielder.GetResult: instance is not valid. This should only be called from the async iterator method, and it may only be called once.", GetFormattedStacktrace(2));
                     }
