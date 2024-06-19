@@ -44,18 +44,18 @@ namespace Proto.Promises
 #endif
         internal sealed class CanceledExceptionInternal : CanceledException
         {
-#if !PROMISE_DEBUG
+            // Old Unity runtime has a bug where stack traces are continually appended to the exception, causing a memory leak and runtime slowdowns.
+            // To avoid the issue, we only use a singleton in runtimes where the bug is not present.
+#if PROMISE_DEBUG || NETSTANDARD2_0 || (UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER)
+            // Don't re-use instance in DEBUG mode so users can read its stacktrace on any thread.
+            internal static CanceledExceptionInternal GetOrCreate()
+                => new CanceledExceptionInternal("Operation was canceled.");
+#else
             private static readonly CanceledExceptionInternal s_instance = new CanceledExceptionInternal("Operation was canceled.");
+            
+            internal static CanceledExceptionInternal GetOrCreate() => s_instance;
 #endif
 
-            internal static CanceledExceptionInternal GetOrCreate()
-            {
-#if PROMISE_DEBUG
-                return new CanceledExceptionInternal("Operation was canceled."); // Don't re-use instance in DEBUG mode so users can read its stacktrace on any thread.
-#else
-                return s_instance;
-#endif
-            }
 
             private CanceledExceptionInternal(string message) : base(message) { }
         }
