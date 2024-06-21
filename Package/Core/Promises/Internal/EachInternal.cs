@@ -148,15 +148,15 @@ namespace Proto.Promises
                             return Promise<bool>.Canceled();
                         }
                     }
-                    else if (_cancelationToken.IsCancelationRequested | _isCanceled)
-                    {
-                        _enumerableId = id;
-                        return Promise<bool>.Canceled();
-                    }
                     else if (_remaining == 0)
                     {
                         _enumerableId = id;
                         return Promise.Resolved(false);
+                    }
+                    else if (_cancelationToken.IsCancelationRequested | _isCanceled)
+                    {
+                        _enumerableId = id;
+                        return Promise<bool>.Canceled();
                     }
                     --_remaining;
 

@@ -227,21 +227,21 @@ namespace ProtoPromiseTests.APIs
                 var asyncEnumerator = Promise.Each(promises).GetAsyncEnumerator();
                 for (int i = 0; i < args.Length / 2; ++i)
                 {
-                    var (completeType, _, completeIndex) = args[i];
-                    tryCompleters[completeIndex].Invoke();
+                    var completeType = args[i].completeType;
+                    tryCompleters[i].Invoke();
                     Assert.True(await asyncEnumerator.MoveNextAsync());
                     var resultContainer = asyncEnumerator.Current;
                     Assert.AreEqual((Promise.State) completeType, resultContainer.State);
                     if (resultContainer.State == Promise.State.Rejected)
                     {
-                        Assert.AreEqual(rejections[completeIndex], resultContainer.Reason);
+                        Assert.AreEqual(rejections[i], resultContainer.Reason);
                     }
                 }
                 await asyncEnumerator.DisposeAsync();
 
                 for (int i = args.Length / 2; i < args.Length; ++i)
                 {
-                    tryCompleters[i].Invoke();
+                    tryCompleters[args[i].completeIndex].Invoke();
                 }
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
@@ -276,11 +276,11 @@ namespace ProtoPromiseTests.APIs
                 var asyncEnumerator = Promise.Each(promises).WithCancelation(cancelationSource.Token).GetAsyncEnumerator();
                 for (int i = 0; i < args.Length / 2; ++i)
                 {
-                    var (completeType, _, completeIndex) = args[i];
+                    var completeType = args[i].completeType;
                     tryCompleters[i].Invoke();
                     Assert.True(await asyncEnumerator.MoveNextAsync());
                     var resultContainer = asyncEnumerator.Current;
-                    Assert.AreEqual((Promise.State) args[i].completeType, resultContainer.State);
+                    Assert.AreEqual((Promise.State) completeType, resultContainer.State);
                     if (resultContainer.State == Promise.State.Rejected)
                     {
                         Assert.AreEqual(rejections[i], resultContainer.Reason);
@@ -296,7 +296,7 @@ namespace ProtoPromiseTests.APIs
 
                 for (int i = args.Length / 2; i < args.Length; ++i)
                 {
-                    tryCompleters[i].Invoke();
+                    tryCompleters[args[i].completeIndex].Invoke();
                 }
                 cancelationSource.TryDispose();
             }, SynchronizationOption.Synchronous)
@@ -331,11 +331,11 @@ namespace ProtoPromiseTests.APIs
                 var asyncEnumerator = Promise.Each(promises).WithCancelation(cancelationSource.Token).GetAsyncEnumerator();
                 for (int i = 0; i < args.Length / 2; ++i)
                 {
-                    var (completeType, _, completeIndex) = args[i];
+                    var completeType = args[i].completeType;
                     tryCompleters[i].Invoke();
                     Assert.True(await asyncEnumerator.MoveNextAsync());
                     var resultContainer = asyncEnumerator.Current;
-                    Assert.AreEqual((Promise.State) args[i].completeType, resultContainer.State);
+                    Assert.AreEqual((Promise.State) completeType, resultContainer.State);
                     if (resultContainer.State == Promise.State.Rejected)
                     {
                         Assert.AreEqual(rejections[i], resultContainer.Reason);
@@ -345,17 +345,63 @@ namespace ProtoPromiseTests.APIs
 
                 for (int i = args.Length / 2; i < args.Length; ++i)
                 {
-                    var (completeType, _, completeIndex) = args[i];
+                    var completeType = args[i].completeType;
                     tryCompleters[i].Invoke();
                     Assert.True(await asyncEnumerator.MoveNextAsync());
                     var resultContainer = asyncEnumerator.Current;
-                    Assert.AreEqual((Promise.State) args[i].completeType, resultContainer.State);
+                    Assert.AreEqual((Promise.State) completeType, resultContainer.State);
                     if (resultContainer.State == Promise.State.Rejected)
                     {
                         Assert.AreEqual(rejections[i], resultContainer.Reason);
                     }
                 }
                 await asyncEnumerator.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void EachCanceledAfterAllCompleteAndBeforeMoveNextAsync_void()
+        {
+            Promise.Run(async () =>
+            {
+                var args = new (CompleteType completeType, bool isAlreadyComplete, int completeIndex)[]
+                {
+                    (CompleteType.Resolve, false, 1),
+                    (CompleteType.Resolve, true, 0),
+                    (CompleteType.Cancel, false, 3),
+                    (CompleteType.Reject, false, 2),
+                };
+                var rejections = new Exception[args.Length];
+                var tryCompleters = new Action[args.Length];
+                var promises = new Promise[args.Length];
+                for (int i = 0; i < args.Length; ++i)
+                {
+                    var (completeType, isAlreadyComplete, completeIndex) = args[i];
+                    rejections[completeIndex] = new Exception($"Rejected completeIndex: {completeIndex}");
+                    promises[i] = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejections[completeIndex], out tryCompleters[completeIndex]);
+                }
+
+                args = args.OrderBy(x => x.completeIndex).ToArray();
+
+                var cancelationSource = CancelationSource.New();
+                var asyncEnumerator = Promise.Each(promises).WithCancelation(cancelationSource.Token).GetAsyncEnumerator();
+                for (int i = 0; i < args.Length; ++i)
+                {
+                    var completeType = args[i].completeType;
+                    tryCompleters[i].Invoke();
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    var resultContainer = asyncEnumerator.Current;
+                    Assert.AreEqual((Promise.State) completeType, resultContainer.State);
+                    if (resultContainer.State == Promise.State.Rejected)
+                    {
+                        Assert.AreEqual(rejections[i], resultContainer.Reason);
+                    }
+                }
+                cancelationSource.Cancel();
+                Assert.False(await asyncEnumerator.MoveNextAsync());
+                await asyncEnumerator.DisposeAsync();
+                cancelationSource.TryDispose();
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -472,25 +518,25 @@ namespace ProtoPromiseTests.APIs
                 var asyncEnumerator = Promise.Each(promises).GetAsyncEnumerator();
                 for (int i = 0; i < args.Length / 2; ++i)
                 {
-                    var (completeType, _, completeIndex) = args[i];
-                    tryCompleters[completeIndex].Invoke();
+                    var completeType = args[i].completeType;
+                    tryCompleters[i].Invoke();
                     Assert.True(await asyncEnumerator.MoveNextAsync());
                     var resultContainer = asyncEnumerator.Current;
                     Assert.AreEqual((Promise.State) completeType, resultContainer.State);
                     if (resultContainer.State == Promise.State.Resolved)
                     {
-                        Assert.AreEqual(completeIndex, resultContainer.Value);
+                        Assert.AreEqual(i, resultContainer.Value);
                     }
                     else if (resultContainer.State == Promise.State.Rejected)
                     {
-                        Assert.AreEqual(rejections[completeIndex], resultContainer.Reason);
+                        Assert.AreEqual(rejections[i], resultContainer.Reason);
                     }
                 }
                 await asyncEnumerator.DisposeAsync();
 
                 for (int i = args.Length / 2; i < args.Length; ++i)
                 {
-                    tryCompleters[i].Invoke();
+                    tryCompleters[args[i].completeIndex].Invoke();
                 }
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
@@ -525,18 +571,18 @@ namespace ProtoPromiseTests.APIs
                 var asyncEnumerator = Promise.Each(promises).WithCancelation(cancelationSource.Token).GetAsyncEnumerator();
                 for (int i = 0; i < args.Length / 2; ++i)
                 {
-                    var (completeType, _, completeIndex) = args[i];
+                    var completeType = args[i].completeType;
                     tryCompleters[i].Invoke();
                     Assert.True(await asyncEnumerator.MoveNextAsync());
                     var resultContainer = asyncEnumerator.Current;
-                    Assert.AreEqual((Promise.State) args[i].completeType, resultContainer.State);
+                    Assert.AreEqual((Promise.State) completeType, resultContainer.State);
                     if (resultContainer.State == Promise.State.Resolved)
                     {
-                        Assert.AreEqual(completeIndex, resultContainer.Value);
+                        Assert.AreEqual(i, resultContainer.Value);
                     }
                     else if (resultContainer.State == Promise.State.Rejected)
                     {
-                        Assert.AreEqual(rejections[completeIndex], resultContainer.Reason);
+                        Assert.AreEqual(rejections[i], resultContainer.Reason);
                     }
                 }
                 cancelationSource.Cancel();
@@ -549,7 +595,7 @@ namespace ProtoPromiseTests.APIs
 
                 for (int i = args.Length / 2; i < args.Length; ++i)
                 {
-                    tryCompleters[i].Invoke();
+                    tryCompleters[args[i].completeIndex].Invoke();
                 }
                 cancelationSource.TryDispose();
             }, SynchronizationOption.Synchronous)
@@ -584,39 +630,89 @@ namespace ProtoPromiseTests.APIs
                 var asyncEnumerator = Promise.Each(promises).WithCancelation(cancelationSource.Token).GetAsyncEnumerator();
                 for (int i = 0; i < args.Length / 2; ++i)
                 {
-                    var (completeType, _, completeIndex) = args[i];
+                    var completeType = args[i].completeType;
                     tryCompleters[i].Invoke();
                     Assert.True(await asyncEnumerator.MoveNextAsync());
                     var resultContainer = asyncEnumerator.Current;
-                    Assert.AreEqual((Promise.State) args[i].completeType, resultContainer.State);
+                    Assert.AreEqual((Promise.State) completeType, resultContainer.State);
                     if (resultContainer.State == Promise.State.Resolved)
                     {
-                        Assert.AreEqual(completeIndex, resultContainer.Value);
+                        Assert.AreEqual(i, resultContainer.Value);
                     }
                     else if (resultContainer.State == Promise.State.Rejected)
                     {
-                        Assert.AreEqual(rejections[completeIndex], resultContainer.Reason);
+                        Assert.AreEqual(rejections[i], resultContainer.Reason);
                     }
                 }
                 cancelationSource.Dispose();
 
                 for (int i = args.Length / 2; i < args.Length; ++i)
                 {
-                    var (completeType, _, completeIndex) = args[i];
+                    var completeType = args[i].completeType;
                     tryCompleters[i].Invoke();
                     Assert.True(await asyncEnumerator.MoveNextAsync());
                     var resultContainer = asyncEnumerator.Current;
-                    Assert.AreEqual((Promise.State) args[i].completeType, resultContainer.State);
+                    Assert.AreEqual((Promise.State) completeType, resultContainer.State);
                     if (resultContainer.State == Promise.State.Resolved)
                     {
-                        Assert.AreEqual(completeIndex, resultContainer.Value);
+                        Assert.AreEqual(i, resultContainer.Value);
                     }
                     else if (resultContainer.State == Promise.State.Rejected)
                     {
-                        Assert.AreEqual(rejections[completeIndex], resultContainer.Reason);
+                        Assert.AreEqual(rejections[i], resultContainer.Reason);
                     }
                 }
                 await asyncEnumerator.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void EachCanceledAfterAllCompleteAndBeforeMoveNextAsync_T()
+        {
+            Promise.Run(async () =>
+            {
+                var args = new (CompleteType completeType, bool isAlreadyComplete, int completeIndex)[]
+                {
+                    (CompleteType.Resolve, false, 1),
+                    (CompleteType.Resolve, true, 0),
+                    (CompleteType.Cancel, false, 3),
+                    (CompleteType.Reject, false, 2),
+                };
+                var rejections = new Exception[args.Length];
+                var tryCompleters = new Action[args.Length];
+                var promises = new Promise<int>[args.Length];
+                for (int i = 0; i < args.Length; ++i)
+                {
+                    var (completeType, isAlreadyComplete, completeIndex) = args[i];
+                    rejections[completeIndex] = new Exception($"Rejected completeIndex: {completeIndex}");
+                    promises[i] = TestHelper.BuildPromise(completeType, isAlreadyComplete, completeIndex, rejections[completeIndex], out tryCompleters[completeIndex]);
+                }
+
+                args = args.OrderBy(x => x.completeIndex).ToArray();
+
+                var cancelationSource = CancelationSource.New();
+                var asyncEnumerator = Promise.Each(promises).WithCancelation(cancelationSource.Token).GetAsyncEnumerator();
+                for (int i = 0; i < args.Length; ++i)
+                {
+                    var completeType = args[i].completeType;
+                    tryCompleters[i].Invoke();
+                    Assert.True(await asyncEnumerator.MoveNextAsync());
+                    var resultContainer = asyncEnumerator.Current;
+                    Assert.AreEqual((Promise.State) completeType, resultContainer.State);
+                    if (resultContainer.State == Promise.State.Resolved)
+                    {
+                        Assert.AreEqual(i, resultContainer.Value);
+                    }
+                    else if (resultContainer.State == Promise.State.Rejected)
+                    {
+                        Assert.AreEqual(rejections[i], resultContainer.Reason);
+                    }
+                }
+                cancelationSource.Cancel();
+                Assert.False(await asyncEnumerator.MoveNextAsync());
+                await asyncEnumerator.DisposeAsync();
+                cancelationSource.TryDispose();
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
