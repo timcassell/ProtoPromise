@@ -125,7 +125,7 @@ namespace Proto.Promises
 
             if (!cancelationRef.TryIncrementSourceId(_cancelationId))
             {
-                Internal.ThrowInvalidAllGroup(1);
+                Internal.ThrowInvalidEachGroup(1);
             }
 
             checked { ++totalCount; }
@@ -163,13 +163,13 @@ namespace Proto.Promises
                 {
                     if (!cancelationRef.TryDispose(_cancelationId))
                     {
-                        Internal.ThrowInvalidAllGroup(1);
+                        Internal.ThrowInvalidEachGroup(1);
                     }
                     return AsyncEnumerable<Promise.ResultContainer>.Empty();
                 }
                 if (!cancelationRef.TryIncrementSourceId(_cancelationId))
                 {
-                    Internal.ThrowInvalidAllGroup(1);
+                    Internal.ThrowInvalidEachGroup(1);
                 }
                 group = Internal.GetOrCreateEachPromiseGroup(cancelationRef, queue, suppressUnobservedRejections);
             }
@@ -297,7 +297,7 @@ namespace Proto.Promises
 
             if (!cancelationRef.TryIncrementSourceId(_cancelationId))
             {
-                Internal.ThrowInvalidAllGroup(1);
+                Internal.ThrowInvalidEachGroup(1);
             }
 
             checked { ++totalCount; }
@@ -335,13 +335,13 @@ namespace Proto.Promises
                 {
                     if (!cancelationRef.TryDispose(_cancelationId))
                     {
-                        Internal.ThrowInvalidAllGroup(1);
+                        Internal.ThrowInvalidEachGroup(1);
                     }
                     return AsyncEnumerable<Promise<T>.ResultContainer>.Empty();
                 }
                 if (!cancelationRef.TryIncrementSourceId(_cancelationId))
                 {
-                    Internal.ThrowInvalidAllGroup(1);
+                    Internal.ThrowInvalidEachGroup(1);
                 }
                 group = Internal.GetOrCreateEachPromiseGroup(cancelationRef, queue, suppressUnobservedRejections);
             }

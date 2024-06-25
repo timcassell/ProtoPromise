@@ -26,7 +26,7 @@ namespace ProtoPromiseTests.APIs
             TestHelper.Cleanup();
         }
 
-        private static IEnumerable<TestCaseData> GetArgs()
+        public static IEnumerable<TestCaseData> GetArgs()
         {
             var completeTypes = new CompleteType[]
             {
@@ -124,7 +124,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test, TestCaseSource(nameof(GetArgs))]
-        public void EachPromiseResultsAreYieldedInCompletionOrder_void((CompleteType completeType, bool isAlreadyComplete, int completeIndex)[] args)
+        public void EachResultsAreYieldedInCompletionOrder_void((CompleteType completeType, bool isAlreadyComplete, int completeIndex)[] args)
         {
             Promise.Run(async () =>
             {
@@ -157,7 +157,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void EachPromiseResultsAreYieldedInCompletionOrder_MoveNextAsyncBeforeComplete_void()
+        public void EachResultsAreYieldedInCompletionOrder_MoveNextAsyncBeforeComplete_void()
         {
             Promise.Run(async () =>
             {
@@ -227,8 +227,8 @@ namespace ProtoPromiseTests.APIs
                 var asyncEnumerator = Promise.Each(promises).GetAsyncEnumerator();
                 for (int i = 0; i < args.Length / 2; ++i)
                 {
-                    var completeType = args[i].completeType;
-                    tryCompleters[i].Invoke();
+                    var (completeType, _, completeIndex) = args[i];
+                    tryCompleters[completeIndex].Invoke();
                     Assert.True(await asyncEnumerator.MoveNextAsync());
                     var resultContainer = asyncEnumerator.Current;
                     Assert.AreEqual((Promise.State) completeType, resultContainer.State);
@@ -240,6 +240,40 @@ namespace ProtoPromiseTests.APIs
                 await asyncEnumerator.DisposeAsync();
 
                 for (int i = args.Length / 2; i < args.Length; ++i)
+                {
+                    tryCompleters[args[i].completeIndex].Invoke();
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void EachDisposeWithoutMoveNext_void()
+        {
+            Promise.Run(async () =>
+            {
+                var args = new (CompleteType completeType, bool isAlreadyComplete, int completeIndex)[]
+                {
+                    (CompleteType.Resolve, false, 1),
+                    (CompleteType.Resolve, true, 0),
+                    (CompleteType.Cancel, false, 3),
+                    (CompleteType.Reject, false, 2),
+                };
+                var rejections = new Exception[args.Length];
+                var tryCompleters = new Action[args.Length];
+                var promises = new Promise[args.Length];
+                for (int i = 0; i < args.Length; ++i)
+                {
+                    var (completeType, isAlreadyComplete, completeIndex) = args[i];
+                    rejections[completeIndex] = new Exception($"Rejected completeIndex: {completeIndex}");
+                    promises[i] = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejections[completeIndex], out tryCompleters[completeIndex]);
+                }
+
+                args = args.OrderBy(x => x.completeIndex).ToArray();
+
+                await Promise.Each(promises).GetAsyncEnumerator().DisposeAsync();
+
+                for (int i = 0; i < args.Length; ++i)
                 {
                     tryCompleters[args[i].completeIndex].Invoke();
                 }
@@ -276,8 +310,8 @@ namespace ProtoPromiseTests.APIs
                 var asyncEnumerator = Promise.Each(promises).WithCancelation(cancelationSource.Token).GetAsyncEnumerator();
                 for (int i = 0; i < args.Length / 2; ++i)
                 {
-                    var completeType = args[i].completeType;
-                    tryCompleters[i].Invoke();
+                    var (completeType, _, completeIndex) = args[i];
+                    tryCompleters[completeIndex].Invoke();
                     Assert.True(await asyncEnumerator.MoveNextAsync());
                     var resultContainer = asyncEnumerator.Current;
                     Assert.AreEqual((Promise.State) completeType, resultContainer.State);
@@ -331,8 +365,8 @@ namespace ProtoPromiseTests.APIs
                 var asyncEnumerator = Promise.Each(promises).WithCancelation(cancelationSource.Token).GetAsyncEnumerator();
                 for (int i = 0; i < args.Length / 2; ++i)
                 {
-                    var completeType = args[i].completeType;
-                    tryCompleters[i].Invoke();
+                    var (completeType, _, completeIndex) = args[i];
+                    tryCompleters[completeIndex].Invoke();
                     Assert.True(await asyncEnumerator.MoveNextAsync());
                     var resultContainer = asyncEnumerator.Current;
                     Assert.AreEqual((Promise.State) completeType, resultContainer.State);
@@ -345,8 +379,8 @@ namespace ProtoPromiseTests.APIs
 
                 for (int i = args.Length / 2; i < args.Length; ++i)
                 {
-                    var completeType = args[i].completeType;
-                    tryCompleters[i].Invoke();
+                    var (completeType, _, completeIndex) = args[i];
+                    tryCompleters[completeIndex].Invoke();
                     Assert.True(await asyncEnumerator.MoveNextAsync());
                     var resultContainer = asyncEnumerator.Current;
                     Assert.AreEqual((Promise.State) completeType, resultContainer.State);
@@ -388,8 +422,8 @@ namespace ProtoPromiseTests.APIs
                 var asyncEnumerator = Promise.Each(promises).WithCancelation(cancelationSource.Token).GetAsyncEnumerator();
                 for (int i = 0; i < args.Length; ++i)
                 {
-                    var completeType = args[i].completeType;
-                    tryCompleters[i].Invoke();
+                    var (completeType, _, completeIndex) = args[i];
+                    tryCompleters[completeIndex].Invoke();
                     Assert.True(await asyncEnumerator.MoveNextAsync());
                     var resultContainer = asyncEnumerator.Current;
                     Assert.AreEqual((Promise.State) completeType, resultContainer.State);
@@ -407,7 +441,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test, TestCaseSource(nameof(GetArgs))]
-        public void EachPromiseResultsAreYieldedInCompletionOrder_T((CompleteType completeType, bool isAlreadyComplete, int completeIndex)[] args)
+        public void EachResultsAreYieldedInCompletionOrder_T((CompleteType completeType, bool isAlreadyComplete, int completeIndex)[] args)
         {
             Promise.Run(async () =>
             {
@@ -444,7 +478,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void EachPromiseResultsAreYieldedInCompletionOrder_MoveNextAsyncBeforeComplete_T()
+        public void EachResultsAreYieldedInCompletionOrder_MoveNextAsyncBeforeComplete_T()
         {
             Promise.Run(async () =>
             {
@@ -518,8 +552,8 @@ namespace ProtoPromiseTests.APIs
                 var asyncEnumerator = Promise.Each(promises).GetAsyncEnumerator();
                 for (int i = 0; i < args.Length / 2; ++i)
                 {
-                    var completeType = args[i].completeType;
-                    tryCompleters[i].Invoke();
+                    var (completeType, _, completeIndex) = args[i];
+                    tryCompleters[completeIndex].Invoke();
                     Assert.True(await asyncEnumerator.MoveNextAsync());
                     var resultContainer = asyncEnumerator.Current;
                     Assert.AreEqual((Promise.State) completeType, resultContainer.State);
@@ -535,6 +569,40 @@ namespace ProtoPromiseTests.APIs
                 await asyncEnumerator.DisposeAsync();
 
                 for (int i = args.Length / 2; i < args.Length; ++i)
+                {
+                    tryCompleters[args[i].completeIndex].Invoke();
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void EachDisposeWithoutMoveNext_T()
+        {
+            Promise.Run(async () =>
+            {
+                var args = new (CompleteType completeType, bool isAlreadyComplete, int completeIndex)[]
+                {
+                    (CompleteType.Resolve, false, 1),
+                    (CompleteType.Resolve, true, 0),
+                    (CompleteType.Cancel, false, 3),
+                    (CompleteType.Reject, false, 2),
+                };
+                var rejections = new Exception[args.Length];
+                var tryCompleters = new Action[args.Length];
+                var promises = new Promise<int>[args.Length];
+                for (int i = 0; i < args.Length; ++i)
+                {
+                    var (completeType, isAlreadyComplete, completeIndex) = args[i];
+                    rejections[completeIndex] = new Exception($"Rejected completeIndex: {completeIndex}");
+                    promises[i] = TestHelper.BuildPromise(completeType, isAlreadyComplete, completeIndex, rejections[completeIndex], out tryCompleters[completeIndex]);
+                }
+
+                args = args.OrderBy(x => x.completeIndex).ToArray();
+
+                await Promise.Each(promises).GetAsyncEnumerator().DisposeAsync();
+
+                for (int i = 0; i < args.Length; ++i)
                 {
                     tryCompleters[args[i].completeIndex].Invoke();
                 }
@@ -571,8 +639,8 @@ namespace ProtoPromiseTests.APIs
                 var asyncEnumerator = Promise.Each(promises).WithCancelation(cancelationSource.Token).GetAsyncEnumerator();
                 for (int i = 0; i < args.Length / 2; ++i)
                 {
-                    var completeType = args[i].completeType;
-                    tryCompleters[i].Invoke();
+                    var (completeType, _, completeIndex) = args[i];
+                    tryCompleters[completeIndex].Invoke();
                     Assert.True(await asyncEnumerator.MoveNextAsync());
                     var resultContainer = asyncEnumerator.Current;
                     Assert.AreEqual((Promise.State) completeType, resultContainer.State);
@@ -630,8 +698,8 @@ namespace ProtoPromiseTests.APIs
                 var asyncEnumerator = Promise.Each(promises).WithCancelation(cancelationSource.Token).GetAsyncEnumerator();
                 for (int i = 0; i < args.Length / 2; ++i)
                 {
-                    var completeType = args[i].completeType;
-                    tryCompleters[i].Invoke();
+                    var (completeType, _, completeIndex) = args[i];
+                    tryCompleters[completeIndex].Invoke();
                     Assert.True(await asyncEnumerator.MoveNextAsync());
                     var resultContainer = asyncEnumerator.Current;
                     Assert.AreEqual((Promise.State) completeType, resultContainer.State);
@@ -648,8 +716,8 @@ namespace ProtoPromiseTests.APIs
 
                 for (int i = args.Length / 2; i < args.Length; ++i)
                 {
-                    var completeType = args[i].completeType;
-                    tryCompleters[i].Invoke();
+                    var (completeType, _, completeIndex) = args[i];
+                    tryCompleters[completeIndex].Invoke();
                     Assert.True(await asyncEnumerator.MoveNextAsync());
                     var resultContainer = asyncEnumerator.Current;
                     Assert.AreEqual((Promise.State) completeType, resultContainer.State);
@@ -695,8 +763,8 @@ namespace ProtoPromiseTests.APIs
                 var asyncEnumerator = Promise.Each(promises).WithCancelation(cancelationSource.Token).GetAsyncEnumerator();
                 for (int i = 0; i < args.Length; ++i)
                 {
-                    var completeType = args[i].completeType;
-                    tryCompleters[i].Invoke();
+                    var (completeType, _, completeIndex) = args[i];
+                    tryCompleters[completeIndex].Invoke();
                     Assert.True(await asyncEnumerator.MoveNextAsync());
                     var resultContainer = asyncEnumerator.Current;
                     Assert.AreEqual((Promise.State) completeType, resultContainer.State);

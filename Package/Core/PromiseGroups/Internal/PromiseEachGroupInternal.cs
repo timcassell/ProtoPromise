@@ -4,8 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0090 // Use 'new(...)'
-
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
