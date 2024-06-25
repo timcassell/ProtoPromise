@@ -11,6 +11,14 @@ using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
+    partial class Internal
+    {
+        internal interface IResultContainer
+        {
+            IRejectContainer RejectContainer { get; }
+        }
+    }
+
     partial struct Promise
     {
         /// <summary>
@@ -19,7 +27,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public readonly struct ResultContainer
+        public readonly struct ResultContainer : Internal.IResultContainer
         {
             internal static ResultContainer Resolved
             {
@@ -28,6 +36,12 @@ namespace Proto.Promises
             }
 
             internal readonly Promise<Internal.VoidResult>.ResultContainer _target;
+
+            Internal.IRejectContainer Internal.IResultContainer.RejectContainer
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get => _target._rejectContainer;
+            }
 
             [MethodImpl(Internal.InlineOption)]
             internal ResultContainer(Internal.IRejectContainer rejectContainer, State state)
@@ -90,11 +104,17 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public readonly struct ResultContainer
+        public readonly struct ResultContainer : Internal.IResultContainer
         {
             internal readonly Internal.IRejectContainer _rejectContainer;
             private readonly Promise.State _state;
             private readonly T _result;
+
+            Internal.IRejectContainer Internal.IResultContainer.RejectContainer
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get => _rejectContainer;
+            }
 
             [MethodImpl(Internal.InlineOption)]
             internal ResultContainer(in T result, Internal.IRejectContainer rejectContainer, Promise.State state)
