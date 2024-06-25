@@ -47,14 +47,14 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static EachPromiseGroup<TResult> GetOrCreate(CancelationRef cancelationRef, PoolBackedQueue<TResult> queue, bool suppressUnobservedRejections, GetResultDelegate<TResult> getResultDelegate)
+                internal static EachPromiseGroup<TResult> GetOrCreate(CancelationRef cancelationRef, bool suppressUnobservedRejections, GetResultDelegate<TResult> getResultDelegate)
                 {
                     s_getResult = getResultDelegate;
 
                     var enumerable = GetOrCreate();
                     enumerable.Reset();
+                    enumerable._queue = new PoolBackedQueue<TResult>(0);
                     enumerable._cancelationRef = cancelationRef;
-                    enumerable._queue = queue;
                     enumerable._isIterationCanceled = false;
                     enumerable._suppressUnobservedRejections = suppressUnobservedRejections;
                     return enumerable;
@@ -352,14 +352,12 @@ namespace Proto.Promises
         } // class PromiseRefBase
 
         [MethodImpl(InlineOption)]
-        internal static PromiseRefBase.EachPromiseGroup<Promise<T>.ResultContainer> GetOrCreateEachPromiseGroup<T>(
-            CancelationRef cancelationRef, PoolBackedQueue<Promise<T>.ResultContainer> queue, bool suppressUnobservedRejections)
-            => PromiseRefBase.EachPromiseGroup<Promise<T>.ResultContainer>.GetOrCreate(cancelationRef, queue, suppressUnobservedRejections, Promise.MergeResultFuncs.GetMergeResult<T>());
+        internal static PromiseRefBase.EachPromiseGroup<Promise<T>.ResultContainer> GetOrCreateEachPromiseGroup<T>(CancelationRef cancelationRef, bool suppressUnobservedRejections)
+            => PromiseRefBase.EachPromiseGroup<Promise<T>.ResultContainer>.GetOrCreate(cancelationRef, suppressUnobservedRejections, Promise.MergeResultFuncs.GetMergeResult<T>());
 
         [MethodImpl(InlineOption)]
-        internal static PromiseRefBase.EachPromiseGroup<Promise.ResultContainer> GetOrCreateEachPromiseGroup(
-            CancelationRef cancelationRef, PoolBackedQueue<Promise.ResultContainer> queue, bool suppressUnobservedRejections)
-            => PromiseRefBase.EachPromiseGroup<Promise.ResultContainer>.GetOrCreate(cancelationRef, queue, suppressUnobservedRejections, Promise.MergeResultFuncs.GetMergeResultVoid());
+        internal static PromiseRefBase.EachPromiseGroup<Promise.ResultContainer> GetOrCreateEachPromiseGroup(CancelationRef cancelationRef, bool suppressUnobservedRejections)
+            => PromiseRefBase.EachPromiseGroup<Promise.ResultContainer>.GetOrCreate(cancelationRef, suppressUnobservedRejections, Promise.MergeResultFuncs.GetMergeResultVoid());
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void ThrowInvalidEachGroup(int skipFrames)

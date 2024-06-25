@@ -22,7 +22,6 @@ namespace Proto.Promises
     {
         private readonly Internal.CancelationRef _cancelationRef;
         private readonly Internal.PromiseRefBase.EachPromiseGroup<Promise.ResultContainer> _group;
-        private readonly Internal.PoolBackedQueue<Promise.ResultContainer> _queue;
         private readonly int _cancelationId;
         private readonly int _groupId;
         private readonly int _pendingCount;
@@ -30,14 +29,11 @@ namespace Proto.Promises
         private readonly bool _suppressUnobservedRejections;
 
         [MethodImpl(Internal.InlineOption)]
-        private PromiseEachGroup(Internal.CancelationRef cancelationRef,
-            Internal.PromiseRefBase.EachPromiseGroup<Promise.ResultContainer> group,
-            Internal.PoolBackedQueue<Promise.ResultContainer> queue,
+        private PromiseEachGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.EachPromiseGroup<Promise.ResultContainer> group,
             int groupId, bool suppressUnobservedRejections, int pendingCount, int totalCount)
         {
             _cancelationRef = cancelationRef;
             _group = group;
-            _queue = queue;
             _cancelationId = cancelationRef.SourceId;
             _groupId = groupId;
             _suppressUnobservedRejections = suppressUnobservedRejections;
@@ -83,7 +79,7 @@ namespace Proto.Promises
             var cancelationRef = Internal.CancelationRef.GetOrCreate();
             cancelationRef.MaybeLinkToken(sourceCancelationToken);
             groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseEachGroup(cancelationRef, null, new Internal.PoolBackedQueue<Promise.ResultContainer>(0), 0, suppressUnobservedRejections, 0, 0);
+            return new PromiseEachGroup(cancelationRef, null, 0, suppressUnobservedRejections, 0, 0);
         }
 
         /// <summary>
@@ -94,36 +90,19 @@ namespace Proto.Promises
         {
             var cancelationRef = _cancelationRef;
             var group = _group;
-            var queue = _queue;
             var pendingCount = _pendingCount;
             var totalCount = _totalCount;
             var suppressUnobservedRejections = _suppressUnobservedRejections;
-            if (cancelationRef == null)
+            if (group == null)
             {
-                Internal.ThrowInvalidEachGroup(1);
-            }
-
-            if (group != null)
-            {
-                if (!group.TryIncrementId(_groupId))
+                if (cancelationRef?.TryIncrementSourceId(_cancelationId) != true)
                 {
                     Internal.ThrowInvalidEachGroup(1);
                 }
 
-                checked { ++totalCount; }
-                if (promise._ref == null)
-                {
-                    group.AddResult(Promise.ResultContainer.Resolved);
-                }
-                else
-                {
-                    ++pendingCount;
-                    group.AddPromise(promise._ref, promise._id);
-                }
-                return new PromiseEachGroup(cancelationRef, group, default, group.EnumerableId, suppressUnobservedRejections, pendingCount, totalCount);
+                group = Internal.GetOrCreateEachPromiseGroup(cancelationRef, suppressUnobservedRejections);
             }
-
-            if (!cancelationRef.TryIncrementSourceId(_cancelationId))
+            else if (!group.TryIncrementId(_groupId))
             {
                 Internal.ThrowInvalidEachGroup(1);
             }
@@ -131,14 +110,14 @@ namespace Proto.Promises
             checked { ++totalCount; }
             if (promise._ref == null)
             {
-                queue.Enqueue(Promise.ResultContainer.Resolved);
-                return new PromiseEachGroup(cancelationRef, null, queue, 0, suppressUnobservedRejections, pendingCount, totalCount);
+                group.AddResult(Promise.ResultContainer.Resolved);
             }
-
-            ++pendingCount;
-            group = Internal.GetOrCreateEachPromiseGroup(cancelationRef, queue, suppressUnobservedRejections);
-            group.AddPromise(promise._ref, promise._id);
-            return new PromiseEachGroup(cancelationRef, group, default, group.EnumerableId, suppressUnobservedRejections, pendingCount, totalCount);
+            else
+            {
+                ++pendingCount;
+                group.AddPromise(promise._ref, promise._id);
+            }
+            return new PromiseEachGroup(cancelationRef, group, group.EnumerableId, suppressUnobservedRejections, pendingCount, totalCount);
         }
 
         /// <summary>
@@ -148,30 +127,15 @@ namespace Proto.Promises
         {
             var cancelationRef = _cancelationRef;
             var group = _group;
-            var queue = _queue;
             var pendingCount = _pendingCount;
             var totalCount = _totalCount;
-            var suppressUnobservedRejections = _suppressUnobservedRejections;
-            if (cancelationRef == null)
-            {
-                Internal.ThrowInvalidEachGroup(1);
-            }
-
             if (group == null)
             {
-                if (totalCount == 0)
-                {
-                    if (!cancelationRef.TryDispose(_cancelationId))
-                    {
-                        Internal.ThrowInvalidEachGroup(1);
-                    }
-                    return AsyncEnumerable<Promise.ResultContainer>.Empty();
-                }
-                if (!cancelationRef.TryIncrementSourceId(_cancelationId))
+                if (cancelationRef?.TryDispose(_cancelationId) != true)
                 {
                     Internal.ThrowInvalidEachGroup(1);
                 }
-                group = Internal.GetOrCreateEachPromiseGroup(cancelationRef, queue, suppressUnobservedRejections);
+                return AsyncEnumerable<Promise.ResultContainer>.Empty();
             }
             else if (!group.TryIncrementId(_groupId))
             {
@@ -194,7 +158,6 @@ namespace Proto.Promises
     {
         private readonly Internal.CancelationRef _cancelationRef;
         private readonly Internal.PromiseRefBase.EachPromiseGroup<Promise<T>.ResultContainer> _group;
-        private readonly Internal.PoolBackedQueue<Promise<T>.ResultContainer> _queue;
         private readonly int _cancelationId;
         private readonly int _groupId;
         private readonly int _pendingCount;
@@ -202,14 +165,11 @@ namespace Proto.Promises
         private readonly bool _suppressUnobservedRejections;
 
         [MethodImpl(Internal.InlineOption)]
-        private PromiseEachGroup(Internal.CancelationRef cancelationRef,
-            Internal.PromiseRefBase.EachPromiseGroup<Promise<T>.ResultContainer> group,
-            Internal.PoolBackedQueue<Promise<T>.ResultContainer> queue,
+        private PromiseEachGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.EachPromiseGroup<Promise<T>.ResultContainer> group,
             int groupId, bool suppressUnobservedRejections, int pendingCount, int totalCount)
         {
             _cancelationRef = cancelationRef;
             _group = group;
-            _queue = queue;
             _cancelationId = cancelationRef.SourceId;
             _groupId = groupId;
             _suppressUnobservedRejections = suppressUnobservedRejections;
@@ -255,7 +215,7 @@ namespace Proto.Promises
             var cancelationRef = Internal.CancelationRef.GetOrCreate();
             cancelationRef.MaybeLinkToken(sourceCancelationToken);
             groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseEachGroup<T>(cancelationRef, null, new Internal.PoolBackedQueue<Promise<T>.ResultContainer>(0), 0, suppressUnobservedRejections, 0, 0);
+            return new PromiseEachGroup<T>(cancelationRef, null, 0, suppressUnobservedRejections, 0, 0);
         }
 
         /// <summary>
@@ -266,36 +226,19 @@ namespace Proto.Promises
         {
             var cancelationRef = _cancelationRef;
             var group = _group;
-            var queue = _queue;
             var pendingCount = _pendingCount;
             var totalCount = _totalCount;
             var suppressUnobservedRejections = _suppressUnobservedRejections;
-            if (cancelationRef == null)
+            if (group == null)
             {
-                Internal.ThrowInvalidEachGroup(1);
-            }
-
-            if (group != null)
-            {
-                if (!group.TryIncrementId(_groupId))
+                if (cancelationRef?.TryIncrementSourceId(_cancelationId) != true)
                 {
                     Internal.ThrowInvalidEachGroup(1);
                 }
 
-                checked { ++totalCount; }
-                if (promise._ref == null)
-                {
-                    group.AddResult(promise._result);
-                }
-                else
-                {
-                    ++pendingCount;
-                    group.AddPromise(promise._ref, promise._id);
-                }
-                return new PromiseEachGroup<T>(cancelationRef, group, default, group.EnumerableId, suppressUnobservedRejections, pendingCount, totalCount);
+                group = Internal.GetOrCreateEachPromiseGroup<T>(cancelationRef, suppressUnobservedRejections);
             }
-
-            if (!cancelationRef.TryIncrementSourceId(_cancelationId))
+            else if (!group.TryIncrementId(_groupId))
             {
                 Internal.ThrowInvalidEachGroup(1);
             }
@@ -303,14 +246,14 @@ namespace Proto.Promises
             checked { ++totalCount; }
             if (promise._ref == null)
             {
-                queue.Enqueue(promise._result);
-                return new PromiseEachGroup<T>(cancelationRef, null, queue, 0, suppressUnobservedRejections, pendingCount, totalCount);
+                group.AddResult(promise._result);
             }
-
-            ++pendingCount;
-            group = Internal.GetOrCreateEachPromiseGroup(cancelationRef, queue, suppressUnobservedRejections);
-            group.AddPromise(promise._ref, promise._id);
-            return new PromiseEachGroup<T>(cancelationRef, group, default, group.EnumerableId, suppressUnobservedRejections, pendingCount, totalCount);
+            else
+            {
+                ++pendingCount;
+                group.AddPromise(promise._ref, promise._id);
+            }
+            return new PromiseEachGroup<T>(cancelationRef, group, group.EnumerableId, suppressUnobservedRejections, pendingCount, totalCount);
         }
 
         /// <summary>
@@ -320,30 +263,15 @@ namespace Proto.Promises
         {
             var cancelationRef = _cancelationRef;
             var group = _group;
-            var queue = _queue;
             var pendingCount = _pendingCount;
             var totalCount = _totalCount;
-            var suppressUnobservedRejections = _suppressUnobservedRejections;
-            if (cancelationRef == null)
-            {
-                Internal.ThrowInvalidEachGroup(1);
-            }
-
             if (group == null)
             {
-                if (totalCount == 0)
-                {
-                    if (!cancelationRef.TryDispose(_cancelationId))
-                    {
-                        Internal.ThrowInvalidEachGroup(1);
-                    }
-                    return AsyncEnumerable<Promise<T>.ResultContainer>.Empty();
-                }
-                if (!cancelationRef.TryIncrementSourceId(_cancelationId))
+                if (cancelationRef?.TryDispose(_cancelationId) != true)
                 {
                     Internal.ThrowInvalidEachGroup(1);
                 }
-                group = Internal.GetOrCreateEachPromiseGroup(cancelationRef, queue, suppressUnobservedRejections);
+                return AsyncEnumerable<Promise<T>.ResultContainer>.Empty();
             }
             else if (!group.TryIncrementId(_groupId))
             {
