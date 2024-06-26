@@ -142,6 +142,10 @@ namespace Proto.Promises
 
                     if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCount, releaseCount) != 0)
                     {
+                        // Invalidate the previous awaiter.
+                        IncrementPromiseIdAndClearPrevious();
+                        // Reset for the next awaiter.
+                        ResetWithoutStacktrace();
                         return new Promise(this, Id);
                     }
 
