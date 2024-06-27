@@ -84,9 +84,9 @@ namespace Proto.Promises
                     // This method is called after all promises have been hooked up to this.
                     _remaining = totalCount;
                     // _retainCount starts at 0 and is decremented every time an added promise completes.
-                    // We add back the number of pending promises that were added, plus 2 extra retains for DisposeAsync and cancelation registration,
+                    // We add back the number of pending promises that were added, plus 1 extra retain for DisposeAsync,
                     // and when the count goes back to 0, this is complete.
-                    Interlocked.Add(ref _retainCount, unchecked(pendingCount + 2));
+                    Interlocked.Add(ref _retainCount, unchecked(pendingCount + 1));
                 }
 
                 private void CancelGroup()
@@ -114,6 +114,8 @@ namespace Proto.Promises
                     base.Dispose();
                     _current = default;
                     _cancelationException = null;
+                    _cancelationRef.TryDispose(_cancelationRef.SourceId);
+                    _cancelationRef = null;
                     _queue.Dispose();
                     _queue = default;
                     ObjectPool.MaybeRepool(this);
@@ -134,13 +136,11 @@ namespace Proto.Promises
                     }
 
                     _disposed = true;
-                    int releaseCount = TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) & !_isIterationCanceled ? -2 : -1;
-                    _cancelationRegistration = default;
                     CancelGroup();
-                    _cancelationRef.TryDispose(_cancelationRef.SourceId);
-                    _cancelationRef = null;
+                    _cancelationRegistration.Dispose();
+                    _cancelationRegistration = default;
 
-                    if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCount, releaseCount) != 0)
+                    if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCount, -1) != 0)
                     {
                         // Invalidate the previous awaiter.
                         IncrementPromiseIdAndClearPrevious();
@@ -263,29 +263,6 @@ namespace Proto.Promises
                     HandleNextInternal(Promise.State.Resolved);
                 }
 
-                void ICancelable.Cancel()
-                {
-                    _isIterationCanceled = true;
-                    CancelGroup();
-
-                    lock (this)
-                    {
-                        if (_isMoveNextAsyncWaiting)
-                        {
-                            _isMoveNextAsyncWaiting = false;
-                            goto HandleNext;
-                        }
-                    }
-                    MaybeHandleDisposeAsync();
-                    return;
-
-                HandleNext:
-                    --_enumerableId;
-                    _result = false;
-                    Interlocked.Decrement(ref _retainCount);
-                    HandleNextInternal(Promise.State.Canceled);
-                }
-
                 private void MaybeHandleDisposeAsync()
                 {
                     if (Interlocked.Decrement(ref _retainCount) != 0)
@@ -302,6 +279,24 @@ namespace Proto.Promises
 
                     _rejectContainer = CreateRejectContainer(exception, int.MinValue, null, this);
                     HandleNextInternal(Promise.State.Rejected);
+                }
+
+                void ICancelable.Cancel()
+                {
+                    _isIterationCanceled = true;
+                    CancelGroup();
+
+                    lock (this)
+                    {
+                        if (!_isMoveNextAsyncWaiting)
+                        {
+                            return;
+                        }
+                        _isMoveNextAsyncWaiting = false;
+                    }
+                    --_enumerableId;
+                    _result = false;
+                    HandleNextInternal(Promise.State.Canceled);
                 }
 
                 partial void AddPending(PromiseRefBase pendingPromise);

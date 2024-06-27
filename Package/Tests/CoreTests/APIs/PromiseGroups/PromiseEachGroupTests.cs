@@ -1437,5 +1437,167 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
+
+        [Test]
+        public void PromiseEachGroup_CancelationCallbackExceptionsArePropagated_void(
+            [Values(CancelationType.None, CancelationType.Deferred)] CancelationType iterationCancelationType,
+            [Values] CompleteType completeType1,
+            [Values] bool alreadyComplete1,
+            [Values] CompleteType completeType2,
+            [Values] bool suppressUnobservedRejection)
+        {
+            Promise.Run(async () =>
+            {
+                var groupCancelationSource = CancelationSource.New();
+                var iterationCancelationSource = CancelationSource.New();
+
+                // We don't test a group cancelation source because it propagates the exceptions directly when it's canceled.
+                // We need to only test when the each group itself triggers cancelation (via the iteration cancelation source, or via DisposeAsync early).
+                var eachGroup = PromiseEachGroup.New(out var groupCancelationToken, suppressUnobservedRejection);
+
+                var cancelationException = new Exception("Error in cancelation!");
+                groupCancelationToken.Register(() => { throw cancelationException; });
+
+                var promiseException = new System.InvalidOperationException("Bang!");
+
+                var asyncEnumerator = eachGroup
+                    .Add(TestHelper.BuildPromise(completeType1, alreadyComplete1, promiseException, out var tryCompleter1))
+                    .Add(TestHelper.BuildPromise(completeType2, false, promiseException, out var tryCompleter2))
+                    .GetAsyncEnumerable()
+                    .WithCancelation(iterationCancelationType == CancelationType.None ? CancelationToken.None : iterationCancelationSource.Token)
+                    .GetAsyncEnumerator();
+
+                tryCompleter1();
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                var resultContainer = asyncEnumerator.Current;
+                Assert.AreEqual((Promise.State) completeType1, resultContainer.State);
+                if (resultContainer.State == Promise.State.Rejected)
+                {
+                    Assert.AreEqual(promiseException, resultContainer.Reason);
+                }
+
+                groupCancelationSource.Cancel();
+                iterationCancelationSource.Cancel();
+
+                tryCompleter2();
+                if (iterationCancelationType == CancelationType.Deferred)
+                {
+                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                }
+
+                bool didThrow = false;
+                try
+                {
+                    await asyncEnumerator.DisposeAsync();
+                }
+                catch (AggregateException e)
+                {
+                    didThrow = true;
+
+                    int expectedExceptionCount = 1;
+                    if (completeType2 == CompleteType.Reject && !suppressUnobservedRejection)
+                    {
+                        ++expectedExceptionCount;
+                    }
+                    Assert.AreEqual(expectedExceptionCount, e.InnerExceptions.Count);
+                    Assert.IsInstanceOf<AggregateException>(e.InnerExceptions[0]);
+                    if (expectedExceptionCount > 1)
+                    {
+                        Assert.IsInstanceOf<System.InvalidOperationException>(e.InnerExceptions[1]);
+                    }
+                    Assert.AreEqual(1, e.InnerExceptions[0].UnsafeAs<AggregateException>().InnerExceptions.Count);
+                    Assert.AreEqual(cancelationException, e.InnerExceptions[0].UnsafeAs<AggregateException>().InnerExceptions[0]);
+                }
+
+                Assert.True(didThrow);
+
+                groupCancelationSource.Dispose();
+                iterationCancelationSource.Dispose();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void PromiseEachGroup_CancelationCallbackExceptionsArePropagated_T(
+            [Values(CancelationType.None, CancelationType.Deferred)] CancelationType iterationCancelationType,
+            [Values] CompleteType completeType1,
+            [Values] bool alreadyComplete1,
+            [Values] CompleteType completeType2,
+            [Values] bool suppressUnobservedRejection)
+        {
+            Promise.Run(async () =>
+            {
+                var groupCancelationSource = CancelationSource.New();
+                var iterationCancelationSource = CancelationSource.New();
+
+                // We don't test a group cancelation source because it propagates the exceptions directly when it's canceled.
+                // We need to only test when the each group itself triggers cancelation (via the iteration cancelation source, or via DisposeAsync early).
+                var eachGroup = PromiseEachGroup<int>.New(out var groupCancelationToken, suppressUnobservedRejection);
+
+                var cancelationException = new Exception("Error in cancelation!");
+                groupCancelationToken.Register(() => { throw cancelationException; });
+
+                var promiseException = new System.InvalidOperationException("Bang!");
+
+                var asyncEnumerator = eachGroup
+                    .Add(TestHelper.BuildPromise(completeType1, alreadyComplete1, 1, promiseException, out var tryCompleter1))
+                    .Add(TestHelper.BuildPromise(completeType2, false, 2, promiseException, out var tryCompleter2))
+                    .GetAsyncEnumerable()
+                    .WithCancelation(iterationCancelationType == CancelationType.None ? CancelationToken.None : iterationCancelationSource.Token)
+                    .GetAsyncEnumerator();
+
+                tryCompleter1();
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                var resultContainer = asyncEnumerator.Current;
+                Assert.AreEqual((Promise.State) completeType1, resultContainer.State);
+                if (resultContainer.State == Promise.State.Resolved)
+                {
+                    Assert.AreEqual(1, resultContainer.Value);
+                }
+                else if (resultContainer.State == Promise.State.Rejected)
+                {
+                    Assert.AreEqual(promiseException, resultContainer.Reason);
+                }
+
+                groupCancelationSource.Cancel();
+                iterationCancelationSource.Cancel();
+
+                tryCompleter2();
+                if (iterationCancelationType == CancelationType.Deferred)
+                {
+                    await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
+                }
+
+                bool didThrow = false;
+                try
+                {
+                    await asyncEnumerator.DisposeAsync();
+                }
+                catch (AggregateException e)
+                {
+                    didThrow = true;
+
+                    int expectedExceptionCount = 1;
+                    if (completeType2 == CompleteType.Reject && !suppressUnobservedRejection)
+                    {
+                        ++expectedExceptionCount;
+                    }
+                    Assert.AreEqual(expectedExceptionCount, e.InnerExceptions.Count);
+                    Assert.IsInstanceOf<AggregateException>(e.InnerExceptions[0]);
+                    if (expectedExceptionCount > 1)
+                    {
+                        Assert.IsInstanceOf<System.InvalidOperationException>(e.InnerExceptions[1]);
+                    }
+                    Assert.AreEqual(1, e.InnerExceptions[0].UnsafeAs<AggregateException>().InnerExceptions.Count);
+                    Assert.AreEqual(cancelationException, e.InnerExceptions[0].UnsafeAs<AggregateException>().InnerExceptions[0]);
+                }
+
+                Assert.True(didThrow);
+
+                groupCancelationSource.Dispose();
+                iterationCancelationSource.Dispose();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
     }
 }
