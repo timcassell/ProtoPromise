@@ -4,8 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0090 // Use 'new(...)'
-
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -20,53 +19,53 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class PromiseEachAsyncEnumerable<TResult> : AsyncEnumerableBase<TResult>, ICancelable
+            internal sealed partial class EachPromiseGroup<TResult> : AsyncEnumerableBase<TResult>, ICancelable
+                where TResult : IResultContainer
             {
                 private static GetResultDelegate<TResult> s_getResult;
 
+                private CancelationRef _cancelationRef; // Store the reference directly instead of CancelationSource struct to reduce memory.
+                private Exception _cancelationException; // In case a cancelation token callback throws, we have to store it to rethrow it from DisposeAsync.
                 private CancelationRegistration _cancelationRegistration;
                 // This must not be readonly.
                 private PoolBackedQueue<TResult> _queue;
                 private int _remaining;
                 private int _retainCount;
                 private bool _isMoveNextAsyncPending;
-                private bool _isCanceled;
+                private bool _isIterationCanceled;
+                private bool _suppressUnobservedRejections;
 
-                private PromiseEachAsyncEnumerable() { }
+                private EachPromiseGroup() { }
 
                 [MethodImpl(InlineOption)]
-                private static PromiseEachAsyncEnumerable<TResult> GetOrCreate()
+                private static EachPromiseGroup<TResult> GetOrCreate()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<PromiseEachAsyncEnumerable<TResult>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<EachPromiseGroup<TResult>>();
                     return obj == InvalidAwaitSentinel.s_instance
-                        ? new PromiseEachAsyncEnumerable<TResult>()
-                        : obj.UnsafeAs<PromiseEachAsyncEnumerable<TResult>>();
+                        ? new EachPromiseGroup<TResult>()
+                        : obj.UnsafeAs<EachPromiseGroup<TResult>>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseEachAsyncEnumerable<TResult> GetOrCreate(GetResultDelegate<TResult> getResultDelegate)
+                internal static EachPromiseGroup<TResult> GetOrCreate(CancelationRef cancelationRef, GetResultDelegate<TResult> getResultDelegate)
                 {
                     s_getResult = getResultDelegate;
 
                     var enumerable = GetOrCreate();
                     enumerable.Reset();
+                    enumerable._queue = new PoolBackedQueue<TResult>(0);
+                    enumerable._cancelationRef = cancelationRef;
+                    enumerable._isIterationCanceled = false;
                     return enumerable;
                 }
 
-                new private void Reset()
-                {
-                    base.Reset();
-                    _remaining = 0;
-                    // 1 retain for DisposeAsync, and 1 retain for cancelation registration.
-                    _retainCount = 2;
-                    _isCanceled = false;
-                    _queue = new PoolBackedQueue<TResult>(0);
-                }
+                [MethodImpl(InlineOption)]
+                internal bool TryIncrementId(int id)
+                    => Interlocked.CompareExchange(ref _enumerableId, unchecked(id + 1), id) == id;
 
                 [MethodImpl(InlineOption)]
                 internal void AddResult(in TResult result)
                 {
-                    ++_remaining;
                     lock (this)
                     {
                         _queue.Enqueue(result);
@@ -76,10 +75,30 @@ namespace Proto.Promises
                 internal void AddPromise(PromiseRefBase promise, short id)
                 {
                     AddPending(promise);
-
-                    ++_remaining;
-                    InterlockedAddWithUnsignedOverflowCheck(ref _retainCount, 1);
                     promise.HookupNewWaiter(id, this);
+                }
+
+                internal void MarkReady(bool suppressUnobservedRejections, int pendingCount, int totalCount)
+                {
+                    // This method is called after all promises have been hooked up to this.
+                    _suppressUnobservedRejections = suppressUnobservedRejections;
+                    _remaining = totalCount;
+                    // _retainCount starts at 0 and is decremented every time an added promise completes.
+                    // We add back the number of pending promises that were added, plus 1 extra retain for DisposeAsync,
+                    // and when the count goes back to 0, this is complete.
+                    Interlocked.Add(ref _retainCount, unchecked(pendingCount + 1));
+                }
+
+                private void CancelGroup()
+                {
+                    try
+                    {
+                        _cancelationRef.Cancel();
+                    }
+                    catch (Exception e)
+                    {
+                        _cancelationException = e;
+                    }
                 }
 
                 new private void Dispose()
@@ -93,8 +112,10 @@ namespace Proto.Promises
                     // So we need to mark it awaited to prevent the finalizer from reporting it as not awaited.
                     WasAwaitedOrForgotten = true;
                     base.Dispose();
-                    _disposed = true;
                     _current = default;
+                    _cancelationException = null;
+                    _cancelationRef.TryDispose(_cancelationRef.SourceId);
+                    _cancelationRef = null;
                     _queue.Dispose();
                     _queue = default;
                     ObjectPool.MaybeRepool(this);
@@ -114,19 +135,53 @@ namespace Proto.Promises
                         return Promise.Resolved();
                     }
 
-                    // Same as calling MaybeDispose twice, but without the extra interlocked and branch.
-                    int releaseCount = TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) & !_isCanceled ? -2 : -1;
+                    _disposed = true;
+                    CancelGroup();
+                    _cancelationRegistration.Dispose();
                     _cancelationRegistration = default;
-                    if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCount, releaseCount) == 0)
+
+                    // We have to reset this before decrementing _retainCount, or else MaybeHandleDisposeAsync could be called on another thread,
+                    // causing the async state machine to be moved forward too early.
+                    ResetForNextAwait();
+
+                    if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCount, -1) != 0)
                     {
-                        Dispose();
+                        return new Promise(this, Id);
                     }
-                    return Promise.Resolved();
+
+                    var exception = GetAggregateException();
+                    Dispose();
+                    return exception == null
+                        ? Promise.Resolved()
+                        : Promise.Rejected(exception);
+                }
+
+                private AggregateException GetAggregateException()
+                {
+                    // If a cancelation token callback threw, we always propagate it, regardless of the _suppressUnobservedRejections flag.
+                    List<Exception> exceptions = _cancelationException == null
+                        ? null
+                        : new List<Exception>() { _cancelationException };
+                    if (!_suppressUnobservedRejections)
+                    {
+                        while (_queue.TryDequeue(out var result))
+                        {
+                            var rejectContainer = result.RejectContainer;
+                            if (rejectContainer != null)
+                            {
+                                RecordException(rejectContainer.GetValueAsException(), ref exceptions);
+                            }
+                        }
+                    }
+                    return exceptions == null
+                        ? null
+                        : new AggregateException(exceptions);
                 }
 
                 internal override void MaybeDispose()
                 {
-                    if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCount, -1) == 0)
+                    // This is called on every MoveNextAsync, we only fully dispose and return to pool after DisposeAsync is called.
+                    if (_disposed)
                     {
                         Dispose();
                     }
@@ -154,13 +209,13 @@ namespace Proto.Promises
                         _enumerableId = id;
                         return Promise.Resolved(false);
                     }
-                    else if (_cancelationToken.IsCancelationRequested | _isCanceled)
+                    else if (_cancelationToken.IsCancelationRequested | _isIterationCanceled)
                     {
                         _enumerableId = id;
                         return Promise<bool>.Canceled();
                     }
                     --_remaining;
-                    
+
                     // Reset this before entering the lock so that we're not spending extra time inside the lock.
                     ResetForNextAwait();
                     bool pending;
@@ -195,32 +250,48 @@ namespace Proto.Promises
                         }
                         _queue.Enqueue(result);
                     }
-                    MaybeDispose();
+                    MaybeHandleDisposeAsync();
                     return;
 
                 HandleNext:
                     --_enumerableId;
                     _result = true;
                     _current = result;
+                    Interlocked.Decrement(ref _retainCount);
                     HandleNextInternal(Promise.State.Resolved);
+                }
+
+                private void MaybeHandleDisposeAsync()
+                {
+                    if (Interlocked.Decrement(ref _retainCount) != 0)
+                    {
+                        return;
+                    }
+
+                    var exception = GetAggregateException();
+                    if (exception == null)
+                    {
+                        HandleNextInternal(Promise.State.Resolved);
+                        return;
+                    }
+
+                    _rejectContainer = CreateRejectContainer(exception, int.MinValue, null, this);
+                    HandleNextInternal(Promise.State.Rejected);
                 }
 
                 void ICancelable.Cancel()
                 {
-                    _isCanceled = true;
+                    _isIterationCanceled = true;
+                    CancelGroup();
 
                     lock (this)
                     {
-                        if (_isMoveNextAsyncPending)
+                        if (!_isMoveNextAsyncPending)
                         {
-                            _isMoveNextAsyncPending = false;
-                            goto HandleNext;
+                            return;
                         }
+                        _isMoveNextAsyncPending = false;
                     }
-                    MaybeDispose();
-                    return;
-
-                HandleNext:
                     --_enumerableId;
                     _result = false;
                     HandleNextInternal(Promise.State.Canceled);
@@ -232,7 +303,7 @@ namespace Proto.Promises
             }
 
 #if PROMISE_DEBUG
-            partial class PromiseEachAsyncEnumerable<TResult>
+            partial class EachPromiseGroup<TResult>
             {
                 private readonly HashSet<PromiseRefBase> _pendingPromises = new HashSet<PromiseRefBase>();
 
@@ -278,11 +349,15 @@ namespace Proto.Promises
         } // class PromiseRefBase
 
         [MethodImpl(InlineOption)]
-        internal static PromiseRefBase.PromiseEachAsyncEnumerable<Promise<T>.ResultContainer> GetOrCreatePromiseEachAsyncEnumerable<T>()
-            => PromiseRefBase.PromiseEachAsyncEnumerable<Promise<T>.ResultContainer>.GetOrCreate(Promise.MergeResultFuncs.GetMergeResult<T>());
+        internal static PromiseRefBase.EachPromiseGroup<Promise<T>.ResultContainer> GetOrCreateEachPromiseGroup<T>(CancelationRef cancelationRef)
+            => PromiseRefBase.EachPromiseGroup<Promise<T>.ResultContainer>.GetOrCreate(cancelationRef, Promise.MergeResultFuncs.GetMergeResult<T>());
 
         [MethodImpl(InlineOption)]
-        internal static PromiseRefBase.PromiseEachAsyncEnumerable<Promise.ResultContainer> GetOrCreatePromiseEachAsyncEnumerableVoid()
-            => PromiseRefBase.PromiseEachAsyncEnumerable<Promise.ResultContainer>.GetOrCreate(Promise.MergeResultFuncs.GetMergeResultVoid());
+        internal static PromiseRefBase.EachPromiseGroup<Promise.ResultContainer> GetOrCreateEachPromiseGroup(CancelationRef cancelationRef)
+            => PromiseRefBase.EachPromiseGroup<Promise.ResultContainer>.GetOrCreate(cancelationRef, Promise.MergeResultFuncs.GetMergeResultVoid());
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        internal static void ThrowInvalidEachGroup(int skipFrames)
+            => throw new InvalidOperationException("The promise each group is invalid.", GetFormattedStacktrace(skipFrames + 1));
     } // class Internal
 }
