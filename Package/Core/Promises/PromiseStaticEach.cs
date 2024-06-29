@@ -49,7 +49,10 @@ namespace Proto.Promises
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
         public static AsyncEnumerable<ResultContainer> Each(params Promise[] promises)
-            => Each(promises.GetGenericEnumerator());
+        {
+            ValidateArgument(promises, nameof(promises), 1);
+            return Each(promises.GetGenericEnumerator());
+        }
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -65,7 +68,10 @@ namespace Proto.Promises
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
         public static AsyncEnumerable<ResultContainer> Each(IEnumerable<Promise> promises)
-            => Each(promises.GetEnumerator());
+        {
+            ValidateArgument(promises, nameof(promises), 1);
+            return Each(promises.GetEnumerator());
+        }
 
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
@@ -185,7 +191,10 @@ namespace Proto.Promises
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
         public static AsyncEnumerable<ResultContainer> Each(params Promise<T>[] promises)
-            => Each(promises.GetGenericEnumerator());
+        {
+            ValidateArgument(promises, nameof(promises), 1);
+            return Each(promises.GetGenericEnumerator());
+        }
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -201,7 +210,10 @@ namespace Proto.Promises
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
         public static AsyncEnumerable<ResultContainer> Each(IEnumerable<Promise<T>> promises)
-            => Each(promises.GetEnumerator());
+        {
+            ValidateArgument(promises, nameof(promises), 1);
+            return Each(promises.GetEnumerator());
+        }
 
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.

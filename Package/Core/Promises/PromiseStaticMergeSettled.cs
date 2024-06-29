@@ -99,7 +99,10 @@ namespace Proto.Promises
         /// <param name="promises">The promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
         public static Promise<IList<ResultContainer>> AllSettled(Promise[] promises, IList<ResultContainer> valueContainer = null)
-            => AllSettled(promises.GetGenericEnumerator(), valueContainer);
+        {
+            ValidateArgument(promises, nameof(promises), 1);
+            return AllSettled(promises.GetGenericEnumerator(), valueContainer);
+        }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
@@ -107,7 +110,10 @@ namespace Proto.Promises
         /// <param name="promises">The promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
         public static Promise<IList<ResultContainer>> AllSettled(IEnumerable<Promise> promises, IList<ResultContainer> valueContainer = null)
-            => AllSettled(promises.GetEnumerator(), valueContainer);
+        {
+            ValidateArgument(promises, nameof(promises), 1);
+            return AllSettled(promises.GetEnumerator(), valueContainer);
+        }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.

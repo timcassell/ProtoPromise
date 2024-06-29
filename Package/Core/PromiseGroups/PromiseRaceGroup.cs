@@ -70,6 +70,9 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise"/> to add to this group.</param>
         public PromiseRaceGroup Add(Promise promise)
         {
+#if PROMISE_DEBUG
+            Internal.ValidateArgument(promise, nameof(promise), 1);
+#endif
             var cancelationRef = _cancelationRef;
             var group = _group;
             var count = _count;
@@ -234,6 +237,9 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseRaceGroup<T> Add(Promise<T> promise)
         {
+#if PROMISE_DEBUG
+            Internal.ValidateArgument(promise, nameof(promise), 1);
+#endif
             var cancelationRef = _cancelationRef;
             var group = _group;
             var count = _count;
