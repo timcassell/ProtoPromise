@@ -170,6 +170,14 @@ namespace Proto.Promises
                     // This is never used as a backing reference for Promises, so we need to suppress the UnobservedPromiseException from the base finalizer.
                     WasAwaitedOrForgotten = true;
                 }
+
+                protected void ResetForNextAwait()
+                {
+                    // Invalidate the previous awaiter.
+                    IncrementPromiseIdAndClearPrevious();
+                    // Reset for the next awaiter.
+                    ResetWithoutStacktrace();
+                }
             } // class AsyncEnumerableBase<T>
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -219,10 +227,7 @@ namespace Proto.Promises
 
                 private void MoveNext()
                 {
-                    // Invalidate the previous awaiter.
-                    IncrementPromiseIdAndClearPrevious();
-                    // Reset for the next awaiter.
-                    ResetWithoutStacktrace();
+                    ResetForNextAwait();
                     // Handle iterator promise to move the async state machine forward.
                     Interlocked.Exchange(ref _iteratorPromiseRef, null).Handle(this, Promise.State.Resolved);
                 }
@@ -285,10 +290,7 @@ namespace Proto.Promises
                     _current = default;
                     _iteratorCompleteExpectedId = newId;
                     _iteratorCompleteId = newId;
-                    // Invalidate the previous awaiter.
-                    IncrementPromiseIdAndClearPrevious();
-                    // Reset for the next awaiter.
-                    ResetWithoutStacktrace();
+                    ResetForNextAwait();
                     iteratorPromise.Handle(this, Promise.State.Resolved);
                     return new Promise(this, Id);
                 }

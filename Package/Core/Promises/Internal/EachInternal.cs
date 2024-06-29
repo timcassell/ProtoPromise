@@ -29,7 +29,7 @@ namespace Proto.Promises
                 private PoolBackedQueue<TResult> _queue;
                 private int _remaining;
                 private int _retainCount;
-                private bool _isMoveNextAsyncWaiting;
+                private bool _isMoveNextAsyncPending;
                 private bool _isCanceled;
 
                 private PromiseEachAsyncEnumerable() { }
@@ -160,20 +160,18 @@ namespace Proto.Promises
                         return Promise<bool>.Canceled();
                     }
                     --_remaining;
-
+                    
+                    // Reset this before entering the lock so that we're not spending extra time inside the lock.
+                    ResetForNextAwait();
+                    bool pending;
                     lock (this)
                     {
-                        _isMoveNextAsyncWaiting = !_queue.TryDequeue(out _current);
-                        if (_isMoveNextAsyncWaiting)
-                        {
-                            // Invalidate the previous awaiter.
-                            IncrementPromiseIdAndClearPrevious();
-                            // Reset for the next awaiter.
-                            ResetWithoutStacktrace();
-                            return new Promise<bool>(this, Id);
-                        }
+                        _isMoveNextAsyncPending = pending = !_queue.TryDequeue(out _current);
                     }
-
+                    if (pending)
+                    {
+                        return new Promise<bool>(this, Id);
+                    }
                     _enumerableId = id;
                     return Promise.Resolved(true);
                 }
@@ -189,10 +187,10 @@ namespace Proto.Promises
 
                     lock (this)
                     {
-                        if (_isMoveNextAsyncWaiting)
+                        if (_isMoveNextAsyncPending)
                         {
-                            // MoveNextAsync is waiting, so we can skip the queue and just set the current directly.
-                            _isMoveNextAsyncWaiting = false;
+                            // MoveNextAsync is pending, so we can skip the queue and just set the current directly.
+                            _isMoveNextAsyncPending = false;
                             goto HandleNext;
                         }
                         _queue.Enqueue(result);
@@ -213,9 +211,9 @@ namespace Proto.Promises
 
                     lock (this)
                     {
-                        if (_isMoveNextAsyncWaiting)
+                        if (_isMoveNextAsyncPending)
                         {
-                            _isMoveNextAsyncWaiting = false;
+                            _isMoveNextAsyncPending = false;
                             goto HandleNext;
                         }
                     }

@@ -31,7 +31,7 @@ namespace Proto.Promises
                 private PoolBackedQueue<TResult> _queue;
                 private int _remaining;
                 private int _retainCount;
-                private bool _isMoveNextAsyncWaiting;
+                private bool _isMoveNextAsyncPending;
                 private bool _isIterationCanceled;
                 private bool _suppressUnobservedRejections;
 
@@ -140,12 +140,12 @@ namespace Proto.Promises
                     _cancelationRegistration.Dispose();
                     _cancelationRegistration = default;
 
+                    // We have to reset this before decrementing _retainCount, or else MaybeHandleDisposeAsync could be called on another thread,
+                    // causing the async state machine to be moved forward too early.
+                    ResetForNextAwait();
+
                     if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCount, -1) != 0)
                     {
-                        // Invalidate the previous awaiter.
-                        IncrementPromiseIdAndClearPrevious();
-                        // Reset for the next awaiter.
-                        ResetWithoutStacktrace();
                         return new Promise(this, Id);
                     }
 
@@ -216,19 +216,17 @@ namespace Proto.Promises
                     }
                     --_remaining;
 
+                    // Reset this before entering the lock so that we're not spending extra time inside the lock.
+                    ResetForNextAwait();
+                    bool pending;
                     lock (this)
                     {
-                        _isMoveNextAsyncWaiting = !_queue.TryDequeue(out _current);
-                        if (_isMoveNextAsyncWaiting)
-                        {
-                            // Invalidate the previous awaiter.
-                            IncrementPromiseIdAndClearPrevious();
-                            // Reset for the next awaiter.
-                            ResetWithoutStacktrace();
-                            return new Promise<bool>(this, Id);
-                        }
+                        _isMoveNextAsyncPending = pending = !_queue.TryDequeue(out _current);
                     }
-
+                    if (pending)
+                    {
+                        return new Promise<bool>(this, Id);
+                    }
                     _enumerableId = id;
                     return Promise.Resolved(true);
                 }
@@ -244,10 +242,10 @@ namespace Proto.Promises
 
                     lock (this)
                     {
-                        if (_isMoveNextAsyncWaiting)
+                        if (_isMoveNextAsyncPending)
                         {
-                            // MoveNextAsync is waiting, so we can skip the queue and just set the current directly.
-                            _isMoveNextAsyncWaiting = false;
+                            // MoveNextAsync is pending, so we can skip the queue and just set the current directly.
+                            _isMoveNextAsyncPending = false;
                             goto HandleNext;
                         }
                         _queue.Enqueue(result);
@@ -288,11 +286,11 @@ namespace Proto.Promises
 
                     lock (this)
                     {
-                        if (!_isMoveNextAsyncWaiting)
+                        if (!_isMoveNextAsyncPending)
                         {
                             return;
                         }
-                        _isMoveNextAsyncWaiting = false;
+                        _isMoveNextAsyncPending = false;
                     }
                     --_enumerableId;
                     _result = false;
