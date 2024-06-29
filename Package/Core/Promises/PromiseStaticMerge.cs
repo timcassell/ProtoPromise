@@ -54,7 +54,10 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise All(params Promise[] promises)
-            => All(promises.GetGenericEnumerator());
+        {
+            ValidateArgument(promises, nameof(promises), 1);
+            return All(promises.GetGenericEnumerator());
+        }
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -72,7 +75,10 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise All(IEnumerable<Promise> promises)
-            => All(promises.GetEnumerator());
+        {
+            ValidateArgument(promises, nameof(promises), 1);
+            return All(promises.GetEnumerator());
+        }
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when all <paramref name="promises"/> have resolved.

@@ -52,8 +52,10 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise Race(params Promise[] promises)
-            // TODO: validate argument before calling GetEnumerator. (Do the same for First, Merge, etc).
-            => Race(promises.GetGenericEnumerator());
+        {
+            ValidateArgument(promises, nameof(promises), 1);
+            return Race(promises.GetGenericEnumerator());
+        }
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -71,8 +73,10 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise Race(IEnumerable<Promise> promises)
-            // TODO: validate argument before calling GetEnumerator. (Do the same for First, Merge, etc).
-            => Race(promises.GetEnumerator());
+        {
+            ValidateArgument(promises, nameof(promises), 1);
+            return Race(promises.GetEnumerator());
+        }
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
@@ -169,7 +173,10 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<int> RaceWithIndex(params Promise[] promises)
-            => RaceWithIndex(promises.GetGenericEnumerator());
+        {
+            ValidateArgument(promises, nameof(promises), 1);
+            return RaceWithIndex(promises.GetGenericEnumerator());
+        }
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -187,7 +194,10 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<int> RaceWithIndex(IEnumerable<Promise> promises)
-            => RaceWithIndex(promises.GetEnumerator());
+        {
+            ValidateArgument(promises, nameof(promises), 1);
+            return RaceWithIndex(promises.GetEnumerator());
+        }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
@@ -341,7 +351,10 @@ namespace Proto.Promises
         /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
         public static Promise First(params Promise[] promises)
-            => First(promises.GetGenericEnumerator());
+        {
+            ValidateArgument(promises, nameof(promises), 1);
+            return First(promises.GetGenericEnumerator());
+        }
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -359,7 +372,10 @@ namespace Proto.Promises
         /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
         public static Promise First(IEnumerable<Promise> promises)
-            => First(promises.GetEnumerator());
+        {
+            ValidateArgument(promises, nameof(promises), 1);
+            return First(promises.GetEnumerator());
+        }
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
@@ -459,7 +475,10 @@ namespace Proto.Promises
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
         public static Promise<int> FirstWithIndex(params Promise[] promises)
-            => FirstWithIndex(promises.GetGenericEnumerator());
+        {
+            ValidateArgument(promises, nameof(promises), 1);
+            return FirstWithIndex(promises.GetGenericEnumerator());
+        }
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -477,7 +496,10 @@ namespace Proto.Promises
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
         public static Promise<int> FirstWithIndex(IEnumerable<Promise> promises)
-            => FirstWithIndex(promises.GetEnumerator());
+        {
+            ValidateArgument(promises, nameof(promises), 1);
+            return FirstWithIndex(promises.GetEnumerator());
+        }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
@@ -635,7 +657,10 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(params Promise<T>[] promises)
-            => RaceWithIndex<T, Internal.ArrayEnumerator<Promise<T>>>(promises.GetGenericEnumerator());
+        {
+            ValidateArgument(promises, nameof(promises), 1);
+            return RaceWithIndex<T, Internal.ArrayEnumerator<Promise<T>>>(promises.GetGenericEnumerator());
+        }
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -653,7 +678,10 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(IEnumerable<Promise<T>> promises)
-            => RaceWithIndex<T, IEnumerator<Promise<T>>>(promises.GetEnumerator());
+        {
+            ValidateArgument(promises, nameof(promises), 1);
+            return RaceWithIndex<T, IEnumerator<Promise<T>>>(promises.GetEnumerator());
+        }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
@@ -758,7 +786,10 @@ namespace Proto.Promises
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(params Promise<T>[] promises)
-            => FirstWithIndex<T, Internal.ArrayEnumerator<Promise<T>>>(promises.GetGenericEnumerator());
+        {
+            ValidateArgument(promises, nameof(promises), 1);
+            return FirstWithIndex<T, Internal.ArrayEnumerator<Promise<T>>>(promises.GetGenericEnumerator());
+        }
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -776,7 +807,10 @@ namespace Proto.Promises
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(IEnumerable<Promise<T>> promises)
-            => FirstWithIndex<T, IEnumerator<Promise<T>>>(promises.GetEnumerator());
+        {
+            ValidateArgument(promises, nameof(promises), 1);
+            return FirstWithIndex<T, IEnumerator<Promise<T>>>(promises.GetEnumerator());
+        }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.

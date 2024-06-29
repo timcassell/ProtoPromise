@@ -154,6 +154,15 @@ namespace Proto.Promises
                 throw new ArgumentNullException(argName, null, GetFormattedStacktrace(skipFrames + 1));
             }
         }
+        internal static void ValidateArgument(Promise arg, string argName, int skipFrames)
+        {
+            if (!arg.IsValid)
+            {
+                throw new InvalidArgumentException(argName,
+                    "Promise is invalid. Call `GetRetainer()` if you intend to await multiple times.",
+                    Internal.GetFormattedStacktrace(skipFrames + 1));
+            }
+        }
 
         internal static string FormatStackTrace(IEnumerable<StackTrace> stackTraces)
         {
@@ -473,15 +482,7 @@ namespace Proto.Promises
             => Internal.ValidateArgument(arg, argName, skipFrames + 1);
 
         static partial void ValidateArgument(Promise arg, string argName, int skipFrames)
-        {
-            if (!arg.IsValid)
-            {
-                throw new InvalidArgumentException(argName,
-                    "Promise is invalid." +
-                    " Call `GetRetainer()` if you intend to await multiple times.",
-                    Internal.GetFormattedStacktrace(skipFrames + 1));
-            }
-        }
+            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
 
         static partial void ValidateElement(Promise promise, string argName, int skipFrames)
         {
@@ -511,15 +512,7 @@ namespace Proto.Promises
             => Internal.ValidateArgument(arg, argName, skipFrames + 1);
 
         static partial void ValidateArgument(Promise<T> arg, string argName, int skipFrames)
-        {
-            if (!arg.IsValid)
-            {
-                throw new InvalidArgumentException(argName,
-                    "Promise is invalid." +
-                    " Call `GetRetainer()` if you intend to await multiple times.",
-                    Internal.GetFormattedStacktrace(skipFrames + 1));
-            }
-        }
+            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
 
         static partial void ValidateElement(Promise<T> promise, string argName, int skipFrames)
         {

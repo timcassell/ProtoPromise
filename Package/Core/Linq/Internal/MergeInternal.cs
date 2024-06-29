@@ -21,7 +21,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal abstract class AsyncEnumerableMergerBase<TValue> : PromiseRefBase.AsyncEnumerableWithIterator<TValue>
+        internal abstract partial class AsyncEnumerableMergerBase<TValue> : PromiseRefBase.AsyncEnumerableWithIterator<TValue>
         {
             // These must not be readonly.
             // We queue the successful MoveNextAsync results instead of using Promise.RaceWithIndex, to avoid having to retain each promise.
@@ -51,7 +51,7 @@ namespace Proto.Promises
                 else
                 {
                     // The promise may still be pending, hook this up to continue when it completes.
-                    // TODO: hook up circular await detection.
+                    AddPending(moveNextPromise._ref);
                     var passthrough = PromisePassThrough.GetOrCreate(moveNextPromise._ref, this, index);
                     moveNextPromise._ref.HookupNewWaiter(moveNextPromise._id, passthrough);
                     return;
@@ -69,6 +69,7 @@ namespace Proto.Promises
 
             internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
             {
+                RemoveComplete(handler);
                 handler.SetCompletionState(state);
                 bool hasValue = state == Promise.State.Resolved & handler.GetResult<bool>();
                 if (hasValue)
@@ -121,10 +122,60 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             new protected void Dispose()
             {
+                ValidateNoPending();
                 base.Dispose();
                 _exceptions = null;
             }
+
+            partial void AddPending(PromiseRefBase pendingPromise);
+            partial void RemoveComplete(PromiseRefBase completePromise);
+            partial void ValidateNoPending();
         } // class AsyncEnumerableMergerBase<TValue>
+
+#if PROMISE_DEBUG
+        partial class AsyncEnumerableMergerBase<TValue>
+        {
+            private readonly HashSet<PromiseRefBase> _pendingPromises = new HashSet<PromiseRefBase>();
+
+            protected override void BorrowPreviousPromises(Stack<PromiseRefBase> borrower)
+            {
+                lock (_pendingPromises)
+                {
+                    foreach (var promiseRef in _pendingPromises)
+                    {
+                        borrower.Push(promiseRef);
+                    }
+                }
+            }
+
+            partial void ValidateNoPending()
+            {
+                lock (_pendingPromises)
+                {
+                    if (_pendingPromises.Count != 0)
+                    {
+                        throw new System.InvalidOperationException("AsyncEnumerableMerger disposed with pending promises.");
+                    }
+                }
+            }
+
+            partial void AddPending(PromiseRefBase pendingPromise)
+            {
+                lock (_pendingPromises)
+                {
+                    _pendingPromises.Add(pendingPromise);
+                }
+            }
+
+            partial void RemoveComplete(PromiseRefBase completePromise)
+            {
+                lock (_pendingPromises)
+                {
+                    _pendingPromises.Remove(completePromise);
+                }
+            }
+        }
+#endif // PROMISE_DEBUG
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]

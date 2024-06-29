@@ -67,6 +67,9 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         public PromiseAllGroup<T> Add(Promise<T> promise)
         {
+#if PROMISE_DEBUG
+            Internal.ValidateArgument(promise, nameof(promise), 1);
+#endif
             var list = _valueContainer;
             var cancelationRef = _cancelationRef;
             var group = _group;
