@@ -91,7 +91,7 @@ namespace ProtoPromiseTests.Concurrency.PromiseGroups
                         .Add(promise1)
                         .Add(promise2)
                         .Add(promise3)
-                        .GetAsyncEnumerable()
+                        .GetAsyncEnumerable(suppressUnobservedRejections: true)
                         .WithCancelation(iterationCancelationToken)
                         .GetAsyncEnumerator();
 
@@ -125,11 +125,11 @@ namespace ProtoPromiseTests.Concurrency.PromiseGroups
                     if (cancelationType.HasFlag(EachCancelationType.Group))
                     {
                         groupCancelationSource = CancelationSource.New();
-                        group = PromiseEachGroup.New(groupCancelationSource.Token, out groupCancelationToken, suppressUnobservedRejections: true);
+                        group = PromiseEachGroup.New(groupCancelationSource.Token, out groupCancelationToken);
                     }
                     else
                     {
-                        group = PromiseEachGroup.New(out groupCancelationToken, suppressUnobservedRejections: true);
+                        group = PromiseEachGroup.New(out groupCancelationToken);
                     }
                     promise1 = TestHelper.BuildPromise(completeType1, alreadyComplete1, rejectValue, groupCancelationToken, out tryCompleter1);
                     promise2 = TestHelper.BuildPromise(completeType2, alreadyComplete2, rejectValue, groupCancelationToken, out tryCompleter2);
@@ -207,7 +207,7 @@ namespace ProtoPromiseTests.Concurrency.PromiseGroups
                         .Add(promise1)
                         .Add(promise2)
                         .Add(promise3)
-                        .GetAsyncEnumerable()
+                        .GetAsyncEnumerable(suppressUnobservedRejections: true)
                         .WithCancelation(iterationCancelationToken)
                         .GetAsyncEnumerator();
 
@@ -241,11 +241,11 @@ namespace ProtoPromiseTests.Concurrency.PromiseGroups
                     if (cancelationType.HasFlag(EachCancelationType.Group))
                     {
                         groupCancelationSource = CancelationSource.New();
-                        group = PromiseEachGroup<int>.New(groupCancelationSource.Token, out groupCancelationToken, suppressUnobservedRejections: true);
+                        group = PromiseEachGroup<int>.New(groupCancelationSource.Token, out groupCancelationToken);
                     }
                     else
                     {
-                        group = PromiseEachGroup<int>.New(out groupCancelationToken, suppressUnobservedRejections: true);
+                        group = PromiseEachGroup<int>.New(out groupCancelationToken);
                     }
                     promise1 = TestHelper.BuildPromise(completeType1, alreadyComplete1, 1, rejectValue, groupCancelationToken, out tryCompleter1);
                     promise2 = TestHelper.BuildPromise(completeType2, alreadyComplete2, 2, rejectValue, groupCancelationToken, out tryCompleter2);

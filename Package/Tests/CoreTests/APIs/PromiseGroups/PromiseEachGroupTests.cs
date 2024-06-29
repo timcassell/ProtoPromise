@@ -37,9 +37,9 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
 
             using (var cancelationSource = CancelationSource.New())
             {
-                var eachGroup1 = cancelationType == CancelationType.None ? PromiseEachGroup.New(out _, suppressUnobservedRejections)
-                    : cancelationType == CancelationType.Deferred ? PromiseEachGroup.New(cancelationSource.Token, out _, suppressUnobservedRejections)
-                    : PromiseEachGroup.New(CancelationToken.Canceled(), out _, suppressUnobservedRejections);
+                var eachGroup1 = cancelationType == CancelationType.None ? PromiseEachGroup.New(out _)
+                    : cancelationType == CancelationType.Deferred ? PromiseEachGroup.New(cancelationSource.Token, out _)
+                    : PromiseEachGroup.New(CancelationToken.Canceled(), out _);
 
                 var eachGroup2 = eachGroup1.Add(Promise.Resolved());
                 Assert.Catch<System.InvalidOperationException>(() => eachGroup1.Add(voidPromise));
@@ -49,7 +49,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                 Assert.Catch<System.InvalidOperationException>(() => eachGroup2.Add(voidPromise));
                 Assert.Catch<System.InvalidOperationException>(() => eachGroup2.GetAsyncEnumerable());
 
-                eachGroup3.GetAsyncEnumerable().GetAsyncEnumerator().DisposeAsync().Forget();
+                eachGroup3.GetAsyncEnumerable(suppressUnobservedRejections).GetAsyncEnumerator().DisposeAsync().Forget();
                 Assert.Catch<System.InvalidOperationException>(() => eachGroup3.Add(voidPromise));
                 Assert.Catch<System.InvalidOperationException>(() => eachGroup3.GetAsyncEnumerable());
 
@@ -68,9 +68,9 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
 
             using (var cancelationSource = CancelationSource.New())
             {
-                var eachGroup1 = cancelationType == CancelationType.None ? PromiseEachGroup<int>.New(out _, suppressUnobservedRejections)
-                    : cancelationType == CancelationType.Deferred ? PromiseEachGroup<int>.New(cancelationSource.Token, out _, suppressUnobservedRejections)
-                    : PromiseEachGroup<int>.New(CancelationToken.Canceled(), out _, suppressUnobservedRejections);
+                var eachGroup1 = cancelationType == CancelationType.None ? PromiseEachGroup<int>.New(out _)
+                    : cancelationType == CancelationType.Deferred ? PromiseEachGroup<int>.New(cancelationSource.Token, out _)
+                    : PromiseEachGroup<int>.New(CancelationToken.Canceled(), out _);
 
                 var eachGroup2 = eachGroup1.Add(Promise.Resolved(2));
                 Assert.Catch<System.InvalidOperationException>(() => eachGroup1.Add(intPromise));
@@ -80,7 +80,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                 Assert.Catch<System.InvalidOperationException>(() => eachGroup2.Add(intPromise));
                 Assert.Catch<System.InvalidOperationException>(() => eachGroup2.GetAsyncEnumerable());
 
-                eachGroup3.GetAsyncEnumerable().GetAsyncEnumerator().DisposeAsync().Forget();
+                eachGroup3.GetAsyncEnumerable(suppressUnobservedRejections).GetAsyncEnumerator().DisposeAsync().Forget();
                 Assert.Catch<System.InvalidOperationException>(() => eachGroup3.Add(intPromise));
                 Assert.Catch<System.InvalidOperationException>(() => eachGroup3.GetAsyncEnumerable());
 
@@ -188,7 +188,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
             bool runComplete = false;
             var runPromise = Promise.Run(async () =>
             {
-                var eachGroup = PromiseEachGroup.New(out _, suppressUnobservedRejections);
+                var eachGroup = PromiseEachGroup.New(out _);
                 for (int i = 0; i < args.Length; ++i)
                 {
                     var (completeType, isAlreadyComplete, completeIndex) = args[i];
@@ -199,7 +199,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
 
                 args = args.OrderBy(x => x.completeIndex).ToArray();
 
-                var asyncEnumerator = eachGroup.GetAsyncEnumerable().GetAsyncEnumerator();
+                var asyncEnumerator = eachGroup.GetAsyncEnumerable(suppressUnobservedRejections).GetAsyncEnumerator();
                 for (int i = 0; i < args.Length / 2; ++i)
                 {
                     var (completeType, _, completeIndex) = args[i];
@@ -255,7 +255,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
             bool runComplete = false;
             var runPromise = Promise.Run(async () =>
             {
-                var eachGroup = PromiseEachGroup.New(out _, suppressUnobservedRejections);
+                var eachGroup = PromiseEachGroup.New(out _);
                 for (int i = 0; i < args.Length; ++i)
                 {
                     var (completeType, isAlreadyComplete, completeIndex) = args[i];
@@ -267,7 +267,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                 bool didThrow = false;
                 try
                 {
-                    await eachGroup.GetAsyncEnumerable().GetAsyncEnumerator().DisposeAsync();
+                    await eachGroup.GetAsyncEnumerable(suppressUnobservedRejections).GetAsyncEnumerator().DisposeAsync();
                 }
                 catch (AggregateException e)
                 {
@@ -308,7 +308,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
             bool runComplete = false;
             var runPromise = Promise.Run(async () =>
             {
-                var eachGroup = PromiseEachGroup.New(out _, suppressUnobservedRejections);
+                var eachGroup = PromiseEachGroup.New(out _);
                 for (int i = 0; i < args.Length; ++i)
                 {
                     var (completeType, isAlreadyComplete, completeIndex) = args[i];
@@ -319,7 +319,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
 
                 args = args.OrderBy(x => x.completeIndex).ToArray();
 
-                var asyncEnumerator = eachGroup.GetAsyncEnumerable().WithCancelation(cancelationSource.Token).GetAsyncEnumerator();
+                var asyncEnumerator = eachGroup.GetAsyncEnumerable(suppressUnobservedRejections).WithCancelation(cancelationSource.Token).GetAsyncEnumerator();
                 for (int i = 0; i < args.Length / 2; ++i)
                 {
                     var (completeType, _, completeIndex) = args[i];
@@ -844,7 +844,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
             bool runComplete = false;
             var runPromise = Promise.Run(async () =>
             {
-                var eachGroup = PromiseEachGroup<int>.New(out _, suppressUnobservedRejections);
+                var eachGroup = PromiseEachGroup<int>.New(out _);
                 for (int i = 0; i < args.Length; ++i)
                 {
                     var (completeType, isAlreadyComplete, completeIndex) = args[i];
@@ -855,7 +855,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
 
                 args = args.OrderBy(x => x.completeIndex).ToArray();
 
-                var asyncEnumerator = eachGroup.GetAsyncEnumerable().GetAsyncEnumerator();
+                var asyncEnumerator = eachGroup.GetAsyncEnumerable(suppressUnobservedRejections).GetAsyncEnumerator();
                 for (int i = 0; i < args.Length / 2; ++i)
                 {
                     var (completeType, _, completeIndex) = args[i];
@@ -915,7 +915,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
             bool runComplete = false;
             var runPromise = Promise.Run(async () =>
             {
-                var eachGroup = PromiseEachGroup<int>.New(out _, suppressUnobservedRejections);
+                var eachGroup = PromiseEachGroup<int>.New(out _);
                 for (int i = 0; i < args.Length; ++i)
                 {
                     var (completeType, isAlreadyComplete, completeIndex) = args[i];
@@ -927,7 +927,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                 bool didThrow = false;
                 try
                 {
-                    await eachGroup.GetAsyncEnumerable().GetAsyncEnumerator().DisposeAsync();
+                    await eachGroup.GetAsyncEnumerable(suppressUnobservedRejections).GetAsyncEnumerator().DisposeAsync();
                 }
                 catch (AggregateException e)
                 {
@@ -968,7 +968,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
             bool runComplete = false;
             var runPromise = Promise.Run(async () =>
             {
-                var eachGroup = PromiseEachGroup<int>.New(out _, suppressUnobservedRejections);
+                var eachGroup = PromiseEachGroup<int>.New(out _);
                 for (int i = 0; i < args.Length; ++i)
                 {
                     var (completeType, isAlreadyComplete, completeIndex) = args[i];
@@ -979,7 +979,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
 
                 args = args.OrderBy(x => x.completeIndex).ToArray();
 
-                var asyncEnumerator = eachGroup.GetAsyncEnumerable().WithCancelation(cancelationSource.Token).GetAsyncEnumerator();
+                var asyncEnumerator = eachGroup.GetAsyncEnumerable(suppressUnobservedRejections).WithCancelation(cancelationSource.Token).GetAsyncEnumerator();
                 for (int i = 0; i < args.Length / 2; ++i)
                 {
                     var (completeType, _, completeIndex) = args[i];
@@ -1453,7 +1453,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
 
                 // We don't test a group cancelation source because it propagates the exceptions directly when it's canceled.
                 // We need to only test when the each group itself triggers cancelation (via the iteration cancelation source, or via DisposeAsync early).
-                var eachGroup = PromiseEachGroup.New(out var groupCancelationToken, suppressUnobservedRejection);
+                var eachGroup = PromiseEachGroup.New(out var groupCancelationToken);
 
                 var cancelationException = new Exception("Error in cancelation!");
                 groupCancelationToken.Register(() => { throw cancelationException; });
@@ -1463,7 +1463,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                 var asyncEnumerator = eachGroup
                     .Add(TestHelper.BuildPromise(completeType1, alreadyComplete1, promiseException, out var tryCompleter1))
                     .Add(TestHelper.BuildPromise(completeType2, false, promiseException, out var tryCompleter2))
-                    .GetAsyncEnumerable()
+                    .GetAsyncEnumerable(suppressUnobservedRejection)
                     .WithCancelation(iterationCancelationType == CancelationType.None ? CancelationToken.None : iterationCancelationSource.Token)
                     .GetAsyncEnumerator();
 
@@ -1532,7 +1532,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
 
                 // We don't test a group cancelation source because it propagates the exceptions directly when it's canceled.
                 // We need to only test when the each group itself triggers cancelation (via the iteration cancelation source, or via DisposeAsync early).
-                var eachGroup = PromiseEachGroup<int>.New(out var groupCancelationToken, suppressUnobservedRejection);
+                var eachGroup = PromiseEachGroup<int>.New(out var groupCancelationToken);
 
                 var cancelationException = new Exception("Error in cancelation!");
                 groupCancelationToken.Register(() => { throw cancelationException; });
@@ -1542,7 +1542,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                 var asyncEnumerator = eachGroup
                     .Add(TestHelper.BuildPromise(completeType1, alreadyComplete1, 1, promiseException, out var tryCompleter1))
                     .Add(TestHelper.BuildPromise(completeType2, false, 2, promiseException, out var tryCompleter2))
-                    .GetAsyncEnumerable()
+                    .GetAsyncEnumerable(suppressUnobservedRejection)
                     .WithCancelation(iterationCancelationType == CancelationType.None ? CancelationToken.None : iterationCancelationSource.Token)
                     .GetAsyncEnumerator();
 

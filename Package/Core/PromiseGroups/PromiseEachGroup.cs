@@ -26,17 +26,15 @@ namespace Proto.Promises
         private readonly int _groupId;
         private readonly int _pendingCount;
         private readonly int _totalCount;
-        private readonly bool _suppressUnobservedRejections;
 
         [MethodImpl(Internal.InlineOption)]
         private PromiseEachGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.EachPromiseGroup<Promise.ResultContainer> group,
-            int groupId, bool suppressUnobservedRejections, int pendingCount, int totalCount)
+            int groupId, int pendingCount, int totalCount)
         {
             _cancelationRef = cancelationRef;
             _group = group;
             _cancelationId = cancelationRef.SourceId;
             _groupId = groupId;
-            _suppressUnobservedRejections = suppressUnobservedRejections;
             _pendingCount = pendingCount;
             _totalCount = totalCount;
         }
@@ -48,13 +46,8 @@ namespace Proto.Promises
         /// The token that will be canceled when the associated <see cref="AsyncEnumerator{T}"/> is disposed,
         /// or when the associated <see cref="AsyncEnumerator{T}"/>'s <see cref="CancelationToken"/> is canceled, if it has one attached.
         /// </param>
-        /// <param name="suppressUnobservedRejections">
-        /// If <see langword="true"/>, unobserved rejections will be suppressed.
-        /// Otherwise, if the associated <see cref="AsyncEnumerator{T}"/> is disposed before all results were observed, and any promise was rejected,
-        /// the <see cref="AsyncEnumerator{T}.DisposeAsync"/> promise will be rejected with an <see cref="AggregateException"/> containing all of the unobserved rejections.
-        /// </param>
-        public static PromiseEachGroup New(out CancelationToken groupCancelationToken, bool suppressUnobservedRejections = false)
-            => New(CancelationToken.None, out groupCancelationToken, suppressUnobservedRejections);
+        public static PromiseEachGroup New(out CancelationToken groupCancelationToken)
+            => New(CancelationToken.None, out groupCancelationToken);
 
         /// <summary>
         /// Get a new <see cref="PromiseEachGroup"/> that will be canceled when the <paramref name="sourceCancelationToken"/> is canceled, and the <see cref="CancelationToken"/> tied to it.
@@ -65,21 +58,16 @@ namespace Proto.Promises
         /// or when the associated <see cref="AsyncEnumerator{T}"/> is disposed,
         /// or when the associated <see cref="AsyncEnumerator{T}"/>'s <see cref="CancelationToken"/> is canceled, if it has one attached.
         /// </param>
-        /// <param name="suppressUnobservedRejections">
-        /// If <see langword="true"/>, unobserved rejections will be suppressed.
-        /// Otherwise, if the associated <see cref="AsyncEnumerator{T}"/> is disposed before all results were observed, and any promise was rejected,
-        /// the <see cref="AsyncEnumerator{T}.DisposeAsync"/> promise will be rejected with an <see cref="AggregateException"/> containing all of the unobserved rejections.
-        /// </param>
         /// <remarks>
         /// If the <paramref name="sourceCancelationToken"/> is canceled before the iteration is complete, iteration will not be canceled.
         /// To cancel the iteration, use <see cref="AsyncEnumerable{T}.WithCancelation(CancelationToken)"/> on the <see cref="AsyncEnumerable{T}"/> returned from <see cref="GetAsyncEnumerable"/>.
         /// </remarks>
-        public static PromiseEachGroup New(CancelationToken sourceCancelationToken, out CancelationToken groupCancelationToken, bool suppressUnobservedRejections = false)
+        public static PromiseEachGroup New(CancelationToken sourceCancelationToken, out CancelationToken groupCancelationToken)
         {
             var cancelationRef = Internal.CancelationRef.GetOrCreate();
             cancelationRef.MaybeLinkToken(sourceCancelationToken);
             groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseEachGroup(cancelationRef, null, 0, suppressUnobservedRejections, 0, 0);
+            return new PromiseEachGroup(cancelationRef, null, 0, 0, 0);
         }
 
         /// <summary>
@@ -92,7 +80,6 @@ namespace Proto.Promises
             var group = _group;
             var pendingCount = _pendingCount;
             var totalCount = _totalCount;
-            var suppressUnobservedRejections = _suppressUnobservedRejections;
             if (group == null)
             {
                 if (cancelationRef?.TryIncrementSourceId(_cancelationId) != true)
@@ -100,7 +87,7 @@ namespace Proto.Promises
                     Internal.ThrowInvalidEachGroup(1);
                 }
 
-                group = Internal.GetOrCreateEachPromiseGroup(cancelationRef, suppressUnobservedRejections);
+                group = Internal.GetOrCreateEachPromiseGroup(cancelationRef);
             }
             else if (!group.TryIncrementId(_groupId))
             {
@@ -117,13 +104,18 @@ namespace Proto.Promises
                 ++pendingCount;
                 group.AddPromise(promise._ref, promise._id);
             }
-            return new PromiseEachGroup(cancelationRef, group, group.EnumerableId, suppressUnobservedRejections, pendingCount, totalCount);
+            return new PromiseEachGroup(cancelationRef, group, group.EnumerableId, pendingCount, totalCount);
         }
 
         /// <summary>
         /// Gets the <see cref="AsyncEnumerable{T}"/> that will yield the result of each promise as they complete.
         /// </summary>
-        public AsyncEnumerable<Promise.ResultContainer> GetAsyncEnumerable()
+        /// <param name="suppressUnobservedRejections">
+        /// If <see langword="true"/>, unobserved rejections will be suppressed.
+        /// Otherwise, if the associated <see cref="AsyncEnumerator{T}"/> is disposed before all results were observed, and any promise was rejected,
+        /// the <see cref="AsyncEnumerator{T}.DisposeAsync"/> promise will be rejected with an <see cref="AggregateException"/> containing all of the unobserved rejections.
+        /// </param>
+        public AsyncEnumerable<Promise.ResultContainer> GetAsyncEnumerable(bool suppressUnobservedRejections = false)
         {
             var cancelationRef = _cancelationRef;
             var group = _group;
@@ -142,7 +134,7 @@ namespace Proto.Promises
                 Internal.ThrowInvalidEachGroup(1);
             }
 
-            group.MarkReady(pendingCount, totalCount);
+            group.MarkReady(suppressUnobservedRejections, pendingCount, totalCount);
             return new AsyncEnumerable<Promise.ResultContainer>(group);
         }
     }
@@ -162,17 +154,15 @@ namespace Proto.Promises
         private readonly int _groupId;
         private readonly int _pendingCount;
         private readonly int _totalCount;
-        private readonly bool _suppressUnobservedRejections;
 
         [MethodImpl(Internal.InlineOption)]
         private PromiseEachGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.EachPromiseGroup<Promise<T>.ResultContainer> group,
-            int groupId, bool suppressUnobservedRejections, int pendingCount, int totalCount)
+            int groupId, int pendingCount, int totalCount)
         {
             _cancelationRef = cancelationRef;
             _group = group;
             _cancelationId = cancelationRef.SourceId;
             _groupId = groupId;
-            _suppressUnobservedRejections = suppressUnobservedRejections;
             _pendingCount = pendingCount;
             _totalCount = totalCount;
         }
@@ -184,13 +174,8 @@ namespace Proto.Promises
         /// The token that will be canceled when the associated <see cref="AsyncEnumerator{T}"/> is disposed,
         /// or when the associated <see cref="AsyncEnumerator{T}"/>'s <see cref="CancelationToken"/> is canceled, if it has one attached.
         /// </param>
-        /// <param name="suppressUnobservedRejections">
-        /// If <see langword="true"/>, unobserved rejections will be suppressed.
-        /// Otherwise, if the associated <see cref="AsyncEnumerator{T}"/> is disposed before all results were observed, and any promise was rejected,
-        /// the <see cref="AsyncEnumerator{T}.DisposeAsync"/> promise will be rejected with an <see cref="AggregateException"/> containing all of the unobserved rejections.
-        /// </param>
-        public static PromiseEachGroup<T> New(out CancelationToken groupCancelationToken, bool suppressUnobservedRejections = false)
-            => New(CancelationToken.None, out groupCancelationToken, suppressUnobservedRejections);
+        public static PromiseEachGroup<T> New(out CancelationToken groupCancelationToken)
+            => New(CancelationToken.None, out groupCancelationToken);
 
         /// <summary>
         /// Get a new <see cref="PromiseEachGroup"/> that will be canceled when the <paramref name="sourceCancelationToken"/> is canceled, and the <see cref="CancelationToken"/> tied to it.
@@ -201,21 +186,16 @@ namespace Proto.Promises
         /// or when the associated <see cref="AsyncEnumerator{T}"/> is disposed,
         /// or when the associated <see cref="AsyncEnumerator{T}"/>'s <see cref="CancelationToken"/> is canceled, if it has one attached.
         /// </param>
-        /// <param name="suppressUnobservedRejections">
-        /// If <see langword="true"/>, unobserved rejections will be suppressed.
-        /// Otherwise, if the associated <see cref="AsyncEnumerator{T}"/> is disposed before all results were observed, and any promise was rejected,
-        /// the <see cref="AsyncEnumerator{T}.DisposeAsync"/> promise will be rejected with an <see cref="AggregateException"/> containing all of the unobserved rejections.
-        /// </param>
         /// <remarks>
         /// If the <paramref name="sourceCancelationToken"/> is canceled before the iteration is complete, iteration will not be canceled.
         /// To cancel the iteration, use <see cref="AsyncEnumerable{T}.WithCancelation(CancelationToken)"/> on the <see cref="AsyncEnumerable{T}"/> returned from <see cref="GetAsyncEnumerable"/>.
         /// </remarks>
-        public static PromiseEachGroup<T> New(CancelationToken sourceCancelationToken, out CancelationToken groupCancelationToken, bool suppressUnobservedRejections = false)
+        public static PromiseEachGroup<T> New(CancelationToken sourceCancelationToken, out CancelationToken groupCancelationToken)
         {
             var cancelationRef = Internal.CancelationRef.GetOrCreate();
             cancelationRef.MaybeLinkToken(sourceCancelationToken);
             groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseEachGroup<T>(cancelationRef, null, 0, suppressUnobservedRejections, 0, 0);
+            return new PromiseEachGroup<T>(cancelationRef, null, 0, 0, 0);
         }
 
         /// <summary>
@@ -228,7 +208,6 @@ namespace Proto.Promises
             var group = _group;
             var pendingCount = _pendingCount;
             var totalCount = _totalCount;
-            var suppressUnobservedRejections = _suppressUnobservedRejections;
             if (group == null)
             {
                 if (cancelationRef?.TryIncrementSourceId(_cancelationId) != true)
@@ -236,7 +215,7 @@ namespace Proto.Promises
                     Internal.ThrowInvalidEachGroup(1);
                 }
 
-                group = Internal.GetOrCreateEachPromiseGroup<T>(cancelationRef, suppressUnobservedRejections);
+                group = Internal.GetOrCreateEachPromiseGroup<T>(cancelationRef);
             }
             else if (!group.TryIncrementId(_groupId))
             {
@@ -253,13 +232,18 @@ namespace Proto.Promises
                 ++pendingCount;
                 group.AddPromise(promise._ref, promise._id);
             }
-            return new PromiseEachGroup<T>(cancelationRef, group, group.EnumerableId, suppressUnobservedRejections, pendingCount, totalCount);
+            return new PromiseEachGroup<T>(cancelationRef, group, group.EnumerableId, pendingCount, totalCount);
         }
 
         /// <summary>
         /// Gets the <see cref="AsyncEnumerable{T}"/> that will yield the result of each promise as they complete.
         /// </summary>
-        public AsyncEnumerable<Promise<T>.ResultContainer> GetAsyncEnumerable()
+        /// <param name="suppressUnobservedRejections">
+        /// If <see langword="true"/>, unobserved rejections will be suppressed.
+        /// Otherwise, if the associated <see cref="AsyncEnumerator{T}"/> is disposed before all results were observed, and any promise was rejected,
+        /// the <see cref="AsyncEnumerator{T}.DisposeAsync"/> promise will be rejected with an <see cref="AggregateException"/> containing all of the unobserved rejections.
+        /// </param>
+        public AsyncEnumerable<Promise<T>.ResultContainer> GetAsyncEnumerable(bool suppressUnobservedRejections = false)
         {
             var cancelationRef = _cancelationRef;
             var group = _group;
@@ -278,7 +262,7 @@ namespace Proto.Promises
                 Internal.ThrowInvalidEachGroup(1);
             }
 
-            group.MarkReady(pendingCount, totalCount);
+            group.MarkReady(suppressUnobservedRejections, pendingCount, totalCount);
             return new AsyncEnumerable<Promise<T>.ResultContainer>(group);
         }
     }
