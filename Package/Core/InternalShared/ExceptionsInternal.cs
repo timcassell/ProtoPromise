@@ -4,6 +4,8 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0090 // Use 'new(...)'
+
 using System;
 using System.Diagnostics;
 using System.Runtime.ExceptionServices;
@@ -17,29 +19,24 @@ namespace Proto.Promises
 #endif
         internal sealed class UnhandledExceptionInternal : UnhandledException, IRejectContainer, IRejectionToContainer, ICantHandleException
         {
-            internal UnhandledExceptionInternal(object value, string message, string stackTrace, Exception innerException) :
-                base(value, message, stackTrace, innerException)
+            internal UnhandledExceptionInternal(object value, string message, string stackTrace, Exception innerException)
+                : base(value, message, stackTrace, innerException)
             { }
 
             void ICantHandleException.ReportUnhandled(ITraceable traceable)
-            {
-                ReportUnhandledException(this);
-            }
+                => ReportUnhandledException(this);
 
             void IRejectContainer.ReportUnhandled()
-            {
-                ReportUnhandledException(this);
-            }
+                => ReportUnhandledException(this);
 
             ExceptionDispatchInfo IRejectContainer.GetExceptionDispatchInfo()
-            {
-                return ExceptionDispatchInfo.Capture(Value as Exception ?? this);
-            }
+                => ExceptionDispatchInfo.Capture(Value as Exception ?? this);
 
             IRejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
-            {
-                return this;
-            }
+                => this;
+
+            Exception IRejectContainer.GetValueAsException()
+                => Value as Exception ?? this;
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -47,18 +44,18 @@ namespace Proto.Promises
 #endif
         internal sealed class CanceledExceptionInternal : CanceledException
         {
-#if !PROMISE_DEBUG
+            // Old Unity runtime has a bug where stack traces are continually appended to the exception, causing a memory leak and runtime slowdowns.
+            // To avoid the issue, we only use a singleton in runtimes where the bug is not present.
+#if PROMISE_DEBUG || NETSTANDARD2_0 || (UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER)
+            // Don't re-use instance in DEBUG mode so users can read its stacktrace on any thread.
+            internal static CanceledExceptionInternal GetOrCreate()
+                => new CanceledExceptionInternal("Operation was canceled.");
+#else
             private static readonly CanceledExceptionInternal s_instance = new CanceledExceptionInternal("Operation was canceled.");
+            
+            internal static CanceledExceptionInternal GetOrCreate() => s_instance;
 #endif
 
-            internal static CanceledExceptionInternal GetOrCreate()
-            {
-#if PROMISE_DEBUG
-                return new CanceledExceptionInternal("Operation was canceled."); // Don't re-use instance in DEBUG mode so users can read its stacktrace on any thread.
-#else
-                return s_instance;
-#endif
-            }
 
             private CanceledExceptionInternal(string message) : base(message) { }
         }
@@ -75,7 +72,7 @@ namespace Proto.Promises
                 _stackTrace = stackTrace;
             }
 
-            public override string StackTrace { get { return _stackTrace; } }
+            public override string StackTrace => _stackTrace;
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -91,14 +88,10 @@ namespace Proto.Promises
             }
 
             IRejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
-            {
-                return CreateRejectContainer(_value, int.MinValue, this, traceable);
-            }
+                => CreateRejectContainer(_value, int.MinValue, this, traceable);
 
             void ICantHandleException.ReportUnhandled(ITraceable traceable)
-            {
-                ReportRejection(_value, traceable);
-            }
+                => ReportRejection(_value, traceable);
         }
     }
 }

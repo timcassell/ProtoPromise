@@ -54,7 +54,10 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise All(params Promise[] promises)
-            => All(promises.GetGenericEnumerator());
+        {
+            ValidateArgument(promises, nameof(promises), 1);
+            return All(promises.GetGenericEnumerator());
+        }
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
@@ -72,7 +75,10 @@ namespace Proto.Promises
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
         public static Promise All(IEnumerable<Promise> promises)
-            => All(promises.GetEnumerator());
+        {
+            ValidateArgument(promises, nameof(promises), 1);
+            return All(promises.GetEnumerator());
+        }
 
         /// <summary>
         /// Returns a <see cref="Promise"/> that will resolve when all <paramref name="promises"/> have resolved.
@@ -188,7 +194,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        private static partial class MergeResultFuncs
+        internal static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -233,7 +239,9 @@ namespace Proto.Promises
             ValidateArgument(promise2, nameof(promise2), 1);
             if (promise2._ref == null)
             {
+#pragma warning disable CS0618 // Type or member is obsolete
                 return promise1.Duplicate();
+#pragma warning restore CS0618 // Type or member is obsolete
             }
 
             uint pendingCount = 1;
@@ -252,7 +260,7 @@ namespace Proto.Promises
             return new Promise<T1>(promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -348,7 +356,7 @@ namespace Proto.Promises
             return new Promise<(T1, T2)>(promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -453,7 +461,7 @@ namespace Proto.Promises
             return new Promise<(T1, T2, T3)>(promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -567,7 +575,7 @@ namespace Proto.Promises
             return new Promise<(T1, T2, T3, T4)>(promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -690,7 +698,7 @@ namespace Proto.Promises
             return new Promise<(T1, T2, T3, T4, T5)>(promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -822,7 +830,7 @@ namespace Proto.Promises
             return new Promise<(T1, T2, T3, T4, T5, T6)>(promise, promise.Id);
         }
 
-        private static partial class MergeResultFuncs
+        static partial class MergeResultFuncs
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]

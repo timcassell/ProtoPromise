@@ -17,7 +17,7 @@ namespace Proto.Promises
         public static class Manager
         {
             /// <summary>
-            /// Clears all currently pooled objects. Does not affect pending or preserved promises.
+            /// Clears all currently pooled objects. Does not affect pending or retained promises.
             /// </summary>
             public static void ClearObjectPool()
             {

@@ -28,21 +28,8 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void Invoke(PromiseRefBase handler, int index, ref TResult result) => _ptr(handler, index, ref result);
         }
-
-        internal readonly unsafe struct GetResultContainerDelegate<TResult>
-        {
-            private readonly delegate*<PromiseRefBase, IRejectContainer, Promise.State, int, ref TResult, void> _ptr;
-
-            [MethodImpl(InlineOption)]
-            internal GetResultContainerDelegate(delegate*<PromiseRefBase, IRejectContainer, Promise.State, int, ref TResult, void> ptr) => _ptr = ptr;
-
-            [MethodImpl(InlineOption)]
-            internal void Invoke(PromiseRefBase handler, IRejectContainer rejectContainer, Promise.State state, int index, ref TResult result) => _ptr(handler, rejectContainer, state, index, ref result);
-        }
 #else
         internal delegate void GetResultDelegate<TResult>(PromiseRefBase handler, int index, ref TResult result);
-
-        internal delegate void GetResultContainerDelegate<TResult>(PromiseRefBase handler, IRejectContainer rejectContainer, Promise.State state, int index, ref TResult result);
 #endif
 
         [MethodImpl(InlineOption)]
@@ -81,7 +68,7 @@ namespace Proto.Promises
 
         [MethodImpl(InlineOption)]
         internal static void PrepareForMergeSettled<TResult>(Promise promise, in TResult result, ref uint pendingCount, int index,
-            ref PromiseRefBase.MergeSettledPromise<TResult> mergePromise, GetResultContainerDelegate<TResult> getResultDelegate)
+            ref PromiseRefBase.MergeSettledPromise<TResult> mergePromise, GetResultDelegate<TResult> getResultDelegate)
         {
             if (promise._ref != null)
             {
@@ -96,7 +83,7 @@ namespace Proto.Promises
 
         [MethodImpl(InlineOption)]
         internal static void PrepareForMergeSettled<T, TResult>(Promise<T> promise, ref Promise<T>.ResultContainer value, in TResult result, ref uint pendingCount, int index,
-            ref PromiseRefBase.MergeSettledPromise<TResult> mergePromise, GetResultContainerDelegate<TResult> getResultDelegate)
+            ref PromiseRefBase.MergeSettledPromise<TResult> mergePromise, GetResultDelegate<TResult> getResultDelegate)
         {
             if (promise._ref == null)
             {
@@ -296,6 +283,9 @@ namespace Proto.Promises
                     => MarkReady(totalWaiters, ref _waitCount, Promise.State.Resolved);
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             internal sealed partial class MergePromise<TResult> : MergePromiseBase<TResult>
             {
                 private static GetResultDelegate<TResult> s_getResult;
@@ -419,9 +409,12 @@ namespace Proto.Promises
                 uint waitCount)
                 => MergePromise<IList<TResult>>.GetOrCreateAll(value, getResultFunc, passthroughs, unchecked((int) waitCount));
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             internal sealed partial class MergeSettledPromise<TResult> : MergePromiseBase<TResult>
             {
-                private static GetResultContainerDelegate<TResult> s_getResult;
+                private static GetResultDelegate<TResult> s_getResult;
 
                 [MethodImpl(InlineOption)]
                 private static MergeSettledPromise<TResult> GetOrCreate()
@@ -433,7 +426,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static MergeSettledPromise<TResult> GetOrCreate(in TResult value, GetResultContainerDelegate<TResult> getResultFunc)
+                internal static MergeSettledPromise<TResult> GetOrCreate(in TResult value, GetResultDelegate<TResult> getResultFunc)
                 {
                     s_getResult = getResultFunc;
                     var promise = GetOrCreate();
@@ -445,7 +438,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static MergeSettledPromise<TResult> GetOrCreateAll(
                     TResult value,
-                    GetResultContainerDelegate<TResult> getResultFunc,
+                    GetResultDelegate<TResult> getResultFunc,
                     ValueLinkedStack<PromisePassThroughForAll> passthroughs,
                     int waitCount)
                 {
@@ -474,8 +467,7 @@ namespace Proto.Promises
                 internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
                 {
                     handler.SetCompletionState(state);
-                    _rejectContainer = handler._rejectContainer;
-                    s_getResult.Invoke(handler, _rejectContainer, state, index, ref _result);
+                    s_getResult.Invoke(handler, index, ref _result);
                     handler.SuppressRejection = true;
                     handler.MaybeDispose();
                     if (RemoveWaiterAndGetIsComplete(handler))
@@ -489,13 +481,13 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static MergeSettledPromise<TResult> GetOrCreateMergeSettledPromise<TResult>(in TResult value, GetResultContainerDelegate<TResult> getResultFunc)
+            internal static MergeSettledPromise<TResult> GetOrCreateMergeSettledPromise<TResult>(in TResult value, GetResultDelegate<TResult> getResultFunc)
                 => MergeSettledPromise<TResult>.GetOrCreate(value, getResultFunc);
 
             [MethodImpl(InlineOption)]
             internal static MergeSettledPromise<IList<TResultContainer>> GetOrCreateAllSettledPromise<TResultContainer>(
                 IList<TResultContainer> value,
-                GetResultContainerDelegate<IList<TResultContainer>> getResultFunc,
+                GetResultDelegate<IList<TResultContainer>> getResultFunc,
                 ValueLinkedStack<PromisePassThroughForAll> passthroughs,
                 uint waitCount)
                 => MergeSettledPromise<IList<TResultContainer>>.GetOrCreateAll(value, getResultFunc, passthroughs, unchecked((int) waitCount));

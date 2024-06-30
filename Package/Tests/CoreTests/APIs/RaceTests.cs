@@ -27,8 +27,8 @@ namespace ProtoPromiseTests.APIs
         public void RaceIsResolvedWhenFirstPromiseIsResolvedFirst_void(
             [Values] bool alreadyResolved)
         {
-            var resolvedPromise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved, "Error", out var deferred1, out _);
-            var resolvedPromise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved, "Error", out var deferred2, out _);
+            var resolvedPromise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved, "Error", out var tryCompleter1);
+            var resolvedPromise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved, "Error", out var tryCompleter2);
 
             bool resolved = false;
 
@@ -39,11 +39,11 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            deferred1.TryResolve();
+            tryCompleter1();
 
             Assert.IsTrue(resolved);
 
-            deferred2.TryResolve();
+            tryCompleter2();
 
             Assert.IsTrue(resolved);
         }
@@ -52,8 +52,8 @@ namespace ProtoPromiseTests.APIs
         public void RaceIsResolvedWhenFirstPromiseIsResolvedFirst_T(
             [Values] bool alreadyResolved)
         {
-            var resolvedPromise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved, 5, "Error", out var deferred1, out _);
-            var resolvedPromise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved, 1, "Error", out var deferred2, out _);
+            var resolvedPromise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved, 5, "Error", out var tryCompleter1);
+            var resolvedPromise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved, 1, "Error", out var tryCompleter2);
 
             bool resolved = false;
 
@@ -65,11 +65,11 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            deferred1.TryResolve(5);
+            tryCompleter1();
 
             Assert.IsTrue(resolved);
 
-            deferred2.TryResolve(1);
+            tryCompleter2();
 
             Assert.IsTrue(resolved);
         }
@@ -79,7 +79,7 @@ namespace ProtoPromiseTests.APIs
             [Values] bool alreadyResolved)
         {
             var deferred1 = Promise.NewDeferred();
-            var resolvedPromise = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved, "Error", out var deferred2, out _);
+            var resolvedPromise = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved, "Error", out var tryCompleter2);
 
             bool resolved = false;
 
@@ -90,7 +90,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            deferred2.TryResolve();
+            tryCompleter2();
 
             Assert.IsTrue(resolved);
 
@@ -104,7 +104,7 @@ namespace ProtoPromiseTests.APIs
             [Values] bool alreadyResolved)
         {
             var deferred1 = Promise.NewDeferred<int>();
-            var resolvedPromise = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved, 5, "Error", out var deferred2, out _);
+            var resolvedPromise = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved, 5, "Error", out var tryCompleter2);
 
             bool resolved = false;
 
@@ -116,7 +116,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            deferred2.TryResolve(5);
+            tryCompleter2();
 
             Assert.IsTrue(resolved);
 
@@ -129,11 +129,11 @@ namespace ProtoPromiseTests.APIs
         public void RaceIsRejectedWhenFirstPromiseIsRejectedFirst_void(
             [Values] bool alreadyRejected)
         {
-            var rejectPromise = TestHelper.BuildPromise(CompleteType.Reject, alreadyRejected, "Error", out var deferred1, out _);
+            string expected = "Error";
+            var rejectPromise = TestHelper.BuildPromise(CompleteType.Reject, alreadyRejected, expected, out var tryCompleter1);
             var deferred2 = Promise.NewDeferred();
 
             bool invoked = false;
-            string expected = "Error";
 
             Promise.Race(rejectPromise, deferred2.Promise)
                 .Catch((string rej) =>
@@ -143,7 +143,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            deferred1.TryReject(expected);
+            tryCompleter1();
 
             Assert.IsTrue(invoked);
 
@@ -156,11 +156,11 @@ namespace ProtoPromiseTests.APIs
         public void RaceIsRejectedWhenFirstPromiseIsRejectedFirst_T(
             [Values] bool alreadyRejected)
         {
-            var rejectPromise = TestHelper.BuildPromise(CompleteType.Reject, alreadyRejected, 5, "Error", out var deferred1, out _);
+            string expected = "Error";
+            var rejectPromise = TestHelper.BuildPromise(CompleteType.Reject, alreadyRejected, 5, expected, out var tryCompleter1);
             var deferred2 = Promise.NewDeferred<int>();
 
             bool invoked = false;
-            string expected = "Error";
 
             Promise<int>.Race(rejectPromise, deferred2.Promise)
                 .Catch((string rej) =>
@@ -170,7 +170,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            deferred1.TryReject(expected);
+            tryCompleter1();
 
             Assert.IsTrue(invoked);
 
@@ -183,11 +183,11 @@ namespace ProtoPromiseTests.APIs
         public void RaceIsRejectedWhenSecondPromiseIsRejectedFirst_void(
             [Values] bool alreadyRejected)
         {
+            string expected = "Error";
             var deferred1 = Promise.NewDeferred();
-            var rejectPromise = TestHelper.BuildPromise(CompleteType.Reject, alreadyRejected, 5, "Error", out var deferred2, out _);
+            var rejectPromise = TestHelper.BuildPromise(CompleteType.Reject, alreadyRejected, 5, expected, out var tryCompleter2);
 
             bool invoked = false;
-            string expected = "Error";
 
             Promise.Race(deferred1.Promise, rejectPromise)
                 .Catch((string rej) =>
@@ -197,7 +197,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            deferred2.TryReject(expected);
+            tryCompleter2();
 
             Assert.IsTrue(invoked);
 
@@ -210,11 +210,11 @@ namespace ProtoPromiseTests.APIs
         public void RaceIsRejectedWhenSecondPromiseIsRejectedFirst_T(
             [Values] bool alreadyRejected)
         {
+            string expected = "Error";
             var deferred1 = Promise.NewDeferred<int>();
-            var rejectPromise = TestHelper.BuildPromise(CompleteType.Reject, alreadyRejected, 5, "Error", out var deferred2, out _);
+            var rejectPromise = TestHelper.BuildPromise(CompleteType.Reject, alreadyRejected, 5, expected, out var tryCompleter2);
 
             bool invoked = false;
-            string expected = "Error";
 
             Promise<int>.Race(deferred1.Promise, rejectPromise)
                 .Catch((string rej) =>
@@ -224,7 +224,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            deferred2.TryReject(expected);
+            tryCompleter2();
 
             Assert.IsTrue(invoked);
 
@@ -237,7 +237,7 @@ namespace ProtoPromiseTests.APIs
         public void RaceIsCanceledWhenFirstPromiseIsCanceledFirst_void(
             [Values] bool alreadyCanceled)
         {
-            var cancelPromise = TestHelper.BuildPromise(CompleteType.Cancel, alreadyCanceled, "Error", out var deferred1, out _);
+            var cancelPromise = TestHelper.BuildPromise(CompleteType.Cancel, alreadyCanceled, "Error", out var tryCompleter);
             var deferred2 = Promise.NewDeferred();
 
             bool invoked = false;
@@ -249,7 +249,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            deferred1.TryCancel();
+            tryCompleter();
 
             Assert.IsTrue(invoked);
 
@@ -262,7 +262,7 @@ namespace ProtoPromiseTests.APIs
         public void RaceIsCanceledWhenFirstPromiseIsCanceledFirst_T(
             [Values] bool alreadyCanceled)
         {
-            var cancelPromise = TestHelper.BuildPromise(CompleteType.Cancel, alreadyCanceled, 5, "Error", out var deferred1, out _);
+            var cancelPromise = TestHelper.BuildPromise(CompleteType.Cancel, alreadyCanceled, 5, "Error", out var tryCompleter1);
             var deferred2 = Promise.NewDeferred<int>();
 
             bool invoked = false;
@@ -274,7 +274,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            deferred1.TryCancel();
+            tryCompleter1();
 
             Assert.IsTrue(invoked);
 
@@ -288,7 +288,7 @@ namespace ProtoPromiseTests.APIs
             [Values] bool alreadyCanceled)
         {
             var deferred1 = Promise.NewDeferred();
-            var cancelPromise = TestHelper.BuildPromise(CompleteType.Cancel, alreadyCanceled, "Error", out var deferred2, out _);
+            var cancelPromise = TestHelper.BuildPromise(CompleteType.Cancel, alreadyCanceled, "Error", out var tryCompleter2);
 
             bool invoked = false;
 
@@ -299,7 +299,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            deferred2.TryCancel();
+            tryCompleter2();
 
             Assert.IsTrue(invoked);
 
@@ -313,7 +313,7 @@ namespace ProtoPromiseTests.APIs
             [Values] bool alreadyCanceled)
         {
             var deferred1 = Promise.NewDeferred<int>();
-            var cancelPromise = TestHelper.BuildPromise(CompleteType.Cancel, alreadyCanceled, 5, "Error", out var deferred2, out _);
+            var cancelPromise = TestHelper.BuildPromise(CompleteType.Cancel, alreadyCanceled, 5, "Error", out var tryCompleter2);
 
             bool invoked = false;
 
@@ -324,7 +324,7 @@ namespace ProtoPromiseTests.APIs
                 })
                 .Forget();
 
-            deferred2.TryCancel();
+            tryCompleter2();
 
             Assert.IsTrue(invoked);
 
@@ -333,20 +333,13 @@ namespace ProtoPromiseTests.APIs
             Assert.IsTrue(invoked);
         }
 
-        private static void Swap<T>(ref T a, ref T b)
-        {
-            var temp = a;
-            a = b;
-            b = temp;
-        }
-
         [Test]
         public void RaceWithIndex_2_void(
             [Values(0, 1)] int winIndex,
             [Values] bool alreadyResolved)
         {
-            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, "Error", out var deferred1, out _);
-            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, "Error", out var deferred2, out _);
+            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, "Error", out var tryCompleter1);
+            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, "Error", out var tryCompleter2);
 
             int resultIndex = -1;
 
@@ -356,10 +349,10 @@ namespace ProtoPromiseTests.APIs
 
             if (winIndex == 1)
             {
-                Swap(ref deferred1, ref deferred2);
+                (tryCompleter1, tryCompleter2) = (tryCompleter2, tryCompleter1);
             }
-            deferred1.TryResolve();
-            deferred2.TryResolve();
+            tryCompleter1();
+            tryCompleter2();
 
             Assert.AreEqual(winIndex, resultIndex);
         }
@@ -369,9 +362,9 @@ namespace ProtoPromiseTests.APIs
             [Values(0, 1, 2)] int winIndex,
             [Values] bool alreadyResolved)
         {
-            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, "Error", out var deferred1, out _);
-            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, "Error", out var deferred2, out _);
-            var promise3 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 2, "Error", out var deferred3, out _);
+            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, "Error", out var tryCompleter1);
+            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, "Error", out var tryCompleter2);
+            var promise3 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 2, "Error", out var tryCompleter3);
 
             int resultIndex = -1;
 
@@ -381,15 +374,15 @@ namespace ProtoPromiseTests.APIs
 
             if (winIndex == 1)
             {
-                Swap(ref deferred1, ref deferred2);
+                (tryCompleter1, tryCompleter2) = (tryCompleter2, tryCompleter1);
             }
             else if (winIndex == 2)
             {
-                Swap(ref deferred1, ref deferred3);
+                (tryCompleter1, tryCompleter3) = (tryCompleter3, tryCompleter1);
             }
-            deferred1.TryResolve();
-            deferred2.TryResolve();
-            deferred3.TryResolve();
+            tryCompleter1();
+            tryCompleter2();
+            tryCompleter3();
 
             Assert.AreEqual(winIndex, resultIndex);
         }
@@ -399,10 +392,10 @@ namespace ProtoPromiseTests.APIs
             [Values(0, 1, 2, 3)] int winIndex,
             [Values] bool alreadyResolved)
         {
-            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, "Error", out var deferred1, out _);
-            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, "Error", out var deferred2, out _);
-            var promise3 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 2, "Error", out var deferred3, out _);
-            var promise4 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 3, "Error", out var deferred4, out _);
+            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, "Error", out var tryCompleter1);
+            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, "Error", out var tryCompleter2);
+            var promise3 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 2, "Error", out var tryCompleter3);
+            var promise4 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 3, "Error", out var tryCompleter4);
 
             int resultIndex = -1;
 
@@ -412,20 +405,20 @@ namespace ProtoPromiseTests.APIs
 
             if (winIndex == 1)
             {
-                Swap(ref deferred1, ref deferred2);
+                (tryCompleter1, tryCompleter2) = (tryCompleter2, tryCompleter1);
             }
             else if (winIndex == 2)
             {
-                Swap(ref deferred1, ref deferred3);
+                (tryCompleter1, tryCompleter3) = (tryCompleter3, tryCompleter1);
             }
             else if (winIndex == 3)
             {
-                Swap(ref deferred1, ref deferred4);
+                (tryCompleter1, tryCompleter4) = (tryCompleter4, tryCompleter1);
             }
-            deferred1.TryResolve();
-            deferred2.TryResolve();
-            deferred3.TryResolve();
-            deferred4.TryResolve();
+            tryCompleter1();
+            tryCompleter2();
+            tryCompleter3();
+            tryCompleter4();
 
             Assert.AreEqual(winIndex, resultIndex);
         }
@@ -435,10 +428,10 @@ namespace ProtoPromiseTests.APIs
             [Values(0, 1, 2, 3)] int winIndex,
             [Values] bool alreadyResolved)
         {
-            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, "Error", out var deferred1, out _);
-            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, "Error", out var deferred2, out _);
-            var promise3 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 2, "Error", out var deferred3, out _);
-            var promise4 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 3, "Error", out var deferred4, out _);
+            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, "Error", out var tryCompleter1);
+            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, "Error", out var tryCompleter2);
+            var promise3 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 2, "Error", out var tryCompleter3);
+            var promise4 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 3, "Error", out var tryCompleter4);
 
             int resultIndex = -1;
 
@@ -448,20 +441,20 @@ namespace ProtoPromiseTests.APIs
 
             if (winIndex == 1)
             {
-                Swap(ref deferred1, ref deferred2);
+                (tryCompleter1, tryCompleter2) = (tryCompleter2, tryCompleter1);
             }
             else if (winIndex == 2)
             {
-                Swap(ref deferred1, ref deferred3);
+                (tryCompleter1, tryCompleter3) = (tryCompleter3, tryCompleter1);
             }
             else if (winIndex == 3)
             {
-                Swap(ref deferred1, ref deferred4);
+                (tryCompleter1, tryCompleter4) = (tryCompleter4, tryCompleter1);
             }
-            deferred1.TryResolve();
-            deferred2.TryResolve();
-            deferred3.TryResolve();
-            deferred4.TryResolve();
+            tryCompleter1();
+            tryCompleter2();
+            tryCompleter3();
+            tryCompleter4();
 
             Assert.AreEqual(winIndex, resultIndex);
         }
@@ -471,8 +464,8 @@ namespace ProtoPromiseTests.APIs
             [Values(0, 1)] int winIndex,
             [Values] bool alreadyResolved)
         {
-            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, alreadyResolved && winIndex == 0 ? 1 : 0, "Error", out var deferred1, out _);
-            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, alreadyResolved && winIndex == 1 ? 1 : 2, "Error", out var deferred2, out _);
+            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, winIndex == 0 ? 1 : 0, "Error", out var tryCompleter1);
+            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, winIndex == 1 ? 1 : 2, "Error", out var tryCompleter2);
 
             int resultIndex = -1;
             int result = -1;
@@ -487,10 +480,10 @@ namespace ProtoPromiseTests.APIs
 
             if (winIndex == 1)
             {
-                Swap(ref deferred1, ref deferred2);
+                (tryCompleter1, tryCompleter2) = (tryCompleter2, tryCompleter1);
             }
-            deferred1.TryResolve(1);
-            deferred2.TryResolve(2);
+            tryCompleter1();
+            tryCompleter2();
 
             Assert.AreEqual(winIndex, resultIndex);
             Assert.AreEqual(1, result);
@@ -501,9 +494,9 @@ namespace ProtoPromiseTests.APIs
             [Values(0, 1, 2)] int winIndex,
             [Values] bool alreadyResolved)
         {
-            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, alreadyResolved && winIndex == 0 ? 1 : 0, "Error", out var deferred1, out _);
-            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, alreadyResolved && winIndex == 1 ? 1 : 2, "Error", out var deferred2, out _);
-            var promise3 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 2, alreadyResolved && winIndex == 2 ? 1 : 3, "Error", out var deferred3, out _);
+            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, winIndex == 0 ? 1 : 0, "Error", out var tryCompleter1);
+            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, winIndex == 1 ? 1 : 2, "Error", out var tryCompleter2);
+            var promise3 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 2, winIndex == 2 ? 1 : 3, "Error", out var tryCompleter3);
 
             int resultIndex = -1;
             int result = -1;
@@ -518,15 +511,15 @@ namespace ProtoPromiseTests.APIs
 
             if (winIndex == 1)
             {
-                Swap(ref deferred1, ref deferred2);
+                (tryCompleter1, tryCompleter2) = (tryCompleter2, tryCompleter1);
             }
             else if (winIndex == 2)
             {
-                Swap(ref deferred1, ref deferred3);
+                (tryCompleter1, tryCompleter3) = (tryCompleter3, tryCompleter1);
             }
-            deferred1.TryResolve(1);
-            deferred2.TryResolve(2);
-            deferred3.TryResolve(3);
+            tryCompleter1();
+            tryCompleter2();
+            tryCompleter3();
 
             Assert.AreEqual(winIndex, resultIndex);
             Assert.AreEqual(1, result);
@@ -537,10 +530,10 @@ namespace ProtoPromiseTests.APIs
             [Values(0, 1, 2, 3)] int winIndex,
             [Values] bool alreadyResolved)
         {
-            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, alreadyResolved && winIndex == 0 ? 1 : 0, "Error", out var deferred1, out _);
-            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, alreadyResolved && winIndex == 1 ? 1 : 2, "Error", out var deferred2, out _);
-            var promise3 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 2, alreadyResolved && winIndex == 2 ? 1 : 3, "Error", out var deferred3, out _);
-            var promise4 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 3, alreadyResolved && winIndex == 3 ? 1 : 4, "Error", out var deferred4, out _);
+            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, winIndex == 0 ? 1 : 0, "Error", out var tryCompleter1);
+            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, winIndex == 1 ? 1 : 2, "Error", out var tryCompleter2);
+            var promise3 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 2, winIndex == 2 ? 1 : 3, "Error", out var tryCompleter3);
+            var promise4 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 3, winIndex == 3 ? 1 : 4, "Error", out var tryCompleter4);
 
             int resultIndex = -1;
             int result = -1;
@@ -555,20 +548,20 @@ namespace ProtoPromiseTests.APIs
 
             if (winIndex == 1)
             {
-                Swap(ref deferred1, ref deferred2);
+                (tryCompleter1, tryCompleter2) = (tryCompleter2, tryCompleter1);
             }
             else if (winIndex == 2)
             {
-                Swap(ref deferred1, ref deferred3);
+                (tryCompleter1, tryCompleter3) = (tryCompleter3, tryCompleter1);
             }
             else if (winIndex == 3)
             {
-                Swap(ref deferred1, ref deferred4);
+                (tryCompleter1, tryCompleter4) = (tryCompleter4, tryCompleter1);
             }
-            deferred1.TryResolve(1);
-            deferred2.TryResolve(2);
-            deferred3.TryResolve(3);
-            deferred4.TryResolve(4);
+            tryCompleter1();
+            tryCompleter2();
+            tryCompleter3();
+            tryCompleter4();
 
             Assert.AreEqual(winIndex, resultIndex);
             Assert.AreEqual(1, result);
@@ -579,10 +572,10 @@ namespace ProtoPromiseTests.APIs
             [Values(0, 1, 2, 3)] int winIndex,
             [Values] bool alreadyResolved)
         {
-            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, alreadyResolved && winIndex == 0 ? 1 : 0, "Error", out var deferred1, out _);
-            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, alreadyResolved && winIndex == 1 ? 1 : 2, "Error", out var deferred2, out _);
-            var promise3 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 2, alreadyResolved && winIndex == 2 ? 1 : 3, "Error", out var deferred3, out _);
-            var promise4 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 3, alreadyResolved && winIndex == 3 ? 1 : 4, "Error", out var deferred4, out _);
+            var promise1 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 0, winIndex == 0 ? 1 : 0, "Error", out var tryCompleter1);
+            var promise2 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 1, winIndex == 1 ? 1 : 2, "Error", out var tryCompleter2);
+            var promise3 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 2, winIndex == 2 ? 1 : 3, "Error", out var tryCompleter3);
+            var promise4 = TestHelper.BuildPromise(CompleteType.Resolve, alreadyResolved && winIndex == 3, winIndex == 3 ? 1 : 4, "Error", out var tryCompleter4);
 
             int resultIndex = -1;
             int result = -1;
@@ -597,20 +590,20 @@ namespace ProtoPromiseTests.APIs
 
             if (winIndex == 1)
             {
-                Swap(ref deferred1, ref deferred2);
+                (tryCompleter1, tryCompleter2) = (tryCompleter2, tryCompleter1);
             }
             else if (winIndex == 2)
             {
-                Swap(ref deferred1, ref deferred3);
+                (tryCompleter1, tryCompleter3) = (tryCompleter3, tryCompleter1);
             }
             else if (winIndex == 3)
             {
-                Swap(ref deferred1, ref deferred4);
+                (tryCompleter1, tryCompleter4) = (tryCompleter4, tryCompleter1);
             }
-            deferred1.TryResolve(1);
-            deferred2.TryResolve(2);
-            deferred3.TryResolve(3);
-            deferred4.TryResolve(4);
+            tryCompleter1();
+            tryCompleter2();
+            tryCompleter3();
+            tryCompleter4();
 
             Assert.AreEqual(winIndex, resultIndex);
             Assert.AreEqual(1, result);

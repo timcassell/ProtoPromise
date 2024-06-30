@@ -1,5 +1,7 @@
 # Combining Multiple Async Operations
 
+Note: It is recommended to use [Structured Concurrency Groups](structured-concurrency.md) instead of these methods.
+
 ## All
 
 The `All` function combines multiple async operations that are currently running. It converts a collection of promises or a variable length parameter list of promises into a single promise, and if those promises are non-void, it yields a list containing the results of those promises in the same order.
@@ -80,3 +82,21 @@ Promise.Race(Download("http://www.google.com"), Download("http://www.bing.com"))
 ## First
 
 The `First` function is almost idential to `Race` except that if a promise is rejected or canceled, the First promise will remain pending until one of the input promises is resolved or they are all rejected/canceled.
+
+## Each
+
+The `Each` function is used to combine multiple async operations into an `AsyncEnumerable<T>` that will yield each operation's result in the order that they complete.
+
+```cs
+await foreach (var downloadResult in Promise.Each(Download("http://www.google.com"), Download("http://www.bing.com")))
+{
+    if (downloadResult.State == Promise.State.Resolved)
+    {
+        Console.WriteLine(downloadResult.Value);    // Print the HTML.
+    }
+    else if (downloadResult.State == Promise.State.Rejected)
+    {
+        Console.WriteLine(downloadResult.Reason);    // Print the reject reason.
+    }
+}
+```

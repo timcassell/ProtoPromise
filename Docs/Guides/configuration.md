@@ -23,6 +23,12 @@ This isn't really a config option, but if you have object pooling enabled, you c
 
 ## Compiler Options
 
-If you're compiling from source (not from dll), you can configure some compilation options.
+If you're compiling from source (like in Unity Editor):
 
 By default, debug options are tied to the `DEBUG` compiler symbol, which is defined by default in the Unity Editor and not defined in release builds. You can override that by defining `PROTO_PROMISE_DEBUG_ENABLE` to force debugging on in release builds, or `PROTO_PROMISE_DEBUG_DISABLE` to force debugging off in debug builds (or in the Unity Editor). If both symbols are defined, `ENABLE` takes precedence.
+
+## Nuget Options
+
+If you're using the Nuget package (`<PackageReference>` in your csproj):
+
+You can override which dll will be used by setting the `ProtoPromiseConfiguration` property. Nested under a `<PropertyGroup>`, add `<ProtoPromiseConfiguration>Release</ProtoPromiseConfiguration>` to force it to use the Release dll, or `<ProtoPromiseConfiguration>Debug</ProtoPromiseConfiguration>` to force it to use the Debug dll. If the property is not set, or is set to any other value, the default behavior of choosing the dll based on your build configuration will be used. This option requires ProtoPromise v3.1.0 or newer.

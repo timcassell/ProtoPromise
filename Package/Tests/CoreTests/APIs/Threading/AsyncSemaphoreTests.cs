@@ -449,7 +449,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 return semaphore.TryWait(cancelationSource.Token);
             }, SynchronizationOption.Background, forceAsync: true);
 
-            SpinWait.SpinUntil(() => ready);
+            TestHelper.SpinUntil(() => ready, TimeSpan.FromSeconds(1));
             Thread.Sleep(10);
 
             cancelationSource.Cancel();
@@ -485,21 +485,15 @@ namespace ProtoPromiseTests.APIs.Threading
             }, SynchronizationOption.Background, forceAsync: true)
                 .Forget();
 
-            SpinWait.SpinUntil(() => readyCount == 2);
+            TestHelper.SpinUntil(() => readyCount == 2, TimeSpan.FromSeconds(1));
             Thread.Sleep(10);
             Assert.AreEqual(0, completeCount);
             
             semaphore.Release();
             // It's a threading race condition, we can't know which one queued up first.
-            if (!SpinWait.SpinUntil(() => completeCount == 1, TimeSpan.FromSeconds(1)))
-            {
-                throw new TimeoutException();
-            }
+            TestHelper.SpinUntil(() => completeCount == 1, TimeSpan.FromSeconds(1));
             semaphore.Release();
-            if (!SpinWait.SpinUntil(() => completeCount == 2, TimeSpan.FromSeconds(1)))
-            {
-                throw new TimeoutException();
-            }
+            TestHelper.SpinUntil(() => completeCount == 2, TimeSpan.FromSeconds(1));
 
             cancelationSource.Dispose();
         }
@@ -542,7 +536,7 @@ namespace ProtoPromiseTests.APIs.Threading
             }, SynchronizationOption.Background, forceAsync: true)
                 .Forget();
 
-            SpinWait.SpinUntil(() => readyCount == 4);
+            TestHelper.SpinUntil(() => readyCount == 4, TimeSpan.FromSeconds(4));
             Thread.Sleep(10);
             Assert.AreEqual(0, semaphore.CurrentCount);
             Assert.AreEqual(0, completeCount);
@@ -550,22 +544,13 @@ namespace ProtoPromiseTests.APIs.Threading
             semaphore.Release(2);
             Assert.AreEqual(0, semaphore.CurrentCount);
             // It's a threading race condition, we can't know which ones queued up first.
-            if (!SpinWait.SpinUntil(() => completeCount == 2, TimeSpan.FromSeconds(1)))
-            {
-                throw new TimeoutException();
-            }
+            TestHelper.SpinUntil(() => completeCount == 2, TimeSpan.FromSeconds(1));
             semaphore.Release(1);
             Assert.AreEqual(0, semaphore.CurrentCount);
-            if (!SpinWait.SpinUntil(() => completeCount == 3, TimeSpan.FromSeconds(1)))
-            {
-                throw new TimeoutException();
-            }
+            TestHelper.SpinUntil(() => completeCount == 3, TimeSpan.FromSeconds(1));
             semaphore.Release(4);
             Assert.AreEqual(3, semaphore.CurrentCount);
-            if (!SpinWait.SpinUntil(() => completeCount == 4, TimeSpan.FromSeconds(1)))
-            {
-                throw new TimeoutException();
-            }
+            TestHelper.SpinUntil(() => completeCount == 4, TimeSpan.FromSeconds(1));
 
             cancelationSource.Dispose();
         }

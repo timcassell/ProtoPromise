@@ -37,7 +37,7 @@ namespace ProtoPromiseTests.APIs
             yield return new TestCaseData(42);
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void UncaughtRejectionIsSentToUncaughtRejectionHandler_void(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -95,18 +95,21 @@ namespace ProtoPromiseTests.APIs
                 );
 
                 var deferred = Promise.NewDeferred();
-                var preservedPromise = deferred.Promise.Preserve();
-
-                foreach (var callback in actions)
+                using (var promiseRetainer = deferred.Promise.GetRetainer())
                 {
-                    foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
+                    foreach (var callback in actions)
                     {
-                        ++expectedCount;
-                        callback.Invoke(promise);
+                        foreach (var promise in TestHelper.GetTestablePromises(promiseRetainer))
+                        {
+                            ++expectedCount;
+                            callback.Invoke(promise);
+                        }
                     }
                 }
 
-                preservedPromise.Forget();
+#if !PROMISE_DEBUG
+                expectedCount -= 40;
+#endif
                 deferred.Reject(expectedRejectionValue);
                 cancelationSource.Dispose();
                 Assert.AreEqual(expectedCount, uncaughtCount);
@@ -117,7 +120,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void UncaughtRejectionIsSentToUncaughtRejectionHandler_T(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -175,18 +178,21 @@ namespace ProtoPromiseTests.APIs
                 );
 
                 var deferred = Promise.NewDeferred<int>();
-                var preservedPromise = deferred.Promise.Preserve();
-
-                foreach (var callback in actions)
+                using (var promiseRetainer = deferred.Promise.GetRetainer())
                 {
-                    foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
+                    foreach (var callback in actions)
                     {
-                        ++expectedCount;
-                        callback.Invoke(promise);
+                        foreach (var promise in TestHelper.GetTestablePromises(promiseRetainer))
+                        {
+                            ++expectedCount;
+                            callback.Invoke(promise);
+                        }
                     }
                 }
 
-                preservedPromise.Forget();
+#if !PROMISE_DEBUG
+                expectedCount -= 40;
+#endif
                 deferred.Reject(expectedRejectionValue);
                 cancelationSource.Dispose();
                 Assert.AreEqual(expectedCount, uncaughtCount);
@@ -197,7 +203,15 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        // In RELEASE mode, PromiseRetainer is used directly, and Duplicate returns itself.
+        // In DEBUG mode, a duplicate promise backing reference is used for each WaitAsync.
+#if PROMISE_DEBUG
+        private const int expectedSubtraction = 1;
+#else
+        private const int expectedSubtraction = 2;
+#endif
+
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void WhenPromiseIsCanceled_UncaughtRejectionIsSentToUncaughtRejectionHandler_void(object expectedRejectionValue)
         {
             // Testing an implementation detail - when a promise is canceled and the previous promise is rejected, it counts as an uncaught rejection.
@@ -238,20 +252,20 @@ namespace ProtoPromiseTests.APIs
                 .SelectMany(x => x);
 
                 var deferred = Promise.NewDeferred();
-                var preservedPromise = deferred.Promise.Preserve();
-
-                foreach (var callback in actions)
+                using (var promiseRetainer = deferred.Promise.GetRetainer())
                 {
-                    // We subtract 1 because the preserved promise will only report its unhandled rejection if none of the waiters suppress it. (In this case, the .Duplicate() does suppress it.)
-                    --expectedCount;
-                    foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
+                    foreach (var callback in actions)
                     {
-                        ++expectedCount;
-                        callback.Invoke(promise, cancelationSource.Token).Forget();
+                        // Subtract expected because the other testable promises suppress the preserved/retained promise's rejection.
+                        expectedCount -= expectedSubtraction;
+                        foreach (var promise in TestHelper.GetTestablePromises(promiseRetainer))
+                        {
+                            ++expectedCount;
+                            callback.Invoke(promise, cancelationSource.Token).Forget();
+                        }
                     }
                 }
 
-                preservedPromise.Forget();
                 cancelationSource.Cancel();
                 cancelationSource.Dispose();
                 deferred.Reject(expectedRejectionValue);
@@ -264,7 +278,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void WhenPromiseIsCanceled_UncaughtRejectionIsSentToUncaughtRejectionHandler_T(object expectedRejectionValue)
         {
             // Testing an implementation detail - when a promise is canceled and the previous promise is rejected, it counts as an uncaught rejection.
@@ -305,20 +319,19 @@ namespace ProtoPromiseTests.APIs
                 .SelectMany(x => x);
 
                 var deferred = Promise.NewDeferred<int>();
-                var preservedPromise = deferred.Promise.Preserve();
-
-                foreach (var callback in actions)
+                using (var promiseRetainer = deferred.Promise.GetRetainer())
                 {
-                    // We subtract 1 because the preserved promise will only report its unhandled rejection if none of the waiters suppress it. (In this case, the .Duplicate() does suppress it.)
-                    --expectedCount;
-                    foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
+                    foreach (var callback in actions)
                     {
-                        ++expectedCount;
-                        callback.Invoke(promise, cancelationSource.Token).Forget();
+                        // Subtract expected because the other testable promises suppress the preserved/retained promise's rejection.
+                        expectedCount -= expectedSubtraction;
+                        foreach (var promise in TestHelper.GetTestablePromises(promiseRetainer))
+                        {
+                            ++expectedCount;
+                            callback.Invoke(promise, cancelationSource.Token).Forget();
+                        }
                     }
                 }
-
-                preservedPromise.Forget();
                 cancelationSource.Cancel();
                 cancelationSource.Dispose();
                 deferred.Reject(expectedRejectionValue);
@@ -331,7 +344,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseAll_UncaughtRejectionIsSentToUncaughtRejectionHandler_void(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -356,30 +369,30 @@ namespace ProtoPromiseTests.APIs
 
                 var deferred1 = Promise.NewDeferred();
                 var deferred2 = Promise.NewDeferred();
-                var preservedPromise1 = deferred1.Promise.Preserve();
-                var preservedPromise2 = deferred2.Promise.Preserve();
-
-                // Subtract 1 because the other testable promises suppress the preserved promise's rejection.
-                --expectedCount;
-                foreach (var promise2 in TestHelper.GetTestablePromises(preservedPromise2))
+                using (var promiseRetainer1 = deferred1.Promise.GetRetainer())
                 {
-                    ++expectedCount;
-                    Promise.All(preservedPromise1, promise2)
-                        .Catch(() => { }) // We catch the first rejection, the second will be reported as uncaught.
-                        .Forget();
+                    using (var promiseRetainer2 = deferred2.Promise.GetRetainer())
+                    {
+                        // Subtract expected because the other testable promises suppress the preserved/retained promise's rejection.
+                        expectedCount -= expectedSubtraction;
+                        foreach (var promise2 in TestHelper.GetTestablePromises(promiseRetainer2))
+                        {
+                            ++expectedCount;
+                            Promise.All(promiseRetainer1.WaitAsync(), promise2)
+                                .Catch(() => { }) // We catch the first rejection, the second will be reported as uncaught.
+                                .Forget();
+                        }
+
+                        // Run it again with a freshly retained promise that isn't suppressed.
+                        ++expectedCount;
+                        using (var secondPromiseRetainer2 = promiseRetainer2.WaitAsync().GetRetainer())
+                        {
+                            Promise.All(promiseRetainer1.WaitAsync(), secondPromiseRetainer2.WaitAsync())
+                                .Catch(() => { })
+                                .Forget();
+                        }
+                    }
                 }
-
-                // Run it again with a freshly preserved promise that isn't suppressed.
-                ++expectedCount;
-                var secondPreservedPromise2 = preservedPromise2.Preserve();
-                preservedPromise2.Forget();
-
-                Promise.All(preservedPromise1, secondPreservedPromise2)
-                    .Catch(() => { })
-                    .Forget();
-
-                preservedPromise1.Forget();
-                secondPreservedPromise2.Forget();
                 deferred1.Reject(expectedRejectionValue);
                 deferred2.Reject(expectedRejectionValue);
                 Assert.AreEqual(expectedCount, uncaughtCount);
@@ -390,7 +403,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseAll_UncaughtRejectionIsSentToUncaughtRejectionHandler_T(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -415,30 +428,30 @@ namespace ProtoPromiseTests.APIs
 
                 var deferred1 = Promise.NewDeferred<int>();
                 var deferred2 = Promise.NewDeferred<int>();
-                var preservedPromise1 = deferred1.Promise.Preserve();
-                var preservedPromise2 = deferred2.Promise.Preserve();
-
-                // Subtract 1 because the other testable promises suppress the preserved promise's rejection.
-                --expectedCount;
-                foreach (var promise2 in TestHelper.GetTestablePromises(preservedPromise2))
+                using (var promiseRetainer1 = deferred1.Promise.GetRetainer())
                 {
-                    ++expectedCount;
-                    Promise<int>.All(preservedPromise1, promise2)
-                        .Catch(() => { }) // We catch the first rejection, the second will be reported as uncaught.
-                        .Forget();
+                    using (var promiseRetainer2 = deferred2.Promise.GetRetainer())
+                    {
+                        // Subtract expected because the other testable promises suppress the preserved/retained promise's rejection.
+                        expectedCount -= expectedSubtraction;
+                        foreach (var promise2 in TestHelper.GetTestablePromises(promiseRetainer2))
+                        {
+                            ++expectedCount;
+                            Promise<int>.All(promiseRetainer1.WaitAsync(), promise2)
+                                .Catch(() => { }) // We catch the first rejection, the second will be reported as uncaught.
+                                .Forget();
+                        }
+
+                        // Run it again with a freshly retained promise that isn't suppressed.
+                        ++expectedCount;
+                        using (var secondPromiseRetainer2 = promiseRetainer2.WaitAsync().GetRetainer())
+                        {
+                            Promise<int>.All(promiseRetainer1.WaitAsync(), secondPromiseRetainer2.WaitAsync())
+                                .Catch(() => { })
+                                .Forget();
+                        }
+                    }
                 }
-
-                // Run it again with a freshly preserved promise that isn't suppressed.
-                ++expectedCount;
-                var secondPreservedPromise2 = preservedPromise2.Preserve();
-                preservedPromise2.Forget();
-
-                Promise<int>.All(preservedPromise1, secondPreservedPromise2)
-                    .Catch(() => { })
-                    .Forget();
-
-                preservedPromise1.Forget();
-                secondPreservedPromise2.Forget();
                 deferred1.Reject(expectedRejectionValue);
                 deferred2.Reject(expectedRejectionValue);
                 Assert.AreEqual(expectedCount, uncaughtCount);
@@ -449,7 +462,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseMerge_UncaughtRejectionIsSentToUncaughtRejectionHandler(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -474,30 +487,30 @@ namespace ProtoPromiseTests.APIs
 
                 var deferred1 = Promise.NewDeferred<int>();
                 var deferred2 = Promise.NewDeferred<string>();
-                var preservedPromise1 = deferred1.Promise.Preserve();
-                var preservedPromise2 = deferred2.Promise.Preserve();
-
-                // Subtract 1 because the other testable promises suppress the preserved promise's rejection.
-                --expectedCount;
-                foreach (var promise2 in TestHelper.GetTestablePromises(preservedPromise2))
+                using (var promiseRetainer1 = deferred1.Promise.GetRetainer())
                 {
-                    ++expectedCount;
-                    Promise.Merge(preservedPromise1, promise2)
-                        .Catch(() => { }) // We catch the first rejection, the second will be reported as uncaught.
-                        .Forget();
+                    using (var promiseRetainer2 = deferred2.Promise.GetRetainer())
+                    {
+                        // Subtract expected because the other testable promises suppress the preserved/retained promise's rejection.
+                        expectedCount -= expectedSubtraction;
+                        foreach (var promise2 in TestHelper.GetTestablePromises(promiseRetainer2))
+                        {
+                            ++expectedCount;
+                            Promise.Merge(promiseRetainer1.WaitAsync(), promise2)
+                                .Catch(() => { }) // We catch the first rejection, the second will be reported as uncaught.
+                                .Forget();
+                        }
+
+                        // Run it again with a freshly retained promise that isn't suppressed.
+                        ++expectedCount;
+                        using (var secondPromiseRetainer2 = promiseRetainer2.WaitAsync().GetRetainer())
+                        {
+                            Promise.Merge(promiseRetainer1.WaitAsync(), secondPromiseRetainer2.WaitAsync())
+                                .Catch(() => { })
+                                .Forget();
+                        }
+                    }
                 }
-
-                // Run it again with a freshly preserved promise that isn't suppressed.
-                ++expectedCount;
-                var secondPreservedPromise2 = preservedPromise2.Preserve();
-                preservedPromise2.Forget();
-
-                Promise.Merge(preservedPromise1, secondPreservedPromise2)
-                    .Catch(() => { })
-                    .Forget();
-
-                preservedPromise1.Forget();
-                secondPreservedPromise2.Forget();
                 deferred1.Reject(expectedRejectionValue);
                 deferred2.Reject(expectedRejectionValue);
                 Assert.AreEqual(expectedCount, uncaughtCount);
@@ -508,7 +521,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseRace_UncaughtRejectionIsSentToUncaughtRejectionHandler_void(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -533,30 +546,30 @@ namespace ProtoPromiseTests.APIs
 
                 var deferred1 = Promise.NewDeferred();
                 var deferred2 = Promise.NewDeferred();
-                var preservedPromise1 = deferred1.Promise.Preserve();
-                var preservedPromise2 = deferred2.Promise.Preserve();
-
-                // Subtract 1 because the other testable promises suppress the preserved promise's rejection.
-                --expectedCount;
-                foreach (var promise2 in TestHelper.GetTestablePromises(preservedPromise2))
+                using (var promiseRetainer1 = deferred1.Promise.GetRetainer())
                 {
-                    ++expectedCount;
-                    Promise.Race(preservedPromise1, promise2)
-                        .Catch(() => { }) // We catch the first rejection, the second will be reported as uncaught.
-                        .Forget();
+                    using (var promiseRetainer2 = deferred2.Promise.GetRetainer())
+                    {
+                        // Subtract expected because the other testable promises suppress the preserved/retained promise's rejection.
+                        expectedCount -= expectedSubtraction;
+                        foreach (var promise2 in TestHelper.GetTestablePromises(promiseRetainer2))
+                        {
+                            ++expectedCount;
+                            Promise.Race(promiseRetainer1.WaitAsync(), promise2)
+                                .Catch(() => { }) // We catch the first rejection, the second will be reported as uncaught.
+                                .Forget();
+                        }
+
+                        // Run it again with a freshly retained promise that isn't suppressed.
+                        ++expectedCount;
+                        using (var secondPromiseRetainer2 = promiseRetainer2.WaitAsync().GetRetainer())
+                        {
+                            Promise.Race(promiseRetainer1.WaitAsync(), secondPromiseRetainer2.WaitAsync())
+                                .Catch(() => { })
+                                .Forget();
+                        }
+                    }
                 }
-
-                // Run it again with a freshly preserved promise that isn't suppressed.
-                ++expectedCount;
-                var secondPreservedPromise2 = preservedPromise2.Preserve();
-                preservedPromise2.Forget();
-
-                Promise.Race(preservedPromise1, secondPreservedPromise2)
-                    .Catch(() => { })
-                    .Forget();
-
-                preservedPromise1.Forget();
-                secondPreservedPromise2.Forget();
                 deferred1.Reject(expectedRejectionValue);
                 deferred2.Reject(expectedRejectionValue);
                 Assert.AreEqual(expectedCount, uncaughtCount);
@@ -567,7 +580,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseRace_UncaughtRejectionIsSentToUncaughtRejectionHandler_T(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -592,30 +605,30 @@ namespace ProtoPromiseTests.APIs
 
                 var deferred1 = Promise.NewDeferred<int>();
                 var deferred2 = Promise.NewDeferred<int>();
-                var preservedPromise1 = deferred1.Promise.Preserve();
-                var preservedPromise2 = deferred2.Promise.Preserve();
-
-                // Subtract 1 because the other testable promises suppress the preserved promise's rejection.
-                --expectedCount;
-                foreach (var promise2 in TestHelper.GetTestablePromises(preservedPromise2))
+                using (var promiseRetainer1 = deferred1.Promise.GetRetainer())
                 {
-                    ++expectedCount;
-                    Promise<int>.Race(preservedPromise1, promise2)
-                        .Catch(() => { }) // We catch the first rejection, the second will be reported as uncaught.
-                        .Forget();
+                    using (var promiseRetainer2 = deferred2.Promise.GetRetainer())
+                    {
+                        // Subtract expected because the other testable promises suppress the preserved/retained promise's rejection.
+                        expectedCount -= expectedSubtraction;
+                        foreach (var promise2 in TestHelper.GetTestablePromises(promiseRetainer2))
+                        {
+                            ++expectedCount;
+                            Promise<int>.Race(promiseRetainer1.WaitAsync(), promise2)
+                                .Catch(() => { }) // We catch the first rejection, the second will be reported as uncaught.
+                                .Forget();
+                        }
+
+                        // Run it again with a freshly retained promise that isn't suppressed.
+                        ++expectedCount;
+                        using (var secondPromiseRetainer2 = promiseRetainer2.WaitAsync().GetRetainer())
+                        {
+                            Promise<int>.Race(promiseRetainer1.WaitAsync(), secondPromiseRetainer2.WaitAsync())
+                                .Catch(() => { })
+                                .Forget();
+                        }
+                    }
                 }
-
-                // Run it again with a freshly preserved promise that isn't suppressed.
-                ++expectedCount;
-                var secondPreservedPromise2 = preservedPromise2.Preserve();
-                preservedPromise2.Forget();
-
-                Promise<int>.Race(preservedPromise1, secondPreservedPromise2)
-                    .Catch(() => { })
-                    .Forget();
-
-                preservedPromise1.Forget();
-                secondPreservedPromise2.Forget();
                 deferred1.Reject(expectedRejectionValue);
                 deferred2.Reject(expectedRejectionValue);
                 Assert.AreEqual(expectedCount, uncaughtCount);
@@ -626,7 +639,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseRaceWithIndex_UncaughtRejectionIsSentToUncaughtRejectionHandler_void(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -651,30 +664,30 @@ namespace ProtoPromiseTests.APIs
 
                 var deferred1 = Promise.NewDeferred();
                 var deferred2 = Promise.NewDeferred();
-                var preservedPromise1 = deferred1.Promise.Preserve();
-                var preservedPromise2 = deferred2.Promise.Preserve();
-
-                // Subtract 1 because the other testable promises suppress the preserved promise's rejection.
-                --expectedCount;
-                foreach (var promise2 in TestHelper.GetTestablePromises(preservedPromise2))
+                using (var promiseRetainer1 = deferred1.Promise.GetRetainer())
                 {
-                    ++expectedCount;
-                    Promise.RaceWithIndex(preservedPromise1, promise2)
-                        .Catch(() => { }) // We catch the first rejection, the second will be reported as uncaught.
-                        .Forget();
+                    using (var promiseRetainer2 = deferred2.Promise.GetRetainer())
+                    {
+                        // Subtract expected because the other testable promises suppress the preserved/retained promise's rejection.
+                        expectedCount -= expectedSubtraction;
+                        foreach (var promise2 in TestHelper.GetTestablePromises(promiseRetainer2))
+                        {
+                            ++expectedCount;
+                            Promise.RaceWithIndex(promiseRetainer1.WaitAsync(), promise2)
+                                .Catch(() => { }) // We catch the first rejection, the second will be reported as uncaught.
+                                .Forget();
+                        }
+
+                        // Run it again with a freshly retained promise that isn't suppressed.
+                        ++expectedCount;
+                        using (var secondPromiseRetainer2 = promiseRetainer2.WaitAsync().GetRetainer())
+                        {
+                            Promise.RaceWithIndex(promiseRetainer1.WaitAsync(), secondPromiseRetainer2.WaitAsync())
+                                .Catch(() => { })
+                                .Forget();
+                        }
+                    }
                 }
-
-                // Run it again with a freshly preserved promise that isn't suppressed.
-                ++expectedCount;
-                var secondPreservedPromise2 = preservedPromise2.Preserve();
-                preservedPromise2.Forget();
-
-                Promise.RaceWithIndex(preservedPromise1, secondPreservedPromise2)
-                    .Catch(() => { })
-                    .Forget();
-
-                preservedPromise1.Forget();
-                secondPreservedPromise2.Forget();
                 deferred1.Reject(expectedRejectionValue);
                 deferred2.Reject(expectedRejectionValue);
                 Assert.AreEqual(expectedCount, uncaughtCount);
@@ -685,7 +698,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseRaceWithIndex_UncaughtRejectionIsSentToUncaughtRejectionHandler_T(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -710,30 +723,30 @@ namespace ProtoPromiseTests.APIs
 
                 var deferred1 = Promise.NewDeferred<int>();
                 var deferred2 = Promise.NewDeferred<int>();
-                var preservedPromise1 = deferred1.Promise.Preserve();
-                var preservedPromise2 = deferred2.Promise.Preserve();
-
-                // Subtract 1 because the other testable promises suppress the preserved promise's rejection.
-                --expectedCount;
-                foreach (var promise2 in TestHelper.GetTestablePromises(preservedPromise2))
+                using (var promiseRetainer1 = deferred1.Promise.GetRetainer())
                 {
-                    ++expectedCount;
-                    Promise.RaceWithIndex(preservedPromise1, promise2)
-                        .Catch(() => { }) // We catch the first rejection, the second will be reported as uncaught.
-                        .Forget();
+                    using (var promiseRetainer2 = deferred2.Promise.GetRetainer())
+                    {
+                        // Subtract expected because the other testable promises suppress the preserved/retained promise's rejection.
+                        expectedCount -= expectedSubtraction;
+                        foreach (var promise2 in TestHelper.GetTestablePromises(promiseRetainer2))
+                        {
+                            ++expectedCount;
+                            Promise.RaceWithIndex(promiseRetainer1.WaitAsync(), promise2)
+                                .Catch(() => { }) // We catch the first rejection, the second will be reported as uncaught.
+                                .Forget();
+                        }
+
+                        // Run it again with a freshly retained promise that isn't suppressed.
+                        ++expectedCount;
+                        using (var secondPromiseRetainer2 = promiseRetainer2.WaitAsync().GetRetainer())
+                        {
+                            Promise.RaceWithIndex(promiseRetainer1.WaitAsync(), secondPromiseRetainer2.WaitAsync())
+                                .Catch(() => { })
+                                .Forget();
+                        }
+                    }
                 }
-
-                // Run it again with a freshly preserved promise that isn't suppressed.
-                ++expectedCount;
-                var secondPreservedPromise2 = preservedPromise2.Preserve();
-                preservedPromise2.Forget();
-
-                Promise.RaceWithIndex(preservedPromise1, secondPreservedPromise2)
-                    .Catch(() => { })
-                    .Forget();
-
-                preservedPromise1.Forget();
-                secondPreservedPromise2.Forget();
                 deferred1.Reject(expectedRejectionValue);
                 deferred2.Reject(expectedRejectionValue);
                 Assert.AreEqual(expectedCount, uncaughtCount);
@@ -744,7 +757,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseFirst_UncaughtRejectionIsSuppressed_void(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -761,27 +774,26 @@ namespace ProtoPromiseTests.APIs
 
                 var deferred1 = Promise.NewDeferred();
                 var deferred2 = Promise.NewDeferred();
-                var preservedPromise1 = deferred1.Promise.Preserve();
-                var preservedPromise2 = deferred2.Promise.Preserve();
-
-                // Subtract 1 because the other testable promises suppress the preserved promise's rejection.
-                foreach (var promise2 in TestHelper.GetTestablePromises(preservedPromise2))
+                using (var promiseRetainer1 = deferred1.Promise.GetRetainer())
                 {
-                    Promise.First(preservedPromise1, promise2)
-                        .Catch(() => { }) // We catch the first rejection, the second will be reported as uncaught.
-                        .Forget();
+                    using (var promiseRetainer2 = deferred2.Promise.GetRetainer())
+                    {
+                        foreach (var promise2 in TestHelper.GetTestablePromises(promiseRetainer2))
+                        {
+                            Promise.First(promiseRetainer1.WaitAsync(), promise2)
+                                .Catch(() => { }) // We catch the first rejection, the second will be reported as uncaught.
+                                .Forget();
+                        }
+
+                        // Run it again with a freshly retained promise that isn't suppressed.
+                        using (var secondPromiseRetainer2 = promiseRetainer2.WaitAsync().GetRetainer())
+                        {
+                            Promise.First(promiseRetainer1.WaitAsync(), secondPromiseRetainer2.WaitAsync())
+                                .Catch(() => { })
+                                .Forget();
+                        }
+                    }
                 }
-
-                // Run it again with a freshly preserved promise that isn't suppressed.
-                var secondPreservedPromise2 = preservedPromise2.Preserve();
-                preservedPromise2.Forget();
-
-                Promise.First(preservedPromise1, secondPreservedPromise2)
-                    .Catch(() => { })
-                    .Forget();
-
-                preservedPromise1.Forget();
-                secondPreservedPromise2.Forget();
                 deferred1.Reject(expectedRejectionValue);
                 deferred2.Reject(expectedRejectionValue);
                 Assert.AreEqual(0, uncaughtCount);
@@ -792,7 +804,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseFirst_UncaughtRejectionIsSuppressed_T(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -809,27 +821,26 @@ namespace ProtoPromiseTests.APIs
 
                 var deferred1 = Promise.NewDeferred<int>();
                 var deferred2 = Promise.NewDeferred<int>();
-                var preservedPromise1 = deferred1.Promise.Preserve();
-                var preservedPromise2 = deferred2.Promise.Preserve();
-
-                // Subtract 1 because the other testable promises suppress the preserved promise's rejection.
-                foreach (var promise2 in TestHelper.GetTestablePromises(preservedPromise2))
+                using (var promiseRetainer1 = deferred1.Promise.GetRetainer())
                 {
-                    Promise<int>.First(preservedPromise1, promise2)
-                        .Catch(() => { }) // We catch the first rejection, the second will be reported as uncaught.
-                        .Forget();
+                    using (var promiseRetainer2 = deferred2.Promise.GetRetainer())
+                    {
+                        foreach (var promise2 in TestHelper.GetTestablePromises(promiseRetainer2))
+                        {
+                            Promise<int>.First(promiseRetainer1.WaitAsync(), promise2)
+                                .Catch(() => { }) // We catch the first rejection, the second will be reported as uncaught.
+                                .Forget();
+                        }
+
+                        // Run it again with a freshly retained promise that isn't suppressed.
+                        using (var secondPromiseRetainer2 = promiseRetainer2.WaitAsync().GetRetainer())
+                        {
+                            Promise<int>.First(promiseRetainer1.WaitAsync(), secondPromiseRetainer2.WaitAsync())
+                                .Catch(() => { })
+                                .Forget();
+                        }
+                    }
                 }
-
-                // Run it again with a freshly preserved promise that isn't suppressed.
-                var secondPreservedPromise2 = preservedPromise2.Preserve();
-                preservedPromise2.Forget();
-
-                Promise<int>.First(preservedPromise1, secondPreservedPromise2)
-                    .Catch(() => { })
-                    .Forget();
-
-                preservedPromise1.Forget();
-                secondPreservedPromise2.Forget();
                 deferred1.Reject(expectedRejectionValue);
                 deferred2.Reject(expectedRejectionValue);
                 Assert.AreEqual(0, uncaughtCount);
@@ -840,7 +851,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseFirstWithIndex_UncaughtRejectionIsSuppressed_void(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -857,27 +868,26 @@ namespace ProtoPromiseTests.APIs
 
                 var deferred1 = Promise.NewDeferred();
                 var deferred2 = Promise.NewDeferred();
-                var preservedPromise1 = deferred1.Promise.Preserve();
-                var preservedPromise2 = deferred2.Promise.Preserve();
-
-                // Subtract 1 because the other testable promises suppress the preserved promise's rejection.
-                foreach (var promise2 in TestHelper.GetTestablePromises(preservedPromise2))
+                using (var promiseRetainer1 = deferred1.Promise.GetRetainer())
                 {
-                    Promise.FirstWithIndex(preservedPromise1, promise2)
-                        .Catch(() => { }) // We catch the first rejection, the second will be reported as uncaught.
-                        .Forget();
+                    using (var promiseRetainer2 = deferred2.Promise.GetRetainer())
+                    {
+                        foreach (var promise2 in TestHelper.GetTestablePromises(promiseRetainer2))
+                        {
+                            Promise.FirstWithIndex(promiseRetainer1.WaitAsync(), promise2)
+                                .Catch(() => { }) // We catch the first rejection, the second will be reported as uncaught.
+                                .Forget();
+                        }
+
+                        // Run it again with a freshly retained promise that isn't suppressed.
+                        using (var secondPromiseRetainer2 = promiseRetainer2.WaitAsync().GetRetainer())
+                        {
+                            Promise.FirstWithIndex(promiseRetainer1.WaitAsync(), secondPromiseRetainer2.WaitAsync())
+                                .Catch(() => { })
+                                .Forget();
+                        }
+                    }
                 }
-
-                // Run it again with a freshly preserved promise that isn't suppressed.
-                var secondPreservedPromise2 = preservedPromise2.Preserve();
-                preservedPromise2.Forget();
-
-                Promise.FirstWithIndex(preservedPromise1, secondPreservedPromise2)
-                    .Catch(() => { })
-                    .Forget();
-
-                preservedPromise1.Forget();
-                secondPreservedPromise2.Forget();
                 deferred1.Reject(expectedRejectionValue);
                 deferred2.Reject(expectedRejectionValue);
                 Assert.AreEqual(0, uncaughtCount);
@@ -888,7 +898,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejections")]
+        [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseFirstWithIndex_UncaughtRejectionIsSuppressed_T(object expectedRejectionValue)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -905,27 +915,26 @@ namespace ProtoPromiseTests.APIs
 
                 var deferred1 = Promise.NewDeferred<int>();
                 var deferred2 = Promise.NewDeferred<int>();
-                var preservedPromise1 = deferred1.Promise.Preserve();
-                var preservedPromise2 = deferred2.Promise.Preserve();
-
-                // Subtract 1 because the other testable promises suppress the preserved promise's rejection.
-                foreach (var promise2 in TestHelper.GetTestablePromises(preservedPromise2))
+                using (var promiseRetainer1 = deferred1.Promise.GetRetainer())
                 {
-                    Promise.FirstWithIndex(preservedPromise1, promise2)
-                        .Catch(() => { }) // We catch the first rejection, the second will be reported as uncaught.
-                        .Forget();
+                    using (var promiseRetainer2 = deferred2.Promise.GetRetainer())
+                    {
+                        foreach (var promise2 in TestHelper.GetTestablePromises(promiseRetainer2))
+                        {
+                            Promise.FirstWithIndex(promiseRetainer1.WaitAsync(), promise2)
+                                .Catch(() => { }) // We catch the first rejection, the second will be reported as uncaught.
+                                .Forget();
+                        }
+
+                        // Run it again with a freshly retained promise that isn't suppressed.
+                        using (var secondPromiseRetainer2 = promiseRetainer2.WaitAsync().GetRetainer())
+                        {
+                            Promise.FirstWithIndex(promiseRetainer1.WaitAsync(), secondPromiseRetainer2.WaitAsync())
+                                .Catch(() => { })
+                                .Forget();
+                        }
+                    }
                 }
-
-                // Run it again with a freshly preserved promise that isn't suppressed.
-                var secondPreservedPromise2 = preservedPromise2.Preserve();
-                preservedPromise2.Forget();
-
-                Promise.FirstWithIndex(preservedPromise1, secondPreservedPromise2)
-                    .Catch(() => { })
-                    .Forget();
-
-                preservedPromise1.Forget();
-                secondPreservedPromise2.Forget();
                 deferred1.Reject(expectedRejectionValue);
                 deferred2.Reject(expectedRejectionValue);
                 Assert.AreEqual(0, uncaughtCount);
@@ -955,7 +964,7 @@ namespace ProtoPromiseTests.APIs
                 }
         }
 
-        [Test, TestCaseSource("GetExpectedRejectionsAndTimeout")]
+        [Test, TestCaseSource(nameof(GetExpectedRejectionsAndTimeout))]
         public void PromiseWait_UncaughtRejectionIsSentToUncaughtRejectionHandler(object expectedRejectionValue, int timeout)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -977,20 +986,29 @@ namespace ProtoPromiseTests.APIs
                 };
 
                 var deferred = Promise.NewDeferred();
-                var preservedPromise = deferred.Promise.Preserve();
-
-                foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
+                using (var promiseRetainer = deferred.Promise.GetRetainer())
                 {
-                    ++expectedCount;
-                    Assert.IsFalse(promise.TryWait(System.TimeSpan.FromMilliseconds(timeout)));
+                    foreach (var promise in TestHelper.GetTestablePromises(promiseRetainer))
+                    {
+                        ++expectedCount;
+                        Assert.IsFalse(promise.TryWait(System.TimeSpan.FromMilliseconds(timeout)));
+                    }
+
+#if !PROMISE_DEBUG
+                    // Run it again with a freshly retained promise, because the initial promise will have had its rejection suppressed by the other promises.
+                    using (var secondPromiseRetainer = promiseRetainer.WaitAsync().GetRetainer())
+                    {
+                        Assert.IsFalse(secondPromiseRetainer.WaitAsync().TryWait(System.TimeSpan.FromMilliseconds(timeout)));
+                    }
+#endif
+
+                    // Run it again with a freshly preserved promise, because the preserved testabled promise will have had its rejection suppressed by the other promises.
+#pragma warning disable CS0618 // Type or member is obsolete
+                    var secondPreservedPromise = promiseRetainer.WaitAsync().Preserve();
+#pragma warning restore CS0618 // Type or member is obsolete
+                    Assert.IsFalse(secondPreservedPromise.TryWait(System.TimeSpan.FromMilliseconds(timeout)));
+                    secondPreservedPromise.Forget();
                 }
-
-                // Run it again with a freshly preserved promise, because the initial promise will have had its rejection suppressed by the other promises.
-                var secondPreservedPromise = preservedPromise.Preserve();
-                preservedPromise.Forget();
-                Assert.IsFalse(secondPreservedPromise.TryWait(System.TimeSpan.FromMilliseconds(timeout)));
-
-                secondPreservedPromise.Forget();
                 deferred.Reject(expectedRejectionValue);
                 Assert.AreEqual(expectedCount, uncaughtCount);
             }
@@ -1000,7 +1018,7 @@ namespace ProtoPromiseTests.APIs
             }
         }
 
-        [Test, TestCaseSource("GetExpectedRejectionsAndTimeout")]
+        [Test, TestCaseSource(nameof(GetExpectedRejectionsAndTimeout))]
         public void PromiseWaitForResult_UncaughtRejectionIsSentToUncaughtRejectionHandler(object expectedRejectionValue, int timeout)
         {
             var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
@@ -1022,21 +1040,29 @@ namespace ProtoPromiseTests.APIs
                 };
 
                 var deferred = Promise.NewDeferred<int>();
-                var preservedPromise = deferred.Promise.Preserve();
-
-                int outResult;
-                foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
+                using (var promiseRetainer = deferred.Promise.GetRetainer())
                 {
-                    ++expectedCount;
-                    Assert.IsFalse(promise.TryWaitForResult(System.TimeSpan.FromMilliseconds(timeout), out outResult));
+                    foreach (var promise in TestHelper.GetTestablePromises(promiseRetainer))
+                    {
+                        ++expectedCount;
+                        Assert.IsFalse(promise.TryWaitForResult(System.TimeSpan.FromMilliseconds(timeout), out _));
+                    }
+
+#if !PROMISE_DEBUG
+                    // Run it again with a freshly retained promise, because the retained promise will have had its rejection suppressed by the other promises.
+                    using (var secondPromiseRetainer = promiseRetainer.WaitAsync().GetRetainer())
+                    {
+                        Assert.IsFalse(secondPromiseRetainer.WaitAsync().TryWaitForResult(System.TimeSpan.FromMilliseconds(timeout), out _));
+                    }
+#endif
+
+                    // Run it again with a freshly preserved promise, because the preserved testabled promise will have had its rejection suppressed by the other promises.
+#pragma warning disable CS0618 // Type or member is obsolete
+                    var secondPreservedPromise = promiseRetainer.WaitAsync().Preserve();
+#pragma warning restore CS0618 // Type or member is obsolete
+                    Assert.IsFalse(secondPreservedPromise.TryWaitForResult(System.TimeSpan.FromMilliseconds(timeout), out _));
+                    secondPreservedPromise.Forget();
                 }
-
-                // Run it again with a freshly preserved promise, because the initial promise will have had its rejection suppressed by the other promises.
-                var secondPreservedPromise = preservedPromise.Preserve();
-                preservedPromise.Forget();
-                Assert.IsFalse(secondPreservedPromise.TryWaitForResult(System.TimeSpan.FromMilliseconds(timeout), out outResult));
-
-                secondPreservedPromise.Forget();
                 deferred.Reject(expectedRejectionValue);
                 Assert.AreEqual(expectedCount, uncaughtCount);
             }
@@ -1046,5 +1072,5 @@ namespace ProtoPromiseTests.APIs
             }
         }
 #endif // !UNITY_WEBGL
-    }
-}
+                }
+            }

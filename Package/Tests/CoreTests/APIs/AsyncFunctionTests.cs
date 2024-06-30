@@ -269,7 +269,6 @@ namespace ProtoPromiseTests.APIs
             var deferred = Promise.NewDeferred();
             cancelationSource.Token.Register(deferred);
 
-            //System.Diagnostics.Debugger.Launch();
             bool canceled = false;
 
             async Promise Func()

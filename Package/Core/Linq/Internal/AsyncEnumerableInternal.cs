@@ -170,6 +170,14 @@ namespace Proto.Promises
                     // This is never used as a backing reference for Promises, so we need to suppress the UnobservedPromiseException from the base finalizer.
                     WasAwaitedOrForgotten = true;
                 }
+
+                protected void ResetForNextAwait()
+                {
+                    // Invalidate the previous awaiter.
+                    IncrementPromiseIdAndClearPrevious();
+                    // Reset for the next awaiter.
+                    ResetWithoutStacktrace();
+                }
             } // class AsyncEnumerableBase<T>
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -219,10 +227,7 @@ namespace Proto.Promises
 
                 private void MoveNext()
                 {
-                    // Invalidate the previous awaiter.
-                    IncrementPromiseIdAndClearPrevious();
-                    // Reset for the next awaiter.
-                    ResetWithoutStacktrace();
+                    ResetForNextAwait();
                     // Handle iterator promise to move the async state machine forward.
                     Interlocked.Exchange(ref _iteratorPromiseRef, null).Handle(this, Promise.State.Resolved);
                 }
@@ -285,15 +290,12 @@ namespace Proto.Promises
                     _current = default;
                     _iteratorCompleteExpectedId = newId;
                     _iteratorCompleteId = newId;
-                    // Invalidate the previous awaiter.
-                    IncrementPromiseIdAndClearPrevious();
-                    // Reset for the next awaiter.
-                    ResetWithoutStacktrace();
+                    ResetForNextAwait();
                     iteratorPromise.Handle(this, Promise.State.Resolved);
                     return new Promise(this, Id);
                 }
 
-                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                internal override sealed void Handle(PromiseRefBase handler, Promise.State state)
                 {
                     // This is called when the async iterator function completes.
                     ThrowIfInPool(this);
@@ -338,7 +340,7 @@ namespace Proto.Promises
                             // Reset in case the async iterator function completes synchronously from Start.
                             ResetWithoutStacktrace();
                             // Throw this special exception so that the async iterator function will run any finally blocks and complete.
-                            throw AsyncEnumerableDisposedException.s_instance;
+                            throw AsyncEnumerableDisposedException.GetOrCreate();
                         }
                         throw new InvalidOperationException("AsyncStreamYielder.GetResult: instance is not valid. This should only be called from the async iterator method, and it may only be called once.", GetFormattedStacktrace(2));
                     }
@@ -419,10 +421,7 @@ namespace Proto.Promises
                     return;
                 }
 
-                // We only set _previous to support circular await detection.
-#if PROMISE_DEBUG
-                _previous = iteratorPromise._ref;
-#endif
+                this.SetPrevious(iteratorPromise._ref);
                 // We hook this up directly to the returned promise so we can know when the iteration is complete, and use this for the DisposeAsync promise.
                 iteratorPromise._ref.HookupExistingWaiter(iteratorPromise._id, this);
             }

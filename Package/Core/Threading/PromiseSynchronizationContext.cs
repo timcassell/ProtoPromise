@@ -51,8 +51,14 @@ namespace Proto.Promises.Threading
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        private sealed class SendCallback : Internal.HandleablePromiseBase
+        private sealed class SendCallback : Internal.HandleablePromiseBase, Internal.ILinked<SendCallback>
         {
+            SendCallback Internal.ILinked<SendCallback>.Next
+            {
+                get => _next.UnsafeAs<SendCallback>();
+                set => _next = value;
+            }
+
             private PostCallback _callback;
             private ExceptionDispatchInfo _capturedInfo;
             private readonly AutoResetEvent _callbackCompletedEvent = new AutoResetEvent(false);
@@ -118,7 +124,7 @@ namespace Proto.Promises.Threading
         private PostCallback[] _postQueue;
         private PostCallback[] _executing;
         // These must not be readonly.
-        private Internal.ValueLinkedQueue<Internal.HandleablePromiseBase> _sendQueue = new Internal.ValueLinkedQueue<Internal.HandleablePromiseBase>();
+        private Internal.ValueLinkedQueue<SendCallback> _sendQueue = new Internal.ValueLinkedQueue<SendCallback>();
         private Internal.SpinLocker _syncLocker;
         private int _postCount;
         private bool _isInvoking;
@@ -228,22 +234,23 @@ namespace Proto.Promises.Threading
                     // We don't need to catch exceptions here because it's already handled in the SendCallback.Invoke().
                     while (sendStack.IsNotEmpty)
                     {
-                        sendStack.Pop().UnsafeAs<SendCallback>().Invoke();
+                        sendStack.Pop().Invoke();
                     }
 
                     // Catch all exceptions and continue executing callbacks until all are exhausted, then if there are any, throw all exceptions wrapped in AggregateException.
                     List<Exception> exceptions = null;
                     for (int i = 0; i < postCount; ++i)
                     {
+                        ref var callback = ref postQueue[i];
                         try
                         {
-                            postQueue[i].Invoke();
-                            postQueue[i] = default;
+                            callback.Invoke();
                         }
                         catch (Exception e)
                         {
                             Internal.RecordException(e, ref exceptions);
                         }
+                        callback = default;
                     }
 
                     if (exceptions != null)

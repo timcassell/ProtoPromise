@@ -96,10 +96,16 @@ namespace Proto.Promises
         private const ITraceable SynchronousTraceable = null;
 #endif
 
+        static partial void SetPrevious(this PromiseRefBase promise, PromiseRefBase previous);
         static partial void SetCreatedStacktrace(ITraceable traceable, int skipFrames);
         static partial void SetCurrentInvoker(ITraceable current);
         static partial void ClearCurrentInvoker();
+
 #if PROMISE_DEBUG
+        // We only set _previous to support circular await detection in DEBUG mode.
+        static partial void SetPrevious(this PromiseRefBase promise, PromiseRefBase previous)
+            => promise._previous = previous;
+
         static partial void SetCreatedStacktrace(ITraceable traceable, int skipFrames)
             => SetCreatedStacktraceImpl(traceable, skipFrames);
 
@@ -146,6 +152,15 @@ namespace Proto.Promises
             if (arg == null)
             {
                 throw new ArgumentNullException(argName, null, GetFormattedStacktrace(skipFrames + 1));
+            }
+        }
+        internal static void ValidateArgument(Promise arg, string argName, int skipFrames)
+        {
+            if (!arg.IsValid)
+            {
+                throw new InvalidArgumentException(argName,
+                    "Promise is invalid. Call `GetRetainer()` if you intend to await multiple times.",
+                    Internal.GetFormattedStacktrace(skipFrames + 1));
             }
         }
 
@@ -234,8 +249,7 @@ namespace Proto.Promises
             if (!promise.IsValid)
             {
                 throw new InvalidOperationException("Promise is invalid." +
-                    " Call `Preserve()` if you intend to add multiple callbacks or await multiple times on a single promise instance." +
-                    " Remember to call `Forget()` when you are finished with it!",
+                    " Call `GetRetainer()` if you intend to await multiple times.",
                     GetFormattedStacktrace(skipFrames + 1));
             }
         }
@@ -468,25 +482,15 @@ namespace Proto.Promises
             => Internal.ValidateArgument(arg, argName, skipFrames + 1);
 
         static partial void ValidateArgument(Promise arg, string argName, int skipFrames)
-        {
-            if (!arg.IsValid)
-            {
-                throw new InvalidArgumentException(argName,
-                    "Promise is invalid." +
-                    " Call `Preserve()` if you intend to add multiple callbacks or await multiple times on a single promise instance." +
-                    " Remember to call `Forget()` when you are finished with it!",
-                    Internal.GetFormattedStacktrace(skipFrames + 1));
-            }
-        }
+            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
 
         static partial void ValidateElement(Promise promise, string argName, int skipFrames)
         {
             if (!promise.IsValid)
             {
                 throw new InvalidElementException(argName,
-                    string.Format("A promise is invalid in {0}." +
-                    " Call `Preserve()` if you intend to add multiple callbacks or await multiple times on a single promise instance." +
-                    " Remember to call `Forget()` when you are finished with it!", argName),
+                    $"A promise is invalid in {argName}." +
+                    " Call `GetRetainer()` if you intend to await multiple times.",
                     Internal.GetFormattedStacktrace(skipFrames + 1));
             }
         }
@@ -508,25 +512,15 @@ namespace Proto.Promises
             => Internal.ValidateArgument(arg, argName, skipFrames + 1);
 
         static partial void ValidateArgument(Promise<T> arg, string argName, int skipFrames)
-        {
-            if (!arg.IsValid)
-            {
-                throw new InvalidArgumentException(argName,
-                    "Promise is invalid." +
-                    " Call `Preserve()` if you intend to add multiple callbacks or await multiple times on a single promise instance." +
-                    " Remember to call `Forget()` when you are finished with it!",
-                    Internal.GetFormattedStacktrace(skipFrames + 1));
-            }
-        }
+            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
 
         static partial void ValidateElement(Promise<T> promise, string argName, int skipFrames)
         {
             if (!promise.IsValid)
             {
                 throw new InvalidElementException(argName,
-                    string.Format("A promise is invalid in {0}." +
-                    " Call `Preserve()` if you intend to add multiple callbacks or await multiple times on a single promise instance." +
-                    " Remember to call `Forget()` when you are finished with it!", argName),
+                    $"A promise is invalid in {argName}." +
+                    " Call `GetRetainer()` if you intend to await multiple times.",
                     Internal.GetFormattedStacktrace(skipFrames + 1));
             }
         }

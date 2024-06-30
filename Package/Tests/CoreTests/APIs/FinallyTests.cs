@@ -29,15 +29,12 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void IfOnFinallyIsNullThrow_void()
         {
-            var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
+            var promise = Promise.Resolved();
 
             Assert.Throws<Proto.Promises.ArgumentNullException>(() => promise.Finally(default(Action)));
             Assert.Throws<Proto.Promises.ArgumentNullException>(() => promise.Finally(42, default(Action<int>)));
             Assert.Throws<Proto.Promises.ArgumentNullException>(() => promise.Finally(default(Func<Promise>)));
             Assert.Throws<Proto.Promises.ArgumentNullException>(() => promise.Finally(42, default(Func<int, Promise>)));
-
-            deferred.Resolve();
 
             promise.Forget();
         }
@@ -45,15 +42,12 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void IfOnFinallyIsNullThrow_T()
         {
-            var deferred = Promise.NewDeferred<int>();
-            var promise = deferred.Promise.Preserve();
+            var promise = Promise.Resolved(1);
 
             Assert.Throws<Proto.Promises.ArgumentNullException>(() => promise.Finally(default(Action)));
             Assert.Throws<Proto.Promises.ArgumentNullException>(() => promise.Finally(42, default(Action<int>)));
             Assert.Throws<Proto.Promises.ArgumentNullException>(() => promise.Finally(default(Func<Promise>)));
             Assert.Throws<Proto.Promises.ArgumentNullException>(() => promise.Finally(42, default(Func<int, Promise>)));
-
-            deferred.Resolve(1);
 
             promise.Forget();
         }
@@ -65,55 +59,51 @@ namespace ProtoPromiseTests.APIs
             [Values] bool isAlreadyComplete)
         {
             const string rejection = "Reject";
-            Promise.Deferred deferred;
-            CancelationSource cancelationSource;
-            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection, out deferred, out cancelationSource)
-                .Preserve();
-
-            int testCount = 0;
-            int finallyCount = 0;
-            int completeCount = 0;
-            const string captureValue = "captureValue";
-
-            foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
+            using (var promiseRetainer = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection, out var tryCompleter)
+                .GetRetainer())
             {
-                ++testCount;
-                promise
-                    .Finally(() => ++finallyCount)
-                    .Finally(captureValue, s =>
-                    {
-                        Assert.AreEqual(captureValue, s);
-                        ++finallyCount;
-                    })
-                    .ContinueWith(resultContainer =>
-                    {
-                        if (completeType == CompleteType.Resolve)
+                int testCount = 0;
+                int finallyCount = 0;
+                int completeCount = 0;
+                const string captureValue = "captureValue";
+
+                foreach (var promise in TestHelper.GetTestablePromises(promiseRetainer))
+                {
+                    ++testCount;
+                    promise
+                        .Finally(() => ++finallyCount)
+                        .Finally(captureValue, s =>
                         {
-                            Assert.AreEqual(Promise.State.Resolved, resultContainer.State);
-                        }
-                        else if (completeType == CompleteType.Reject)
+                            Assert.AreEqual(captureValue, s);
+                            ++finallyCount;
+                        })
+                        .ContinueWith(resultContainer =>
                         {
-                            Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                            Assert.AreEqual(rejection, resultContainer.Reason);
-                        }
-                        else
-                        {
-                            Assert.AreEqual(Promise.State.Canceled, resultContainer.State);
-                        }
-                        ++completeCount;
-                    })
-                    .Forget();
+                            if (completeType == CompleteType.Resolve)
+                            {
+                                Assert.AreEqual(Promise.State.Resolved, resultContainer.State);
+                            }
+                            else if (completeType == CompleteType.Reject)
+                            {
+                                Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
+                                Assert.AreEqual(rejection, resultContainer.Reason);
+                            }
+                            else
+                            {
+                                Assert.AreEqual(Promise.State.Canceled, resultContainer.State);
+                            }
+                            ++completeCount;
+                        })
+                        .Forget();
+                }
+
+                Assert.Greater(testCount, 0);
+
+                tryCompleter();
+
+                Assert.AreEqual(2 * testCount, finallyCount);
+                Assert.AreEqual(testCount, completeCount);
             }
-
-            Assert.Greater(testCount, 0);
-
-            TestHelper.GetTryCompleterVoid(completeType, rejection).Invoke(deferred, cancelationSource);
-
-            Assert.AreEqual(2 * testCount, finallyCount);
-            Assert.AreEqual(testCount, completeCount);
-
-            preservedPromise.Forget();
-            cancelationSource.TryDispose();
         }
 
         [Test]
@@ -123,56 +113,52 @@ namespace ProtoPromiseTests.APIs
         {
             const int resolveValue = 42;
             const string rejection = "Reject";
-            CancelationSource cancelationSource;
-            Promise<int>.Deferred deferred;
-            var preservedPromise = TestHelper.BuildPromise<int, string>(completeType, isAlreadyComplete, resolveValue, rejection, out deferred, out cancelationSource)
-                .Preserve();
-
-            int testCount = 0;
-            int finallyCount = 0;
-            int completeCount = 0;
-            const string captureValue = "captureValue";
-
-            foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
+            using (var promiseRetainer = TestHelper.BuildPromise(completeType, isAlreadyComplete, resolveValue, rejection, out var tryCompleter)
+                .GetRetainer())
             {
-                ++testCount;
-                promise
-                    .Finally(() => ++finallyCount)
-                    .Finally(captureValue, s =>
-                    {
-                        Assert.AreEqual(captureValue, s);
-                        ++finallyCount;
-                    })
-                    .ContinueWith(resultContainer =>
-                    {
-                        if (completeType == CompleteType.Resolve)
+                int testCount = 0;
+                int finallyCount = 0;
+                int completeCount = 0;
+                const string captureValue = "captureValue";
+
+                foreach (var promise in TestHelper.GetTestablePromises(promiseRetainer))
+                {
+                    ++testCount;
+                    promise
+                        .Finally(() => ++finallyCount)
+                        .Finally(captureValue, s =>
                         {
-                            Assert.AreEqual(Promise.State.Resolved, resultContainer.State);
-                            Assert.AreEqual(resolveValue, resultContainer.Value);
-                        }
-                        else if (completeType == CompleteType.Reject)
+                            Assert.AreEqual(captureValue, s);
+                            ++finallyCount;
+                        })
+                        .ContinueWith(resultContainer =>
                         {
-                            Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                            Assert.AreEqual(rejection, resultContainer.Reason);
-                        }
-                        else
-                        {
-                            Assert.AreEqual(Promise.State.Canceled, resultContainer.State);
-                        }
-                        ++completeCount;
-                    })
-                    .Forget();
+                            if (completeType == CompleteType.Resolve)
+                            {
+                                Assert.AreEqual(Promise.State.Resolved, resultContainer.State);
+                                Assert.AreEqual(resolveValue, resultContainer.Value);
+                            }
+                            else if (completeType == CompleteType.Reject)
+                            {
+                                Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
+                                Assert.AreEqual(rejection, resultContainer.Reason);
+                            }
+                            else
+                            {
+                                Assert.AreEqual(Promise.State.Canceled, resultContainer.State);
+                            }
+                            ++completeCount;
+                        })
+                        .Forget();
+                }
+
+                Assert.Greater(testCount, 0);
+
+                tryCompleter();
+
+                Assert.AreEqual(2 * testCount, finallyCount);
+                Assert.AreEqual(testCount, completeCount);
             }
-
-            Assert.Greater(testCount, 0);
-
-            TestHelper.GetTryCompleterT(completeType, resolveValue, rejection).Invoke(deferred, cancelationSource);
-
-            Assert.AreEqual(2 * testCount, finallyCount);
-            Assert.AreEqual(testCount, completeCount);
-
-            preservedPromise.Forget();
-            cancelationSource.TryDispose();
         }
 
         [Test]
@@ -193,42 +179,38 @@ namespace ProtoPromiseTests.APIs
                 ++uncaughtHandledCount;
             };
 
-            Promise.Deferred deferred;
-            CancelationSource cancelationSource;
-            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection, out deferred, out cancelationSource)
-                .Preserve();
-
-            int testCount = 0;
-            int catchCount = 0;
-            Exception expected = new Exception();
-
-            foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
+            using (var promiseRetainer = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection, out var tryCompleter)
+                .GetRetainer())
             {
-                ++testCount;
+                int testCount = 0;
+                int catchCount = 0;
+                Exception expected = new Exception();
+
+                foreach (var promise in TestHelper.GetTestablePromises(promiseRetainer))
+                {
+                    ++testCount;
 #pragma warning disable CS0162 // Unreachable code detected
-                (isAsync
-                    ? promise.Finally(() => { throw expected; return Promise.Resolved(); })
-                    : promise.Finally(() => { throw expected; }))
+                    (isAsync
+                        ? promise.Finally(() => { throw expected; return Promise.Resolved(); })
+                        : promise.Finally(() => { throw expected; }))
 #pragma warning restore CS0162 // Unreachable code detected
-                    .Catch((Exception e) =>
-                    {
-                        Assert.AreEqual(expected, e);
-                        ++catchCount;
-                    })
-                    .Forget();
+                        .Catch((Exception e) =>
+                        {
+                            Assert.AreEqual(expected, e);
+                            ++catchCount;
+                        })
+                        .Forget();
+                }
+
+                Assert.Greater(testCount, 0);
+
+                tryCompleter();
+
+                Assert.AreEqual(testCount, catchCount);
+                Assert.AreEqual(completeType == CompleteType.Reject ? testCount : 0, uncaughtHandledCount);
+
+                Promise.Config.UncaughtRejectionHandler = currentHandler;
             }
-
-            Assert.Greater(testCount, 0);
-
-            TestHelper.GetTryCompleterVoid(completeType, rejection).Invoke(deferred, cancelationSource);
-
-            Assert.AreEqual(testCount, catchCount);
-            Assert.AreEqual(completeType == CompleteType.Reject ? testCount : 0, uncaughtHandledCount);
-
-            preservedPromise.Forget();
-            cancelationSource.TryDispose();
-
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test]
@@ -250,42 +232,38 @@ namespace ProtoPromiseTests.APIs
             };
 
             const int resolveValue = 42;
-            CancelationSource cancelationSource;
-            Promise<int>.Deferred deferred;
-            var preservedPromise = TestHelper.BuildPromise<int, string>(completeType, isAlreadyComplete, resolveValue, rejection, out deferred, out cancelationSource)
-                .Preserve();
-
-            int testCount = 0;
-            int catchCount = 0;
-            Exception expected = new Exception();
-
-            foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
+            using (var promiseRetainer = TestHelper.BuildPromise(completeType, isAlreadyComplete, resolveValue, rejection, out var tryCompleter)
+                .GetRetainer())
             {
-                ++testCount;
+                int testCount = 0;
+                int catchCount = 0;
+                Exception expected = new Exception();
+
+                foreach (var promise in TestHelper.GetTestablePromises(promiseRetainer))
+                {
+                    ++testCount;
 #pragma warning disable CS0162 // Unreachable code detected
-                (isAsync
-                    ? promise.Finally(() => { throw expected; return Promise.Resolved(); })
-                    : promise.Finally(() => { throw expected; }))
+                    (isAsync
+                        ? promise.Finally(() => { throw expected; return Promise.Resolved(); })
+                        : promise.Finally(() => { throw expected; }))
 #pragma warning restore CS0162 // Unreachable code detected
-                    .Catch((Exception e) =>
-                    {
-                        Assert.AreEqual(expected, e);
-                        ++catchCount;
-                    })
-                    .Forget();
+                        .Catch((Exception e) =>
+                        {
+                            Assert.AreEqual(expected, e);
+                            ++catchCount;
+                        })
+                        .Forget();
+                }
+
+                Assert.Greater(testCount, 0);
+
+                tryCompleter();
+
+                Assert.AreEqual(testCount, catchCount);
+                Assert.AreEqual(completeType == CompleteType.Reject ? testCount : 0, uncaughtHandledCount);
+
+                Promise.Config.UncaughtRejectionHandler = currentHandler;
             }
-
-            Assert.Greater(testCount, 0);
-
-            TestHelper.GetTryCompleterT(completeType, resolveValue, rejection).Invoke(deferred, cancelationSource);
-
-            Assert.AreEqual(testCount, catchCount);
-            Assert.AreEqual(completeType == CompleteType.Reject ? testCount : 0, uncaughtHandledCount);
-
-            preservedPromise.Forget();
-            cancelationSource.TryDispose();
-
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test]
@@ -306,37 +284,33 @@ namespace ProtoPromiseTests.APIs
                 ++uncaughtHandledCount;
             };
 
-            Promise.Deferred deferred;
-            CancelationSource cancelationSource;
-            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection, out deferred, out cancelationSource)
-                .Preserve();
-
-            int testCount = 0;
-            int catchCount = 0;
-
-            foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
+            using (var promiseRetainer = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection, out var tryCompleter)
+                .GetRetainer())
             {
-                ++testCount;
+                int testCount = 0;
+                int catchCount = 0;
+
+                foreach (var promise in TestHelper.GetTestablePromises(promiseRetainer))
+                {
+                    ++testCount;
 #pragma warning disable CS0162 // Unreachable code detected
-                (isAsync
-                    ? promise.Finally(() => { throw Promise.CancelException(); return Promise.Resolved(); })
-                    : promise.Finally(() => { throw Promise.CancelException(); }))
+                    (isAsync
+                        ? promise.Finally(() => { throw Promise.CancelException(); return Promise.Resolved(); })
+                        : promise.Finally(() => { throw Promise.CancelException(); }))
 #pragma warning restore CS0162 // Unreachable code detected
-                    .CatchCancelation(() => ++catchCount)
-                    .Forget();
+                        .CatchCancelation(() => ++catchCount)
+                        .Forget();
+                }
+
+                Assert.Greater(testCount, 0);
+
+                tryCompleter();
+
+                Assert.AreEqual(testCount, catchCount);
+                Assert.AreEqual(completeType == CompleteType.Reject ? testCount : 0, uncaughtHandledCount);
+
+                Promise.Config.UncaughtRejectionHandler = currentHandler;
             }
-
-            Assert.Greater(testCount, 0);
-
-            TestHelper.GetTryCompleterVoid(completeType, rejection).Invoke(deferred, cancelationSource);
-
-            Assert.AreEqual(testCount, catchCount);
-            Assert.AreEqual(completeType == CompleteType.Reject ? testCount : 0, uncaughtHandledCount);
-
-            preservedPromise.Forget();
-            cancelationSource.TryDispose();
-
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test]
@@ -358,37 +332,33 @@ namespace ProtoPromiseTests.APIs
             };
 
             const int resolveValue = 42;
-            CancelationSource cancelationSource;
-            Promise<int>.Deferred deferred;
-            var preservedPromise = TestHelper.BuildPromise<int, string>(completeType, isAlreadyComplete, resolveValue, rejection, out deferred, out cancelationSource)
-                .Preserve();
-
-            int testCount = 0;
-            int catchCount = 0;
-
-            foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
+            using (var promiseRetainer = TestHelper.BuildPromise(completeType, isAlreadyComplete, resolveValue, rejection, out var tryCompleter)
+                .GetRetainer())
             {
-                ++testCount;
+                int testCount = 0;
+                int catchCount = 0;
+
+                foreach (var promise in TestHelper.GetTestablePromises(promiseRetainer))
+                {
+                    ++testCount;
 #pragma warning disable CS0162 // Unreachable code detected
-                (isAsync
-                    ? promise.Finally(() => { throw Promise.CancelException(); return Promise.Resolved(); })
-                    : promise.Finally(() => { throw Promise.CancelException(); }))
+                    (isAsync
+                        ? promise.Finally(() => { throw Promise.CancelException(); return Promise.Resolved(); })
+                        : promise.Finally(() => { throw Promise.CancelException(); }))
 #pragma warning restore CS0162 // Unreachable code detected
-                    .CatchCancelation(() => ++catchCount)
-                    .Forget();
+                        .CatchCancelation(() => ++catchCount)
+                        .Forget();
+                }
+
+                Assert.Greater(testCount, 0);
+
+                tryCompleter();
+
+                Assert.AreEqual(testCount, catchCount);
+                Assert.AreEqual(completeType == CompleteType.Reject ? testCount : 0, uncaughtHandledCount);
+
+                Promise.Config.UncaughtRejectionHandler = currentHandler;
             }
-
-            Assert.Greater(testCount, 0);
-
-            TestHelper.GetTryCompleterT(completeType, resolveValue, rejection).Invoke(deferred, cancelationSource);
-
-            Assert.AreEqual(testCount, catchCount);
-            Assert.AreEqual(completeType == CompleteType.Reject ? testCount : 0, uncaughtHandledCount);
-
-            preservedPromise.Forget();
-            cancelationSource.TryDispose();
-
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test]
@@ -415,99 +385,91 @@ namespace ProtoPromiseTests.APIs
                 ++uncaughtHandledCount;
             };
 
-            Promise.Deferred deferred;
-            CancelationSource cancelationSource;
-            var preservedPromise = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection1, out deferred, out cancelationSource)
-                .Preserve();
-
-            int finallyCount = 0;
-            int completeCount = 0;
-            const string captureValue = "captureValue";
-
-            var returnPromises = new List<ValueTuple<Promise.Deferred, Promise, CancelationSource>>();
-            foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
+            using (var promiseRetainer = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejection1, out var preservedCompleter)
+                .GetRetainer())
             {
-                Promise.Deferred returnDeferred;
-                CancelationSource returnCts;
-                var returnPromise = TestHelper.BuildPromise(returnCompleteType, returnIsAlreadyComplete, rejection2, out returnDeferred, out returnCts)
-                    .Preserve();
-                returnPromises.Add(ValueTuple.Create(returnDeferred, returnPromise, returnCts));
+                int finallyCount = 0;
+                int completeCount = 0;
+                const string captureValue = "captureValue";
 
-                promise
-                    .Finally(() =>
-                    {
-                        ++finallyCount;
-                        return returnPromise;
-                    })
-                    .Finally(captureValue, s =>
-                    {
-                        Assert.AreEqual(captureValue, s);
-                        ++finallyCount;
-                        return returnPromise;
-                    })
-                    .ContinueWith(resultContainer =>
-                    {
-                        if (returnCompleteType == CompleteType.Resolve)
+                var returnPromises = new List<(Promise.Retainer retainer, Action tryCompleter)>();
+                foreach (var promise in TestHelper.GetTestablePromises(promiseRetainer))
+                {
+                    var returnPromiseRetainer = TestHelper.BuildPromise(returnCompleteType, returnIsAlreadyComplete, rejection2, out var tryCompleter)
+                        .GetRetainer();
+                    returnPromises.Add((returnPromiseRetainer, tryCompleter));
+
+                    promise
+                        .Finally(() =>
                         {
-                            if (completeType == CompleteType.Resolve)
+                            ++finallyCount;
+                            return returnPromiseRetainer.WaitAsync();
+                        })
+                        .Finally(captureValue, s =>
+                        {
+                            Assert.AreEqual(captureValue, s);
+                            ++finallyCount;
+                            return returnPromiseRetainer.WaitAsync();
+                        })
+                        .ContinueWith(resultContainer =>
+                        {
+                            if (returnCompleteType == CompleteType.Resolve)
                             {
-                                Assert.AreEqual(Promise.State.Resolved, resultContainer.State);
+                                if (completeType == CompleteType.Resolve)
+                                {
+                                    Assert.AreEqual(Promise.State.Resolved, resultContainer.State);
+                                }
+                                else if (completeType == CompleteType.Reject)
+                                {
+                                    Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
+                                    Assert.AreEqual(rejection1, resultContainer.Reason);
+                                }
+                                else
+                                {
+                                    Assert.AreEqual(Promise.State.Canceled, resultContainer.State);
+                                }
                             }
-                            else if (completeType == CompleteType.Reject)
+                            else if (returnCompleteType == CompleteType.Reject)
                             {
                                 Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                                Assert.AreEqual(rejection1, resultContainer.Reason);
+                                Assert.AreEqual(rejection2, resultContainer.Reason);
                             }
                             else
                             {
                                 Assert.AreEqual(Promise.State.Canceled, resultContainer.State);
                             }
-                        }
-                        else if (returnCompleteType == CompleteType.Reject)
-                        {
-                            Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                            Assert.AreEqual(rejection2, resultContainer.Reason);
-                        }
-                        else
-                        {
-                            Assert.AreEqual(Promise.State.Canceled, resultContainer.State);
-                        }
-                        ++completeCount;
-                    })
-                    .Forget();
+                            ++completeCount;
+                        })
+                        .Forget();
+                }
+
+                Assert.Greater(returnPromises.Count, 0);
+
+                preservedCompleter();
+
+                Assert.AreEqual(returnPromises.Count * (returnIsAlreadyComplete ? 2 : 1), finallyCount);
+                Assert.AreEqual(returnIsAlreadyComplete ? returnPromises.Count : 0, completeCount);
+
+                foreach (var (retainer, tryCompleter) in returnPromises)
+                {
+                    tryCompleter();
+                    retainer.Dispose();
+                }
+
+                Assert.AreEqual(returnPromises.Count, completeCount);
+                int expectedUncaughtCount = completeType == CompleteType.Reject
+                    ? returnCompleteType == CompleteType.Reject
+                        ? returnPromises.Count * 2
+                        : returnCompleteType != CompleteType.Resolve // Cancel
+                        ? returnPromises.Count
+                        : 0
+                    : returnCompleteType == CompleteType.Reject
+                        ? returnPromises.Count
+                        : 0;
+                Assert.AreEqual(expectedUncaughtCount, uncaughtHandledCount);
+
+                Promise.Config.UncaughtRejectionHandler = currentHandler;
             }
-
-            Assert.Greater(returnPromises.Count, 0);
-
-            TestHelper.GetTryCompleterVoid(completeType, rejection1).Invoke(deferred, cancelationSource);
-
-            Assert.AreEqual(returnPromises.Count * (returnIsAlreadyComplete ? 2 : 1), finallyCount);
-            Assert.AreEqual(returnIsAlreadyComplete ? returnPromises.Count : 0, completeCount);
-
-            var completer = TestHelper.GetTryCompleterVoid(returnCompleteType, rejection2);
-            foreach (var tuple in returnPromises)
-            {
-                completer.Invoke(tuple.Item1, tuple.Item3);
-                tuple.Item2.Forget();
-                tuple.Item3.TryDispose();
-            }
-
-            Assert.AreEqual(returnPromises.Count, completeCount);
-            int expectedUncaughtCount = completeType == CompleteType.Reject
-                ? returnCompleteType == CompleteType.Reject
-                    ? returnPromises.Count * 2
-                    : returnCompleteType != CompleteType.Resolve // Cancel
-                    ? returnPromises.Count
-                    : 0
-                : returnCompleteType == CompleteType.Reject
-                    ? returnPromises.Count
-                    : 0;
-            Assert.AreEqual(expectedUncaughtCount, uncaughtHandledCount);
-
-            preservedPromise.Forget();
-            cancelationSource.TryDispose();
-
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
 
         [Test]
@@ -535,99 +497,90 @@ namespace ProtoPromiseTests.APIs
             };
 
             const int resolveValue = 42;
-            CancelationSource cancelationSource;
-            Promise<int>.Deferred deferred;
-            var preservedPromise = TestHelper.BuildPromise<int, string>(completeType, isAlreadyComplete, resolveValue, rejection1, out deferred, out cancelationSource)
-                .Preserve();
+            using (var promiseRetainer = TestHelper.BuildPromise(completeType, isAlreadyComplete, resolveValue, rejection1, out var preservedCompleter)
+                .GetRetainer())
+            { int finallyCount = 0;
+                int completeCount = 0;
+                const string captureValue = "captureValue";
 
-            int finallyCount = 0;
-            int completeCount = 0;
-            const string captureValue = "captureValue";
+                var returnPromises = new List<(Promise.Retainer retainer, Action tryCompleter)>();
+                foreach (var promise in TestHelper.GetTestablePromises(promiseRetainer))
+                {
+                    var returnPromise = TestHelper.BuildPromise(returnCompleteType, returnIsAlreadyComplete, rejection2, out var tryCompleter)
+                        .GetRetainer();
+                    returnPromises.Add((returnPromise, tryCompleter));
 
-            var returnPromises = new List<ValueTuple<Promise.Deferred, Promise, CancelationSource>>();
-            foreach (var promise in TestHelper.GetTestablePromises(preservedPromise))
-            {
-                Promise.Deferred returnDeferred;
-                CancelationSource returnCts;
-                var returnPromise = TestHelper.BuildPromise(returnCompleteType, returnIsAlreadyComplete, rejection2, out returnDeferred, out returnCts)
-                    .Preserve();
-                returnPromises.Add(ValueTuple.Create(returnDeferred, returnPromise, returnCts));
-
-                promise
-                    .Finally(() =>
-                    {
-                        ++finallyCount;
-                        return returnPromise;
-                    })
-                    .Finally(captureValue, s =>
-                    {
-                        Assert.AreEqual(captureValue, s);
-                        ++finallyCount;
-                        return returnPromise;
-                    })
-                    .ContinueWith(resultContainer =>
-                    {
-                        if (returnCompleteType == CompleteType.Resolve)
+                    promise
+                        .Finally(() =>
                         {
-                            if (completeType == CompleteType.Resolve)
+                            ++finallyCount;
+                            return returnPromise.WaitAsync();
+                        })
+                        .Finally(captureValue, s =>
+                        {
+                            Assert.AreEqual(captureValue, s);
+                            ++finallyCount;
+                            return returnPromise.WaitAsync();
+                        })
+                        .ContinueWith(resultContainer =>
+                        {
+                            if (returnCompleteType == CompleteType.Resolve)
                             {
-                                Assert.AreEqual(Promise.State.Resolved, resultContainer.State);
+                                if (completeType == CompleteType.Resolve)
+                                {
+                                    Assert.AreEqual(Promise.State.Resolved, resultContainer.State);
+                                }
+                                else if (completeType == CompleteType.Reject)
+                                {
+                                    Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
+                                    Assert.AreEqual(rejection1, resultContainer.Reason);
+                                }
+                                else
+                                {
+                                    Assert.AreEqual(Promise.State.Canceled, resultContainer.State);
+                                }
                             }
-                            else if (completeType == CompleteType.Reject)
+                            else if (returnCompleteType == CompleteType.Reject)
                             {
                                 Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                                Assert.AreEqual(rejection1, resultContainer.Reason);
+                                Assert.AreEqual(rejection2, resultContainer.Reason);
                             }
                             else
                             {
                                 Assert.AreEqual(Promise.State.Canceled, resultContainer.State);
                             }
-                        }
-                        else if (returnCompleteType == CompleteType.Reject)
-                        {
-                            Assert.AreEqual(Promise.State.Rejected, resultContainer.State);
-                            Assert.AreEqual(rejection2, resultContainer.Reason);
-                        }
-                        else
-                        {
-                            Assert.AreEqual(Promise.State.Canceled, resultContainer.State);
-                        }
-                        ++completeCount;
-                    })
-                    .Forget();
+                            ++completeCount;
+                        })
+                        .Forget();
+                }
+
+                Assert.Greater(returnPromises.Count, 0);
+
+                preservedCompleter();
+
+                Assert.AreEqual(returnPromises.Count * (returnIsAlreadyComplete ? 2 : 1), finallyCount);
+                Assert.AreEqual(returnIsAlreadyComplete ? returnPromises.Count : 0, completeCount);
+
+                foreach (var (retainer, tryCompleter) in returnPromises)
+                {
+                    tryCompleter();
+                    retainer.Dispose();
+                }
+
+                Assert.AreEqual(returnPromises.Count, completeCount);
+                int expectedUncaughtCount = completeType == CompleteType.Reject
+                    ? returnCompleteType == CompleteType.Reject
+                        ? returnPromises.Count * 2
+                        : returnCompleteType != CompleteType.Resolve // Cancel
+                        ? returnPromises.Count
+                        : 0
+                    : returnCompleteType == CompleteType.Reject
+                        ? returnPromises.Count
+                        : 0;
+                Assert.AreEqual(expectedUncaughtCount, uncaughtHandledCount);
+
+                Promise.Config.UncaughtRejectionHandler = currentHandler;
             }
-
-            Assert.Greater(returnPromises.Count, 0);
-
-            TestHelper.GetTryCompleterT(completeType, resolveValue, rejection1).Invoke(deferred, cancelationSource);
-
-            Assert.AreEqual(returnPromises.Count * (returnIsAlreadyComplete ? 2 : 1), finallyCount);
-            Assert.AreEqual(returnIsAlreadyComplete ? returnPromises.Count : 0, completeCount);
-
-            var completer = TestHelper.GetTryCompleterVoid(returnCompleteType, rejection2);
-            foreach (var tuple in returnPromises)
-            {
-                completer.Invoke(tuple.Item1, tuple.Item3);
-                tuple.Item2.Forget();
-                tuple.Item3.TryDispose();
-            }
-
-            Assert.AreEqual(returnPromises.Count, completeCount);
-            int expectedUncaughtCount = completeType == CompleteType.Reject
-                ? returnCompleteType == CompleteType.Reject
-                    ? returnPromises.Count * 2
-                    : returnCompleteType != CompleteType.Resolve // Cancel
-                    ? returnPromises.Count
-                    : 0
-                : returnCompleteType == CompleteType.Reject
-                    ? returnPromises.Count
-                    : 0;
-            Assert.AreEqual(expectedUncaughtCount, uncaughtHandledCount);
-
-            preservedPromise.Forget();
-            cancelationSource.TryDispose();
-
-            Promise.Config.UncaughtRejectionHandler = currentHandler;
         }
     }
 }

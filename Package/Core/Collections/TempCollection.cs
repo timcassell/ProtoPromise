@@ -327,8 +327,7 @@ namespace Proto.Promises.Collections
 #endif
             Array.Clear(_items, 0, _count);
             ArrayPool<T>.Shared.Return(_items, false);
-            _items = null;
-            _count = -1;
+            this = default;
         }
 
         [MethodImpl(Internal.InlineOption)]

@@ -87,7 +87,7 @@ namespace Proto.Promises
                 }
                 case Promise.State.Canceled:
                 {
-                    throw Internal.CanceledExceptionInternal.GetOrCreate();
+                    throw Promise.CancelException();
                 }
                 case Promise.State.Rejected:
                 {

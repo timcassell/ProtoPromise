@@ -95,23 +95,23 @@ namespace ProtoPromiseTests.APIs
 
             int activeWorkers = 0;
             var block = Promise.NewDeferred();
-            var blockPromise = block.Promise.Preserve();
-
-            Promise t = Promise.ParallelForEach(IterateUntilSet(box), (item, cancelationToken) =>
+            using (var blockPromiseRetainer = block.Promise.GetRetainer())
             {
-                Interlocked.Increment(ref activeWorkers);
-                return blockPromise;
-            }, maxDegreeOfParallelism: dop);
+                Promise t = Promise.ParallelForEach(IterateUntilSet(box), (item, cancelationToken) =>
+                {
+                    Interlocked.Increment(ref activeWorkers);
+                    return blockPromiseRetainer.WaitAsync();
+                }, maxDegreeOfParallelism: dop);
 
-            Thread.Sleep(20); // give the loop some time to run
+                Thread.Sleep(20); // give the loop some time to run
 
-            box.Value = true;
-            block.Resolve();
-            int maxWorkers = dop == -1 ? Environment.ProcessorCount : dop;
-            t.WaitWithTimeout(TimeSpan.FromSeconds(maxWorkers));
+                box.Value = true;
+                block.Resolve();
+                int maxWorkers = dop == -1 ? Environment.ProcessorCount : dop;
+                t.WaitWithTimeout(TimeSpan.FromSeconds(maxWorkers));
 
-            blockPromise.Forget();
-            Assert.LessOrEqual(activeWorkers, maxWorkers);
+                Assert.LessOrEqual(activeWorkers, maxWorkers);
+            }
         }
 
         private static IEnumerable<int> InfiniteZero()
@@ -258,14 +258,7 @@ namespace ProtoPromiseTests.APIs
                 .Finally(() => isComplete = true)
                 .Forget();
 
-            if (!SpinWait.SpinUntil(() =>
-            {
-                TestHelper.ExecuteForegroundCallbacks();
-                return isComplete;
-            }, TimeSpan.FromSeconds(1)))
-            {
-                throw new TimeoutException();
-            }
+            TestHelper.SpinUntilWhileExecutingForegroundContext(() => isComplete, TimeSpan.FromSeconds(1));
 
             CollectionAssert.AreEqual(Enumerable.Range(1, 100), cq.OrderBy(i => i));
         }
@@ -322,39 +315,40 @@ namespace ProtoPromiseTests.APIs
         public void Exceptions_HavePriorityOverCancelation_Sync()
         {
             var deferred = Promise.NewDeferred();
-            var promisePreserved = deferred.Promise.Preserve();
-            var cts = CancelationSource.New();
-
-            Exception expected = new Exception();
-            Exception actual = null;
-
-            Promise.ParallelForEach(Infinite(), (item, cancelationToken) =>
+            using (var promiseRetainer = deferred.Promise.GetRetainer())
             {
-                if (item == 0)
-                {
-                    return promisePreserved
-                        .Then(() =>
-                        {
-                            cts.Cancel();
-                            throw expected;
-                        });
-                }
-                else
-                {
-                    deferred.TryResolve();
-                    return Promise.Resolved();
-                }
-            }, cts.Token, maxDegreeOfParallelism: 2)
-                .Catch((Exception e) => actual = e)
-                .WaitWithTimeout(TimeSpan.FromSeconds(2));
+                var cts = CancelationSource.New();
 
-            promisePreserved.Forget();
-            cts.Dispose();
+                Exception expected = new Exception();
+                Exception actual = null;
 
-            Assert.IsInstanceOf<AggregateException>(actual);
-            var aggregate = (AggregateException) actual;
-            Assert.AreEqual(1, aggregate.InnerExceptions.Count);
-            Assert.AreEqual(expected, aggregate.InnerException);
+                Promise.ParallelForEach(Infinite(), (item, cancelationToken) =>
+                {
+                    if (item == 0)
+                    {
+                        return promiseRetainer.WaitAsync()
+                            .Then(() =>
+                            {
+                                cts.Cancel();
+                                throw expected;
+                            });
+                    }
+                    else
+                    {
+                        deferred.TryResolve();
+                        return Promise.Resolved();
+                    }
+                }, cts.Token, maxDegreeOfParallelism: 2)
+                    .Catch((Exception e) => actual = e)
+                    .WaitWithTimeout(TimeSpan.FromSeconds(2));
+
+                cts.Dispose();
+
+                Assert.IsInstanceOf<AggregateException>(actual);
+                var aggregate = (AggregateException) actual;
+                Assert.AreEqual(1, aggregate.InnerExceptions.Count);
+                Assert.AreEqual(expected, aggregate.InnerException);
+            }
         }
 
         [Test]
@@ -694,44 +688,42 @@ namespace ProtoPromiseTests.APIs
                 : TestHelper._backgroundContext;
 
             var deferred = Promise.NewDeferred();
-            var blockPromise = deferred.Promise.Preserve();
-            int readyCount = 0;
-
-            var parallelPromise = Promise.ParallelFor(0, 3, (index, cancelationToken) =>
+            using (var blockPromiseRetainer = deferred.Promise.GetRetainer())
             {
-                cancelationToken.Register(() => throw new Exception("Error in cancelation!"));
-                if (index == 2)
+                int readyCount = 0;
+
+                var parallelPromise = Promise.ParallelFor(0, 3, (index, cancelationToken) =>
                 {
+                    cancelationToken.Register(() => throw new Exception("Error in cancelation!"));
                     Interlocked.Increment(ref readyCount);
-                    throw new System.InvalidOperationException("Error in loop body!");
+                    if (index == 2)
+                    {
+                        // Wait until all iterations are ready, otherwise the token could be canceled before a worker registered, causing it to throw synchronously.
+                        TestHelper.SpinUntil(() => readyCount == 3, TimeSpan.FromSeconds(2));
+                        throw new System.InvalidOperationException("Error in loop body!");
+                    }
+                    return blockPromiseRetainer.WaitAsync();
+                }, context);
+
+                TestHelper.SpinUntilWhileExecutingForegroundContext(() => readyCount == 3, TimeSpan.FromSeconds(3));
+
+                bool didThrow = false;
+                try
+                {
+                    deferred.Resolve();
+                    parallelPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
                 }
-                Interlocked.Increment(ref readyCount);
-                return blockPromise;
-            }, context);
+                catch (AggregateException e)
+                {
+                    didThrow = true;
+                    Assert.AreEqual(2, e.InnerExceptions.Count);
+                    Assert.IsInstanceOf<System.InvalidOperationException>(e.InnerExceptions[0]);
+                    Assert.IsInstanceOf<AggregateException>(e.InnerExceptions[1]);
+                    Assert.AreEqual(3, ((AggregateException) e.InnerExceptions[1]).InnerExceptions.Count);
+                }
 
-            SpinWait.SpinUntil(() =>
-            {
-                TestHelper.ExecuteForegroundCallbacks();
-                return readyCount == 3;
-            });
-
-            bool didThrow = false;
-            try
-            {
-                deferred.Resolve();
-                parallelPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
+                Assert.True(didThrow);
             }
-            catch (AggregateException e)
-            {
-                didThrow = true;
-                Assert.AreEqual(2, e.InnerExceptions.Count);
-                Assert.IsInstanceOf<System.InvalidOperationException>(e.InnerExceptions[0]);
-                Assert.IsInstanceOf<AggregateException>(e.InnerExceptions[1]);
-                Assert.AreEqual(3, ((AggregateException) e.InnerExceptions[1]).InnerExceptions.Count);
-            }
-
-            Assert.True(didThrow);
-            blockPromise.Forget();
         }
 
         [Test]
@@ -743,44 +735,42 @@ namespace ProtoPromiseTests.APIs
                 : TestHelper._backgroundContext;
 
             var deferred = Promise.NewDeferred();
-            var blockPromise = deferred.Promise.Preserve();
-            int readyCount = 0;
-
-            var parallelPromise = Promise.ParallelForEach(Enumerable.Range(0, 3), (index, cancelationToken) =>
+            using (var blockPromiseRetainer = deferred.Promise.GetRetainer())
             {
-                cancelationToken.Register(() => throw new Exception("Error in cancelation!"));
-                if (index == 2)
+                int readyCount = 0;
+
+                var parallelPromise = Promise.ParallelForEach(Enumerable.Range(0, 3), (index, cancelationToken) =>
                 {
+                    cancelationToken.Register(() => throw new Exception("Error in cancelation!"));
                     Interlocked.Increment(ref readyCount);
-                    throw new System.InvalidOperationException("Error in loop body!");
+                    if (index == 2)
+                    {
+                        // Wait until all iterations are ready, otherwise the token could be canceled before a worker registered, causing it to throw synchronously.
+                        TestHelper.SpinUntil(() => readyCount == 3, TimeSpan.FromSeconds(2));
+                        throw new System.InvalidOperationException("Error in loop body!");
+                    }
+                    return blockPromiseRetainer.WaitAsync();
+                }, context);
+
+                TestHelper.SpinUntilWhileExecutingForegroundContext(() => readyCount == 3, TimeSpan.FromSeconds(3));
+
+                bool didThrow = false;
+                try
+                {
+                    deferred.Resolve();
+                    parallelPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
                 }
-                Interlocked.Increment(ref readyCount);
-                return blockPromise;
-            }, context);
+                catch (AggregateException e)
+                {
+                    didThrow = true;
+                    Assert.AreEqual(2, e.InnerExceptions.Count);
+                    Assert.IsInstanceOf<System.InvalidOperationException>(e.InnerExceptions[0]);
+                    Assert.IsInstanceOf<AggregateException>(e.InnerExceptions[1]);
+                    Assert.AreEqual(3, ((AggregateException) e.InnerExceptions[1]).InnerExceptions.Count);
+                }
 
-            SpinWait.SpinUntil(() =>
-            {
-                TestHelper.ExecuteForegroundCallbacks();
-                return readyCount == 3;
-            });
-
-            bool didThrow = false;
-            try
-            {
-                deferred.Resolve();
-                parallelPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
+                Assert.True(didThrow);
             }
-            catch (AggregateException e)
-            {
-                didThrow = true;
-                Assert.AreEqual(2, e.InnerExceptions.Count);
-                Assert.IsInstanceOf<System.InvalidOperationException>(e.InnerExceptions[0]);
-                Assert.IsInstanceOf<AggregateException>(e.InnerExceptions[1]);
-                Assert.AreEqual(3, ((AggregateException) e.InnerExceptions[1]).InnerExceptions.Count);
-            }
-
-            Assert.True(didThrow);
-            blockPromise.Forget();
         }
     }
 #endif // !UNITY_WEBGL

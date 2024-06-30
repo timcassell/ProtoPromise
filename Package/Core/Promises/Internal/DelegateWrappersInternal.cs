@@ -606,21 +606,21 @@ namespace Proto.Promises
                 {
                     handler.MaybeDispose();
                     Promise result = Invoke();
-                    owner.WaitFor(result, handler);
+                    owner.WaitFor(result);
                 }
 
                 void IDelegateRejectPromise.InvokeRejecter(PromiseRefBase handler, IRejectContainer rejectContainer, PromiseRefBase owner)
                 {
                     handler.MaybeDispose();
                     Promise result = Invoke();
-                    owner.WaitFor(result, handler);
+                    owner.WaitFor(result);
                 }
 
                 [MethodImpl(InlineOption)]
                 void IDelegateRunPromise.Invoke(PromiseRefBase owner)
                 {
                     Promise result = Invoke();
-                    owner.WaitFor(result, null);
+                    owner.WaitFor(result);
                 }
             }
 
@@ -652,21 +652,21 @@ namespace Proto.Promises
                 {
                     handler.MaybeDispose();
                     Promise<TResult> result = Invoke();
-                    owner.WaitFor(result, handler);
+                    owner.WaitFor(result);
                 }
 
                 void IDelegateRejectPromise.InvokeRejecter(PromiseRefBase handler, IRejectContainer rejectContainer, PromiseRefBase owner)
                 {
                     handler.MaybeDispose();
                     Promise<TResult> result = Invoke();
-                    owner.WaitFor(result, handler);
+                    owner.WaitFor(result);
                 }
 
                 [MethodImpl(InlineOption)]
                 void IDelegateRunPromise.Invoke(PromiseRefBase owner)
                 {
                     Promise<TResult> result = Invoke();
-                    owner.WaitFor(result, null);
+                    owner.WaitFor(result);
                 }
             }
 
@@ -699,7 +699,7 @@ namespace Proto.Promises
                     TArg arg = handler.GetResult<TArg>();
                     handler.MaybeDispose();
                     Promise result = Invoke(arg);
-                    owner.WaitFor(result, handler);
+                    owner.WaitFor(result);
                 }
 
                 void IDelegateRejectPromise.InvokeRejecter(PromiseRefBase handler, IRejectContainer rejectContainer, PromiseRefBase owner)
@@ -708,7 +708,7 @@ namespace Proto.Promises
                     if (rejectContainer.TryGetValue(out TArg arg))
                     {
                         Promise result = Invoke(arg);
-                        owner.WaitFor(result, handler);
+                        owner.WaitFor(result);
                     }
                     else
                     {
@@ -747,7 +747,7 @@ namespace Proto.Promises
                     TArg arg = handler.GetResult<TArg>();
                     handler.MaybeDispose();
                     Promise<TResult> result = Invoke(arg);
-                    owner.WaitFor(result, handler);
+                    owner.WaitFor(result);
                 }
 
                 void IDelegateRejectPromise.InvokeRejecter(PromiseRefBase handler, IRejectContainer rejectContainer, PromiseRefBase owner)
@@ -756,7 +756,7 @@ namespace Proto.Promises
                     if (rejectContainer.TryGetValue(out TArg arg))
                     {
                         Promise<TResult> result = Invoke(arg);
-                        owner.WaitFor(result, handler);
+                        owner.WaitFor(result);
                     }
                     else
                     {
@@ -926,7 +926,7 @@ namespace Proto.Promises
                     var resultContainer = new Promise.ResultContainer(rejectContainer, state);
                     handler.MaybeDispose();
                     Promise result = Invoke(resultContainer);
-                    owner.WaitFor(result, handler);
+                    owner.WaitFor(result);
                 }
             }
 
@@ -963,7 +963,7 @@ namespace Proto.Promises
                     var resultContainer = new Promise.ResultContainer(rejectContainer, state);
                     handler.MaybeDispose();
                     Promise<TResult> result = Invoke(resultContainer);
-                    owner.WaitFor(result, handler);
+                    owner.WaitFor(result);
                 }
             }
 
@@ -1000,7 +1000,7 @@ namespace Proto.Promises
                     var resultContainer = new Promise<TArg>.ResultContainer(handler.GetResult<TArg>(), rejectContainer, state);
                     handler.MaybeDispose();
                     Promise result = Invoke(resultContainer);
-                    owner.WaitFor(result, handler);
+                    owner.WaitFor(result);
                 }
             }
 
@@ -1037,7 +1037,7 @@ namespace Proto.Promises
                     var resultContainer = new Promise<TArg>.ResultContainer(handler.GetResult<TArg>(), rejectContainer, state);
                     handler.MaybeDispose();
                     Promise<TResult> result = Invoke(resultContainer);
-                    owner.WaitFor(result, handler);
+                    owner.WaitFor(result);
                 }
             }
 
@@ -1447,21 +1447,21 @@ namespace Proto.Promises
                 {
                     handler.MaybeDispose();
                     Promise result = Invoke();
-                    owner.WaitFor(result, handler);
+                    owner.WaitFor(result);
                 }
 
                 void IDelegateRejectPromise.InvokeRejecter(PromiseRefBase handler, IRejectContainer rejectContainer, PromiseRefBase owner)
                 {
                     handler.MaybeDispose();
                     Promise result = Invoke();
-                    owner.WaitFor(result, handler);
+                    owner.WaitFor(result);
                 }
                 
                 [MethodImpl(InlineOption)]
                 void IDelegateRunPromise.Invoke(PromiseRefBase owner)
                 {
                     Promise result = Invoke();
-                    owner.WaitFor(result, null);
+                    owner.WaitFor(result);
                 }
             }
 
@@ -1495,21 +1495,21 @@ namespace Proto.Promises
                 {
                     handler.MaybeDispose();
                     Promise<TResult> result = Invoke();
-                    owner.WaitFor(result, handler);
+                    owner.WaitFor(result);
                 }
 
                 void IDelegateRejectPromise.InvokeRejecter(PromiseRefBase handler, IRejectContainer rejectContainer, PromiseRefBase owner)
                 {
                     handler.MaybeDispose();
                     Promise<TResult> result = Invoke();
-                    owner.WaitFor(result, handler);
+                    owner.WaitFor(result);
                 }
                 
                 [MethodImpl(InlineOption)]
                 void IDelegateRunPromise.Invoke(PromiseRefBase owner)
                 {
                     Promise<TResult> result = Invoke();
-                    owner.WaitFor(result, null);
+                    owner.WaitFor(result);
                 }
             }
 
@@ -1544,7 +1544,7 @@ namespace Proto.Promises
                     TArg arg = handler.GetResult<TArg>();
                     handler.MaybeDispose();
                     Promise result = Invoke(arg);
-                    owner.WaitFor(result, handler);
+                    owner.WaitFor(result);
                 }
 
                 void IDelegateRejectPromise.InvokeRejecter(PromiseRefBase handler, IRejectContainer rejectContainer, PromiseRefBase owner)
@@ -1553,7 +1553,7 @@ namespace Proto.Promises
                     if (rejectContainer.TryGetValue(out TArg arg))
                     {
                         Promise result = Invoke(arg);
-                        owner.WaitFor(result, handler);
+                        owner.WaitFor(result);
                     }
                     else
                     {
@@ -1594,7 +1594,7 @@ namespace Proto.Promises
                     TArg arg = handler.GetResult<TArg>();
                     handler.MaybeDispose();
                     Promise<TResult> result = Invoke(arg);
-                    owner.WaitFor(result, handler);
+                    owner.WaitFor(result);
                 }
 
                 void IDelegateRejectPromise.InvokeRejecter(PromiseRefBase handler, IRejectContainer rejectContainer, PromiseRefBase owner)
@@ -1603,7 +1603,7 @@ namespace Proto.Promises
                     if (rejectContainer.TryGetValue(out TArg arg))
                     {
                         Promise<TResult> result = Invoke(arg);
-                        owner.WaitFor(result, handler);
+                        owner.WaitFor(result);
                     }
                     else
                     {
@@ -1785,7 +1785,7 @@ namespace Proto.Promises
                     var resultContainer = new Promise.ResultContainer(rejectContainer, state);
                     handler.MaybeDispose();
                     Promise result = Invoke(resultContainer);
-                    owner.WaitFor(result, handler);
+                    owner.WaitFor(result);
                 }
             }
 
@@ -1824,7 +1824,7 @@ namespace Proto.Promises
                     var resultContainer = new Promise.ResultContainer(rejectContainer, state);
                     handler.MaybeDispose();
                     Promise<TResult> result = Invoke(resultContainer);
-                    owner.WaitFor(result, handler);
+                    owner.WaitFor(result);
                 }
             }
 
@@ -1863,7 +1863,7 @@ namespace Proto.Promises
                     var resultContainer = new Promise<TArg>.ResultContainer(handler.GetResult<TArg>(), rejectContainer, state);
                     handler.MaybeDispose();
                     Promise result = Invoke(resultContainer);
-                    owner.WaitFor(result, handler);
+                    owner.WaitFor(result);
                 }
             }
 
@@ -1902,7 +1902,7 @@ namespace Proto.Promises
                     var resultContainer = new Promise<TArg>.ResultContainer(handler.GetResult<TArg>(), rejectContainer, state);
                     handler.MaybeDispose();
                     Promise<TResult> result = Invoke(resultContainer);
-                    owner.WaitFor(result, handler);
+                    owner.WaitFor(result);
                 }
             }
 

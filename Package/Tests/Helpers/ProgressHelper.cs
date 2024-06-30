@@ -160,11 +160,8 @@ namespace ProtoPromiseTests
             {
                 timeout = TimeSpan.FromSeconds(2);
             }
-            double current = double.NaN;
-            if (!SpinWait.SpinUntil(() => { current = _currentProgress; return AreEqual(expectedProgress, current); }, timeout))
-            {
-                throw new TimeoutException("Progress was not invoked with expected progress " + expectedProgress + " after " + timeout + ", _currentProgress: " + _currentProgress + ", current thread is background: " + Thread.CurrentThread.IsBackground);
-            }
+            TestHelper.SpinUntil(() => AreEqual(expectedProgress, _currentProgress), timeout,
+                $"Progress was not invoked with expected progress {expectedProgress}, _currentProgress: {_currentProgress}, current thread is background: {Thread.CurrentThread.IsBackground}");
         }
 
         public double GetCurrentProgress(bool waitForInvoke, bool executeForeground, TimeSpan timeout = default(TimeSpan))

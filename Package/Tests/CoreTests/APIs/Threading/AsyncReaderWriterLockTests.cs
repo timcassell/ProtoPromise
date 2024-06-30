@@ -1684,13 +1684,13 @@ namespace ProtoPromiseTests.APIs.Threading
         {
             var rwl = new AsyncReaderWriterLock();
             var deferred = Promise.NewDeferred();
-            var promise = deferred.Promise.Preserve();
+            var promiseRetainer = deferred.Promise.GetRetainer();
 
             Promise.Run(async () =>
             {
                 using (await rwl.WriterLockAsync())
                 {
-                    await promise;
+                    await promiseRetainer;
                 }
             }, SynchronizationOption.Synchronous)
                 .Forget();
@@ -1702,7 +1702,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 using (await rwl.ReaderLockAsync())
                 {
                     enteredReadLock = true;
-                    await promise;
+                    await promiseRetainer;
                 }
             }, SynchronizationOption.Synchronous)
                 .Forget();
@@ -1715,7 +1715,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 using (await rwl.UpgradeableReaderLockAsync())
                 {
                     enteredFirstUpgradeableReadLock = true;
-                    await promise;
+                    await promiseRetainer;
                     exitedFirstUpgradeableReadLock = true;
                 }
             }, SynchronizationOption.Synchronous)
@@ -1726,8 +1726,8 @@ namespace ProtoPromiseTests.APIs.Threading
 
             var d = deferred;
             deferred = Promise.NewDeferred();
-            promise.Forget();
-            promise = deferred.Promise.Preserve();
+            promiseRetainer.Dispose();
+            promiseRetainer = deferred.Promise.GetRetainer();
             d.Resolve();
             // Continuations are posted asynchronously to the current context, so we need to make sure it is executed.
             TestHelper.ExecuteForegroundCallbacks();
@@ -1751,7 +1751,7 @@ namespace ProtoPromiseTests.APIs.Threading
             Assert.False(enteredSecondUpgradeableReadLock);
 
             deferred.Resolve();
-            promise.Forget();
+            promiseRetainer.Dispose();
             // Continuations are posted asynchronously to the current context, so we need to make sure it is executed.
             TestHelper.ExecuteForegroundCallbacks();
         }
@@ -2226,7 +2226,7 @@ namespace ProtoPromiseTests.APIs.Threading
             var cts = CancelationSource.New();
             var writerDeferred = Promise.NewDeferred();
             var readersDeferred = Promise.NewDeferred();
-            var preservedPromise = readersDeferred.Promise.Preserve();
+            var promiseRetainer = readersDeferred.Promise.GetRetainer();
 
             Promise.Run(async () =>
             {
@@ -2245,7 +2245,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 using (await rwl.UpgradeableReaderLockAsync())
                 {
                     isUpgradeableReaderLocked = true;
-                    await preservedPromise;
+                    await promiseRetainer;
                 }
             }, SynchronizationOption.Synchronous)
                 .Forget();
@@ -2255,7 +2255,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 using (await rwl.ReaderLockAsync())
                 {
                     isReaderLocked = true;
-                    await preservedPromise;
+                    await promiseRetainer;
                 }
             }, SynchronizationOption.Synchronous)
                 .Forget();
@@ -2272,7 +2272,7 @@ namespace ProtoPromiseTests.APIs.Threading
 
             readersDeferred.Resolve();
             TestHelper.ExecuteForegroundCallbacks();
-            preservedPromise.Forget();
+            promiseRetainer.Dispose();
             cts.Dispose();
         }
 
@@ -2283,7 +2283,7 @@ namespace ProtoPromiseTests.APIs.Threading
             var cts = CancelationSource.New();
             var writerDeferred = Promise.NewDeferred();
             var readersDeferred = Promise.NewDeferred();
-            var preservedPromise = readersDeferred.Promise.Preserve();
+            var promiseRetainer = readersDeferred.Promise.GetRetainer();
 
             Promise.Run(async () =>
             {
@@ -2293,7 +2293,7 @@ namespace ProtoPromiseTests.APIs.Threading
                     {
                         await writerDeferred.Promise;
                     }
-                    await preservedPromise;
+                    await promiseRetainer;
                 }
             }, SynchronizationOption.Synchronous)
                 .Forget();
@@ -2306,7 +2306,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 using (await rwl.UpgradeableReaderLockAsync())
                 {
                     isUpgradeableReaderLocked = true;
-                    await preservedPromise;
+                    await promiseRetainer;
                 }
             }, SynchronizationOption.Synchronous)
                 .Forget();
@@ -2316,7 +2316,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 using (await rwl.ReaderLockAsync())
                 {
                     isReaderLocked = true;
-                    await preservedPromise;
+                    await promiseRetainer;
                 }
             }, SynchronizationOption.Synchronous)
                 .Forget();
@@ -2333,7 +2333,7 @@ namespace ProtoPromiseTests.APIs.Threading
 
             readersDeferred.Resolve();
             TestHelper.ExecuteForegroundCallbacks();
-            preservedPromise.Forget();
+            promiseRetainer.Dispose();
             cts.Dispose();
         }
 
@@ -2588,7 +2588,8 @@ namespace ProtoPromiseTests.APIs.Threading
             var readerReadyDeferred = Promise.NewDeferred();
             var writerReadyDeferred = Promise.NewDeferred();
             var upgradeableReaderReadyDeferred = Promise.NewDeferred();
-            var allReadyPromise = Promise.All(readerReadyDeferred.Promise, writerReadyDeferred.Promise, upgradeableReaderReadyDeferred.Promise).Preserve();
+            var allReadyPromiseRetainer = Promise.All(readerReadyDeferred.Promise, writerReadyDeferred.Promise, upgradeableReaderReadyDeferred.Promise)
+                .GetRetainer();
 
             var readerRunner = readerStartDeferred.Promise
                 .WaitAsync(runnerOption)
@@ -2598,7 +2599,7 @@ namespace ProtoPromiseTests.APIs.Threading
                     var lockPromise = rwl.ReaderLockAsync();
 
                     readerReadyDeferred.Resolve();
-                    await allReadyPromise.WaitAsync(runnerOption); // Wait for the other runners to start.
+                    await allReadyPromiseRetainer.WaitAsync().WaitAsync(runnerOption); // Wait for the other runners to start.
 
                     while (readerCount < expectedCounts || writerCount < expectedCounts || upgradeableReaderCount < expectedCounts || upgradedWriterCount < expectedCounts)
                     {
@@ -2620,7 +2621,7 @@ namespace ProtoPromiseTests.APIs.Threading
                     var lockPromise = rwl.WriterLockAsync();
 
                     writerReadyDeferred.Resolve();
-                    await allReadyPromise.WaitAsync(runnerOption); // Wait for the other runners to start.
+                    await allReadyPromiseRetainer.WaitAsync().WaitAsync(runnerOption); // Wait for the other runners to start.
 
                     while (readerCount < expectedCounts || writerCount < expectedCounts || upgradeableReaderCount < expectedCounts || upgradedWriterCount < expectedCounts)
                     {
@@ -2642,7 +2643,7 @@ namespace ProtoPromiseTests.APIs.Threading
                     var lockPromise = rwl.UpgradeableReaderLockAsync();
 
                     upgradeableReaderReadyDeferred.Resolve();
-                    await allReadyPromise.WaitAsync(runnerOption); // Wait for the other runners to start.
+                    await allReadyPromiseRetainer.WaitAsync().WaitAsync(runnerOption); // Wait for the other runners to start.
 
                     while (readerCount < expectedCounts || writerCount < expectedCounts || upgradeableReaderCount < expectedCounts || upgradedWriterCount < expectedCounts)
                     {
@@ -2677,7 +2678,7 @@ namespace ProtoPromiseTests.APIs.Threading
 
             Promise.All(readerRunner, writerRunner, upgradeableReaderRunner)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-            allReadyPromise.Forget();
+            allReadyPromiseRetainer.Dispose();
 
             Assert.GreaterOrEqual(readerCount, expectedCounts);
             Assert.GreaterOrEqual(writerCount, expectedCounts);

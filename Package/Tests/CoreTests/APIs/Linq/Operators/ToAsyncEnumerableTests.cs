@@ -427,14 +427,7 @@ namespace ProtoPromiseTests.APIs.Linq
                 : 0;
             for (int i = 0; i < awaitCount; i++)
             {
-                if (!SpinWait.SpinUntil(() =>
-                {
-                    TestHelper.ExecuteForegroundCallbacks();
-                    return didAwaitDeferred;
-                }, TimeSpan.FromSeconds(1)))
-                {
-                    throw new TimeoutException();
-                }
+                TestHelper.SpinUntilWhileExecutingForegroundContext(() => didAwaitDeferred, TimeSpan.FromSeconds(1));
                 didAwaitDeferred = false;
                 Assert.False(runnerIsComplete);
                 var def = deferred;
@@ -444,14 +437,7 @@ namespace ProtoPromiseTests.APIs.Linq
 
             if (iteratorIsAsync || consumerIsAsync)
             {
-                if (!SpinWait.SpinUntil(() =>
-                {
-                    TestHelper.ExecuteForegroundCallbacks();
-                    return didAwaitDeferred;
-                }, TimeSpan.FromSeconds(1)))
-                {
-                    throw new TimeoutException();
-                }
+                TestHelper.SpinUntilWhileExecutingForegroundContext(() => didAwaitDeferred, TimeSpan.FromSeconds(1));
                 Assert.False(runnerIsComplete);
             }
             deferred.Resolve();

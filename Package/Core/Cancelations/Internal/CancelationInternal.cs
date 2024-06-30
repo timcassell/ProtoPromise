@@ -100,7 +100,7 @@ namespace Proto.Promises
                 if (_userRetainCounter > 0)
                 {
                     // CancelationToken wasn't released.
-                    string message = "A CancelationToken's resources were garbage collected without being released. You must release all IRetainable objects that you have retained.";
+                    string message = "A CancelationToken's resources were garbage collected without being released. You must release all CancelationTokens that you have retained.";
                     ReportRejection(new UnreleasedObjectException(message), this);
                 }
                 // We don't check the disposed state if this was linked to a System.Threading.CancellationToken.
@@ -491,17 +491,13 @@ namespace Proto.Promises
             internal bool TryDispose(int sourceId)
             {
                 _smallFields._locker.Enter();
-                if (sourceId != SourceId)
+                if (!TryIncrementSourceId(sourceId))
                 {
                     _smallFields._locker.Exit();
                     return false;
                 }
 
                 ThrowIfInPool(this);
-                unchecked
-                {
-                    ++_sourceId;
-                }
                 if (_state == State.Pending)
                 {
                     _state = State.Disposed;
@@ -510,6 +506,10 @@ namespace Proto.Promises
                 MaybeResetAndRepoolAlreadyLocked();
                 return true;
             }
+
+            [MethodImpl(InlineOption)]
+            internal bool TryIncrementSourceId(int sourceId)
+                => Interlocked.CompareExchange(ref _sourceId, unchecked(sourceId + 1), sourceId) == sourceId;
 
             private void UnregisterAll()
             {
@@ -634,7 +634,14 @@ namespace Proto.Promises
 
             internal void Cancel()
             {
-                TrySetCanceled(SourceId);
+                // Same as TrySetCanceled, but without checking the SourceId.
+                _smallFields._locker.Enter();
+                if (_state != State.Pending)
+                {
+                    _smallFields._locker.Exit();
+                    return;
+                }
+                InvokeCallbacksAlreadyLocked();
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -1112,8 +1119,8 @@ namespace Proto.Promises
                     // Queue the check to happen again on a background thread.
                     // Force async so the current thread will be yielded if this is already being executed on a background thread.
                     // This is recursive, but it's done so asynchronously so it will never cause StackOverflowException.
-                    Promise.Run(ValueTuple.Create(parent, node, nodeId, tokenId, deferred),
-                        cv => WaitForInvokeComplete(cv.Item1, cv.Item2, cv.Item3, cv.Item4, cv.Item5),
+                    Promise.Run((parent, node, nodeId, tokenId, deferred),
+                        cv => WaitForInvokeComplete(cv.parent, cv.node, cv.nodeId, cv.tokenId, cv.deferred),
                         Promise.Config.BackgroundContext, forceAsync: true)
                         .Forget();
                 }

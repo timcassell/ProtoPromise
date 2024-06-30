@@ -53,7 +53,9 @@ namespace Proto.Promises
                 {
                     try
                     {
+#pragma warning disable CS0618 // Type or member is obsolete
                         return resolver.Invoke(CallbackHelperVoid.GetResultFromResolved(resolved)).Duplicate();
+#pragma warning restore CS0618 // Type or member is obsolete
                     }
                     catch (Exception e)
                     {
@@ -249,17 +251,10 @@ namespace Proto.Promises
                 {
                     try
                     {
-                        Promise<TResult> result;
-                        if (resolved._ref == null)
-                        {
-                            result = resolver.Invoke();
-                        }
-                        else
-                        {
-                            resolved._ref.MaybeMarkAwaitedAndDispose(resolved._id);
-                            result = resolver.Invoke();
-                        }
-                        return result.Duplicate();
+                        resolved._ref?.MaybeMarkAwaitedAndDispose(resolved._id);
+#pragma warning disable CS0618 // Type or member is obsolete
+                        return resolver.Invoke().Duplicate();
+#pragma warning restore CS0618 // Type or member is obsolete
                     }
                     catch (Exception e)
                     {
@@ -286,7 +281,9 @@ namespace Proto.Promises
                 {
                     try
                     {
+#pragma warning disable CS0618 // Type or member is obsolete
                         return runner.Invoke().Duplicate();
+#pragma warning restore CS0618 // Type or member is obsolete
                     }
                     catch (Exception e)
                     {
@@ -622,7 +619,9 @@ namespace Proto.Promises
                 {
                     try
                     {
+#pragma warning disable CS0618 // Type or member is obsolete
                         return resolver.Invoke(CallbackHelperVoid.GetResultFromResolved(resolved)).Duplicate();
+#pragma warning restore CS0618 // Type or member is obsolete
                     }
                     catch (Exception e)
                     {
@@ -839,7 +838,9 @@ namespace Proto.Promises
                     try
                     {
                         resolved._ref?.MaybeMarkAwaitedAndDispose(resolved._id);
+#pragma warning disable CS0618 // Type or member is obsolete
                         return resolver.Invoke().Duplicate();
+#pragma warning restore CS0618 // Type or member is obsolete
                     }
                     catch (Exception e)
                     {
@@ -866,7 +867,9 @@ namespace Proto.Promises
                 {
                     try
                     {
+#pragma warning disable CS0618 // Type or member is obsolete
                         return runner.Invoke().Duplicate();
+#pragma warning restore CS0618 // Type or member is obsolete
                     }
                     catch (Exception e)
                     {

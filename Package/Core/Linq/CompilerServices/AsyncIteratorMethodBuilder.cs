@@ -45,7 +45,7 @@ namespace Proto.Promises.CompilerServices
         /// <param name="exception">The <see cref="Exception"/> to use to reject the promise.</param>
         public void SetException(Exception exception)
         {
-            if (exception == AsyncEnumerableDisposedException.s_instance)
+            if (AsyncEnumerableDisposedException.Is(exception))
             {
                 // The await foreach loop was stopped with a `break`.
                 SetResult();

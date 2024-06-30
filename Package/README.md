@@ -11,12 +11,12 @@ Robust and efficient library for management of asynchronous operations.
 - Cancelable operations with custom allocation-free CancelationToken/Source
 - Allocation-free async iterators with async Linq
 - Progress with enforced normalization
+- Structured concurrency
 - async/await support and .Then API
 - Thread safe
-- Full causality traces
 - Easily switch to foreground or background context
-- Combine async operations
 - Circular await detection
+- Full causality traces
 - Interoperable with Tasks and Unity's Coroutines/Awaitables
 - CLS compliant
 
@@ -49,11 +49,12 @@ See the [C# Asynchronous Benchmarks Repo](https://github.com/timcassell/CSharpAs
 
 ## Latest Updates
 
-### v3.0.2 - April 12, 2024
+### v3.1.0 - June 30, 2024
 
-- Fixed `Promise.ParallelFor*` canceling workers too early.
-- `Promise.ParallelFor*` and `AsyncEnumerable.Merge` propagate exceptions from cancelation token callbacks instead of deadlocking.
-- `AsyncEnumerable.Merge` more eagerly stops iteration if a rejection or cancelation occurs.
+- Added structured concurrency promise groups.
+- Added `Promise(<T>).Each` APIs.
+- Added `Promise(<T>).GetRetainer` APIs.
+- Deprecated `Promise(<T>).{Preserve, Duplicate}` APIs.
 
 See [ChangeLog](https://github.com/timcassell/ProtoPromise/tree/master/Docs/Changelog) for the full changelog.
 

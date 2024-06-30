@@ -29,7 +29,7 @@ namespace Proto.Promises
                 if (state == Promise.State.Canceled)
                 {
                     MaybeDispose();
-                    throw CanceledExceptionInternal.GetOrCreate();
+                    throw Promise.CancelException();
                 }
                 if (state == Promise.State.Rejected)
                 {

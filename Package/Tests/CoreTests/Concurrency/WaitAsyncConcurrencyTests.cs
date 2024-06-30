@@ -78,7 +78,7 @@ namespace ProtoPromiseTests.Concurrency
 
         private readonly TimeSpan timeout = TimeSpan.FromSeconds(2);
 
-        [Test, TestCaseSource("GetArgs")]
+        [Test, TestCaseSource(nameof(GetArgs))]
         public void WaitAsyncContinuationWillBeInvokedOnTheCorrectContext_Concurrent_void(
             ConfigureAwaitType waitType,
             ActionPlace waitAsyncSubscribePlace,
@@ -195,17 +195,14 @@ namespace ProtoPromiseTests.Concurrency
                     }
 
                     TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
-                    if (!SpinWait.SpinUntil(() => didContinue, timeout))
-                    {
-                        Assert.Fail("Timed out after " + timeout + ", didContinue: " + didContinue);
-                    }
+                    TestHelper.SpinUntil(() => didContinue, timeout, $"didContinue: {didContinue}");
                     cancelationSource.TryDispose();
                 },
                 actions: parallelActions.ToArray()
             );
         }
 
-        [Test, TestCaseSource("GetArgs")]
+        [Test, TestCaseSource(nameof(GetArgs))]
         public void WaitAsyncContinuationWillBeInvokedOnTheCorrectContext_Concurrent_T(
             ConfigureAwaitType waitType,
             ActionPlace waitAsyncSubscribePlace,
@@ -322,10 +319,7 @@ namespace ProtoPromiseTests.Concurrency
                     }
 
                     TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
-                    if (!SpinWait.SpinUntil(() => didContinue, timeout))
-                    {
-                        Assert.Fail("Timed out after " + timeout + ", didContinue: " + didContinue);
-                    }
+                    TestHelper.SpinUntil(() => didContinue, timeout, $"didContinue: {didContinue}");
                     cancelationSource.TryDispose();
                 },
                 actions: parallelActions.ToArray()

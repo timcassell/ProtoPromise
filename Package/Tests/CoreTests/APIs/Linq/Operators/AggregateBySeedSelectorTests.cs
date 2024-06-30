@@ -1001,9 +1001,10 @@ namespace ProtoPromiseTests.APIs.Linq
         public void AggregateBy_Empty(
             [Values] bool configured,
             [Values] bool async,
-            [Values] bool captureKey,
-            [Values] bool captureseed,
-            [Values] bool captureAccumulate,
+            // Reduce number of tests.
+            [Values(false)] bool captureKey,
+            [Values(false)] bool captureseed,
+            [Values(false)] bool captureAccumulate,
             [Values] bool withComparer)
         {
             Promise.Run(async () =>
@@ -1110,9 +1111,10 @@ namespace ProtoPromiseTests.APIs.Linq
         public void AggregateBy_Throws_Source(
             [Values] bool configured,
             [Values] bool async,
-            [Values] bool captureKey,
-            [Values] bool captureseed,
-            [Values] bool captureAccumulate,
+            // Reduce number of tests.
+            [Values(false)] bool captureKey,
+            [Values(false)] bool captureseed,
+            [Values(false)] bool captureAccumulate,
             [Values] bool withComparer)
         {
             Promise.Run(async () =>
@@ -1134,8 +1136,9 @@ namespace ProtoPromiseTests.APIs.Linq
             [Values] bool configured,
             [Values] bool async,
             [Values] bool captureKey,
-            [Values] bool captureseed,
-            [Values] bool captureAccumulate,
+            // Reduce number of tests.
+            [Values(false)] bool captureseed,
+            [Values(false)] bool captureAccumulate,
             [Values] bool withComparer)
         {
             Promise.Run(async () =>
@@ -1156,8 +1159,9 @@ namespace ProtoPromiseTests.APIs.Linq
         public void AggregateBy_AccumulatorThrows(
             [Values] bool configured,
             [Values] bool async,
-            [Values] bool captureKey,
-            [Values] bool captureseed,
+            // Reduce number of tests.
+            [Values(false)] bool captureKey,
+            [Values(false)] bool captureseed,
             [Values] bool captureAccumulate,
             [Values] bool withComparer)
         {
@@ -1179,9 +1183,10 @@ namespace ProtoPromiseTests.APIs.Linq
         public void AggregateBy_SeedSelectorThrows(
             [Values] bool configured,
             [Values] bool async,
-            [Values] bool captureKey,
+            // Reduce number of tests.
+            [Values(false)] bool captureKey,
             [Values] bool captureseed,
-            [Values] bool captureAccumulate,
+            [Values(false)] bool captureAccumulate,
             [Values] bool withComparer)
         {
             Promise.Run(async () =>

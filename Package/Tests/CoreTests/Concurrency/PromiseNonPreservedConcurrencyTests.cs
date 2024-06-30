@@ -94,7 +94,9 @@ namespace ProtoPromiseTests.Concurrency
                 {
                     try
                     {
+#pragma warning disable CS0618 // Type or member is obsolete
                         promise.Duplicate().Forget();
+#pragma warning restore CS0618 // Type or member is obsolete
                         Interlocked.Increment(ref successCount);
                     }
                     catch (Proto.Promises.InvalidOperationException)
@@ -123,7 +125,9 @@ namespace ProtoPromiseTests.Concurrency
                 {
                     try
                     {
+#pragma warning disable CS0618 // Type or member is obsolete
                         promise.Duplicate().Forget();
+#pragma warning restore CS0618 // Type or member is obsolete
                         Interlocked.Increment(ref successCount);
                     }
                     catch (Proto.Promises.InvalidOperationException)
@@ -152,7 +156,9 @@ namespace ProtoPromiseTests.Concurrency
                 {
                     try
                     {
+#pragma warning disable CS0618 // Type or member is obsolete
                         promise.Preserve().Forget();
+#pragma warning restore CS0618 // Type or member is obsolete
                         Interlocked.Increment(ref successCount);
                     }
                     catch (Proto.Promises.InvalidOperationException)
@@ -181,8 +187,72 @@ namespace ProtoPromiseTests.Concurrency
                 {
                     try
                     {
+#pragma warning disable CS0618 // Type or member is obsolete
                         promise.Preserve().Forget();
+#pragma warning restore CS0618 // Type or member is obsolete
                         Interlocked.Increment(ref successCount);
+                    }
+                    catch (Proto.Promises.InvalidOperationException)
+                    {
+                        Interlocked.Increment(ref invalidCount);
+                    }
+                }
+            );
+
+            deferred.Resolve(1);
+            Assert.AreEqual(1, successCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
+        }
+
+        [Test]
+        public void PromiseWithReferenceBacking_GetRetainerMayOnlyBeCalledOnce_void()
+        {
+            var deferred = Promise.NewDeferred();
+            var promise = deferred.Promise;
+
+            int successCount = 0, invalidCount = 0;
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteMultiActionParallel(
+                () =>
+                {
+                    try
+                    {
+                        using (promise.GetRetainer())
+                        {
+                            Interlocked.Increment(ref successCount);
+                        }
+                    }
+                    catch (Proto.Promises.InvalidOperationException)
+                    {
+                        Interlocked.Increment(ref invalidCount);
+                    }
+                }
+            );
+
+            deferred.Resolve();
+            Assert.AreEqual(1, successCount);
+            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, invalidCount);
+        }
+
+        [Test]
+        public void PromiseWithReferenceBacking_GetRetainerMayOnlyBeCalledOnce_T()
+        {
+            var deferred = Promise.NewDeferred<int>();
+            var promise = deferred.Promise;
+
+            int successCount = 0, invalidCount = 0;
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteMultiActionParallel(
+                () =>
+                {
+                    try
+                    {
+                        using (promise.GetRetainer())
+                        {
+                            Interlocked.Increment(ref successCount);
+                        }
                     }
                     catch (Proto.Promises.InvalidOperationException)
                     {
@@ -213,7 +283,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         // It takes a long time to test all then actions, so split it up for each action.
-        [Test, TestCaseSource("GetThenArgs_void")]
+        [Test, TestCaseSource(nameof(GetThenArgs_void))]
         public void PromiseWithReferenceBacking_ThenMayOnlyBeCalledOnce_void(int thenIndex)
         {
             var actions = GetThenActions_void();
@@ -261,7 +331,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         // It takes a long time to test all then actions, so split it up for each action.
-        [Test, TestCaseSource("GetThenArgs_T")]
+        [Test, TestCaseSource(nameof(GetThenArgs_T))]
         public void PromiseWithReferenceBacking_ThenMayOnlyBeCalledOnce_T(int thenIndex)
         {
             var actions = GetThenActions_T();

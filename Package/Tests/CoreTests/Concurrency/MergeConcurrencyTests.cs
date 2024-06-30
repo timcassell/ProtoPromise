@@ -46,13 +46,11 @@ namespace ProtoPromiseTests.Concurrency
 
             var deferred0 = default(Promise<int>.Deferred);
             var deferredVoid = default(Promise.Deferred);
-            var cancelationSource0 = default(CancelationSource);
-            var cancelationSourceVoid = default(CancelationSource);
 
             List<Action> parallelActions = new List<Action>()
             {
-                () => completer0(deferred0, cancelationSource0),
-                () => completerVoid(deferredVoid, cancelationSourceVoid),
+                () => completer0(deferred0),
+                () => completerVoid(deferredVoid),
             };
 
             var helper = ParallelCombineTestHelper.Create(
@@ -67,16 +65,14 @@ namespace ProtoPromiseTests.Concurrency
                 // setup
                 () =>
                 {
-                    deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
-                    deferredVoid = TestHelper.GetNewDeferredVoid(completeTypeVoid, out cancelationSourceVoid);
+                    deferred0 = Promise<int>.NewDeferred();
+                    deferredVoid = Promise.NewDeferred();
                     helper.Setup();
                 },
                 // teardown
                 () =>
                 {
                     helper.Teardown();
-                    cancelationSource0.TryDispose();
-                    cancelationSourceVoid.TryDispose();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -94,19 +90,17 @@ namespace ProtoPromiseTests.Concurrency
 
             var deferred0 = default(Promise<int>.Deferred);
             var deferred1 = default(Promise<int>.Deferred);
-            var cancelationSource0 = default(CancelationSource);
-            var cancelationSource1 = default(CancelationSource);
 
             List<Action> parallelActions = new List<Action>()
             {
-                () => completer0(deferred0, cancelationSource0),
-                () => completer1(deferred1, cancelationSource1),
+                () => completer0(deferred0),
+                () => completer1(deferred1),
             };
 
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 () => Promise.Merge(deferred0.Promise, deferred1.Promise),
-                expectedResolveValue: ValueTuple.Create(1, 2)
+                expectedResolveValue: (1, 2)
             );
             helper.MaybeAddParallelAction(parallelActions);
 
@@ -115,16 +109,14 @@ namespace ProtoPromiseTests.Concurrency
                 // setup
                 () =>
                 {
-                    deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
-                    deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
+                    deferred0 = Promise<int>.NewDeferred();
+                    deferred1 = Promise<int>.NewDeferred();
                     helper.Setup();
                 },
                 // teardown
                 () =>
                 {
                     helper.Teardown();
-                    cancelationSource0.TryDispose();
-                    cancelationSource1.TryDispose();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -145,21 +137,18 @@ namespace ProtoPromiseTests.Concurrency
             var deferred0 = default(Promise<int>.Deferred);
             var deferred1 = default(Promise<int>.Deferred);
             var deferredVoid = default(Promise.Deferred);
-            var cancelationSource0 = default(CancelationSource);
-            var cancelationSource1 = default(CancelationSource);
-            var cancelationSourceVoid = default(CancelationSource);
 
             List<Action> parallelActions = new List<Action>()
             {
-                () => completer0(deferred0, cancelationSource0),
-                () => completer1(deferred1, cancelationSource1),
-                () => completerVoid(deferredVoid, cancelationSourceVoid),
+                () => completer0(deferred0),
+                () => completer1(deferred1),
+                () => completerVoid(deferredVoid),
             };
 
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferredVoid.Promise),
-                expectedResolveValue: ValueTuple.Create(1, 2)
+                expectedResolveValue: (1, 2)
             );
             helper.MaybeAddParallelAction(parallelActions);
 
@@ -168,575 +157,22 @@ namespace ProtoPromiseTests.Concurrency
                 // setup
                 () =>
                 {
-                    deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
-                    deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
-                    deferredVoid = TestHelper.GetNewDeferredVoid(completeTypeVoid, out cancelationSourceVoid);
+                    deferred0 = Promise<int>.NewDeferred();
+                    deferred1 = Promise<int>.NewDeferred();
+                    deferredVoid = Promise.NewDeferred();
                     helper.Setup();
                 },
                 // teardown
                 () =>
                 {
                     helper.Teardown();
-                    cancelationSource0.TryDispose();
-                    cancelationSource1.TryDispose();
-                    cancelationSourceVoid.TryDispose();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
             );
         }
 
-        [Test]
-        public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToMergeConcurrently_T3(
-            [Values] CombineType combineType,
-            [Values] CompleteType completeType0,
-            [Values] CompleteType completeType1,
-            [Values(CompleteType.Resolve)] CompleteType completeType2)
-        {
-            var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
-            var completer1 = TestHelper.GetCompleterT(completeType1, 2, rejectValue);
-            var completer2 = TestHelper.GetCompleterT(completeType2, 3, rejectValue);
-
-            var deferred0 = default(Promise<int>.Deferred);
-            var deferred1 = default(Promise<int>.Deferred);
-            var deferred2 = default(Promise<int>.Deferred);
-            var cancelationSource0 = default(CancelationSource);
-            var cancelationSource1 = default(CancelationSource);
-            var cancelationSource2 = default(CancelationSource);
-
-            List<Action> parallelActions = new List<Action>()
-            {
-                () => completer0(deferred0, cancelationSource0),
-                () => completer1(deferred1, cancelationSource1),
-                () => completer2(deferred2, cancelationSource2),
-            };
-
-            var helper = ParallelCombineTestHelper.Create(
-                combineType,
-                () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferred2.Promise),
-                expectedResolveValue: ValueTuple.Create(1, 2, 3)
-            );
-            helper.MaybeAddParallelAction(parallelActions);
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                // setup
-                () =>
-                {
-                    deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
-                    deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
-                    deferred2 = TestHelper.GetNewDeferredT<int>(completeType2, out cancelationSource2);
-                    helper.Setup();
-                },
-                // teardown
-                () =>
-                {
-                    helper.Teardown();
-                    cancelationSource0.TryDispose();
-                    cancelationSource1.TryDispose();
-                    cancelationSource2.TryDispose();
-                    Assert.IsTrue(helper.Success);
-                },
-                parallelActions
-            );
-        }
-
-        [Test] // Only generate up to 2 CompleteTypes (more takes too long to test)
-        public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToMergeConcurrently_T3void(
-            [Values] CombineType combineType,
-            [Values] CompleteType completeType0,
-            [Values(CompleteType.Resolve)] CompleteType completeType1,
-            [Values(CompleteType.Resolve)] CompleteType completeType2,
-            [Values] CompleteType completeTypeVoid)
-        {
-            var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
-            var completer1 = TestHelper.GetCompleterT(completeType1, 2, rejectValue);
-            var completer2 = TestHelper.GetCompleterT(completeType2, 3, rejectValue);
-            var completerVoid = TestHelper.GetCompleterVoid(completeTypeVoid, rejectValue);
-
-            var deferred0 = default(Promise<int>.Deferred);
-            var deferred1 = default(Promise<int>.Deferred);
-            var deferred2 = default(Promise<int>.Deferred);
-            var deferredVoid = default(Promise.Deferred);
-            var cancelationSource0 = default(CancelationSource);
-            var cancelationSource1 = default(CancelationSource);
-            var cancelationSource2 = default(CancelationSource);
-            var cancelationSourceVoid = default(CancelationSource);
-
-            List<Action> parallelActions = new List<Action>()
-            {
-                () => completer0(deferred0, cancelationSource0),
-                () => completer1(deferred1, cancelationSource1),
-                () => completer2(deferred2, cancelationSource2),
-                () => completerVoid(deferredVoid, cancelationSourceVoid),
-            };
-
-            var helper = ParallelCombineTestHelper.Create(
-                combineType,
-                () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferredVoid.Promise),
-                expectedResolveValue: ValueTuple.Create(1, 2, 3)
-            );
-            helper.MaybeAddParallelAction(parallelActions);
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                // setup
-                () =>
-                {
-                    deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
-                    deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
-                    deferred2 = TestHelper.GetNewDeferredT<int>(completeType2, out cancelationSource2);
-                    deferredVoid = TestHelper.GetNewDeferredVoid(completeTypeVoid, out cancelationSourceVoid);
-                    helper.Setup();
-                },
-                // teardown
-                () =>
-                {
-                    helper.Teardown();
-                    cancelationSource0.TryDispose();
-                    cancelationSource1.TryDispose();
-                    cancelationSource2.TryDispose();
-                    cancelationSourceVoid.TryDispose();
-                    Assert.IsTrue(helper.Success);
-                },
-                parallelActions
-            );
-        }
-
-        [Test] // Only generate up to 2 CompleteTypes (more takes too long to test)
-        public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToMergeConcurrently_T4(
-            [Values] CombineType combineType,
-            [Values] CompleteType completeType0,
-            [Values] CompleteType completeType1,
-            [Values(CompleteType.Resolve)] CompleteType completeType2,
-            [Values(CompleteType.Resolve)] CompleteType completeType3)
-        {
-            var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
-            var completer1 = TestHelper.GetCompleterT(completeType1, 2, rejectValue);
-            var completer2 = TestHelper.GetCompleterT(completeType2, 3, rejectValue);
-            var completer3 = TestHelper.GetCompleterT(completeType3, 4, rejectValue);
-
-            var deferred0 = default(Promise<int>.Deferred);
-            var deferred1 = default(Promise<int>.Deferred);
-            var deferred2 = default(Promise<int>.Deferred);
-            var deferred3 = default(Promise<int>.Deferred);
-            var cancelationSource0 = default(CancelationSource);
-            var cancelationSource1 = default(CancelationSource);
-            var cancelationSource2 = default(CancelationSource);
-            var cancelationSource3 = default(CancelationSource);
-
-            List<Action> parallelActions = new List<Action>()
-            {
-                () => completer0(deferred0, cancelationSource0),
-                () => completer1(deferred1, cancelationSource1),
-                () => completer2(deferred2, cancelationSource2),
-                () => completer3(deferred3, cancelationSource3),
-            };
-
-            var helper = ParallelCombineTestHelper.Create(
-                combineType,
-                () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise),
-                expectedResolveValue: ValueTuple.Create(1, 2, 3, 4)
-            );
-            helper.MaybeAddParallelAction(parallelActions);
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                // setup
-                () =>
-                {
-                    deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
-                    deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
-                    deferred2 = TestHelper.GetNewDeferredT<int>(completeType2, out cancelationSource2);
-                    deferred3 = TestHelper.GetNewDeferredT<int>(completeType3, out cancelationSource3);
-                    helper.Setup();
-                },
-                // teardown
-                () =>
-                {
-                    helper.Teardown();
-                    cancelationSource0.TryDispose();
-                    cancelationSource1.TryDispose();
-                    cancelationSource2.TryDispose();
-                    cancelationSource3.TryDispose();
-                    Assert.IsTrue(helper.Success);
-                },
-                parallelActions
-            );
-        }
-
-        [Test] // Only generate up to 2 CompleteTypes (more takes too long to test)
-        public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToMergeConcurrently_T4void(
-            [Values] CombineType combineType,
-            [Values] CompleteType completeType0,
-            [Values(CompleteType.Resolve)] CompleteType completeType1,
-            [Values(CompleteType.Resolve)] CompleteType completeType2,
-            [Values(CompleteType.Resolve)] CompleteType completeType3,
-            [Values] CompleteType completeTypeVoid)
-        {
-            var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
-            var completer1 = TestHelper.GetCompleterT(completeType1, 2, rejectValue);
-            var completer2 = TestHelper.GetCompleterT(completeType2, 3, rejectValue);
-            var completer3 = TestHelper.GetCompleterT(completeType3, 4, rejectValue);
-            var completerVoid = TestHelper.GetCompleterVoid(completeTypeVoid, rejectValue);
-
-            var deferred0 = default(Promise<int>.Deferred);
-            var deferred1 = default(Promise<int>.Deferred);
-            var deferred2 = default(Promise<int>.Deferred);
-            var deferred3 = default(Promise<int>.Deferred);
-            var deferredVoid = default(Promise.Deferred);
-            var cancelationSource0 = default(CancelationSource);
-            var cancelationSource1 = default(CancelationSource);
-            var cancelationSource2 = default(CancelationSource);
-            var cancelationSource3 = default(CancelationSource);
-            var cancelationSourceVoid = default(CancelationSource);
-
-            List<Action> parallelActions = new List<Action>()
-            {
-                () => completer0(deferred0, cancelationSource0),
-                () => completer1(deferred1, cancelationSource1),
-                () => completer2(deferred2, cancelationSource2),
-                () => completer3(deferred3, cancelationSource3),
-                () => completerVoid(deferredVoid, cancelationSourceVoid),
-            };
-
-            var helper = ParallelCombineTestHelper.Create(
-                combineType,
-                () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise, deferredVoid.Promise),
-                expectedResolveValue: ValueTuple.Create(1, 2, 3, 4)
-            );
-            helper.MaybeAddParallelAction(parallelActions);
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                // setup
-                () =>
-                {
-                    deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
-                    deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
-                    deferred2 = TestHelper.GetNewDeferredT<int>(completeType2, out cancelationSource2);
-                    deferred3 = TestHelper.GetNewDeferredT<int>(completeType3, out cancelationSource3);
-                    deferredVoid = TestHelper.GetNewDeferredVoid(completeTypeVoid, out cancelationSourceVoid);
-                    helper.Setup();
-                },
-                // teardown
-                () =>
-                {
-                    helper.Teardown();
-                    cancelationSource0.TryDispose();
-                    cancelationSource1.TryDispose();
-                    cancelationSource2.TryDispose();
-                    cancelationSource3.TryDispose();
-                    cancelationSourceVoid.TryDispose();
-                    Assert.IsTrue(helper.Success);
-                },
-                parallelActions
-            );
-        }
-
-        [Test] // Only generate up to 2 CompleteTypes (more takes too long to test)
-        public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToMergeConcurrently_T5(
-            [Values] CombineType combineType,
-            [Values] CompleteType completeType0,
-            [Values] CompleteType completeType1,
-            [Values(CompleteType.Resolve)] CompleteType completeType2,
-            [Values(CompleteType.Resolve)] CompleteType completeType3,
-            [Values(CompleteType.Resolve)] CompleteType completeType4)
-        {
-            var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
-            var completer1 = TestHelper.GetCompleterT(completeType1, 2, rejectValue);
-            var completer2 = TestHelper.GetCompleterT(completeType2, 3, rejectValue);
-            var completer3 = TestHelper.GetCompleterT(completeType3, 4, rejectValue);
-            var completer4 = TestHelper.GetCompleterT(completeType4, 5, rejectValue);
-
-            var deferred0 = default(Promise<int>.Deferred);
-            var deferred1 = default(Promise<int>.Deferred);
-            var deferred2 = default(Promise<int>.Deferred);
-            var deferred3 = default(Promise<int>.Deferred);
-            var deferred4 = default(Promise<int>.Deferred);
-            var cancelationSource0 = default(CancelationSource);
-            var cancelationSource1 = default(CancelationSource);
-            var cancelationSource2 = default(CancelationSource);
-            var cancelationSource3 = default(CancelationSource);
-            var cancelationSource4 = default(CancelationSource);
-
-            List<Action> parallelActions = new List<Action>()
-            {
-                () => completer0(deferred0, cancelationSource0),
-                () => completer1(deferred1, cancelationSource1),
-                () => completer2(deferred2, cancelationSource2),
-                () => completer3(deferred3, cancelationSource3),
-                () => completer4(deferred4, cancelationSource4),
-            };
-
-            var helper = ParallelCombineTestHelper.Create(
-                combineType,
-                () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise),
-                expectedResolveValue: ValueTuple.Create(1, 2, 3, 4, 5)
-            );
-            helper.MaybeAddParallelAction(parallelActions);
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                // setup
-                () =>
-                {
-                    deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
-                    deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
-                    deferred2 = TestHelper.GetNewDeferredT<int>(completeType2, out cancelationSource2);
-                    deferred3 = TestHelper.GetNewDeferredT<int>(completeType3, out cancelationSource3);
-                    deferred4 = TestHelper.GetNewDeferredT<int>(completeType4, out cancelationSource4);
-                    helper.Setup();
-                },
-                // teardown
-                () =>
-                {
-                    helper.Teardown();
-                    cancelationSource0.TryDispose();
-                    cancelationSource1.TryDispose();
-                    cancelationSource2.TryDispose();
-                    cancelationSource3.TryDispose();
-                    cancelationSource4.TryDispose();
-                    Assert.IsTrue(helper.Success);
-                },
-                parallelActions
-            );
-        }
-
-        [Test] // Only generate up to 2 CompleteTypes (more takes too long to test)
-        public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToMergeConcurrently_T5void(
-            [Values] CombineType combineType,
-            [Values] CompleteType completeType0,
-            [Values(CompleteType.Resolve)] CompleteType completeType1,
-            [Values(CompleteType.Resolve)] CompleteType completeType2,
-            [Values(CompleteType.Resolve)] CompleteType completeType3,
-            [Values(CompleteType.Resolve)] CompleteType completeType4,
-            [Values] CompleteType completeTypeVoid)
-        {
-            var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
-            var completer1 = TestHelper.GetCompleterT(completeType1, 2, rejectValue);
-            var completer2 = TestHelper.GetCompleterT(completeType2, 3, rejectValue);
-            var completer3 = TestHelper.GetCompleterT(completeType3, 4, rejectValue);
-            var completer4 = TestHelper.GetCompleterT(completeType4, 5, rejectValue);
-            var completerVoid = TestHelper.GetCompleterVoid(completeTypeVoid, rejectValue);
-
-            var deferred0 = default(Promise<int>.Deferred);
-            var deferred1 = default(Promise<int>.Deferred);
-            var deferred2 = default(Promise<int>.Deferred);
-            var deferred3 = default(Promise<int>.Deferred);
-            var deferred4 = default(Promise<int>.Deferred);
-            var deferredVoid = default(Promise.Deferred);
-            var cancelationSource0 = default(CancelationSource);
-            var cancelationSource1 = default(CancelationSource);
-            var cancelationSource2 = default(CancelationSource);
-            var cancelationSource3 = default(CancelationSource);
-            var cancelationSource4 = default(CancelationSource);
-            var cancelationSourceVoid = default(CancelationSource);
-
-            List<Action> parallelActions = new List<Action>()
-            {
-                () => completer0(deferred0, cancelationSource0),
-                () => completer1(deferred1, cancelationSource1),
-                () => completer2(deferred2, cancelationSource2),
-                () => completer3(deferred3, cancelationSource3),
-                () => completer4(deferred4, cancelationSource4),
-                () => completerVoid(deferredVoid, cancelationSourceVoid),
-            };
-
-            var helper = ParallelCombineTestHelper.Create(
-                combineType,
-                () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise, deferredVoid.Promise),
-                expectedResolveValue: ValueTuple.Create(1, 2, 3, 4, 5)
-            );
-            helper.MaybeAddParallelAction(parallelActions);
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                // setup
-                () =>
-                {
-                    deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
-                    deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
-                    deferred2 = TestHelper.GetNewDeferredT<int>(completeType2, out cancelationSource2);
-                    deferred3 = TestHelper.GetNewDeferredT<int>(completeType3, out cancelationSource3);
-                    deferred4 = TestHelper.GetNewDeferredT<int>(completeType4, out cancelationSource4);
-                    deferredVoid = TestHelper.GetNewDeferredVoid(completeTypeVoid, out cancelationSourceVoid);
-                    helper.Setup();
-                },
-                // teardown
-                () =>
-                {
-                    helper.Teardown();
-                    cancelationSource0.TryDispose();
-                    cancelationSource1.TryDispose();
-                    cancelationSource2.TryDispose();
-                    cancelationSource3.TryDispose();
-                    cancelationSource4.TryDispose();
-                    cancelationSourceVoid.TryDispose();
-                    Assert.IsTrue(helper.Success);
-                },
-                parallelActions
-            );
-        }
-
-        [Test] // Only generate up to 2 CompleteTypes (more takes too long to test)
-        public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToMergeConcurrently_T6(
-            [Values] CombineType combineType,
-            [Values] CompleteType completeType0,
-            [Values] CompleteType completeType1,
-            [Values(CompleteType.Resolve)] CompleteType completeType2,
-            [Values(CompleteType.Resolve)] CompleteType completeType3,
-            [Values(CompleteType.Resolve)] CompleteType completeType4,
-            [Values(CompleteType.Resolve)] CompleteType completeType5)
-        {
-            var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
-            var completer1 = TestHelper.GetCompleterT(completeType1, 2, rejectValue);
-            var completer2 = TestHelper.GetCompleterT(completeType2, 3, rejectValue);
-            var completer3 = TestHelper.GetCompleterT(completeType3, 4, rejectValue);
-            var completer4 = TestHelper.GetCompleterT(completeType4, 5, rejectValue);
-            var completer5 = TestHelper.GetCompleterT(completeType5, 6, rejectValue);
-
-            var deferred0 = default(Promise<int>.Deferred);
-            var deferred1 = default(Promise<int>.Deferred);
-            var deferred2 = default(Promise<int>.Deferred);
-            var deferred3 = default(Promise<int>.Deferred);
-            var deferred4 = default(Promise<int>.Deferred);
-            var deferred5 = default(Promise<int>.Deferred);
-            var cancelationSource0 = default(CancelationSource);
-            var cancelationSource1 = default(CancelationSource);
-            var cancelationSource2 = default(CancelationSource);
-            var cancelationSource3 = default(CancelationSource);
-            var cancelationSource4 = default(CancelationSource);
-            var cancelationSource5 = default(CancelationSource);
-
-            List<Action> parallelActions = new List<Action>()
-            {
-                () => completer0(deferred0, cancelationSource0),
-                () => completer1(deferred1, cancelationSource1),
-                () => completer2(deferred2, cancelationSource2),
-                () => completer3(deferred3, cancelationSource3),
-                () => completer4(deferred4, cancelationSource4),
-                () => completer5(deferred5, cancelationSource5),
-            };
-
-            var helper = ParallelCombineTestHelper.Create(
-                combineType,
-                () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise, deferred5.Promise),
-                expectedResolveValue: ValueTuple.Create(1, 2, 3, 4, 5, 6)
-            );
-            helper.MaybeAddParallelAction(parallelActions);
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                // setup
-                () =>
-                {
-                    deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
-                    deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
-                    deferred2 = TestHelper.GetNewDeferredT<int>(completeType2, out cancelationSource2);
-                    deferred3 = TestHelper.GetNewDeferredT<int>(completeType3, out cancelationSource3);
-                    deferred4 = TestHelper.GetNewDeferredT<int>(completeType4, out cancelationSource4);
-                    deferred5 = TestHelper.GetNewDeferredT<int>(completeType5, out cancelationSource5);
-                    helper.Setup();
-                },
-                // teardown
-                () =>
-                {
-                    helper.Teardown();
-                    cancelationSource0.TryDispose();
-                    cancelationSource1.TryDispose();
-                    cancelationSource2.TryDispose();
-                    cancelationSource3.TryDispose();
-                    cancelationSource4.TryDispose();
-                    cancelationSource5.TryDispose();
-                    Assert.IsTrue(helper.Success);
-                },
-                parallelActions
-            );
-        }
-
-        [Test] // Only generate up to 2 CompleteTypes (more takes too long to test)
-        public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToMergeConcurrently_T6void(
-            [Values] CombineType combineType,
-            [Values] CompleteType completeType0,
-            [Values(CompleteType.Resolve)] CompleteType completeType1,
-            [Values(CompleteType.Resolve)] CompleteType completeType2,
-            [Values(CompleteType.Resolve)] CompleteType completeType3,
-            [Values(CompleteType.Resolve)] CompleteType completeType4,
-            [Values(CompleteType.Resolve)] CompleteType completeType5,
-            [Values] CompleteType completeTypeVoid)
-        {
-            var completer0 = TestHelper.GetCompleterT(completeType0, 1, rejectValue);
-            var completer1 = TestHelper.GetCompleterT(completeType1, 2, rejectValue);
-            var completer2 = TestHelper.GetCompleterT(completeType2, 3, rejectValue);
-            var completer3 = TestHelper.GetCompleterT(completeType3, 4, rejectValue);
-            var completer4 = TestHelper.GetCompleterT(completeType4, 5, rejectValue);
-            var completer5 = TestHelper.GetCompleterT(completeType5, 6, rejectValue);
-            var completerVoid = TestHelper.GetCompleterVoid(completeTypeVoid, rejectValue);
-
-            var deferred0 = default(Promise<int>.Deferred);
-            var deferred1 = default(Promise<int>.Deferred);
-            var deferred2 = default(Promise<int>.Deferred);
-            var deferred3 = default(Promise<int>.Deferred);
-            var deferred4 = default(Promise<int>.Deferred);
-            var deferred5 = default(Promise<int>.Deferred);
-            var deferredVoid = default(Promise.Deferred);
-            var cancelationSource0 = default(CancelationSource);
-            var cancelationSource1 = default(CancelationSource);
-            var cancelationSource2 = default(CancelationSource);
-            var cancelationSource3 = default(CancelationSource);
-            var cancelationSource4 = default(CancelationSource);
-            var cancelationSource5 = default(CancelationSource);
-            var cancelationSourceVoid = default(CancelationSource);
-
-            List<Action> parallelActions = new List<Action>()
-            {
-                () => completer0(deferred0, cancelationSource0),
-                () => completer1(deferred1, cancelationSource1),
-                () => completer2(deferred2, cancelationSource2),
-                () => completer3(deferred3, cancelationSource3),
-                () => completer4(deferred4, cancelationSource4),
-                () => completer5(deferred5, cancelationSource5),
-                () => completerVoid(deferredVoid, cancelationSourceVoid),
-            };
-
-            var helper = ParallelCombineTestHelper.Create(
-                combineType,
-                () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise, deferred5.Promise, deferredVoid.Promise),
-                expectedResolveValue: ValueTuple.Create(1, 2, 3, 4, 5, 6)
-            );
-            helper.MaybeAddParallelAction(parallelActions);
-
-            var threadHelper = new ThreadHelper();
-            threadHelper.ExecuteParallelActionsMaybeWithOffsets(
-                // setup
-                () =>
-                {
-                    deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
-                    deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
-                    deferred2 = TestHelper.GetNewDeferredT<int>(completeType2, out cancelationSource2);
-                    deferred3 = TestHelper.GetNewDeferredT<int>(completeType3, out cancelationSource3);
-                    deferred4 = TestHelper.GetNewDeferredT<int>(completeType4, out cancelationSource4);
-                    deferred5 = TestHelper.GetNewDeferredT<int>(completeType5, out cancelationSource5);
-                    deferredVoid = TestHelper.GetNewDeferredVoid(completeTypeVoid, out cancelationSourceVoid);
-                    helper.Setup();
-                },
-                // teardown
-                () =>
-                {
-                    helper.Teardown();
-                    cancelationSource0.TryDispose();
-                    cancelationSource1.TryDispose();
-                    cancelationSource2.TryDispose();
-                    cancelationSource3.TryDispose();
-                    cancelationSource4.TryDispose();
-                    cancelationSource5.TryDispose();
-                    cancelationSourceVoid.TryDispose();
-                    Assert.IsTrue(helper.Success);
-                },
-                parallelActions
-            );
-        }
+        // We don't test T3 - T6 to reduce number of tests. The implementation is basically the same for all of them anyway.
 
         [Test] // Only generate up to 2 CompleteTypes (more takes too long to test)
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToMergeConcurrently_T7(
@@ -764,29 +200,22 @@ namespace ProtoPromiseTests.Concurrency
             var deferred4 = default(Promise<int>.Deferred);
             var deferred5 = default(Promise<int>.Deferred);
             var deferred6 = default(Promise<int>.Deferred);
-            var cancelationSource0 = default(CancelationSource);
-            var cancelationSource1 = default(CancelationSource);
-            var cancelationSource2 = default(CancelationSource);
-            var cancelationSource3 = default(CancelationSource);
-            var cancelationSource4 = default(CancelationSource);
-            var cancelationSource5 = default(CancelationSource);
-            var cancelationSource6 = default(CancelationSource);
 
             List<Action> parallelActions = new List<Action>()
             {
-                () => completer0(deferred0, cancelationSource0),
-                () => completer1(deferred1, cancelationSource1),
-                () => completer2(deferred2, cancelationSource2),
-                () => completer3(deferred3, cancelationSource3),
-                () => completer4(deferred4, cancelationSource4),
-                () => completer5(deferred5, cancelationSource5),
-                () => completer6(deferred6, cancelationSource6),
+                () => completer0(deferred0),
+                () => completer1(deferred1),
+                () => completer2(deferred2),
+                () => completer3(deferred3),
+                () => completer4(deferred4),
+                () => completer5(deferred5),
+                () => completer6(deferred6),
             };
 
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise, deferred5.Promise, deferred6.Promise),
-                expectedResolveValue: ValueTuple.Create(1, 2, 3, 4, 5, 6, 7)
+                expectedResolveValue: (1, 2, 3, 4, 5, 6, 7)
             );
             helper.MaybeAddParallelAction(parallelActions);
 
@@ -795,26 +224,19 @@ namespace ProtoPromiseTests.Concurrency
                 // setup
                 () =>
                 {
-                    deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
-                    deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
-                    deferred2 = TestHelper.GetNewDeferredT<int>(completeType2, out cancelationSource2);
-                    deferred3 = TestHelper.GetNewDeferredT<int>(completeType3, out cancelationSource3);
-                    deferred4 = TestHelper.GetNewDeferredT<int>(completeType4, out cancelationSource4);
-                    deferred5 = TestHelper.GetNewDeferredT<int>(completeType5, out cancelationSource5);
-                    deferred6 = TestHelper.GetNewDeferredT<int>(completeType6, out cancelationSource6);
+                    deferred0 = Promise<int>.NewDeferred();
+                    deferred1 = Promise<int>.NewDeferred();
+                    deferred2 = Promise<int>.NewDeferred();
+                    deferred3 = Promise<int>.NewDeferred();
+                    deferred4 = Promise<int>.NewDeferred();
+                    deferred5 = Promise<int>.NewDeferred();
+                    deferred6 = Promise<int>.NewDeferred();
                     helper.Setup();
                 },
                 // teardown
                 () =>
                 {
                     helper.Teardown();
-                    cancelationSource0.TryDispose();
-                    cancelationSource1.TryDispose();
-                    cancelationSource2.TryDispose();
-                    cancelationSource3.TryDispose();
-                    cancelationSource4.TryDispose();
-                    cancelationSource5.TryDispose();
-                    cancelationSource6.TryDispose();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -850,31 +272,23 @@ namespace ProtoPromiseTests.Concurrency
             var deferred5 = default(Promise<int>.Deferred);
             var deferred6 = default(Promise<int>.Deferred);
             var deferredVoid = default(Promise.Deferred);
-            var cancelationSource0 = default(CancelationSource);
-            var cancelationSource1 = default(CancelationSource);
-            var cancelationSource2 = default(CancelationSource);
-            var cancelationSource3 = default(CancelationSource);
-            var cancelationSource4 = default(CancelationSource);
-            var cancelationSource5 = default(CancelationSource);
-            var cancelationSource6 = default(CancelationSource);
-            var cancelationSourceVoid = default(CancelationSource);
 
             List<Action> parallelActions = new List<Action>()
             {
-                () => completer0(deferred0, cancelationSource0),
-                () => completer1(deferred1, cancelationSource1),
-                () => completer2(deferred2, cancelationSource2),
-                () => completer3(deferred3, cancelationSource3),
-                () => completer4(deferred4, cancelationSource4),
-                () => completer5(deferred5, cancelationSource5),
-                () => completer6(deferred6, cancelationSource6),
-                () => completerVoid(deferredVoid, cancelationSourceVoid),
+                () => completer0(deferred0),
+                () => completer1(deferred1),
+                () => completer2(deferred2),
+                () => completer3(deferred3),
+                () => completer4(deferred4),
+                () => completer5(deferred5),
+                () => completer6(deferred6),
+                () => completerVoid(deferredVoid),
             };
 
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 () => Promise.Merge(deferred0.Promise, deferred1.Promise, deferred2.Promise, deferred3.Promise, deferred4.Promise, deferred5.Promise, deferred6.Promise, deferredVoid.Promise),
-                expectedResolveValue: ValueTuple.Create(1, 2, 3, 4, 5, 6, 7)
+                expectedResolveValue: (1, 2, 3, 4, 5, 6, 7)
             );
             helper.MaybeAddParallelAction(parallelActions);
 
@@ -883,28 +297,20 @@ namespace ProtoPromiseTests.Concurrency
                 // setup
                 () =>
                 {
-                    deferred0 = TestHelper.GetNewDeferredT<int>(completeType0, out cancelationSource0);
-                    deferred1 = TestHelper.GetNewDeferredT<int>(completeType1, out cancelationSource1);
-                    deferred2 = TestHelper.GetNewDeferredT<int>(completeType2, out cancelationSource2);
-                    deferred3 = TestHelper.GetNewDeferredT<int>(completeType3, out cancelationSource3);
-                    deferred4 = TestHelper.GetNewDeferredT<int>(completeType4, out cancelationSource4);
-                    deferred5 = TestHelper.GetNewDeferredT<int>(completeType5, out cancelationSource5);
-                    deferred6 = TestHelper.GetNewDeferredT<int>(completeType6, out cancelationSource6);
-                    deferredVoid = TestHelper.GetNewDeferredVoid(completeTypeVoid, out cancelationSourceVoid);
+                    deferred0 = Promise<int>.NewDeferred();
+                    deferred1 = Promise<int>.NewDeferred();
+                    deferred2 = Promise<int>.NewDeferred();
+                    deferred3 = Promise<int>.NewDeferred();
+                    deferred4 = Promise<int>.NewDeferred();
+                    deferred5 = Promise<int>.NewDeferred();
+                    deferred6 = Promise<int>.NewDeferred();
+                    deferredVoid = Promise.NewDeferred();
                     helper.Setup();
                 },
                 // teardown
                 () =>
                 {
                     helper.Teardown();
-                    cancelationSource0.TryDispose();
-                    cancelationSource1.TryDispose();
-                    cancelationSource2.TryDispose();
-                    cancelationSource3.TryDispose();
-                    cancelationSource4.TryDispose();
-                    cancelationSource5.TryDispose();
-                    cancelationSource6.TryDispose();
-                    cancelationSourceVoid.TryDispose();
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions

@@ -6,6 +6,7 @@
 #endif
 
 using System;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -55,7 +56,8 @@ namespace Proto.Promises
         /// <para/><see cref="Forget"/> must be called when you are finished with it.
         /// <para/>NOTE: You should not return a preserved <see cref="Promise"/> from a public API. Use <see cref="Duplicate"/> to get a <see cref="Promise"/> that is publicly safe.
         /// </summary>
-        [MethodImpl(Internal.InlineOption)]
+        /// <remarks>This method is obsolete. You should instead use <see cref="GetRetainer"/>.</remarks>
+        [Obsolete("Prefer Promise.GetRetainer()", false), EditorBrowsable(EditorBrowsableState.Never)]
         public Promise Preserve()
         {
             ValidateOperation(1);
@@ -148,7 +150,8 @@ namespace Proto.Promises
         /// <para/>Preserved promises are unsafe to return from public APIs. Use <see cref="Duplicate"/> to get a <see cref="Promise"/> that is publicly safe.
         /// <para/><see cref="Duplicate"/> is safe to call even if you are unsure if this is preserved.
         /// </summary>
-        [MethodImpl(Internal.InlineOption)]
+        /// <remarks>This method is obsolete. You should instead use <see cref="GetRetainer"/> with <see cref="Retainer.WaitAsync"/>.</remarks>
+        [Obsolete("Prefer Promise.Retainer.WaitAsync()", false), EditorBrowsable(EditorBrowsableState.Never)]
         public Promise Duplicate()
         {
             ValidateOperation(1);

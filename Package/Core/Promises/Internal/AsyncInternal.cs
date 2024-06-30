@@ -25,7 +25,7 @@ namespace Proto.Promises
     partial class Internal
     {
 #if NETCOREAPP
-        private const MethodImplOptions AggressiveOptimizationOption = (MethodImplOptions) 512;
+        private const MethodImplOptions AggressiveOptimizationOption = MethodImplOptions.AggressiveOptimization;
 #else
         private const MethodImplOptions AggressiveOptimizationOption = 0;
 #endif
@@ -36,9 +36,7 @@ namespace Proto.Promises
             internal void HookupAwaiter(PromiseRefBase awaiter, short promiseId)
             {
                 ValidateAwait(awaiter, promiseId);
-#if PROMISE_DEBUG
-                _previous = awaiter;
-#endif
+                this.SetPrevious(awaiter);
                 awaiter.HookupExistingWaiter(promiseId, this);
             }
 
@@ -139,15 +137,6 @@ namespace Proto.Promises
                     CriticalAwaitOverrider<TAwaiter>.AwaitOnCompleted(ref awaiter, _ref, _ref.MoveNext);
 #endif
                 }
-
-                partial void SetAwaitedComplete(PromiseRefBase handler);
-
-#if PROMISE_DEBUG
-                partial void SetAwaitedComplete(PromiseRefBase handler)
-                {
-                    _previous = null;
-                }
-#endif
             }
 
 #if !OPTIMIZED_ASYNC_MODE
@@ -279,7 +268,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     handler.SetCompletionState(state);
-                    SetAwaitedComplete(handler);
+                    this.SetPrevious(null);
                     _continuer.MoveNext.Invoke();
                 }
             } // class AsyncPromiseRef
@@ -345,7 +334,6 @@ namespace Proto.Promises
                     {
                         ThrowIfInPool(this);
                         handler.SetCompletionState(state);
-                        SetAwaitedComplete(handler);
                         ContinueMethod();
                     }
                 }

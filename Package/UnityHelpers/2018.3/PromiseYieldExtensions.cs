@@ -10,6 +10,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 
 #pragma warning disable IDE0090 // Use 'new(...)'
+#pragma warning disable IDE0251 // Make member 'readonly'
 
 namespace Proto.Promises
 {
@@ -135,7 +136,7 @@ namespace Proto.Promises
                 InternalHelper.ValidateIsOnMainThread(1);
                 var copy = this;
                 copy._continuation = continuation;
-                InternalHelper.PromiseBehaviour.Instance._updateProcessor.WaitFor(ref copy);
+                InternalHelper.PromiseBehaviour.Instance._updateProcessor.WaitFor(copy);
             }
 
             /// <summary>

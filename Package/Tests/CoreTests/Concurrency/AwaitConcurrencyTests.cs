@@ -34,8 +34,8 @@ namespace ProtoPromiseTests.Concurrency
             [Values] CompleteType completeType)
         {
             int invokedCount = 0;
-            var deferred = TestHelper.GetNewDeferredVoid(completeType, out var cancelationSource);
-            var promise = deferred.Promise.Preserve();
+            var deferred = Promise.NewDeferred();
+            var promiseRetainer = deferred.Promise.GetRetainer();
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(
@@ -47,7 +47,7 @@ namespace ProtoPromiseTests.Concurrency
                     {
                         try
                         {
-                            await promise;
+                            await promiseRetainer;
                             Interlocked.Increment(ref invokedCount);
                         }
                         catch (UnhandledException)
@@ -62,22 +62,21 @@ namespace ProtoPromiseTests.Concurrency
                 }
             );
 
-            promise.Forget();
-            TestHelper.GetTryCompleterVoid(completeType, rejectValue).Invoke(deferred, cancelationSource);
-            cancelationSource.TryDispose();
+            promiseRetainer.Dispose();
+            TestHelper.GetTryCompleterVoid(completeType, rejectValue).Invoke(deferred);
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
         [Test]
         public void PreservedPromiseMayBeAwaitedConcurrently_AlreadyComplete_void(
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType)
+            [Values] CompleteType completeType)
         {
             int invokedCount = 0;
-            var promise = completeType == CompleteType.Resolve
-                ? Promise.Resolved().Preserve()
+            var promiseRetainer = completeType == CompleteType.Resolve
+                ? Promise.Resolved().GetRetainer()
                 : completeType == CompleteType.Reject
-                ? Promise.Rejected(rejectValue).Preserve()
-                : Promise.Canceled().Preserve();
+                ? Promise.Rejected(rejectValue).GetRetainer()
+                : Promise.Canceled().GetRetainer();
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(
@@ -89,7 +88,7 @@ namespace ProtoPromiseTests.Concurrency
                     {
                         try
                         {
-                            await promise;
+                            await promiseRetainer;
                             Interlocked.Increment(ref invokedCount);
                         }
                         catch (UnhandledException)
@@ -104,7 +103,7 @@ namespace ProtoPromiseTests.Concurrency
                 }
             );
 
-            promise.Forget();
+            promiseRetainer.Dispose();
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
@@ -113,8 +112,8 @@ namespace ProtoPromiseTests.Concurrency
             [Values] CompleteType completeType)
         {
             int invokedCount = 0;
-            var deferred = TestHelper.GetNewDeferredT<int>(completeType, out var cancelationSource);
-            var promise = deferred.Promise.Preserve();
+            var deferred = Promise<int>.NewDeferred();
+            var promiseRetainer = deferred.Promise.GetRetainer();
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(
@@ -126,7 +125,7 @@ namespace ProtoPromiseTests.Concurrency
                     {
                         try
                         {
-                            await promise;
+                            await promiseRetainer;
                             Interlocked.Increment(ref invokedCount);
                         }
                         catch (UnhandledException)
@@ -141,22 +140,21 @@ namespace ProtoPromiseTests.Concurrency
                 }
             );
 
-            promise.Forget();
-            TestHelper.GetTryCompleterT(completeType, 1, rejectValue).Invoke(deferred, cancelationSource);
-            cancelationSource.TryDispose();
+            promiseRetainer.Dispose();
+            TestHelper.GetTryCompleterT(completeType, 1, rejectValue).Invoke(deferred);
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
         [Test]
         public void PreservedPromiseMayBeAwaitedConcurrently_AlreadyComplete_T(
-            [Values(CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel)] CompleteType completeType)
+            [Values] CompleteType completeType)
         {
             int invokedCount = 0;
-            var promise = completeType == CompleteType.Resolve
-                ? Promise<int>.Resolved(1).Preserve()
+            var promiseRetainer = completeType == CompleteType.Resolve
+                ? Promise<int>.Resolved(1).GetRetainer()
                 : completeType == CompleteType.Reject
-                ? Promise<int>.Rejected(rejectValue).Preserve()
-                : Promise<int>.Canceled().Preserve();
+                ? Promise<int>.Rejected(rejectValue).GetRetainer()
+                : Promise<int>.Canceled().GetRetainer();
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(
@@ -168,7 +166,7 @@ namespace ProtoPromiseTests.Concurrency
                     {
                         try
                         {
-                            await promise;
+                            await promiseRetainer;
                             Interlocked.Increment(ref invokedCount);
                         }
                         catch (UnhandledException)
@@ -183,7 +181,7 @@ namespace ProtoPromiseTests.Concurrency
                 }
             );
 
-            promise.Forget();
+            promiseRetainer.Dispose();
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
@@ -203,7 +201,7 @@ namespace ProtoPromiseTests.Concurrency
                 setup: () =>
                 {
                     result = Promise.State.Pending;
-                    deferred = TestHelper.GetNewDeferredVoid(completeType, out cancelationSource);
+                    deferred = Promise.NewDeferred();
                     promise = deferred.Promise;
                 },
                 parallelActionsSetup: new Action<Action>[]
@@ -233,7 +231,7 @@ namespace ProtoPromiseTests.Concurrency
                 },
                 parallelActions: new Action[]
                 {
-                    () => tryCompleter(deferred, cancelationSource)
+                    () => tryCompleter(deferred)
                 },
                 teardown: () =>
                 {
@@ -248,8 +246,7 @@ namespace ProtoPromiseTests.Concurrency
                         case CompleteType.Reject:
                             Assert.AreEqual(Promise.State.Rejected, result);
                             break;
-                        case CompleteType.Cancel:
-                        case CompleteType.CancelFromToken:
+                        default:
                             Assert.AreEqual(Promise.State.Canceled, result);
                             break;
                     }
@@ -273,7 +270,7 @@ namespace ProtoPromiseTests.Concurrency
                 setup: () =>
                 {
                     result = Promise.State.Pending;
-                    deferred = TestHelper.GetNewDeferredT<int>(completeType, out cancelationSource);
+                    deferred = Promise<int>.NewDeferred();
                     promise = deferred.Promise;
                 },
                 parallelActionsSetup: new Action<Action>[]
@@ -303,7 +300,7 @@ namespace ProtoPromiseTests.Concurrency
                 },
                 parallelActions: new Action[]
                 {
-                    () => tryCompleter(deferred, cancelationSource)
+                    () => tryCompleter(deferred)
                 },
                 teardown: () =>
                 {
@@ -318,8 +315,7 @@ namespace ProtoPromiseTests.Concurrency
                         case CompleteType.Reject:
                             Assert.AreEqual(Promise.State.Rejected, result);
                             break;
-                        case CompleteType.Cancel:
-                        case CompleteType.CancelFromToken:
+                        default:
                             Assert.AreEqual(Promise.State.Canceled, result);
                             break;
                     }

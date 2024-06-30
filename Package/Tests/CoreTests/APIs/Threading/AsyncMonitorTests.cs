@@ -331,7 +331,7 @@ namespace ProtoPromiseTests.APIs.Threading
                     Thread.Sleep(100);
                     cancelationSource.Cancel();
                     // Make sure we don't exit the lock until the other thread returned from TryEnter.
-                    SpinWait.SpinUntil(() => didWait);
+                    TestHelper.SpinUntil(() => didWait, TimeSpan.FromSeconds(1));
                 }
             });
 
@@ -424,7 +424,7 @@ namespace ProtoPromiseTests.APIs.Threading
                     Thread.Sleep(100);
                     cancelationSource.Cancel();
                     // Make sure we don't exit the lock until the other thread returned from TryEnter.
-                    SpinWait.SpinUntil(() => didWait);
+                    TestHelper.SpinUntil(() => didWait, TimeSpan.FromSeconds(1));
                 }
             });
 

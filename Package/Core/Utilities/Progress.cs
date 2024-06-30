@@ -264,7 +264,7 @@ namespace Proto.Promises
         /// Create a new progress handler that can report to multiple progress tokens.
         /// </summary>
         /// <remarks>
-        /// This can be useful when combined with <see cref="Promise.Preserve"/> for reporting progress to multiple consumers from a single async operation.
+        /// This can be useful when combined with <see cref="Promise.GetRetainer"/> for reporting progress to multiple consumers from a single async operation.
         /// </remarks>
         /// <returns>A new progress multi handler.</returns>
         public static MultiHandler NewMultiHandler()
@@ -402,7 +402,7 @@ namespace Proto.Promises
             /// Create a new progress handler that can report to multiple progress tokens.
             /// </summary>
             /// <remarks>
-            /// This can be useful when combined with <see cref="Promise.Preserve"/> for reporting progress to multiple consumers from a single async operation.
+            /// This can be useful when combined with <see cref="Promise.GetRetainer"/> for reporting progress to multiple consumers from a single async operation.
             /// </remarks>
             /// <returns>A new progress multi handler.</returns>
             [MethodImpl(Internal.InlineOption)]

@@ -4,7 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0038 // Use pattern matching
 #pragma warning disable IDE0054 // Use compound assignment
 #pragma warning disable IDE0090 // Use 'new(...)'
 
@@ -20,17 +19,17 @@ namespace Proto.Promises
         // Extension method instead of including on the interface, since old IL2CPP compiler does not support virtual generics with structs.
         internal static bool TryGetValue<TValue>(this IRejectContainer rejectContainer, out TValue converted)
         {
-            // null check is same as typeof(TValue).IsValueType, but is actually optimized away by the JIT. This prevents the type check when TValue is a reference type.
+            // These checks are optimized away by the JIT.
+            // Null check is necessary for older runtimes to prevent the type check when TValue is a reference type.
             if (null != default(TValue) && typeof(TValue) == typeof(VoidResult))
             {
                 converted = default;
                 return true;
             }
 
-            object value = rejectContainer.Value;
-            if (value is TValue)
+            if (rejectContainer.Value is TValue value)
             {
-                converted = (TValue) value;
+                converted = value;
                 return true;
             }
             converted = default;
@@ -46,9 +45,8 @@ namespace Proto.Promises
             CausalityTrace ITraceable.Trace { get; set; }
 #endif
 
-            protected object _value;
-            public object Value => _value;
-
+            public abstract object Value { get; }
+            public abstract Exception GetValueAsException();
             public abstract void ReportUnhandled();
             public abstract ExceptionDispatchInfo GetExceptionDispatchInfo();
 
@@ -64,7 +62,6 @@ namespace Proto.Promises
                 reason = reason ?? new NullReferenceException();
                 return reason is Exception e
                     ? RejectionContainerException.Create(e, rejectSkipFrames + 1, exceptionWithStacktrace, traceable)
-                    // Only need to create one object pool for reference types.
                     : (IRejectContainer) RejectionContainer.Create(reason, rejectSkipFrames + 1, exceptionWithStacktrace, traceable);
             }
         }
@@ -74,6 +71,9 @@ namespace Proto.Promises
 #endif
         internal sealed partial class RejectionContainer : RejectContainer, IRejectionToContainer, ICantHandleException
         {
+            private object _value;
+            public override object Value => _value;
+
             partial void SetCreatedAndRejectedStacktrace(int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable);
 #if PROMISE_DEBUG
             private StackTrace _rejectedStackTrace;
@@ -91,6 +91,9 @@ namespace Proto.Promises
 
             private RejectionContainer() { }
 
+            public override Exception GetValueAsException()
+                => ToException();
+
             new internal static RejectionContainer Create(object value, int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable)
             {
                 var container = new RejectionContainer
@@ -103,9 +106,7 @@ namespace Proto.Promises
             }
 
             public override void ReportUnhandled()
-            {
-                ReportUnhandledException(ToException());
-            }
+                => ReportUnhandledException(ToException());
 
             private UnhandledException ToException()
             {
@@ -173,13 +174,14 @@ namespace Proto.Promises
             }
 #endif
 
+            public override object Value => _capturedInfo.SourceException;
+
             private RejectionContainerException() { }
 
             internal static RejectionContainerException Create(Exception value, int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable)
             {
                 var container = new RejectionContainerException
                 {
-                    _value = value,
                     _capturedInfo = ExceptionDispatchInfo.Capture(value)
                 };
                 SetCreatedStacktrace(container, 2);
@@ -188,16 +190,14 @@ namespace Proto.Promises
             }
 
             public override void ReportUnhandled()
-            {
-                ReportUnhandledException(ToException());
-            }
+                => ReportUnhandledException(ToException());
 
             private UnhandledException ToException()
             {
 #if PROMISE_DEBUG
-                return new UnhandledExceptionInternal(Value, "An exception was not handled." + CausalityTraceMessage, _stackTraces.ToString(), _rejectException ?? (Exception) Value);
+                return new UnhandledExceptionInternal(Value, "An exception was not handled." + CausalityTraceMessage, _stackTraces.ToString(), _rejectException ?? _capturedInfo.SourceException);
 #else
-                return new UnhandledExceptionInternal(Value, "An exception was not handled." + CausalityTraceMessage, null, (Exception) Value);
+                return new UnhandledExceptionInternal(Value, "An exception was not handled." + CausalityTraceMessage, null, _capturedInfo.SourceException);
 #endif
             }
 
@@ -209,6 +209,9 @@ namespace Proto.Promises
 
             void ICantHandleException.ReportUnhandled(ITraceable traceable)
                 => ReportUnhandledException(ToException());
+
+            public override Exception GetValueAsException()
+                => _capturedInfo.SourceException;
         }
     }
 }
