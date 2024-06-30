@@ -75,3 +75,30 @@ var page = await PromiseRaceGroup<string>.New(cancelationToken, out var groupCan
     .WaitAsync();
 Console.WriteLine(page); // Print the page that was downloaded first.
 ```
+
+## PromiseEachGroup
+
+`PromiseEachGroup` combines multiple async operations of a single type into an `AsyncEnumerable<T>` that will yield each operation's result in the order that they complete.
+
+```cs
+var asyncEnumerable = PromiseEachGroup<string>.New(cancelationToken, out var groupCancelationToken)
+    .Add(Download("http://www.google.com", groupCancelationToken))
+    .Add(Download("http://www.bing.com", groupCancelationToken))
+    .GetAsyncEnumerable();
+// Print each page in the order that their downloads complete.
+await foreach (var downloadResult in asyncEnumerable)
+{
+    if (downloadResult.State == Promise.State.Resolved)
+    {
+        Console.WriteLine(downloadResult.Value);    // Print the HTML.
+    }
+    else if (downloadResult.State == Promise.State.Rejected)
+    {
+        Console.WriteLine(downloadResult.Reason);    // Print the reject reason.
+    }
+    else
+    {
+        Console.WriteLine("Download was canceled");
+    }
+}
+```
