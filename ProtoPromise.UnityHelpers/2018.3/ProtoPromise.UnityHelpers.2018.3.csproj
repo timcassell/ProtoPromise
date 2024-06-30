@@ -3,7 +3,7 @@
   <PropertyGroup>
     <!--We target .Net Standard 2.0 to support old Unity versions, and we also target .Net Standard 2.1 to use function pointers.-->
     <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
-    <Version>3.0.2</Version>
+    <Version>3.1.0</Version>
     <!--In case any IL2CPP issues need to be resolved like in the core library.-->
     <DefineConstants>$(DefineConstants);ENABLE_IL2CPP</DefineConstants>
   </PropertyGroup>
