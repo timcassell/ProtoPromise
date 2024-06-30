@@ -804,8 +804,6 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
             }
         }
 
-        // Using PromiseMergeResultsGroupExtended in IL2CPP causes the build to fail.
-#if !ENABLE_IL2CPP
         [Test]
         public void PromiseMergeResultsGroupIsResolvedWhenAllPromisesAreCompleted_T_void_T_void_T_T_void_void(
             [Values] CancelationType cancelationType,
@@ -1368,6 +1366,5 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                 Assert.IsTrue(completed);
             }
         }
-#endif
     }
 }
