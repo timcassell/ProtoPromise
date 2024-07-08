@@ -30,12 +30,6 @@ namespace Proto.Promises
         {
             private readonly Func<AsyncStreamWriter<T>, CancelationToken, AsyncIteratorMethod> _func;
 
-            public bool IsNull
-            {
-                [MethodImpl(InlineOption)]
-                get { return _func == null; }
-            }
-
             [MethodImpl(InlineOption)]
             internal AsyncIterator(Func<AsyncStreamWriter<T>, CancelationToken, AsyncIteratorMethod> func)
                 => _func = func;
@@ -56,12 +50,6 @@ namespace Proto.Promises
         {
             private readonly TCapture _capturedValue;
             private readonly Func<TCapture, AsyncStreamWriter<T>, CancelationToken, AsyncIteratorMethod> _func;
-
-            public bool IsNull
-            {
-                [MethodImpl(InlineOption)]
-                get { return _func == null; }
-            }
 
             [MethodImpl(InlineOption)]
             internal AsyncIterator(TCapture captureValue, Func<TCapture, AsyncStreamWriter<T>, CancelationToken, AsyncIteratorMethod> func)
