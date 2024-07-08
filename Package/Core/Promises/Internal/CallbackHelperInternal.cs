@@ -224,9 +224,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> Canceled(PromiseRefBase _ref, short promiseId)
                 {
                     _ref?.MaybeMarkAwaitedAndDispose(promiseId);
-                    var deferred = DeferredPromise<TResult>.GetOrCreate();
-                    deferred.CancelDirect();
-                    return new Promise<TResult>(deferred, deferred.Id);
+                    return Promise<TResult>.Canceled();
                 }
 
                 [MethodImpl(InlineOption)]
@@ -880,9 +878,7 @@ namespace Proto.Promises
                 internal static Promise Canceled(PromiseRefBase _ref, short promiseId)
                 {
                     _ref?.MaybeMarkAwaitedAndDispose(promiseId);
-                    var deferred = DeferredPromise<VoidResult>.GetOrCreate();
-                    deferred.CancelDirect();
-                    return new Promise(deferred, deferred.Id);
+                    return Promise.Canceled();
                 }
 
                 [MethodImpl(InlineOption)]
@@ -922,7 +918,7 @@ namespace Proto.Promises
                     if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? Canceled(_this._ref, _this._id)
+                            ? Promise.Canceled()
                             : _this;
                     }
                     PromiseRefBase promise;
@@ -943,7 +939,7 @@ namespace Proto.Promises
                     if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? CallbackHelperResult<TResult>.Canceled(_this._ref, _this._id)
+                            ? Promise<TResult>.Canceled()
                             : _this;
                     }
                     PromiseRef<TResult> promise;
