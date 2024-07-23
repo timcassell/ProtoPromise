@@ -29,6 +29,9 @@
       <group targetFramework="net6.0">
         <dependency id="ProtoPromise.Analyzer" version="1.0.0" exclude="Build" />
       </group>
+      <group targetFramework="net8.0">
+        <dependency id="ProtoPromise.Analyzer" version="1.0.0" exclude="Build" />
+      </group>
     </dependencies>
 
     <readme>readme.md</readme>
@@ -45,6 +48,9 @@
     
     <file src="..\bin\Release\net6.0\**" target="lib/net6.0/Release" />
     <file src="..\bin\Debug\net6.0\**" target="lib/net6.0/Debug" />
+
+    <file src="..\bin\Release\net8.0\**" target="lib/net8.0/Release" />
+    <file src="..\bin\Debug\net8.0\**" target="lib/net8.0/Debug" />
     
     <file src="readme.md" target="" />
   </files>
