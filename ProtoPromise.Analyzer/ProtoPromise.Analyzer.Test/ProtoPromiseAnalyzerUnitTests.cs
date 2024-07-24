@@ -38,7 +38,7 @@ namespace ConsoleApplication1
 
             await new CSharpAnalyzerTest<YieldAsyncAnalyzer, MSTestVerifier>()
             {
-                ReferenceAssemblies = new ReferenceAssemblies("net6.0", new PackageIdentity("Microsoft.NETCore.App.Ref", "6.0.0"), Path.Combine("ref", "net6.0")),
+                ReferenceAssemblies = new ReferenceAssemblies("net8.0", new PackageIdentity("Microsoft.NETCore.App.Ref", "8.0.0"), Path.Combine("ref", "net8.0")),
                 TestState =
                 {
                     Sources = { test },
@@ -46,6 +46,18 @@ namespace ConsoleApplication1
                 }
             }.RunAsync();
         }
+        private static Task RunTestAsync(string test, DiagnosticResult expectedResult)
+            => new CSharpAnalyzerTest<YieldAsyncAnalyzer, MSTestVerifier>()
+            {
+                ReferenceAssemblies = new ReferenceAssemblies("net8.0", new PackageIdentity("Microsoft.NETCore.App.Ref", "8.0.0"), Path.Combine("ref", "net8.0")),
+                TestState =
+                {
+                    Sources = { test },
+                    AdditionalReferences = { typeof(Proto.Promises.Promise).Assembly.Location },
+                    ExpectedDiagnostics = { expectedResult }
+                }
+            }.RunAsync();
+
 
         [TestMethod]
         public async Task CannotAwaitYieldInTryWithCatch()
@@ -72,18 +84,7 @@ namespace ConsoleApplication1
 }";
 
             var expected = VerifyCS.Diagnostic(YieldAsyncAnalyzer.YieldAsyncTryCatchId).WithLocation(14, 21);
-
-            var testRunner = new CSharpAnalyzerTest<YieldAsyncAnalyzer, MSTestVerifier>()
-            {
-                ReferenceAssemblies = new ReferenceAssemblies("net6.0", new PackageIdentity("Microsoft.NETCore.App.Ref", "6.0.0"), Path.Combine("ref", "net6.0")),
-                TestState =
-                {
-                    Sources = { test },
-                    AdditionalReferences = { typeof(Proto.Promises.Promise).Assembly.Location },
-                    ExpectedDiagnostics = { expected }
-                }
-            };
-            await testRunner.RunAsync();
+            await RunTestAsync(test, expected);
         }
 
         [TestMethod]
@@ -113,18 +114,7 @@ namespace ConsoleApplication1
 }";
 
             var expected = VerifyCS.Diagnostic(YieldAsyncAnalyzer.YieldAsyncCatchId).WithLocation(17, 21);
-
-            var testRunner = new CSharpAnalyzerTest<YieldAsyncAnalyzer, MSTestVerifier>()
-            {
-                ReferenceAssemblies = new ReferenceAssemblies("net6.0", new PackageIdentity("Microsoft.NETCore.App.Ref", "6.0.0"), Path.Combine("ref", "net6.0")),
-                TestState =
-                {
-                    Sources = { test },
-                    AdditionalReferences = { typeof(Proto.Promises.Promise).Assembly.Location },
-                    ExpectedDiagnostics = { expected }
-                }
-            };
-            await testRunner.RunAsync();
+            await RunTestAsync(test, expected);
         }
 
         [TestMethod]
@@ -154,18 +144,7 @@ namespace ConsoleApplication1
 }";
 
             var expected = VerifyCS.Diagnostic(YieldAsyncAnalyzer.YieldAsyncFinallyId).WithLocation(17, 21);
-
-            var testRunner = new CSharpAnalyzerTest<YieldAsyncAnalyzer, MSTestVerifier>()
-            {
-                ReferenceAssemblies = new ReferenceAssemblies("net6.0", new PackageIdentity("Microsoft.NETCore.App.Ref", "6.0.0"), Path.Combine("ref", "net6.0")),
-                TestState =
-                {
-                    Sources = { test },
-                    AdditionalReferences = { typeof(Proto.Promises.Promise).Assembly.Location },
-                    ExpectedDiagnostics = { expected }
-                }
-            };
-            await testRunner.RunAsync();
+            await RunTestAsync(test, expected);
         }
     }
 }
