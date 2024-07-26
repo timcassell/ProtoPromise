@@ -476,7 +476,6 @@ namespace Proto.Promises
         {
             // These must not be readonly.
             private Internal.PromiseRefBase.AsyncPromiseRef<T> _ref;
-            private short _id;
 #if OPTIMIZED_ASYNC_MODE
             private T _result;
 #else
@@ -484,6 +483,7 @@ namespace Proto.Promises
             private static T _result => default;
 #pragma warning restore IDE1006 // Naming Styles
 #endif
+            private short _id;
         }
     }
 }
