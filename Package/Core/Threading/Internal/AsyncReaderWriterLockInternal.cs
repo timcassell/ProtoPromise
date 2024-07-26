@@ -39,7 +39,7 @@ namespace Proto.Promises
             {
                 var promise = GetOrCreate();
                 promise.Reset(callerContext);
-                promise._result = new AsyncReaderWriterLock.ReaderKey(owner); ; // This will be overwritten when this is resolved, we just store the key with the owner here for cancelation.
+                promise._result = new AsyncReaderWriterLock.ReaderKey(owner); // This will be overwritten when this is resolved, we just store the key with the owner here for cancelation.
                 return promise;
             }
 
