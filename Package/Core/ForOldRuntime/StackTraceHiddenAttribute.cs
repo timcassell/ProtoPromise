@@ -5,7 +5,7 @@ using System;
 
 namespace Proto.Promises
 {
-    // This doesn't actually do anything before .Net 6, this is just so make it so we don't need to #if NET6_0_OR_GREATER at every place the attribute is used.
+    // This doesn't actually do anything before .Net 6, this is just to make it so we don't need to #if NET6_0_OR_GREATER at every place the attribute is used.
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Constructor | AttributeTargets.Method | AttributeTargets.Struct, Inherited = false)]
     internal sealed class StackTraceHiddenAttribute : Attribute
     {
