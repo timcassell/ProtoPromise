@@ -74,7 +74,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal void DisposeImmediate()
                 {
-                    SetCompletionState(Promise.State.Resolved);
+                    this.PrepareEarlyDispose();
                     MaybeDispose();
                 }
 
@@ -156,7 +156,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal void DisposeImmediate()
                 {
-                    SetCompletionState(Promise.State.Resolved);
+                    this.PrepareEarlyDispose();
                     MaybeDispose();
                 }
 

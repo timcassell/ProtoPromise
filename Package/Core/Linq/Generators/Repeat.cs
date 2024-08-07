@@ -120,9 +120,7 @@ namespace Proto.Promises
 
             new private void Dispose()
             {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                SetCompletionState(Promise.State.Resolved);
-#endif
+                this.PrepareEarlyDispose();
                 base.Dispose();
                 _current = default;
                 _disposed = true;

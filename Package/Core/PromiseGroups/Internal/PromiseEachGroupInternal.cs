@@ -105,12 +105,6 @@ namespace Proto.Promises
                 {
                     ValidateNoPending();
 
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    SetCompletionState(Promise.State.Resolved);
-#endif
-                    // MoveNextAsync/DisposeAsync may have completed synchronously, in which case this will never have had a waiter added to it.
-                    // So we need to mark it awaited to prevent the finalizer from reporting it as not awaited.
-                    WasAwaitedOrForgotten = true;
                     base.Dispose();
                     _current = default;
                     _cancelationException = null;
@@ -150,6 +144,11 @@ namespace Proto.Promises
                     }
 
                     var exception = GetAggregateException();
+
+                    // MoveNextAsync may have completed synchronously, or not called at all, in which case this will never have had a waiter added to it or had its promise state set.
+                    // So we need to mark it awaited to prevent the finalizer from reporting it as not awaited, and prepare the dispose.
+                    this.PrepareEarlyDispose();
+                    WasAwaitedOrForgotten = true;
                     Dispose();
                     return exception == null
                         ? Promise.Resolved()
