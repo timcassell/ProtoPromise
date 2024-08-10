@@ -203,9 +203,10 @@ namespace Proto.Promises.Threading
         /// <summary>
         /// Schedule the delegate to execute on this context with the given state, and wait for it to complete.
         /// </summary>
-        /// <remarks>This method doe not check the <see cref="Thread.CurrentThread"/> or <see cref="SynchronizationContext.Current"/>.
-        /// Your <see cref="SynchronizationContext"/> should check for the appropriate current thread or context in order to invoke the callback synchronously when required.</remarks>
         /// <remarks>
+        /// This method does not check the <see cref="Thread.CurrentThread"/> or <see cref="SynchronizationContext.Current"/>.
+        /// Your <see cref="SynchronizationContext"/> should check for the appropriate current thread or context in order to invoke the callback synchronously when required.
+        /// <para/>
         /// This method is thread-safe.
         /// </remarks>
         public void Send(SendOrPostCallback d, object state)
