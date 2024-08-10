@@ -22,9 +22,13 @@ namespace Proto.Promises.Threading
     /// You may use this type as a base to build your own custom <see cref="SynchronizationContext"/>.
     /// </summary>
     /// <remarks>
-    /// This type is a mutable struct, and so should not be used as a readonly field. This type is thread-safe as long as the field of this type is not overwritten, and only methods are called on it.
+    /// This type is a mutable struct, and so should not be used as a readonly field.
     /// <para/>
-    /// This type does not check the <see cref="Thread.CurrentThread"/> or <see cref="SynchronizationContext.Current"/>. If your context requires it, you must implement that yourself.
+    /// <see cref="Post(SendOrPostCallback, object)"/> and <see cref="Send(SendOrPostCallback, object)"/> methods are thread-safe, as long as the field of this type is not directly overwritten.
+    /// <see cref="ExecuteExhaustive"/> and <see cref="ExecuteNonExhaustive"/> may not be called recursively or concurrently on separate threads.
+    /// <para/>
+    /// This type does not check the <see cref="Thread.CurrentThread"/> or <see cref="SynchronizationContext.Current"/>.
+    /// If your context requires it (i.e. executing callbacks synchronously), you must implement that yourself.
     /// </remarks>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
@@ -40,8 +44,9 @@ namespace Proto.Promises.Threading
 #endif
         // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
         // (see https://stackoverflow.com/questions/24742325/why-does-struct-alignment-depend-on-whether-a-field-type-is-primitive-or-user-de).
-        private struct LockAndCount
+        private struct SmallFields
         {
+            internal Internal.SpinLocker _executeLock; // Used to prevent Execute(Non)Exhaustive from being called recursively or concurrently.
             internal Internal.SpinLocker _locker;
             internal int _postCount;
         }
@@ -118,9 +123,9 @@ namespace Proto.Promises.Threading
 
             internal void Send(ref ManualSynchronizationContextCore parent)
             {
-                parent._lockAndCount._locker.Enter();
+                parent._smallFields._locker.Enter();
                 parent._sendQueue.Enqueue(this);
-                parent._lockAndCount._locker.Exit();
+                parent._smallFields._locker.Exit();
 
                 _callbackCompletedEvent.WaitOne();
                 var capturedInfo = _capturedInfo;
@@ -142,7 +147,7 @@ namespace Proto.Promises.Threading
         private PostCallback[] _executing;
         // These must not be readonly.
         private Internal.ValueLinkedQueue<SendCallback> _sendQueue;
-        private LockAndCount _lockAndCount;
+        private SmallFields _smallFields;
 
         /// <summary>
         /// Create a new <see cref="ManualSynchronizationContextCore"/> with an initial capacity.
@@ -168,12 +173,15 @@ namespace Proto.Promises.Threading
             }
 
             _sendQueue = new Internal.ValueLinkedQueue<SendCallback>();
-            _lockAndCount = default;
+            _smallFields = default;
         }
 
         /// <summary>
         /// Schedule the delegate to execute on this context with the given state asynchronously, without waiting for it to complete.
         /// </summary>
+        /// <remarks>
+        /// This method is thread-safe.
+        /// </remarks>
         public void Post(SendOrPostCallback d, object state)
         {
             if (d == null)
@@ -181,15 +189,15 @@ namespace Proto.Promises.Threading
                 throw new System.ArgumentNullException(nameof(d), "SendOrPostCallback may not be null.");
             }
 
-            _lockAndCount._locker.Enter();
-            int count = _lockAndCount._postCount;
+            _smallFields._locker.Enter();
+            int count = _smallFields._postCount;
             if (count >= _postQueue.Length)
             {
                 Array.Resize(ref _postQueue, checked((count * 2) + 1));
             }
             _postQueue[count] = new PostCallback(d, state);
-            _lockAndCount._postCount = count + 1;
-            _lockAndCount._locker.Exit();
+            _smallFields._postCount = count + 1;
+            _smallFields._locker.Exit();
         }
 
         /// <summary>
@@ -197,6 +205,9 @@ namespace Proto.Promises.Threading
         /// </summary>
         /// <remarks>This method doe not check the <see cref="Thread.CurrentThread"/> or <see cref="SynchronizationContext.Current"/>.
         /// Your <see cref="SynchronizationContext"/> should check for the appropriate current thread or context in order to invoke the callback synchronously when required.</remarks>
+        /// <remarks>
+        /// This method is thread-safe.
+        /// </remarks>
         public void Send(SendOrPostCallback d, object state)
         {
             if (d == null)
@@ -212,32 +223,39 @@ namespace Proto.Promises.Threading
         /// and all callbacks that are scheduled to run on this context while this is executing,
         /// exhaustively, until no more callbacks remain.
         /// </summary>
-        /// <remarks>
-        /// This method should not be invoked recursively. If it is invoked recursively, behavior is undefined.
-        /// There is no validation on this type to prevent it, so you should be careful to avoid it.
-        /// </remarks>
-        /// <exception cref="System.InvalidOperationException">This is called recursively.</exception>
+        /// <exception cref="System.InvalidOperationException">This is called recursively or concurrently.</exception>
         /// <exception cref="AggregateException">One or more callbacks threw an exception.</exception>
         public void ExecuteExhaustive()
         {
-            // Catch all exceptions and continue executing callbacks until all are exhausted, then if there are any, throw all exceptions wrapped in AggregateException.
-            List<Exception> exceptions = null;
-
-            while (true)
+            if (!_smallFields._executeLock.TryEnter())
             {
-
-                var (sendStack, postQueue, postCount) = GetSendsAndPosts();
-                if (sendStack.IsEmpty & postCount == 0)
-                {
-                    break;
-                }
-
-                ExecuteCore(sendStack, postQueue, postCount, ref exceptions);
+                throw new System.InvalidOperationException($"{nameof(ManualSynchronizationContextCore)}.Execute(Non)Exhaustive was called recursively or concurrently. This is not supported.");
             }
 
-            if (exceptions != null)
+            try
             {
-                throw new AggregateException(exceptions);
+                // Catch all exceptions and continue executing callbacks until all are exhausted, then if there are any, throw all exceptions wrapped in AggregateException.
+                List<Exception> exceptions = null;
+
+                while (true)
+                {
+                    var (sendStack, postQueue, postCount) = GetSendsAndPosts();
+                    if (sendStack.IsEmpty & postCount == 0)
+                    {
+                        break;
+                    }
+
+                    ExecuteCore(sendStack, postQueue, postCount, ref exceptions);
+                }
+
+                if (exceptions != null)
+                {
+                    throw new AggregateException(exceptions);
+                }
+            }
+            finally
+            {
+                _smallFields._executeLock.Exit();
             }
         }
 
@@ -245,37 +263,45 @@ namespace Proto.Promises.Threading
         /// Invoke all callbacks that were scheduled to run on this context.
         /// Any callbacks that are scheduled to run on this context while this is executing will not be invoked until the next time this is called.
         /// </summary>
-        /// <remarks>
-        /// This method should not be invoked recursively. If it is invoked recursively, behavior is undefined.
-        /// There is no validation on this type to prevent it, so you should be careful to avoid it.
-        /// </remarks>
-        /// <exception cref="System.InvalidOperationException">This is called recursively.</exception>
+        /// <exception cref="System.InvalidOperationException">This is called recursively or concurrently.</exception>
         /// <exception cref="AggregateException">One or more callbacks threw an exception.</exception>
         public void ExecuteNonExhaustive()
         {
-            // Catch all exceptions and continue executing callbacks until all are exhausted, then if there are any, throw all exceptions wrapped in AggregateException.
-            List<Exception> exceptions = null;
-
-            var (sendStack, postQueue, postCount) = GetSendsAndPosts();
-            ExecuteCore(sendStack, postQueue, postCount, ref exceptions);
-
-            if (exceptions != null)
+            if (!_smallFields._executeLock.TryEnter())
             {
-                throw new AggregateException(exceptions);
+                throw new System.InvalidOperationException($"{nameof(ManualSynchronizationContextCore)}.Execute(Non)Exhaustive was called recursively or concurrently. This is not supported.");
+            }
+
+            try
+            {
+                // Catch all exceptions and continue executing callbacks until all are exhausted, then if there are any, throw all exceptions wrapped in AggregateException.
+                List<Exception> exceptions = null;
+
+                var (sendStack, postQueue, postCount) = GetSendsAndPosts();
+                ExecuteCore(sendStack, postQueue, postCount, ref exceptions);
+
+                if (exceptions != null)
+                {
+                    throw new AggregateException(exceptions);
+                }
+            }
+            finally
+            {
+                _smallFields._executeLock.Exit();
             }
         }
 
         private (Internal.ValueLinkedStack<SendCallback> sendStack, PostCallback[] postQueue, int postCount) GetSendsAndPosts()
         {
-            _lockAndCount._locker.Enter();
+            _smallFields._locker.Enter();
             var sendStack = _sendQueue.MoveElementsToStack();
             var postQueue = _postQueue;
-            int postCount = _lockAndCount._postCount;
-            _lockAndCount._postCount = 0;
+            int postCount = _smallFields._postCount;
+            _smallFields._postCount = 0;
             // Swap the executing and pending arrays.
             _postQueue = _executing;
             _executing = postQueue;
-            _lockAndCount._locker.Exit();
+            _smallFields._locker.Exit();
 
             return (sendStack, postQueue, postCount);
         }

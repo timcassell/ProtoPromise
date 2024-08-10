@@ -24,7 +24,6 @@ namespace Proto.Promises.Threading
         // ManualSynchronizationContextCore is not associated with a thread, we do it in this type.
         private readonly Thread _thread;
         private ManualSynchronizationContextCore _core;
-        private bool _isExecuting;
 
         /// <summary>
         /// Create a new <see cref="PromiseSynchronizationContext"/> affiliated with the current thread.
@@ -81,7 +80,7 @@ namespace Proto.Promises.Threading
         /// and all callbacks that are scheduled to run on this context while this is executing,
         /// exhaustively, until no more callbacks remain.
         /// </summary>
-        /// <exception cref="System.InvalidOperationException">If this is called on a different thread than this context is associated, or if this is called recursively.</exception>
+        /// <exception cref="System.InvalidOperationException">If this is called on a different thread than this context is affiliated, or if this is called recursively.</exception>
         /// <exception cref="AggregateException">One or more callbacks threw an exception.</exception>
         public void Execute()
             => Execute(true);
@@ -93,33 +92,22 @@ namespace Proto.Promises.Threading
         /// If <see langword="true"/>, all callbacks that are scheduled to run on this context while this is executing will be invoked exhaustively, until no more callbacks remain;
         /// otherwise, any callbacks that are scheduled to run on this context while this is executing will not be invoked until the next time this is called.
         /// </param>
-        /// <exception cref="System.InvalidOperationException">If this is called on a different thread than this context is associated, or if this is called recursively.</exception>
+        /// <exception cref="System.InvalidOperationException">If this is called on a different thread than this context is affiliated, or if this is called recursively.</exception>
         /// <exception cref="AggregateException">One or more callbacks threw an exception.</exception>
         public void Execute(bool exhaustive)
         {
-            if (Thread.CurrentThread != _thread | _isExecuting)
+            if (Thread.CurrentThread != _thread)
             {
-                throw new System.InvalidOperationException(Thread.CurrentThread != _thread
-                    ? $"{nameof(Execute)} may only be called from the thread on which the {nameof(PromiseSynchronizationContext)} is affiliated."
-                    : $"{nameof(Execute)} called recursively. This is not supported.");
+                throw new System.InvalidOperationException($"{nameof(Execute)} may only be called from the thread on which the {nameof(PromiseSynchronizationContext)} is affiliated.");
             }
 
-            try
+            if (exhaustive)
             {
-                _isExecuting = true;
-
-                if (exhaustive)
-                {
-                    _core.ExecuteExhaustive();
-                }
-                else
-                {
-                    _core.ExecuteNonExhaustive();
-                }
+                _core.ExecuteExhaustive();
             }
-            finally
+            else
             {
-                _isExecuting = false;
+                _core.ExecuteNonExhaustive();
             }
         }
     }

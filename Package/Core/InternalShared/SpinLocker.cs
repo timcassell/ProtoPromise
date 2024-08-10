@@ -25,11 +25,15 @@ namespace Proto.Promises
 
             internal void Enter()
             {
-                if (Interlocked.Exchange(ref _locker, 1) == 1)
+                if (!TryEnter())
                 {
                     EnterCore();
                 }
             }
+
+            [MethodImpl(InlineOption)]
+            internal bool TryEnter()
+                => Interlocked.Exchange(ref _locker, 1) == 0;
 
             [MethodImpl(MethodImplOptions.NoInlining)]
             private void EnterCore()
@@ -40,7 +44,7 @@ namespace Proto.Promises
                 {
                     spinner.SpinOnce();
                 }
-                while (Interlocked.Exchange(ref _locker, 1) == 1);
+                while (!TryEnter());
             }
 
             [MethodImpl(InlineOption)]
