@@ -123,7 +123,7 @@ namespace ProtoPromiseTests
 
             SynchronizationContext.SetSynchronizationContext(_foregroundContext);
             Promise.Manager.ThreadStaticSynchronizationContext = _foregroundContext;
-            TestContext.Progress.WriteLine("Begin time: " + _stopwatch.Elapsed.ToString() + ", test: " + TestContext.CurrentContext.Test.FullName);
+            LogProgress("Begin");
         }
 
         public static void AssertRejection(object expected, object actual)
@@ -167,7 +167,19 @@ namespace ProtoPromiseTests
 #endif
 
             s_expectedUncaughtRejectValue = null;
-            TestContext.Progress.WriteLine("Success time: " + _stopwatch.Elapsed.ToString() + ", test: " + TestContext.CurrentContext.Test.FullName);
+            LogProgress("Success");
+        }
+
+        private static void LogProgress(string beginOrSuccess)
+        {
+            var message = $"{beginOrSuccess} time: {_stopwatch.Elapsed}, test: {TestContext.CurrentContext.Test.FullName}";
+            // TestContext.Progress is not logged when running Unity tests, so we use Debug.LogFormat instead.
+            // Debug.Log captures stacktrace which is too expensive for CI, and the option to log without capturing stacktrace was added in 2019.
+#if UNITY_2019_1_OR_NEWER
+            UnityEngine.Debug.LogFormat(UnityEngine.LogType.Log, UnityEngine.LogOption.NoStacktrace, null, message);
+#else
+            TestContext.Progress.WriteLine(message);
+#endif
         }
 
         private static void WaitForAllThreadsToCompleteAndGcCollect()
