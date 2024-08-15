@@ -68,7 +68,7 @@ namespace Proto.Promises.Channels
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="Channel{T}"/>.</summary>
         [MethodImpl(Internal.InlineOption)]
         public bool Equals(Channel<T> other)
-            => throw new NotImplementedException();
+            => this == other;
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
         public override bool Equals(object obj)
@@ -87,7 +87,7 @@ namespace Proto.Promises.Channels
         /// <summary>Returns a value indicating whether two <see cref="Channel{T}"/> values are not equal.</summary>
         [MethodImpl(Internal.InlineOption)]
         public static bool operator !=(Channel<T> lhs, Channel<T> rhs)
-            => throw new NotImplementedException();
+            => !(lhs == rhs);
 
         /// <summary>
         /// Implicit cast from a <see cref="Channel{T}"/> to its readable half.

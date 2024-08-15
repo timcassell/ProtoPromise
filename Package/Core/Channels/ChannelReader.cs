@@ -34,14 +34,11 @@ namespace Proto.Promises.Channels
         /// Asynchronously tries to read an item from the channel.
         /// </summary>
         /// <param name="cancelationToken">A <see cref="CancelationToken"/> used to cancel the read operation.</param>
-        /// <param name="synchronousContinuation">
-        /// If the read operation did not complete immediately, the async continuation will be executed synchronously if <see langword="true"/>, or asynchronously if <see langword="false"/>.
-        /// </param>
         /// <returns>A <see cref="Promise{T}"/> that yields whether the read was a success, and the item that was read.</returns>
         /// <remarks>
         /// If the read was unsuccessful, it means the channel was completed, and no more items will be written to it.
         /// </remarks>
-        public Promise<(bool success, T item)> TryReadAsync(CancelationToken cancelationToken = default, bool synchronousContinuation = false)
+        public Promise<(bool success, T item)> TryReadAsync(CancelationToken cancelationToken = default)
         {
             throw new NotImplementedException();
         }
@@ -58,13 +55,10 @@ namespace Proto.Promises.Channels
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that enables reading all of the data from the channel.
         /// </summary>
-        /// <param name="synchronousContinuations">
-        /// If the read operations do not complete immediately, the async continuations will be executed synchronously if <see langword="true"/>, or asynchronously if <see langword="false"/>.
-        /// </param>
         /// <returns>The created <see cref="AsyncEnumerable{T}"/>.</returns>
-        public AsyncEnumerable<T> ReadAllAsync(bool synchronousContinuations = false)
+        public AsyncEnumerable<T> ReadAllAsync()
             // We add a reader in case this is disposed before the channel is completed.
-            => AsyncEnumerable<T>.Create(new AsyncIterator(AddReader(), synchronousContinuations));
+            => AsyncEnumerable<T>.Create(new AsyncIterator(AddReader()));
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
@@ -72,13 +66,11 @@ namespace Proto.Promises.Channels
         private readonly struct AsyncIterator : IAsyncIterator<T>
         {
             private readonly ChannelReader<T> _channelReader;
-            private readonly bool _synchronousContinuations;
 
             [MethodImpl(Internal.InlineOption)]
-            public AsyncIterator(ChannelReader<T> channelReader, bool synchronousContinuations)
+            public AsyncIterator(ChannelReader<T> channelReader)
             {
                 _channelReader = channelReader;
-                _synchronousContinuations = synchronousContinuations;
             }
 
             public Promise DisposeAsyncWithoutStart()
@@ -93,7 +85,7 @@ namespace Proto.Promises.Channels
                 {
                     while (true)
                     {
-                        var (success, item) = await _channelReader.TryReadAsync(cancelationToken, _synchronousContinuations);
+                        var (success, item) = await _channelReader.TryReadAsync(cancelationToken);
                         if (!success)
                         {
                             break;
@@ -119,7 +111,7 @@ namespace Proto.Promises.Channels
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="ChannelReader{T}"/>.</summary>
         [MethodImpl(Internal.InlineOption)]
         public bool Equals(ChannelReader<T> other)
-            => _channel == other._channel;
+            => this == other;
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
         public override bool Equals(object obj)
@@ -138,6 +130,6 @@ namespace Proto.Promises.Channels
         /// <summary>Returns a value indicating whether two <see cref="ChannelReader{T}"/> values are not equal.</summary>
         [MethodImpl(Internal.InlineOption)]
         public static bool operator !=(ChannelReader<T> lhs, ChannelReader<T> rhs)
-            => lhs._channel == rhs._channel;
+            => !(lhs == rhs);
     }
 }

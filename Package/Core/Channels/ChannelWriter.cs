@@ -32,11 +32,8 @@ namespace Proto.Promises.Channels
         /// </summary>
         /// <param name="item">The value to write to the channel.</param>
         /// <param name="cancelationToken">A <see cref="CancelationToken"/> used to cancel the write operation.</param>
-        /// <param name="synchronousContinuation">
-        /// If the write operation did not complete immediately, the async continuation will be executed synchronously if <see langword="true"/>, or asynchronously if <see langword="false"/>.
-        /// </param>
         /// <returns>A <see cref="Promise{T}"/> that yields the result of the write operation.</returns>
-        public Promise<ChannelWriteResult<T>> WriteAsync(T item, CancelationToken cancelationToken = default, bool synchronousContinuation = false)
+        public Promise<ChannelWriteResult<T>> WriteAsync(T item, CancelationToken cancelationToken = default)
         {
             throw new NotImplementedException();
         }
@@ -76,7 +73,7 @@ namespace Proto.Promises.Channels
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="ChannelWriter{T}"/>.</summary>
         [MethodImpl(Internal.InlineOption)]
         public bool Equals(ChannelWriter<T> other)
-            => _channel == other._channel;
+            => this == other;
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
         public override bool Equals(object obj)
@@ -95,6 +92,6 @@ namespace Proto.Promises.Channels
         /// <summary>Returns a value indicating whether two <see cref="ChannelWriter{T}"/> values are not equal.</summary>
         [MethodImpl(Internal.InlineOption)]
         public static bool operator !=(ChannelWriter<T> lhs, ChannelWriter<T> rhs)
-            => lhs._channel == rhs._channel;
+            => !(lhs == rhs);
     }
 }

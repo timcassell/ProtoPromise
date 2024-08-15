@@ -19,7 +19,7 @@ namespace Proto.Promises.Channels
         /// </summary>
         Aborted,
         /// <summary>
-        /// The item was written to the channel without removing any other item.
+        /// The item was written to the channel without removing another item.
         /// </summary>
         Success,
         /// <summary>
