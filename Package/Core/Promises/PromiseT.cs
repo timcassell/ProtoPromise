@@ -33,7 +33,7 @@ namespace Proto.Promises
             var r = _ref;
             return r == null
                 ? new System.Threading.Tasks.ValueTask<T>(_result)
-                : new System.Threading.Tasks.ValueTask<T>(r, _id);
+                : r.ToValueTask(_id);
         }
 
         /// <summary>
@@ -48,13 +48,7 @@ namespace Proto.Promises
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public System.Threading.Tasks.ValueTask AsValueTaskVoid()
-        {
-            ValidateOperation(1);
-            var r = _ref;
-            return r == null
-                ? new System.Threading.Tasks.ValueTask()
-                : new System.Threading.Tasks.ValueTask(_ref, _id);
-        }
+            => AsPromise().AsValueTask();
 
         /// <summary>
         /// Cast to <see cref="System.Threading.Tasks.ValueTask"/>.
