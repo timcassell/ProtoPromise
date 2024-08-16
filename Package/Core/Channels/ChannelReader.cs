@@ -31,14 +31,21 @@ namespace Proto.Promises.Channels
         }
 
         /// <summary>
-        /// Asynchronously tries to read an item from the channel.
+        /// Asynchronously attempts to peek at an item from the channel.
+        /// </summary>
+        /// <param name="cancelationToken">A <see cref="CancelationToken"/> used to cancel the peek operation.</param>
+        /// <returns>A <see cref="Promise{T}"/> that yields the result of the peek operation.</returns>
+        public Promise<ChannelReadOrPeekResult<T>> TryPeekAsync(CancelationToken cancelationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Asynchronously attempts to read an item from the channel.
         /// </summary>
         /// <param name="cancelationToken">A <see cref="CancelationToken"/> used to cancel the read operation.</param>
-        /// <returns>A <see cref="Promise{T}"/> that yields whether the read was a success, and the item that was read.</returns>
-        /// <remarks>
-        /// If the read was unsuccessful, it means the channel was completed, and no more items will be written to it.
-        /// </remarks>
-        public Promise<(bool success, T item)> TryReadAsync(CancelationToken cancelationToken = default)
+        /// <returns>A <see cref="Promise{T}"/> that yields the result of the read operation.</returns>
+        public Promise<ChannelReadOrPeekResult<T>> TryReadAsync(CancelationToken cancelationToken = default)
         {
             throw new NotImplementedException();
         }
@@ -83,13 +90,8 @@ namespace Proto.Promises.Channels
             {
                 using (_channelReader)
                 {
-                    while (true)
+                    while ((await _channelReader.TryReadAsync(cancelationToken)).TryGetItem(out T item))
                     {
-                        var (success, item) = await _channelReader.TryReadAsync(cancelationToken);
-                        if (!success)
-                        {
-                            break;
-                        }
                         await streamWriter.YieldAsync(item);
                     }
                 }

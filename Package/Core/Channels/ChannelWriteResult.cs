@@ -15,9 +15,9 @@ namespace Proto.Promises.Channels
     public enum ChannelWriteResult : byte
     {
         /// <summary>
-        /// The item was not written to the channel because all readers were disposed.
+        /// The item was not written to the channel because all readers were disposed, ensuring no more items will ever be read from the channel.
         /// </summary>
-        Aborted,
+        Closed,
         /// <summary>
         /// The item was written to the channel without removing another item.
         /// </summary>
@@ -46,26 +46,26 @@ namespace Proto.Promises.Channels
     public readonly struct ChannelWriteResult<T>
     {
         private readonly T _droppedItem;
-        private readonly ChannelWriteResult _writeResult;
+        private readonly ChannelWriteResult _result;
 
         /// <summary>
         /// The result of the write operation.
         /// </summary>
-        public ChannelWriteResult WriteResult
+        public ChannelWriteResult Result
         {
             [MethodImpl(Internal.InlineOption)]
-            get => _writeResult;
+            get => _result;
         }
 
         [MethodImpl(Internal.InlineOption)]
-        internal ChannelWriteResult(ChannelWriteResult writeResult, T droppedItem)
+        internal ChannelWriteResult(T droppedItem, ChannelWriteResult result)
         {
-            _writeResult = writeResult;
+            _result = result;
             _droppedItem = droppedItem;
         }
 
         /// <summary>
-        /// Get the item that was dropped if an item was dropped. An item was dropped if <see cref="WriteResult"/> != <see cref="ChannelWriteResult.Success"/>.
+        /// Get the item that was dropped if an item was dropped. An item was dropped if <see cref="Result"/> != <see cref="ChannelWriteResult.Success"/>.
         /// </summary>
         /// <param name="droppedItem">When this method returns, contains the dropped item if an item was dropped, <see langword="default"/> otherwise.</param>
         /// <returns><see langword="true"/> if an item was dropped, <see langword="false"/> otherwise.</returns>
@@ -73,7 +73,7 @@ namespace Proto.Promises.Channels
         public bool TryGetDroppedItem(out T droppedItem)
         {
             droppedItem = _droppedItem;
-            return _writeResult != ChannelWriteResult.Success;
+            return _result != ChannelWriteResult.Success;
         }
     }
 }
