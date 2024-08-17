@@ -43,7 +43,7 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             internal void OnCompleted(Action continuation, short promiseId)
-                => HookupNewWaiter(promiseId, AwaiterRef<DelegateVoidVoid>.GetOrCreate(new DelegateVoidVoid(continuation)));
+                => HookupNewWaiter(promiseId, AwaiterContinuer.GetOrCreate(continuation));
 
             [MethodImpl(InlineOption)]
             internal Promise.ResultContainer GetResultContainerAndMaybeDispose(short promiseId)
@@ -106,38 +106,37 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed class AwaiterRef<TContinuer> : HandleablePromiseBase, ITraceable
-                where TContinuer : IAction
+            private sealed class AwaiterContinuer : HandleablePromiseBase, ITraceable
             {
 #if PROMISE_DEBUG
                 CausalityTrace ITraceable.Trace { get; set; }
 #endif
-                private TContinuer _continuer;
+                private Action _continuation;
 
-                private AwaiterRef() { }
+                private AwaiterContinuer() { }
 
                 [MethodImpl(InlineOption)]
-                private static AwaiterRef<TContinuer> GetOrCreate()
+                private static AwaiterContinuer GetOrCreate()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<AwaiterRef<TContinuer>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<AwaiterContinuer>();
                     return obj == InvalidAwaitSentinel.s_instance
-                        ? new AwaiterRef<TContinuer>()
-                        : obj.UnsafeAs<AwaiterRef<TContinuer>>();
+                        ? new AwaiterContinuer()
+                        : obj.UnsafeAs<AwaiterContinuer>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static AwaiterRef<TContinuer> GetOrCreate(TContinuer continuer)
+                internal static AwaiterContinuer GetOrCreate(Action continuation)
                 {
-                    var awaiter = GetOrCreate();
-                    awaiter._continuer = continuer;
-                    SetCreatedStacktrace(awaiter, 3);
-                    return awaiter;
+                    var continuer = GetOrCreate();
+                    continuer._continuation = continuation;
+                    SetCreatedStacktrace(continuer, 3);
+                    return continuer;
                 }
 
                 [MethodImpl(InlineOption)]
                 private void Dispose()
                 {
-                    _continuer = default;
+                    _continuation = null;
                     ObjectPool.MaybeRepool(this);
                 }
 
@@ -145,7 +144,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     handler.SetCompletionState(state);
-                    var callback = _continuer;
+                    var callback = _continuation;
 #if PROMISE_DEBUG
                     SetCurrentInvoker(this);
 #else

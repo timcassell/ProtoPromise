@@ -993,6 +993,7 @@ namespace ProtoPromiseTests.APIs
 
             Func();
             deferred.TryResolve();
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
             Assert.IsTrue(completed);
 
@@ -1013,6 +1014,7 @@ namespace ProtoPromiseTests.APIs
 
             Func();
             deferred.TryResolve(1);
+            TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
             Assert.IsTrue(completed);
 

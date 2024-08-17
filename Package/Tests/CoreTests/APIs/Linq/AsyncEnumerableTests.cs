@@ -219,6 +219,7 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.False(didCompleteFinallyBlock);
             Assert.True(didStartFinallyBlock);
             deferred.Resolve();
+            TestHelper.ExecuteForegroundCallbacks();
             Assert.True(runnerIsComplete);
 
             runner

@@ -1835,7 +1835,6 @@ namespace ProtoPromiseTests.APIs
                 CancelationToken cancelationToken = cancelationSource.Token;
                 bool startedInvoke = false;
                 bool invoked = false;
-                bool asyncComplete = false;
 
                 async Promise RunAsync()
                 {
@@ -1848,12 +1847,14 @@ namespace ProtoPromiseTests.APIs
                     Promise.Run(() => cancelationSource.Cancel()).Forget();
                     TestHelper.SpinUntil(() => startedInvoke, TimeSpan.FromSeconds(1));
                     await cancelationRegistration.DisposeAsync();
-                    Assert.IsTrue(invoked);
-                    asyncComplete = true;
                 }
 
-                RunAsync().TryWait(TimeSpan.FromSeconds(5));
-                Assert.IsTrue(asyncComplete);
+                var promise = RunAsync();
+                TestHelper.SpinUntil(() => startedInvoke, TimeSpan.FromSeconds(1));
+                Assert.False(invoked);
+
+                promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(2));
+                Assert.True(invoked);
                 cancelationSource.Dispose();
             }
 
@@ -1864,7 +1865,6 @@ namespace ProtoPromiseTests.APIs
                 CancelationToken cancelationToken = cancelationSource.Token;
                 bool startedInvoke = false;
                 bool invoked = false;
-                bool asyncComplete = false;
 
                 async Promise RunAsync()
                 {
@@ -1878,12 +1878,14 @@ namespace ProtoPromiseTests.APIs
                         Promise.Run(() => cancelationSource.Cancel()).Forget();
                         TestHelper.SpinUntil(() => startedInvoke, TimeSpan.FromSeconds(1));
                     }
-                    Assert.IsTrue(invoked);
-                    asyncComplete = true;
                 }
 
-                RunAsync().TryWait(TimeSpan.FromSeconds(5));
-                Assert.IsTrue(asyncComplete);
+                var promise = RunAsync();
+                TestHelper.SpinUntil(() => startedInvoke, TimeSpan.FromSeconds(1));
+                Assert.False(invoked);
+
+                promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(2));
+                Assert.True(invoked);
                 cancelationSource.Dispose();
             }
 
