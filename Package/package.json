@@ -1,6 +1,6 @@
 {
     "name": "com.timcassell.protopromise",
-    "version": "3.1.0",
+    "version": "3.1.1",
     "displayName": "ProtoPromise",
     "description": "Robust and efficient library for management of asynchronous operations.",
     "changelogUrl": "https://github.com/timcassell/ProtoPromise/tree/master/Docs/Changelog",

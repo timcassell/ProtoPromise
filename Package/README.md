@@ -49,12 +49,9 @@ See the [C# Asynchronous Benchmarks Repo](https://github.com/timcassell/CSharpAs
 
 ## Latest Updates
 
-### v3.1.0 - June 30, 2024
+### v3.1.1 - August 16, 2024
 
-- Added structured concurrency promise groups.
-- Added `Promise(<T>).Each` APIs.
-- Added `Promise(<T>).GetRetainer` APIs.
-- Deprecated `Promise(<T>).{Preserve, Duplicate}` APIs.
+- Fixed a race condition with `Promise.AsValueTask()`.
 
 See [ChangeLog](https://github.com/timcassell/ProtoPromise/tree/master/Docs/Changelog) for the full changelog.
 
