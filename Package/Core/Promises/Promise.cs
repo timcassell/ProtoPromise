@@ -31,7 +31,7 @@ namespace Proto.Promises
             var r = _ref;
             return r == null
                 ? new System.Threading.Tasks.ValueTask()
-                : new System.Threading.Tasks.ValueTask(r, _id);
+                : r.ToValueTaskVoid(_id);
         }
 
         /// <summary>
@@ -39,9 +39,7 @@ namespace Proto.Promises
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public static implicit operator System.Threading.Tasks.ValueTask(in Promise rhs)
-        {
-            return rhs.AsValueTask();
-        }
+            => rhs.AsValueTask();
 #endif // UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
 
         /// <summary>
