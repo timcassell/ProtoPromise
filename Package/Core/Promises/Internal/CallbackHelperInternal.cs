@@ -43,7 +43,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return CallbackHelperVoid.FromException(e);
+                        return Promise.FromException(e);
                     }
                 }
 
@@ -59,7 +59,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return CallbackHelperVoid.FromException<TArg>(e);
+                        return Promise.FromException(e);
                     }
                 }
 
@@ -239,7 +239,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return CallbackHelperVoid.FromException<TResult>(e);
+                        return Promise<TResult>.FromException(e);
                     }
                 }
 
@@ -256,7 +256,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return CallbackHelperVoid.FromException<TResult>(e);
+                        return Promise<TResult>.FromException(e);
                     }
                 }
 
@@ -270,7 +270,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return CallbackHelperVoid.FromException<TResult>(e);
+                        return Promise<TResult>.FromException(e);
                     }
                 }
 
@@ -285,7 +285,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return CallbackHelperVoid.FromException<TResult>(e);
+                        return Promise<TResult>.FromException(e);
                     }
                 }
 
@@ -607,7 +607,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return CallbackHelperVoid.FromException<TResult>(e);
+                        return Promise<TResult>.FromException(e);
                     }
                 }
 
@@ -623,7 +623,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return CallbackHelperVoid.FromException<TResult>(e);
+                        return Promise<TResult>.FromException(e);
                     }
                 }
 
@@ -785,34 +785,6 @@ namespace Proto.Promises
 #endif
             internal static class CallbackHelperVoid
             {
-                internal static Promise FromException(Exception e)
-                {
-                    if (e is OperationCanceledException)
-                    {
-                        var promise = Promise.Canceled();
-                        return new Promise(promise._ref, promise._id);
-                    }
-                    else
-                    {
-                        var promise = Promise.Rejected(e);
-                        return new Promise(promise._ref, promise._id);
-                    }
-                }
-
-                internal static Promise<TResult> FromException<TResult>(Exception e)
-                {
-                    if (e is OperationCanceledException)
-                    {
-                        var promise = Promise<TResult>.Canceled();
-                        return new Promise<TResult>(promise._ref, promise._id);
-                    }
-                    else
-                    {
-                        var promise = Promise<TResult>.Rejected(e);
-                        return new Promise<TResult>(promise._ref, promise._id);
-                    }
-                }
-
                 [MethodImpl(InlineOption)]
                 private static Promise InvokeCallbackDirect<TDelegate>(TDelegate resolver, in Promise resolved)
                     where TDelegate : IAction
@@ -825,7 +797,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return FromException(e);
+                        return Promise.FromException(e);
                     }
                 }
 
@@ -842,7 +814,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return FromException(e);
+                        return Promise.FromException(e);
                     }
                 }
 
@@ -856,7 +828,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return FromException(e);
+                        return Promise.FromException(e);
                     }
                 }
 
@@ -871,7 +843,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return FromException(e);
+                        return Promise.FromException(e);
                     }
                 }
 
@@ -1069,7 +1041,7 @@ namespace Proto.Promises
                     {
                         case SynchronizationOption.Synchronous:
                         {
-                        return InvokeCallbackDirect(runner);
+                            return InvokeCallbackDirect(runner);
                         }
                         case SynchronizationOption.Foreground:
                         {
@@ -1346,7 +1318,7 @@ namespace Proto.Promises
                         }
                         catch (Exception e)
                         {
-                            return FromException<TResult>(e);
+                            return Promise<TResult>.FromException(e);
                         }
                     }
                     var promise = PromiseFinally<TResult, TFinalizer>.GetOrCreate(finalizer);
@@ -1370,7 +1342,7 @@ namespace Proto.Promises
                         }
                         catch (Exception e)
                         {
-                            return FromException<TResult>(e);
+                            return Promise<TResult>.FromException(e);
                         }
                     }
                     var promise = PromiseFinallyWait<TResult, TFinalizer>.GetOrCreate(finalizer);

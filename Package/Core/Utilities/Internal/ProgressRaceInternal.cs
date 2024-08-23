@@ -65,14 +65,14 @@ namespace Proto.Promises
                 _current = value;
                 // We report to the target iteratively instead of recursively to prevent StackOverflowException in the case of very deep call chains.
                 // _next.Report() exits this lock, so we don't do it here.
-                var reportValues = new NewProgressReportValues(this, _next.UnsafeAs<ProgressBase>(), Lerp(_minValue, _maxValue, value), _targetId);
+                var reportValues = new ProgressReportValues(this, _next.UnsafeAs<ProgressBase>(), Lerp(_minValue, _maxValue, value), _targetId);
                 do
                 {
                     reportValues._next.Report(ref reportValues);
                 } while (reportValues._next != null);
             }
 
-            internal override void Report(ref NewProgressReportValues reportValues)
+            internal override void Report(ref ProgressReportValues reportValues)
             {
                 // Enter this lock before exiting previous lock.
                 // This prevents a race condition where another report on a separate thread could get ahead of this report.
