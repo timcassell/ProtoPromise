@@ -10,6 +10,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 
 #pragma warning disable IDE0090 // Use 'new(...)'
+#pragma warning disable IDE0290 // Use primary constructor
 
 namespace Proto.Promises
 {
@@ -60,7 +61,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal ref struct NewProgressReportValues
+        internal ref struct ProgressReportValues
         {
             internal ProgressBase _reporter;
             internal ProgressBase _next;
@@ -68,7 +69,7 @@ namespace Proto.Promises
             internal int _id;
 
             [MethodImpl(InlineOption)]
-            internal NewProgressReportValues(ProgressBase reporter, ProgressBase next, double value, int id)
+            internal ProgressReportValues(ProgressBase reporter, ProgressBase next, double value, int id)
             {
                 _reporter = reporter;
                 _next = next;
@@ -118,7 +119,7 @@ namespace Proto.Promises
                 => _smallFields._locker.Exit();
 
             internal abstract void Report(double value, int id);
-            internal abstract void Report(ref NewProgressReportValues reportValues);
+            internal abstract void Report(ref ProgressReportValues reportValues);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -131,9 +132,9 @@ namespace Proto.Promises
 
         // Helper method to avoid typing out the TProgress.
         [MethodImpl(InlineOption)]
-        internal static ProgressListener GetOrCreateProgress<TProgress>(TProgress progress, SynchronizationContext invokeContext, bool forceAsync, CancelationToken cancelationToken)
+        internal static Progress NewProgress<TProgress>(TProgress progress, SynchronizationContext invokeContext, bool forceAsync, CancelationToken cancelationToken)
             where TProgress : IProgress<double>
-            => Progress<TProgress>.GetOrCreate(progress, invokeContext, forceAsync, cancelationToken);
+            => new Progress(Progress<TProgress>.GetOrCreate(progress, invokeContext, forceAsync, cancelationToken));
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
@@ -219,7 +220,7 @@ namespace Proto.Promises
                 ReportCore(value, id);
             }
 
-            internal override void Report(ref NewProgressReportValues reportValues)
+            internal override void Report(ref ProgressReportValues reportValues)
             {
                 // Enter this lock before exiting previous lock.
                 // This prevents a race condition where another report on a separate thread could get ahead of this report.

@@ -26,7 +26,7 @@ namespace Proto.Promises
         private readonly int _id;
 
         [MethodImpl(Internal.InlineOption)]
-        private Progress(Internal.ProgressListener impl)
+        internal Progress(Internal.ProgressListener impl)
         {
             _impl = impl;
             _id = impl.Id;
@@ -78,11 +78,11 @@ namespace Proto.Promises
             // Quick check to see if the token is already canceled.
             return cancelationToken.IsCancelationRequested
                 ? default
-                : new Progress(Internal.GetOrCreateProgress(
+                : Internal.NewProgress(
                     new Internal.DelegateProgress(handler),
                     GetInvokeContext(invokeOption),
                     forceAsync,
-                    cancelationToken)
+                    cancelationToken
                 );
         }
 
@@ -105,11 +105,11 @@ namespace Proto.Promises
             // Quick check to see if the token is already canceled.
             return cancelationToken.IsCancelationRequested
                 ? default
-                : new Progress(Internal.GetOrCreateProgress(
+                : Internal.NewProgress(
                     new Internal.DelegateCaptureProgress<TCapture>(captureValue, handler),
                     GetInvokeContext(invokeOption),
                     forceAsync,
-                    cancelationToken)
+                    cancelationToken
                 );
         }
 
@@ -133,11 +133,11 @@ namespace Proto.Promises
             // Quick check to see if the token is already canceled.
             return cancelationToken.IsCancelationRequested
                 ? default
-                : new Progress(Internal.GetOrCreateProgress(
+                : Internal.NewProgress(
                     handler,
                     GetInvokeContext(invokeOption),
                     forceAsync,
-                    cancelationToken)
+                    cancelationToken
                 );
         }
 
@@ -158,11 +158,11 @@ namespace Proto.Promises
             // Quick check to see if the token is already canceled.
             return cancelationToken.IsCancelationRequested
                 ? default
-                : new Progress(Internal.GetOrCreateProgress(
+                : Internal.NewProgress(
                     new Internal.DelegateProgress(handler),
                     invokeContext ?? Internal.BackgroundSynchronizationContextSentinel.s_instance,
                     forceAsync,
-                    cancelationToken)
+                    cancelationToken
                 );
         }
 
@@ -185,11 +185,11 @@ namespace Proto.Promises
             // Quick check to see if the token is already canceled.
             return cancelationToken.IsCancelationRequested
                 ? default
-                : new Progress(Internal.GetOrCreateProgress(
+                : Internal.NewProgress(
                     new Internal.DelegateCaptureProgress<TCapture>(captureValue, handler),
                     invokeContext ?? Internal.BackgroundSynchronizationContextSentinel.s_instance,
                     forceAsync,
-                    cancelationToken)
+                    cancelationToken
                 );
         }
 
@@ -212,11 +212,11 @@ namespace Proto.Promises
             // Quick check to see if the token is already canceled.
             return cancelationToken.IsCancelationRequested
                 ? default
-                : new Progress(Internal.GetOrCreateProgress(
+                : Internal.NewProgress(
                     handler,
                     invokeContext ?? Internal.BackgroundSynchronizationContextSentinel.s_instance,
                     forceAsync,
-                    cancelationToken)
+                    cancelationToken
                 );
         }
 

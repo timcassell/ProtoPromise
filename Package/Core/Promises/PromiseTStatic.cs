@@ -881,6 +881,13 @@ namespace Proto.Promises
             => Internal.CreateCanceled<T>();
 
         /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that is either canceled or rejected with the provided <paramref name="exception"/>.
+        /// </summary>
+        /// <param name="exception">If an <see cref="OperationCanceledException"/>, the returned promise will be canceled, otherwise it will be rejected.</param>
+        public static Promise<T> FromException(Exception exception)
+            => exception is OperationCanceledException ? Canceled() : Rejected(exception);
+
+        /// <summary>
         /// Returns a <see cref="Promise{T}.Deferred"/> object that is linked to and controls the state of a new <see cref="Promise{T}"/>.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
