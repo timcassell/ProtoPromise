@@ -288,12 +288,11 @@ namespace Proto.Promises
                     promise = Internal.PromiseRefBase.AsyncLockPromise.GetOrCreate(this, Internal.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
-                        promise.SetCanceledImmediate();
+                        _locker.Exit();
+                        promise.DisposeImmediate();
+                        return Promise<Key>.Canceled();
                     }
-                    else
-                    {
-                        _queue.Enqueue(promise);
-                    }
+                    _queue.Enqueue(promise);
                 }
                 _locker.Exit();
                 return new Promise<Key>(promise, promise.Id);
@@ -419,8 +418,8 @@ namespace Proto.Promises
                     promise = Internal.PromiseRefBase.AsyncLockPromise.GetOrCreate(this, Internal.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
-                        promise.DisposeImmediate();
                         _locker.Exit();
+                        promise.DisposeImmediate();
                         return Promise.Resolved((false, default(Key)));
                     }
                     _queue.Enqueue(promise);
@@ -567,13 +566,13 @@ namespace Proto.Promises
                     promise = Internal.PromiseRefBase.AsyncLockWaitPromise.GetOrCreate(condVar, key, callerContext);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
-                        promise.DisposeImmediate();
                         if (condVar._queue.IsEmpty)
                         {
                             // Remove this association from the condition variable so that another AsyncLock can use it.
                             condVar._lock = null;
                         }
                         _locker.Exit();
+                        promise.DisposeImmediate();
                         return Promise.Resolved(false);
                     }
                     condVar._queue.Enqueue(promise);

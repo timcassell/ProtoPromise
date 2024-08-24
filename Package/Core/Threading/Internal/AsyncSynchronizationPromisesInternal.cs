@@ -73,13 +73,6 @@ namespace Proto.Promises
                     return alreadyCanceled;
                 }
 
-                [MethodImpl(InlineOption)]
-                internal void SetCanceledImmediate()
-                {
-                    SetCompletionState(Promise.State.Canceled);
-                    _next = PromiseCompletionSentinel.s_instance;
-                }
-
                 public abstract void Cancel();
 
                 internal override sealed void Handle(PromiseRefBase handler, Promise.State state) => throw new System.InvalidOperationException();

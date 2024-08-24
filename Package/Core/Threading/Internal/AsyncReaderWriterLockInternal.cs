@@ -708,12 +708,11 @@ namespace Proto.Promises
                     promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, Internal.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
-                        promise.SetCanceledImmediate();
+                        _smallFields._locker.Exit();
+                        promise.DisposeImmediate();
+                        return Promise<ReaderKey>.Canceled();
                     }
-                    else
-                    {
-                        _readerQueue.Enqueue(promise);
-                    }
+                    _readerQueue.Enqueue(promise);
                 }
                 _smallFields._locker.Exit();
                 return new Promise<ReaderKey>(promise, promise.Id);
@@ -1032,12 +1031,11 @@ namespace Proto.Promises
                     promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
-                        promise.SetCanceledImmediate();
+                        _smallFields._locker.Exit();
+                        promise.DisposeImmediate();
+                        return Promise<WriterKey>.Canceled();
                     }
-                    else
-                    {
-                        _writerQueue.Enqueue(promise);
-                    }
+                    _writerQueue.Enqueue(promise);
                 }
                 _smallFields._locker.Exit();
                 return new Promise<WriterKey>(promise, promise.Id);
@@ -1334,12 +1332,11 @@ namespace Proto.Promises
                     promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, Internal.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
-                        promise.SetCanceledImmediate();
+                        _smallFields._locker.Exit();
+                        promise.DisposeImmediate();
+                        return Promise<UpgradeableReaderKey>.Canceled();
                     }
-                    else
-                    {
-                        _upgradeQueue.Enqueue(promise);
-                    }
+                    _upgradeQueue.Enqueue(promise);
                 }
                 _smallFields._locker.Exit();
                 return new Promise<UpgradeableReaderKey>(promise, promise.Id);
@@ -1644,12 +1641,11 @@ namespace Proto.Promises
                     promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
-                        promise.SetCanceledImmediate();
+                        _smallFields._locker.Exit();
+                        promise.DisposeImmediate();
+                        return Promise<UpgradedWriterKey>.Canceled();
                     }
-                    else
-                    {
-                        _upgradeWaiter = promise;
-                    }
+                    _upgradeWaiter = promise;
                 }
                 _smallFields._locker.Exit();
                 return new Promise<UpgradedWriterKey>(promise, promise.Id);
