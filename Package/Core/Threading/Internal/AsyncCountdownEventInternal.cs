@@ -153,8 +153,8 @@ namespace Proto.Promises
                     promise = Internal.AsyncCountdownEventPromise.GetOrCreate(this, Internal.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
-                        promise.DisposeImmediate();
                         _locker.Exit();
+                        promise.DisposeImmediate();
                         return Promise.Resolved(false);
                     }
                     _waiters.Enqueue(promise);
