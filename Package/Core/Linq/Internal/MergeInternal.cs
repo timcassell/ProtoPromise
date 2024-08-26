@@ -214,7 +214,7 @@ namespace Proto.Promises
             protected override async Promise DisposeAsyncWithoutStart()
             {
                 var sources = _sourcesEnumerator;
-                SetStateForDisposeWithoutStart();
+                PrepareEarlyDispose();
                 DisposeAndReturnToPool();
                 // We can't be sure if the _sourcesEnumerator is from a collection with already existing AsyncEnumerables (like array.ToAsyncEnumerable()),
                 // or a lazy iterator, so we have to iterate it and dispose every AsyncEnumerable.
@@ -451,7 +451,7 @@ namespace Proto.Promises
             protected override async Promise DisposeAsyncWithoutStart()
             {
                 var sources = _sourcesEnumerator;
-                SetStateForDisposeWithoutStart();
+                PrepareEarlyDispose();
                 DisposeAndReturnToPool();
                 // We can't be sure if the _sourcesEnumerator is from a collection with already existing AsyncEnumerables (like an array or list),
                 // or a lazy iterator, so we have to iterate it and dispose every AsyncEnumerable.

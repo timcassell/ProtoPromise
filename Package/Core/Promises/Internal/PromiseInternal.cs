@@ -210,6 +210,7 @@ namespace Proto.Promises
 
                 internal abstract PromiseRef<TResult> GetDuplicateT(short promiseId);
 
+                [MethodImpl(InlineOption)]
                 new protected void Dispose()
                 {
                     base.Dispose();
@@ -292,6 +293,19 @@ namespace Proto.Promises
                 SetCreatedStacktrace(this, 3);
             }
 
+            [MethodImpl(InlineOption)]
+            protected void PrepareEarlyDispose()
+            {
+                // Dispose validates the state is not pending in Debug or Developer mode,
+                // so we only set the state for early dispose in those modes.
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                SetCompletionState(Promise.State.Resolved);
+#endif
+                // Suppress the UnobservedPromiseException from the finalizer.
+                WasAwaitedOrForgotten = true;
+            }
+
+            [MethodImpl(InlineOption)]
             private void Dispose()
             {
                 ThrowIfInPool(this);
