@@ -117,7 +117,7 @@ namespace Proto.Promises
 
             new private void Dispose()
             {
-                this.PrepareEarlyDispose();
+                PrepareEarlyDispose();
                 base.Dispose();
                 _disposed = true;
                 ObjectPool.MaybeRepool(this);

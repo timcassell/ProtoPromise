@@ -74,7 +74,7 @@ namespace Proto.Promises
 
             protected override Promise DisposeAsyncWithoutStart()
             {
-                SetStateForDisposeWithoutStart();
+                PrepareEarlyDispose();
                 var source = _source;
                 DisposeAndReturnToPool();
                 return source.DisposeAsync();
@@ -292,7 +292,7 @@ namespace Proto.Promises
 
             protected override Promise DisposeAsyncWithoutStart()
             {
-                SetStateForDisposeWithoutStart();
+                PrepareEarlyDispose();
                 var source = _source;
                 DisposeAndReturnToPool();
                 return source.DisposeAsync();

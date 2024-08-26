@@ -120,7 +120,7 @@ namespace Proto.Promises
 
             new private void Dispose()
             {
-                this.PrepareEarlyDispose();
+                PrepareEarlyDispose();
                 base.Dispose();
                 _current = default;
                 _disposed = true;

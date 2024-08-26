@@ -464,15 +464,6 @@ namespace Proto.Promises
 
         internal static string GetFormattedStacktrace(ITraceable traceable) => null;
 #endif // PROMISE_DEBUG
-
-        // Dispose validates the state is not pending in Debug or Developer mode,
-        // so we only set the state for early dispose in those modes.
-        static partial void PrepareEarlyDispose(this PromiseRefBase promise);
-
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-        static partial void PrepareEarlyDispose(this PromiseRefBase promise)
-            => promise.SetCompletionState(Promise.State.Resolved);
-#endif
     } // class Internal
 
     partial struct Promise
