@@ -181,17 +181,16 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    [StructLayout(LayoutKind.Auto)]
     public readonly struct PromiseRaceGroup<T>
     {
         private readonly Internal.CancelationRef _cancelationRef;
         private readonly Internal.PromiseRefBase.RacePromiseGroup<T> _group;
+        private readonly T _result;
         private readonly int _cancelationId;
         private readonly uint _count;
         private readonly short _groupId;
         private readonly bool _cancelOnNonResolved;
         private readonly bool _isResolved;
-        private readonly T _result;
 
         [MethodImpl(Internal.InlineOption)]
         private PromiseRaceGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.RacePromiseGroup<T> group,

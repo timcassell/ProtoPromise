@@ -183,22 +183,22 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    [StructLayout(LayoutKind.Auto)]
+    [StructLayout(LayoutKind.Auto)] // If T is 1 byte large, it can be packed efficiently by the runtime.
     public readonly struct PromiseRaceWithIndexGroup<T>
     {
         private readonly Internal.CancelationRef _cancelationRef;
         private readonly Internal.PromiseRefBase.RacePromiseWithIndexGroup<T> _group;
+        private readonly T _result;
         private readonly int _cancelationId;
         private readonly int _count;
         private readonly int _index;
         private readonly int _winIndex;
         private readonly short _groupId;
         private readonly bool _cancelOnNonResolved;
-        private readonly T _result;
 
         [MethodImpl(Internal.InlineOption)]
         private PromiseRaceWithIndexGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.RacePromiseWithIndexGroup<T> group,
-            int count, int index, short groupId, bool cancelOnNonResolved, int winIndex, in T result)
+            in T result, int count, int index, short groupId, bool cancelOnNonResolved, int winIndex)
         {
             _cancelationRef = cancelationRef;
             _group = group;
@@ -232,7 +232,7 @@ namespace Proto.Promises
             var cancelationRef = Internal.CancelationRef.GetOrCreate();
             cancelationRef.MaybeLinkToken(sourceCancelationToken);
             groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseRaceWithIndexGroup<T>(cancelationRef, null, count: 0, index: -1, groupId: 0, cancelOnNonResolved: cancelOnNonResolved, winIndex: -1, default);
+            return new PromiseRaceWithIndexGroup<T>(cancelationRef, null, default, count: 0, index: -1, groupId: 0, cancelOnNonResolved: cancelOnNonResolved, winIndex: -1);
         }
 
         /// <summary>
@@ -270,7 +270,7 @@ namespace Proto.Promises
                     winIndex = index;
                     group.SetResolved((index, promise._result));
                 }
-                return new PromiseRaceWithIndexGroup<T>(cancelationRef, group, count, index, group.Id, cancelOnNonResolved, winIndex, default);
+                return new PromiseRaceWithIndexGroup<T>(cancelationRef, group, default, count, index, group.Id, cancelOnNonResolved, winIndex);
             }
 
             if (!cancelationRef.TryIncrementSourceId(_cancelationId))
@@ -286,7 +286,7 @@ namespace Proto.Promises
                 {
                     group.SetResolved((winIndex, _result));
                 }
-                return new PromiseRaceWithIndexGroup<T>(cancelationRef, group, 1, index, group.Id, cancelOnNonResolved, winIndex, default);
+                return new PromiseRaceWithIndexGroup<T>(cancelationRef, group, default, 1, index, group.Id, cancelOnNonResolved, winIndex);
             }
 
             // The promise is already resolved, we need to cancel the group token,
@@ -301,12 +301,12 @@ namespace Proto.Promises
                 group = Internal.GetOrCreateRacePromiseWithIndexGroup<T>(cancelationRef, false);
                 group.RecordException(e);
                 group._cancelationThrew = true;
-                return new PromiseRaceWithIndexGroup<T>(cancelationRef, group, 0, index, group.Id, false, winIndex, default);
+                return new PromiseRaceWithIndexGroup<T>(cancelationRef, group, default, 0, index, group.Id, false, winIndex);
             }
 
             return winIndex != -1
-                ? new PromiseRaceWithIndexGroup<T>(cancelationRef, group, 0, index, _groupId, false, winIndex, _result)
-                : new PromiseRaceWithIndexGroup<T>(cancelationRef, group, 0, index, _groupId, false, index, promise._result);
+                ? new PromiseRaceWithIndexGroup<T>(cancelationRef, group, _result, 0, index, _groupId, false, winIndex)
+                : new PromiseRaceWithIndexGroup<T>(cancelationRef, group, promise._result, 0, index, _groupId, false, index);
         }
 
         /// <summary>
