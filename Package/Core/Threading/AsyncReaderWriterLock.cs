@@ -28,6 +28,7 @@ namespace Proto.Promises.Threading
         /// <summary>
         /// The strategy used to resolve reader and writer contention on the <see cref="AsyncReaderWriterLock"/>.
         /// </summary>
+        // TODO: make the backing type byte.
         public enum ContentionStrategy
         {
             /// <summary>

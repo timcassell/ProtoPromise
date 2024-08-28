@@ -382,7 +382,7 @@ namespace Proto.Promises
                     // Callback could be invoked synchronously if the token is canceled on another thread,
                     // so we set a flag to prevent a deadlock, then check the flag again after the hookup to see if it was invoked.
                     ts_isLinkingToBclToken = true;
-                    _bclRegistration = token.Register(cancelRef =>
+                    _bclRegistration = token.UnsafeRegister(cancelRef =>
                     {
                         // This could be invoked synchronously if the token is canceled, so we check the flag to prevent a deadlock.
                         if (ts_isLinkingToBclToken)
@@ -392,7 +392,7 @@ namespace Proto.Promises
                             return;
                         }
                         cancelRef.UnsafeAs<CancelationRef>().Cancel();
-                    }, this, false);
+                    }, this);
 
                     if (!ts_isLinkingToBclToken)
                     {
@@ -1268,7 +1268,11 @@ namespace Proto.Promises
             private void HookupBclCancelation(System.Threading.CancellationToken token)
             {
                 // We don't need the synchronous invoke check when this is created.
+#if NETCOREAPP3_0_OR_GREATER
+                var registration = token.UnsafeRegister(state => state.UnsafeAs<CancelationRef>().Cancel(), this);
+#else
                 var registration = token.Register(state => state.UnsafeAs<CancelationRef>().Cancel(), this, false);
+#endif
                 SetCancellationTokenRegistration(registration);
             }
 

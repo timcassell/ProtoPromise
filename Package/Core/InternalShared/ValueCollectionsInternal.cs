@@ -249,6 +249,7 @@ namespace Proto.Promises
         internal struct ValueLinkedQueue<T> where T : class, ILinked<T>
 #endif
         {
+            // TODO: only store the tail, form a circular linked list.
             private T _head;
             private T _tail;
 

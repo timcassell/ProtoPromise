@@ -78,6 +78,7 @@ namespace Proto.Promises
         {
             // These must not be readonly.
             private Internal.ValueLinkedQueue<Internal.AsyncEventPromiseBase> _waiters = new Internal.ValueLinkedQueue<Internal.AsyncEventPromiseBase>();
+            // TODO: wrap these in a struct to remove extra padding.
             private Internal.SpinLocker _locker = new Internal.SpinLocker();
             volatile internal bool _isSet;
 
