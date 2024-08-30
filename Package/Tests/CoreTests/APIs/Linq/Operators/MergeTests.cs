@@ -6,7 +6,9 @@
 
 using NUnit.Framework;
 using Proto.Promises;
+using Proto.Promises.Collections;
 using Proto.Promises.Linq;
+using ProtoPromiseTests.APIs.Collections;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -767,6 +769,211 @@ namespace ProtoPromiseTests.APIs.Linq
                 Assert.True(didThrow);
 
                 await asyncEnumerator.DisposeAsync();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncEnumerableMerge_Async_CanceledDisposeAsync(
+            [Values(-1, 0, 1, 2)] int numYields,
+            [Values] bool secondCanceled)
+        {
+            Promise.Run(async () =>
+            {
+                Exception secondException = secondCanceled ? (System.Exception) Promise.CancelException() : new System.InvalidOperationException();
+                var enumerablesAsync = AsyncEnumerable.Create<AsyncEnumerable<int>>(async (writer, cancelationToken) =>
+                {
+                    await writer.YieldAsync(AsyncEnumerable<int>.Create(new ThrowDisposeAsyncEnumerator(numYields, Promise.CancelException())));
+                    await writer.YieldAsync(AsyncEnumerable<int>.Create(new ThrowDisposeAsyncEnumerator(numYields, secondException)));
+                });
+                var asyncEnumerator = AsyncEnumerable.Merge(enumerablesAsync).GetAsyncEnumerator();
+                if (numYields >= 0)
+                {
+                    for (int i = 0; i < numYields; i++)
+                    {
+                        Assert.True(await asyncEnumerator.MoveNextAsync());
+                        Assert.AreEqual(i, asyncEnumerator.Current);
+                        Assert.True(await asyncEnumerator.MoveNextAsync());
+                        Assert.AreEqual(i, asyncEnumerator.Current);
+                    }
+                }
+
+                bool canceled = false;
+                bool nonCanceledException = false;
+                try
+                {
+                    await asyncEnumerator.DisposeAsync();
+                }
+                catch (OperationCanceledException)
+                {
+                    canceled = true;
+                }
+                catch (AggregateException e)
+                {
+                    nonCanceledException = true;
+                    Assert.AreEqual(1, e.InnerExceptions.Count);
+                    CollectionAssert.Contains(e.InnerExceptions, secondException);
+                }
+                Assert.AreEqual(secondCanceled, canceled);
+                Assert.AreNotEqual(secondCanceled, nonCanceledException);
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncEnumerableMerge_Sync_CanceledDisposeAsync(
+            [Values(-1, 0, 1, 2)] int numYields,
+            [Values] bool secondCanceled)
+        {
+            Promise.Run(async () =>
+            {
+                Exception secondException = secondCanceled ? (System.Exception) Promise.CancelException() : new System.InvalidOperationException();
+                var enumerables = new AsyncEnumerable<int>[2]
+                {
+                    AsyncEnumerable<int>.Create(new ThrowDisposeAsyncEnumerator(numYields, Promise.CancelException())),
+                    AsyncEnumerable<int>.Create(new ThrowDisposeAsyncEnumerator(numYields, secondException))
+                };
+                var asyncEnumerator = AsyncEnumerable.Merge(enumerables).GetAsyncEnumerator();
+                if (numYields >= 0)
+                {
+                    for (int i = 0; i < numYields; i++)
+                    {
+                        Assert.True(await asyncEnumerator.MoveNextAsync());
+                        Assert.AreEqual(i, asyncEnumerator.Current);
+                        Assert.True(await asyncEnumerator.MoveNextAsync());
+                        Assert.AreEqual(i, asyncEnumerator.Current);
+                    }
+                }
+
+                bool canceled = false;
+                bool nonCanceledException = false;
+                try
+                {
+                    await asyncEnumerator.DisposeAsync();
+                }
+                catch (OperationCanceledException)
+                {
+                    canceled = true;
+                }
+                catch (AggregateException e)
+                {
+                    nonCanceledException = true;
+                    Assert.AreEqual(1, e.InnerExceptions.Count);
+                    CollectionAssert.Contains(e.InnerExceptions, secondException);
+                }
+                Assert.AreEqual(secondCanceled, canceled);
+                Assert.AreNotEqual(secondCanceled, nonCanceledException);
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        private struct ThrowDisposeAsyncEnumerator : IAsyncIterator<int>
+        {
+            private int _count;
+            private Exception _exception;
+
+            public ThrowDisposeAsyncEnumerator(int count, Exception exception)
+            {
+                _count = count;
+                _exception = exception;
+            }
+
+            public Promise DisposeAsyncWithoutStart()
+                => Promise.FromException(_exception);
+
+            public async AsyncIteratorMethod Start(AsyncStreamWriter<int> streamWriter, CancelationToken cancelationToken)
+            {
+                try
+                {
+                    for (int i = 0; i < _count; ++i)
+                    {
+                        await streamWriter.YieldAsync(i);
+                    }
+
+                    // Wait for dispose before throwing.
+                    await streamWriter.YieldAsync(default).ForLinqExtension();
+                }
+                finally
+                {
+                    throw _exception;
+                }
+            }
+        }
+
+        [Test]
+        public void AsyncEnumerableMerge_Async_TempCollectionIsStillValidAfterMoveNextAsyncUntilDisposeAsync()
+        {
+            Promise.Run(async () =>
+            {
+                var enumerablesAsync = AsyncEnumerable.Create<AsyncEnumerable<TempCollection<int>>>(async (writer, cancelationToken) =>
+                {
+                    await writer.YieldAsync(AsyncEnumerable.Range(0, 20).Chunk(10));
+                    await writer.YieldAsync(AsyncEnumerable.Range(20, 20).Chunk(10));
+                });
+                var asyncEnumerator = AsyncEnumerable.Merge(enumerablesAsync).GetAsyncEnumerator();
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                var chunk1 = asyncEnumerator.Current;
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                var chunk2 = asyncEnumerator.Current;
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                var chunk3 = asyncEnumerator.Current;
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                var chunk4 = asyncEnumerator.Current;
+
+                Assert.AreEqual(chunk1.Count, 10);
+                CollectionAssert.AreEqual(Enumerable.Range(0, 10), chunk1);
+                Assert.AreEqual(chunk2.Count, 10);
+                CollectionAssert.AreEqual(Enumerable.Range(20, 10), chunk2);
+                Assert.AreEqual(chunk3.Count, 10);
+                CollectionAssert.AreEqual(Enumerable.Range(10, 10), chunk3);
+                Assert.AreEqual(chunk4.Count, 10);
+                CollectionAssert.AreEqual(Enumerable.Range(30, 10), chunk4);
+
+                await asyncEnumerator.DisposeAsync();
+
+                TempCollectionTests.AssertIsInvalid(chunk1);
+                TempCollectionTests.AssertIsInvalid(chunk2);
+                TempCollectionTests.AssertIsInvalid(chunk3);
+                TempCollectionTests.AssertIsInvalid(chunk4);
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncEnumerableMerge_Sync_TempCollectionIsStillValidAfterMoveNextAsyncUntilDisposeAsync()
+        {
+            Promise.Run(async () =>
+            {
+                var enumerables = new AsyncEnumerable<TempCollection<int>>[2]
+                {
+                    AsyncEnumerable.Range(0, 20).Chunk(10),
+                    AsyncEnumerable.Range(20, 20).Chunk(10)
+                };
+                var asyncEnumerator = AsyncEnumerable.Merge(enumerables).GetAsyncEnumerator();
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                var chunk1 = asyncEnumerator.Current;
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                var chunk2 = asyncEnumerator.Current;
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                var chunk3 = asyncEnumerator.Current;
+                Assert.True(await asyncEnumerator.MoveNextAsync());
+                var chunk4 = asyncEnumerator.Current;
+
+                Assert.AreEqual(chunk1.Count, 10);
+                CollectionAssert.AreEqual(Enumerable.Range(0, 10), chunk1);
+                Assert.AreEqual(chunk2.Count, 10);
+                CollectionAssert.AreEqual(Enumerable.Range(20, 10), chunk2);
+                Assert.AreEqual(chunk3.Count, 10);
+                CollectionAssert.AreEqual(Enumerable.Range(10, 10), chunk3);
+                Assert.AreEqual(chunk4.Count, 10);
+                CollectionAssert.AreEqual(Enumerable.Range(30, 10), chunk4);
+
+                await asyncEnumerator.DisposeAsync();
+
+                TempCollectionTests.AssertIsInvalid(chunk1);
+                TempCollectionTests.AssertIsInvalid(chunk2);
+                TempCollectionTests.AssertIsInvalid(chunk3);
+                TempCollectionTests.AssertIsInvalid(chunk4);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
