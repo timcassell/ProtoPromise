@@ -71,7 +71,7 @@ namespace Proto.Promises
         }
 
         internal static IRejectContainer CreateRejectContainer(object reason, int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable)
-            => RejectContainer.Create(reason, rejectSkipFrames, exceptionWithStacktrace, traceable);
+            => RejectContainer.Create(reason, rejectSkipFrames + 1, exceptionWithStacktrace, traceable);
 
         internal static void ReportRejection(object unhandledValue, ITraceable traceable)
         {
