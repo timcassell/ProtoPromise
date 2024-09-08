@@ -36,9 +36,7 @@ namespace Proto.Promises.Channels
         /// <param name="cancelationToken">A <see cref="CancelationToken"/> used to cancel the peek operation.</param>
         /// <returns>A <see cref="Promise{T}"/> that yields the result of the peek operation.</returns>
         public Promise<ChannelReadOrPeekResult<T>> TryPeekAsync(CancelationToken cancelationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+            => _channel.ValidateAndGetRef().TryPeekAsync(_channel._id, cancelationToken);
 
         /// <summary>
         /// Asynchronously attempts to read an item from the channel.
@@ -46,9 +44,7 @@ namespace Proto.Promises.Channels
         /// <param name="cancelationToken">A <see cref="CancelationToken"/> used to cancel the read operation.</param>
         /// <returns>A <see cref="Promise{T}"/> that yields the result of the read operation.</returns>
         public Promise<ChannelReadOrPeekResult<T>> TryReadAsync(CancelationToken cancelationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+            => _channel.ValidateAndGetRef().TryReadAsync(_channel._id, cancelationToken);
 
         /// <summary>
         /// Adds a reader to the channel. Call <see cref="Dispose"/> to remove the reader.
@@ -56,7 +52,8 @@ namespace Proto.Promises.Channels
         /// <returns><see langword="this"/></returns>
         public ChannelReader<T> AddReader()
         {
-            throw new NotImplementedException();
+            _channel.ValidateAndGetRef().AddReader(_channel._id);
+            return this;
         }
 
         /// <summary>
@@ -106,9 +103,7 @@ namespace Proto.Promises.Channels
         /// Every reader should be disposed in order to ensure proper cleanup of the channel.
         /// </remarks>
         public void Dispose()
-        {
-            throw new NotImplementedException();
-        }
+            => _channel.ValidateAndGetRef().RemoveReader(_channel._id);
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="ChannelReader{T}"/>.</summary>
         [MethodImpl(Internal.InlineOption)]

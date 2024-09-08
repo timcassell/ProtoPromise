@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 #pragma warning disable IDE0090 // Use 'new(...)'
+#pragma warning disable IDE0270 // Use coalesce expression
 
 namespace Proto.Promises.Channels
 {
@@ -21,6 +22,15 @@ namespace Proto.Promises.Channels
 #endif
     public readonly struct Channel<T> : IEquatable<Channel<T>>
     {
+        private readonly Internal.ChannelBase<T> _ref;
+        internal readonly int _id;
+
+        private Channel(Internal.ChannelBase<T> channel, int id)
+        {
+            _ref = channel;
+            _id = id;
+        }
+
         /// <summary>
         /// Creates a bounded channel subject to the provided options, usable by any number of readers and writers concurrently, initialized with 1 reader and 1 writer.
         /// </summary>
@@ -62,7 +72,7 @@ namespace Proto.Promises.Channels
         /// </summary>
         public int Count
         {
-            get => throw new NotImplementedException();
+            get => ValidateAndGetRef().GetCount(_id);
         }
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="Channel{T}"/>.</summary>
@@ -77,12 +87,13 @@ namespace Proto.Promises.Channels
         /// <summary>Returns the hash code for this instance.</summary>
         [MethodImpl(Internal.InlineOption)]
         public override int GetHashCode()
-            => throw new NotImplementedException();
+            => Internal.BuildHashCode(_ref, _id, 0);
 
         /// <summary>Returns a value indicating whether two <see cref="Channel{T}"/> values are equal.</summary>
         [MethodImpl(Internal.InlineOption)]
         public static bool operator ==(Channel<T> lhs, Channel<T> rhs)
-            => throw new NotImplementedException();
+            => lhs._ref == rhs._ref
+            & lhs._id == rhs._id;
 
         /// <summary>Returns a value indicating whether two <see cref="Channel{T}"/> values are not equal.</summary>
         [MethodImpl(Internal.InlineOption)]
@@ -106,5 +117,16 @@ namespace Proto.Promises.Channels
         [MethodImpl(Internal.InlineOption)]
         public static implicit operator ChannelWriter<T>(Channel<T> channel)
             => channel.Writer;
+
+        [MethodImpl(Internal.InlineOption)]
+        internal Internal.ChannelBase<T> ValidateAndGetRef()
+        {
+            var r = _ref;
+            if (r == null)
+            {
+                throw new InvalidOperationException("The channel is not valid.", Internal.GetFormattedStacktrace(2));
+            }
+            return r;
+        }
     }
 }

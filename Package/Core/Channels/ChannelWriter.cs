@@ -34,9 +34,7 @@ namespace Proto.Promises.Channels
         /// <param name="cancelationToken">A <see cref="CancelationToken"/> used to cancel the write operation.</param>
         /// <returns>A <see cref="Promise{T}"/> that yields the result of the write operation.</returns>
         public Promise<ChannelWriteResult<T>> WriteAsync(T item, CancelationToken cancelationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+            => _channel.ValidateAndGetRef().WriteAsync(item, _channel._id, cancelationToken);
 
         /// <summary>
         /// Completes the channel in a rejected state.
@@ -46,7 +44,8 @@ namespace Proto.Promises.Channels
         /// <returns><see langword="true"/> if the channel was not already rejected, <see langword="false"/> otherwise.</returns>
         public bool TryReject<TReject>(TReject reason)
         {
-            throw new NotImplementedException();
+            var channel = _channel.ValidateAndGetRef();
+            return channel.TryReject(Internal.CreateRejectContainer(reason, 1, null, channel));
         }
 
         /// <summary>
@@ -55,7 +54,8 @@ namespace Proto.Promises.Channels
         /// <returns><see langword="this"/></returns>
         public ChannelWriter<T> AddWriter()
         {
-            throw new NotImplementedException();
+            _channel.ValidateAndGetRef().AddWriter(_channel._id);
+            return this;
         }
 
         /// <summary>
@@ -66,9 +66,7 @@ namespace Proto.Promises.Channels
         /// Every writer should be disposed, even if it was rejected, in order to ensure proper cleanup of the channel.
         /// </remarks>
         public void Dispose()
-        {
-            throw new NotImplementedException();
-        }
+            => _channel.ValidateAndGetRef().RemoveWriter(_channel._id);
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="ChannelWriter{T}"/>.</summary>
         [MethodImpl(Internal.InlineOption)]
