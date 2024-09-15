@@ -103,6 +103,9 @@ namespace Proto.Promises
                     => new AsyncIteratorMethod(_source.DisposeAsync());
             }
 
+            // TODO: optimize the empty enumerable with its own class.
+            // Add IEmptyAsyncEnumerable interface to check against, implement it on AsyncEnumerableEmptySentinel<T> and AsyncEnumerableCanceledSentinel<T> and the new class.
+            // Expose this method on AsyncEnumerableHelpers (see #476).
             internal static AsyncEnumerable<TSource> EmptyWithDispose<TSource>(AsyncEnumerable<TSource> source)
             {
                 if (source._target is AsyncEnumerableCreate<TSource, EmptyIterator<TSource>> emptyEnumerable)
