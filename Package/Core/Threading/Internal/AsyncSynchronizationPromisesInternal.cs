@@ -77,7 +77,6 @@ namespace Proto.Promises
 
                 internal override sealed void Handle(PromiseRefBase handler, Promise.State state) => throw new System.InvalidOperationException();
 
-#if PROMISE_DEBUG
                 internal void Reject(IRejectContainer rejectContainer)
                 {
                     _cancelationRegistration.Dispose();
@@ -85,7 +84,6 @@ namespace Proto.Promises
                     _tempState = Promise.State.Rejected;
                     Continue();
                 }
-#endif
             }
         }
 

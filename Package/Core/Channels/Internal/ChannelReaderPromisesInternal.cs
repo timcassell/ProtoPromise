@@ -19,20 +19,21 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal abstract class ChannelPromiseBase<T, TResult> : PromiseRefBase.AsyncSynchronizationPromiseBase<TResult>
+        internal abstract class ChannelPromiseBase<T, TResult, TOwner> : PromiseRefBase.AsyncSynchronizationPromiseBase<TResult>
+            where TOwner : class
         {
 #if PROMISE_DEBUG
             // We use a weak reference in DEBUG mode so the owner's finalizer can still run if it's dropped.
             private readonly WeakReference _ownerReference = new WeakReference(null, false);
 #pragma warning disable IDE1006 // Naming Styles
-            protected ChannelBase<T> _owner
+            protected TOwner _owner
 #pragma warning restore IDE1006 // Naming Styles
             {
-                get => _ownerReference.Target as ChannelBase<T>;
+                get => _ownerReference.Target as TOwner;
                 set => _ownerReference.Target = value;
             }
 #else
-            protected ChannelBase<T> _owner;
+            protected TOwner _owner;
 #endif
 
             [MethodImpl(InlineOption)]
@@ -53,21 +54,21 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class ChannelReaderPromise<T> : ChannelPromiseBase<T, ChannelReadOrPeekResult<T>>, ILinked<ChannelReaderPromise<T>>
+        internal sealed class ChannelWritePromise<T> : ChannelPromiseBase<T, ChannelWriteResult<T>, BoundedChannel<T>>, ILinked<ChannelWritePromise<T>>
         {
-            ChannelReaderPromise<T> ILinked<ChannelReaderPromise<T>>.Next { get; set; }
+            ChannelWritePromise<T> ILinked<ChannelWritePromise<T>>.Next { get; set; }
 
             [MethodImpl(InlineOption)]
-            private static ChannelReaderPromise<T> GetOrCreate()
+            private static ChannelWritePromise<T> GetOrCreate()
             {
-                var obj = ObjectPool.TryTakeOrInvalid<ChannelReaderPromise<T>>();
+                var obj = ObjectPool.TryTakeOrInvalid<ChannelWritePromise<T>>();
                 return obj == InvalidAwaitSentinel.s_instance
-                    ? new ChannelReaderPromise<T>()
-                    : obj.UnsafeAs<ChannelReaderPromise<T>>();
+                    ? new ChannelWritePromise<T>()
+                    : obj.UnsafeAs<ChannelWritePromise<T>>();
             }
 
             [MethodImpl(InlineOption)]
-            internal static ChannelReaderPromise<T> GetOrCreate(ChannelBase<T> owner, SynchronizationContext callerContext)
+            internal static ChannelWritePromise<T> GetOrCreate(BoundedChannel<T> owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
                 promise.Reset(callerContext);
@@ -110,21 +111,78 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class ChannelWriterPromise<T> : ChannelPromiseBase<T, ChannelWriteResult<T>>, ILinked<ChannelWriterPromise<T>>
+        internal sealed class ChannelReadPromise<T> : ChannelPromiseBase<T, ChannelReadResult<T>, ChannelBase<T>>, ILinked<ChannelReadPromise<T>>
         {
-            ChannelWriterPromise<T> ILinked<ChannelWriterPromise<T>>.Next { get; set; }
+            ChannelReadPromise<T> ILinked<ChannelReadPromise<T>>.Next { get; set; }
 
             [MethodImpl(InlineOption)]
-            private static ChannelWriterPromise<T> GetOrCreate()
+            private static ChannelReadPromise<T> GetOrCreate()
             {
-                var obj = ObjectPool.TryTakeOrInvalid<ChannelWriterPromise<T>>();
+                var obj = ObjectPool.TryTakeOrInvalid<ChannelReadPromise<T>>();
                 return obj == InvalidAwaitSentinel.s_instance
-                    ? new ChannelWriterPromise<T>()
-                    : obj.UnsafeAs<ChannelWriterPromise<T>>();
+                    ? new ChannelReadPromise<T>()
+                    : obj.UnsafeAs<ChannelReadPromise<T>>();
             }
 
             [MethodImpl(InlineOption)]
-            internal static ChannelWriterPromise<T> GetOrCreate(ChannelBase<T> owner, SynchronizationContext callerContext)
+            internal static ChannelReadPromise<T> GetOrCreate(ChannelBase<T> owner, SynchronizationContext callerContext)
+            {
+                var promise = GetOrCreate();
+                promise.Reset(callerContext);
+                promise._owner = owner;
+                return promise;
+            }
+
+            internal override void MaybeDispose()
+            {
+                Dispose();
+                _owner = null;
+                ObjectPool.MaybeRepool(this);
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void DisposeImmediate()
+            {
+                this.PrepareEarlyDispose();
+                MaybeDispose();
+            }
+
+            public override void Cancel()
+            {
+                ThrowIfInPool(this);
+#if PROMISE_DEBUG
+                var _owner = base._owner;
+                if (_owner == null)
+                {
+                    return;
+                }
+#endif
+                if (_owner.TryRemoveWaiter(this))
+                {
+                    _tempState = Promise.State.Canceled;
+                    Continue();
+                }
+            }
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal sealed class ChannelPeekPromise<T> : ChannelPromiseBase<T, ChannelPeekResult<T>, ChannelBase<T>>, ILinked<ChannelPeekPromise<T>>
+        {
+            ChannelPeekPromise<T> ILinked<ChannelPeekPromise<T>>.Next { get; set; }
+
+            [MethodImpl(InlineOption)]
+            private static ChannelPeekPromise<T> GetOrCreate()
+            {
+                var obj = ObjectPool.TryTakeOrInvalid<ChannelPeekPromise<T>>();
+                return obj == InvalidAwaitSentinel.s_instance
+                    ? new ChannelPeekPromise<T>()
+                    : obj.UnsafeAs<ChannelPeekPromise<T>>();
+            }
+
+            [MethodImpl(InlineOption)]
+            internal static ChannelPeekPromise<T> GetOrCreate(ChannelBase<T> owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
                 promise.Reset(callerContext);

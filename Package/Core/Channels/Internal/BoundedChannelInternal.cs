@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Promises.Channels;
 using System.Diagnostics;
 
 namespace Proto.Promises
@@ -15,11 +16,51 @@ namespace Proto.Promises
 #endif
         internal sealed class BoundedChannel<T> : ChannelBase<T>
         {
-            private ValueLinkedQueue<ChannelReaderPromise<T>> _readers;
-            private ValueLinkedQueue<ChannelWriterPromise<T>> _writers;
-            private int _readerCount;
-            private int _writerCount;
-            private SpinLocker _locker;
+            // This must not be readonly.
+            private ValueLinkedQueue<ChannelWritePromise<T>> _writers;
+
+            internal override int GetCount(int id)
+            {
+                throw new System.NotImplementedException();
+            }
+
+            internal override Promise<ChannelPeekResult<T>> PeekAsync(int id, CancelationToken cancelationToken)
+            {
+                throw new System.NotImplementedException();
+            }
+
+            internal override Promise<ChannelReadResult<T>> ReadAsync(int id, CancelationToken cancelationToken)
+            {
+                throw new System.NotImplementedException();
+            }
+
+            internal override Promise<ChannelWriteResult<T>> WriteAsync(in T item, int id, CancelationToken cancelationToken)
+            {
+                throw new System.NotImplementedException();
+            }
+
+            internal override bool TryReject(object reason, int id)
+            {
+                throw new System.NotImplementedException();
+            }
+
+            internal override void RemoveReader(int id)
+            {
+                throw new System.NotImplementedException();
+            }
+
+            internal override void RemoveWriter(int id)
+            {
+                throw new System.NotImplementedException();
+            }
+
+            internal bool TryRemoveWaiter(ChannelWritePromise<T> promise)
+            {
+                _smallFields._locker.Enter();
+                bool success = _writers.TryRemove(promise);
+                _smallFields._locker.Exit();
+                return success;
+            }
         }
     }
 }

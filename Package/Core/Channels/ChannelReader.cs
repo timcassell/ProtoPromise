@@ -31,20 +31,20 @@ namespace Proto.Promises.Channels
         }
 
         /// <summary>
-        /// Asynchronously attempts to peek at an item from the channel.
+        /// Asynchronously peeks at an item from the channel.
         /// </summary>
         /// <param name="cancelationToken">A <see cref="CancelationToken"/> used to cancel the peek operation.</param>
         /// <returns>A <see cref="Promise{T}"/> that yields the result of the peek operation.</returns>
-        public Promise<ChannelReadOrPeekResult<T>> TryPeekAsync(CancelationToken cancelationToken = default)
-            => _channel.ValidateAndGetRef().TryPeekAsync(_channel._id, cancelationToken);
+        public Promise<ChannelPeekResult<T>> PeekAsync(CancelationToken cancelationToken = default)
+            => _channel.ValidateAndGetRef().PeekAsync(_channel._id, cancelationToken);
 
         /// <summary>
-        /// Asynchronously attempts to read an item from the channel.
+        /// Asynchronously reads an item from the channel.
         /// </summary>
         /// <param name="cancelationToken">A <see cref="CancelationToken"/> used to cancel the read operation.</param>
         /// <returns>A <see cref="Promise{T}"/> that yields the result of the read operation.</returns>
-        public Promise<ChannelReadOrPeekResult<T>> TryReadAsync(CancelationToken cancelationToken = default)
-            => _channel.ValidateAndGetRef().TryReadAsync(_channel._id, cancelationToken);
+        public Promise<ChannelReadResult<T>> ReadAsync(CancelationToken cancelationToken = default)
+            => _channel.ValidateAndGetRef().ReadAsync(_channel._id, cancelationToken);
 
         /// <summary>
         /// Adds a reader to the channel. Call <see cref="Dispose"/> to remove the reader.
@@ -87,7 +87,7 @@ namespace Proto.Promises.Channels
             {
                 using (_channelReader)
                 {
-                    while ((await _channelReader.TryReadAsync(cancelationToken)).TryGetItem(out T item))
+                    while ((await _channelReader.ReadAsync(cancelationToken)).TryGetItem(out T item))
                     {
                         await streamWriter.YieldAsync(item);
                     }

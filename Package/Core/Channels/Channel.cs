@@ -25,10 +25,11 @@ namespace Proto.Promises.Channels
         private readonly Internal.ChannelBase<T> _ref;
         internal readonly int _id;
 
-        private Channel(Internal.ChannelBase<T> channel, int id)
+        [MethodImpl(Internal.InlineOption)]
+        private Channel(Internal.ChannelBase<T> channel)
         {
             _ref = channel;
-            _id = id;
+            _id = channel.Id;
         }
 
         /// <summary>
@@ -45,9 +46,7 @@ namespace Proto.Promises.Channels
         /// </summary>
         /// <returns>The created channel.</returns>
         public static Channel<T> NewUnbounded()
-        {
-            throw new NotImplementedException();
-        }
+            => new Channel<T>(Internal.UnboundedChannel<T>.GetOrCreate());
 
         /// <summary>
         /// Gets the readable half of this channel.

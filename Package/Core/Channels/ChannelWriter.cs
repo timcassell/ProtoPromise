@@ -7,6 +7,7 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Proto.Promises.Channels
 {
@@ -37,15 +38,26 @@ namespace Proto.Promises.Channels
             => _channel.ValidateAndGetRef().WriteAsync(item, _channel._id, cancelationToken);
 
         /// <summary>
-        /// Completes the channel in a rejected state.
+        /// Attempts to close the channel in a rejected state.
         /// </summary>
         /// <typeparam name="TReject">The type of the <paramref name="reason"/>.</typeparam>
         /// <param name="reason">The reason for the rejection.</param>
-        /// <returns><see langword="true"/> if the channel was not already rejected, <see langword="false"/> otherwise.</returns>
+        /// <returns><see langword="true"/> if the channel was not already closed, <see langword="false"/> otherwise.</returns>
         public bool TryReject<TReject>(TReject reason)
         {
             var channel = _channel.ValidateAndGetRef();
-            return channel.TryReject(Internal.CreateRejectContainer(reason, 1, null, channel));
+            // Check before potentially boxing reason.
+            var channelId = _channel._id;
+            bool isValid = channelId == channel.Id & channel._writerCount > 0;
+            if (!isValid | channel._rejection != null | channel._readerCount == 0)
+            {
+                if (isValid)
+                {
+                    return false;
+                }
+                throw new InvalidOperationException("Channel writer is invalid.", Internal.GetFormattedStacktrace(1));
+            }
+            return channel.TryReject(reason, channelId);
         }
 
         /// <summary>
