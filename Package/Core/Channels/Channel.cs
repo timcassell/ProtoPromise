@@ -20,7 +20,7 @@ namespace Proto.Promises.Channels
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public readonly struct Channel<T> : IEquatable<Channel<T>>
+    public readonly struct Channel<T> : IEquatable<Channel<T>>, IDisposable
     {
         private readonly Internal.ChannelBase<T> _ref;
         internal readonly int _id;
@@ -69,10 +69,15 @@ namespace Proto.Promises.Channels
         /// <summary>
         /// Gets the current number of items available from this channel.
         /// </summary>
-        public int Count
-        {
-            get => ValidateAndGetRef().GetCount(_id);
-        }
+        public int Count => ValidateAndGetRef().GetCount(_id);
+
+        /// <summary>
+        /// Releases all resources from this channel.
+        /// If any items are remaining in the channel, they will be discarded.
+        /// If any read or write operations are pending, they will be rejected with <see cref="ObjectDisposedException"/>.
+        /// </summary>
+        public void Dispose()
+            => ValidateAndGetRef().Dispose(_id);
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="Channel{T}"/>.</summary>
         [MethodImpl(Internal.InlineOption)]
@@ -123,7 +128,7 @@ namespace Proto.Promises.Channels
             var r = _ref;
             if (r == null)
             {
-                throw new InvalidOperationException("The channel is not valid.", Internal.GetFormattedStacktrace(2));
+                throw new InvalidOperationException("Channel is invalid.", Internal.GetFormattedStacktrace(2));
             }
             return r;
         }

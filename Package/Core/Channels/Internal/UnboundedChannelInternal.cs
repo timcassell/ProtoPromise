@@ -36,44 +36,21 @@ namespace Proto.Promises
             internal static UnboundedChannel<T> GetOrCreate()
             {
                 var channel = GetFromPoolOrCreate();
-                channel._readerCount = 1;
-                channel._writerCount = 1;
+                channel.Reset();
                 return channel;
-            }
-
-            private void Dispose()
-            {
-                // TODO: how to handle items that are left in the queue that need to be disposed?
-                // BCL Channels use an `Action<T> itemDropped` delegate, can we do better to be able to handle async dispose?
-                // Perhaps APIs on ChannelReader and ChannelWriter like `public AsyncEnumerable<T> DisposeAndReadRemaining()` that returns a sequence yielding all remaining elements.
-                // Or another option is to only allow writers to close the channel, and readers can always read all remaining elements until there are none left.
-                // If readers continue to read past that, the read simply fails.
-#if NETSTANDARD2_0 || (UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER)
-                while (_queue.TryDequeue(out _)) { }
-#else
-                _queue.Clear();
-#endif
-                ObjectPool.MaybeRepool(this);
             }
 
             internal override int GetCount(int id)
             {
-                if (id != Id)
-                {
-                    throw new InvalidOperationException("The channel is not valid.", GetFormattedStacktrace(2));
-                }
-                // The channel could become invalid between the id check and the count retrieval, but it doesn't matter.
+                Validate(id);
+                // The channel could become invalid between the validation and the count retrieval, but it doesn't matter.
                 // That would be a race condition that the user needs to handle anyway.
                 return _queue.Count;
             }
 
             internal override Promise<ChannelPeekResult<T>> PeekAsync(int id, CancelationToken cancelationToken)
             {
-                bool isValid = id == Id & _readerCount > 0;
-                if (!isValid)
-                {
-                    throw new InvalidOperationException("Channel reader is invalid.", GetFormattedStacktrace(2));
-                }
+                Validate(id);
 
                 // Quick cancelation check before we perform the operation.
                 if (cancelationToken.IsCancelationRequested)
@@ -88,18 +65,6 @@ namespace Proto.Promises
 
                 _smallFields._locker.Enter();
                 {
-                    isValid = id == Id & _readerCount > 0;
-                    var rejection = _rejection;
-                    if (!isValid | rejection != null)
-                    {
-                        _smallFields._locker.Exit();
-                        if (!isValid)
-                        {
-                            throw new InvalidOperationException("Channel reader is invalid.", GetFormattedStacktrace(2));
-                        }
-                        return Promise<ChannelPeekResult<T>>.Rejected(rejection);
-                    }
-
                     // Try to peek again inside the lock.
                     if (_queue.TryPeek(out item))
                     {
@@ -107,12 +72,13 @@ namespace Proto.Promises
                         return Promise.Resolved(new ChannelPeekResult<T>(item, ChannelPeekResult.Success));
                     }
 
-                    // There could be some items remaining in the queue after all writers were disposed,
-                    // so we check the writer count after we try to peek.
-                    if (_writerCount == 0)
+                    var closedReason = _closedReason;
+                    if (closedReason != null)
                     {
                         _smallFields._locker.Exit();
-                        return Promise.Resolved(new ChannelPeekResult<T>(default, ChannelPeekResult.Closed));
+                        return closedReason == ChannelSmallFields.ClosedResolvedReason
+                            ? Promise.Resolved(new ChannelPeekResult<T>(default, ChannelPeekResult.Closed))
+                            : Promise<ChannelPeekResult<T>>.Rejected(closedReason);
                     }
 
                     var promise = ChannelPeekPromise<T>.GetOrCreate(this, CaptureContext());
@@ -131,11 +97,7 @@ namespace Proto.Promises
 
             internal override Promise<ChannelReadResult<T>> ReadAsync(int id, CancelationToken cancelationToken)
             {
-                bool isValid = id == Id & _readerCount > 0;
-                if (!isValid)
-                {
-                    throw new InvalidOperationException("Channel reader is invalid.", GetFormattedStacktrace(2));
-                }
+                Validate(id);
 
                 // Quick cancelation check before we perform the operation.
                 if (cancelationToken.IsCancelationRequested)
@@ -150,18 +112,6 @@ namespace Proto.Promises
 
                 _smallFields._locker.Enter();
                 {
-                    isValid = id == Id & _readerCount > 0;
-                    var rejection = _rejection;
-                    if (!isValid | rejection != null)
-                    {
-                        _smallFields._locker.Exit();
-                        if (!isValid)
-                        {
-                            throw new InvalidOperationException("Channel reader is invalid.", GetFormattedStacktrace(2));
-                        }
-                        return Promise<ChannelReadResult<T>>.Rejected(rejection);
-                    }
-
                     // Try to dequeue again inside the lock.
                     if (_queue.TryDequeue(out item))
                     {
@@ -169,12 +119,13 @@ namespace Proto.Promises
                         return Promise.Resolved(new ChannelReadResult<T>(item, ChannelReadResult.Success));
                     }
 
-                    // There could be some items remaining in the queue after all writers were disposed,
-                    // so we check the writer count after we try to dequeue.
-                    if (_writerCount == 0)
+                    var closedReason = _closedReason;
+                    if (closedReason != null)
                     {
                         _smallFields._locker.Exit();
-                        return Promise.Resolved(new ChannelReadResult<T>(default, ChannelReadResult.Closed));
+                        return closedReason == ChannelSmallFields.ClosedResolvedReason
+                            ? Promise.Resolved(new ChannelReadResult<T>(default, ChannelReadResult.Closed))
+                            : Promise<ChannelReadResult<T>>.Rejected(closedReason);
                     }
 
                     var promise = ChannelReadPromise<T>.GetOrCreate(this, CaptureContext());
@@ -193,11 +144,7 @@ namespace Proto.Promises
 
             internal override Promise<ChannelWriteResult<T>> WriteAsync(in T item, int id, CancelationToken cancelationToken)
             {
-                bool isValid = id == Id & _writerCount > 0;
-                if (!isValid)
-                {
-                    throw new InvalidOperationException("Channel writer is invalid.", GetFormattedStacktrace(2));
-                }
+                Validate(id);
 
                 // Quick cancelation check before we perform the operation.
                 if (cancelationToken.IsCancelationRequested)
@@ -207,20 +154,13 @@ namespace Proto.Promises
 
                 _smallFields._locker.Enter();
                 {
-                    isValid = id == Id & _writerCount > 0;
-                    var rejection = _rejection;
-                    if (!isValid | rejection != null | _readerCount == 0)
+                    var closedReason = _closedReason;
+                    if (closedReason != null)
                     {
                         _smallFields._locker.Exit();
-                        if (!isValid)
-                        {
-                            throw new InvalidOperationException("Channel writer is invalid.", GetFormattedStacktrace(2));
-                        }
-                        if (rejection != null)
-                        {
-                            return Promise<ChannelWriteResult<T>>.Rejected(rejection);
-                        }
-                        return Promise.Resolved(new ChannelWriteResult<T>(default, ChannelWriteResult.Closed));
+                        return closedReason == ChannelSmallFields.ClosedResolvedReason
+                            ? Promise.Resolved(new ChannelWriteResult<T>(default, ChannelWriteResult.Closed))
+                            : Promise<ChannelWriteResult<T>>.Rejected(closedReason);
                     }
 
                     ChannelReadPromise<T> reader;
@@ -249,21 +189,18 @@ namespace Proto.Promises
 
             internal override bool TryReject(object reason, int id)
             {
+                Validate(id);
+
                 _smallFields._locker.Enter();
                 {
-                    bool isValid = id == Id & _writerCount > 0;
-                    if (!isValid | _rejection != null | _readerCount == 0)
+                    if (_closedReason != null)
                     {
                         _smallFields._locker.Exit();
-                        if (isValid)
-                        {
-                            return false;
-                        }
-                        throw new InvalidOperationException("Channel writer is invalid.", GetFormattedStacktrace(2));
+                        return false;
                     }
 
                     var rejection = CreateRejectContainer(reason, 1, null, this);
-                    _rejection = rejection;
+                    _closedReason = rejection;
                     var peekers = _peekers.MoveElementsToStack();
                     var readers = _readers.MoveElementsToStack();
                     _smallFields._locker.Exit();
@@ -280,81 +217,22 @@ namespace Proto.Promises
                 return true;
             }
 
-            internal override void RemoveReader(int id)
+            internal override bool TryClose(int id)
             {
+                Validate(id);
+
                 _smallFields._locker.Enter();
                 {
-                    if (id != Id | _readerCount == 0)
+                    if (_closedReason != null)
                     {
                         _smallFields._locker.Exit();
-                        throw new InvalidOperationException("Channel reader is invalid.", GetFormattedStacktrace(2));
+                        return false;
                     }
 
-                    if (unchecked(--_readerCount) > 0)
-                    {
-                        _smallFields._locker.Exit();
-                        return;
-                    }
-
-                    bool zeroWriters = _writerCount == 0;
-                    // JIT should be able to make this branchless.
-                    _smallFields._id += zeroWriters ? 1 : 0;
+                    _closedReason = ChannelSmallFields.ClosedResolvedReason;
                     var peekers = _peekers.MoveElementsToStack();
                     var readers = _readers.MoveElementsToStack();
                     _smallFields._locker.Exit();
-
-                    if (peekers.IsNotEmpty | readers.IsNotEmpty)
-                    {
-                        var rejection = CreateRejectContainer(new System.InvalidOperationException("All channel readers were disposed before the operation completed."), 2, null, this);
-                        while (peekers.IsNotEmpty)
-                        {
-                            peekers.Pop().Reject(rejection);
-                        }
-                        while (readers.IsNotEmpty)
-                        {
-                            readers.Pop().Reject(rejection);
-                        }
-                    }
-
-                    if (zeroWriters)
-                    {
-                        Dispose();
-                    }
-                }
-            }
-
-            internal override void RemoveWriter(int id)
-            {
-                _smallFields._locker.Enter();
-                {
-                    if (id != Id | _writerCount == 0)
-                    {
-                        _smallFields._locker.Exit();
-                        throw new InvalidOperationException("Channel writer is invalid.", GetFormattedStacktrace(2));
-                    }
-
-                    if (unchecked(--_writerCount) > 0)
-                    {
-                        _smallFields._locker.Exit();
-                        return;
-                    }
-
-                    bool zeroReaders = _readerCount == 0;
-                    // JIT should be able to make this branchless.
-                    _smallFields._id += zeroReaders ? 1 : 0;
-                    var peekers = _peekers.MoveElementsToStack();
-                    var readers = _readers.MoveElementsToStack();
-                    _smallFields._locker.Exit();
-
-                    if (zeroReaders)
-                    {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                        Debug.Assert(peekers.IsEmpty);
-                        Debug.Assert(readers.IsEmpty);
-#endif
-                        Dispose();
-                        return;
-                    }
 
                     while (peekers.IsNotEmpty)
                     {
@@ -365,7 +243,38 @@ namespace Proto.Promises
                         readers.Pop().Resolve(new ChannelReadResult<T>(default, ChannelReadResult.Closed));
                     }
                 }
+                return true;
             }
-        }
-    }
-}
+
+            protected override void Dispose()
+            {
+                base.Dispose();
+                _smallFields._locker.Enter();
+                {
+                    var peekers = _peekers.MoveElementsToStack();
+                    var readers = _readers.MoveElementsToStack();
+                    _smallFields._locker.Exit();
+
+                    if (peekers.IsNotEmpty | readers.IsNotEmpty)
+                    {
+                        var rejection = CreateRejectContainer(new System.ObjectDisposedException(nameof(Channel<T>)), 3, null, this);
+                        while (peekers.IsNotEmpty)
+                        {
+                            peekers.Pop().Reject(rejection);
+                        }
+                        while (readers.IsNotEmpty)
+                        {
+                            readers.Pop().Reject(rejection);
+                        }
+                    }
+                }
+#if NETSTANDARD2_0 || (UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER)
+                while (_queue.TryDequeue(out _)) { }
+#else
+                _queue.Clear();
+#endif
+                ObjectPool.MaybeRepool(this);
+            }
+        } // class UnboundedChannel<T>
+    } // class Internal
+} // namespace Proto.Promises

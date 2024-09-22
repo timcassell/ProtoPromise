@@ -15,7 +15,7 @@ namespace Proto.Promises.Channels
     public enum ChannelPeekResult : byte
     {
         /// <summary>
-        /// An item was not peeked at from the channel because it was empty, and all writers were disposed, ensuring no more items will ever be written to the channel.
+        /// An item was not peeked at from the channel because it was empty, and the channel was closed.
         /// </summary>
         Closed,
         /// <summary>

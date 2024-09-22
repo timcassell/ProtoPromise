@@ -20,7 +20,7 @@ namespace Proto.Promises.Channels
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public readonly struct ChannelReader<T> : IDisposable, IEquatable<ChannelReader<T>>
+    public readonly struct ChannelReader<T> : IEquatable<ChannelReader<T>>
     {
         private readonly Channel<T> _channel;
 
@@ -47,22 +47,12 @@ namespace Proto.Promises.Channels
             => _channel.ValidateAndGetRef().ReadAsync(_channel._id, cancelationToken);
 
         /// <summary>
-        /// Adds a reader to the channel. Call <see cref="Dispose"/> to remove the reader.
-        /// </summary>
-        /// <returns><see langword="this"/></returns>
-        public ChannelReader<T> AddReader()
-        {
-            _channel.ValidateAndGetRef().AddReader(_channel._id);
-            return this;
-        }
-
-        /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that enables reading all of the data from the channel.
         /// </summary>
         /// <returns>The created <see cref="AsyncEnumerable{T}"/>.</returns>
         public AsyncEnumerable<T> ReadAllAsync()
             // We add a reader in case this is disposed before the channel is completed.
-            => AsyncEnumerable<T>.Create(new AsyncIterator(AddReader()));
+            => AsyncEnumerable<T>.Create(new AsyncIterator(this));
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
@@ -77,33 +67,18 @@ namespace Proto.Promises.Channels
                 _channelReader = channelReader;
             }
 
+            [MethodImpl(Internal.InlineOption)]
             public Promise DisposeAsyncWithoutStart()
-            {
-                _channelReader.Dispose();
-                return Promise.Resolved();
-            }
+                => Promise.Resolved();
 
             public async AsyncIteratorMethod Start(AsyncStreamWriter<T> streamWriter, CancelationToken cancelationToken)
             {
-                using (_channelReader)
+                while ((await _channelReader.ReadAsync(cancelationToken)).TryGetItem(out T item))
                 {
-                    while ((await _channelReader.ReadAsync(cancelationToken)).TryGetItem(out T item))
-                    {
-                        await streamWriter.YieldAsync(item);
-                    }
+                    await streamWriter.YieldAsync(item);
                 }
             }
         }
-
-        /// <summary>
-        /// Removes the reader from the channel.
-        /// </summary>
-        /// <remarks>
-        /// When all readers have been disposed, no more items will be written to the channel, and the channel may not be read from again.
-        /// Every reader should be disposed in order to ensure proper cleanup of the channel.
-        /// </remarks>
-        public void Dispose()
-            => _channel.ValidateAndGetRef().RemoveReader(_channel._id);
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="ChannelReader{T}"/>.</summary>
         [MethodImpl(Internal.InlineOption)]

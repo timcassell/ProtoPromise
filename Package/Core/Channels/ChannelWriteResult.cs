@@ -15,25 +15,17 @@ namespace Proto.Promises.Channels
     public enum ChannelWriteResult : byte
     {
         /// <summary>
-        /// The item was not written to the channel because all readers were disposed, ensuring no more items will ever be read from the channel.
+        /// The item was not written to the channel because it was closed.
         /// </summary>
         Closed,
         /// <summary>
-        /// The item was written to the channel without removing another item.
+        /// The item was written to the channel without dropping another item.
         /// </summary>
         Success,
         /// <summary>
-        /// The channel was full and the newest item was removed to make room for the item that was written.
+        /// An item was dropped from the channel because it was full. The item that was dropped depends on the options that were used to create the channel.
         /// </summary>
-        DroppedNewest,
-        /// <summary>
-        /// The channel was full and the oldest item was removed to make room for the item that was written.
-        /// </summary>
-        DroppedOldest,
-        /// <summary>
-        /// The item was not written to the channel because the channel was full.
-        /// </summary>
-        DroppedWrite
+        DroppedItem,
     }
 
     /// <summary>
@@ -65,7 +57,7 @@ namespace Proto.Promises.Channels
         }
 
         /// <summary>
-        /// Get the item that was dropped if an item was dropped. An item was dropped if <see cref="Result"/> != <see cref="ChannelWriteResult.Success"/>.
+        /// Get the item that was dropped if an item was dropped.
         /// </summary>
         /// <param name="droppedItem">When this method returns, contains the dropped item if an item was dropped, <see langword="default"/> otherwise.</param>
         /// <returns><see langword="true"/> if an item was dropped, <see langword="false"/> otherwise.</returns>

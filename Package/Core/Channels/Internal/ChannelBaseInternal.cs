@@ -7,6 +7,9 @@
 using Proto.Promises.Channels;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading;
+
+#pragma warning disable IDE0090 // Use 'new(...)'
 
 namespace Proto.Promises
 {
@@ -19,6 +22,9 @@ namespace Proto.Promises
         // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
         internal struct ChannelSmallFields
         {
+            internal static readonly object ClosedResolvedReason = new object();
+            internal static readonly object DisposedReason = new object();
+
             internal SpinLocker _locker;
             internal int _id;
         }
@@ -32,13 +38,19 @@ namespace Proto.Promises
             CausalityTrace ITraceable.Trace { get; set; }
 #endif
 
-            internal IRejectContainer _rejection;
+            ~ChannelBase()
+            {
+                if (_closedReason != ChannelSmallFields.DisposedReason)
+                {
+                    ReportRejection(new UnreleasedObjectException($"A Channel's resources were garbage collected without being disposed. {this}"), this);
+                }
+            }
+
+            internal object _closedReason;
             // These must not be readonly.
             protected ValueLinkedQueue<ChannelReadPromise<T>> _readers;
             protected ValueLinkedQueue<ChannelPeekPromise<T>> _peekers;
             protected ChannelSmallFields _smallFields;
-            internal uint _readerCount;
-            internal uint _writerCount;
 
             internal int Id
             {
@@ -48,9 +60,14 @@ namespace Proto.Promises
 
             protected void Reset()
             {
-                _readerCount = 1;
-                _writerCount = 1;
+                _closedReason = null;
                 SetCreatedStacktrace(this, 3);
+            }
+
+            protected virtual void Dispose()
+            {
+                ThrowIfInPool(this);
+                _closedReason = ChannelSmallFields.DisposedReason;
             }
 
             internal bool TryRemoveWaiter(ChannelReadPromise<T> promise)
@@ -69,42 +86,21 @@ namespace Proto.Promises
                 return success;
             }
 
-            internal void AddReader(int id)
+            internal void Dispose(int id)
             {
-                _smallFields._locker.Enter();
+                if (Interlocked.CompareExchange(ref _smallFields._id, id + 1, id) == id)
                 {
-                    uint count = _readerCount;
-                    if (id != Id | count == 0 | count == uint.MaxValue)
-                    {
-                        _smallFields._locker.Exit();
-                        if (count == uint.MaxValue)
-                        {
-                            throw new System.OverflowException();
-                        }
-                        throw new InvalidOperationException("Channel reader is invalid.", GetFormattedStacktrace(2));
-                    }
-                    unchecked { _readerCount = count + 1; }
+                    Dispose();
                 }
-                _smallFields._locker.Exit();
+                // Do nothing if the id doesn't match, it was already disposed.
             }
 
-            internal void AddWriter(int id)
+            protected void Validate(int id)
             {
-                _smallFields._locker.Enter();
+                if (id != Id | _closedReason == ChannelSmallFields.DisposedReason)
                 {
-                    uint count = _writerCount;
-                    if (id != Id | count == 0 | count == uint.MaxValue)
-                    {
-                        _smallFields._locker.Exit();
-                        if (count == uint.MaxValue)
-                        {
-                            throw new System.OverflowException();
-                        }
-                        throw new InvalidOperationException("Channel writer is invalid.", GetFormattedStacktrace(2));
-                    }
-                    unchecked { _writerCount = count + 1; }
+                    throw new System.ObjectDisposedException(nameof(Channel<T>));
                 }
-                _smallFields._locker.Exit();
             }
 
             internal abstract int GetCount(int id);
@@ -112,8 +108,7 @@ namespace Proto.Promises
             internal abstract Promise<ChannelReadResult<T>> ReadAsync(int id, CancelationToken cancelationToken);
             internal abstract Promise<ChannelWriteResult<T>> WriteAsync(in T item, int id, CancelationToken cancelationToken);
             internal abstract bool TryReject(object reason, int id);
-            internal abstract void RemoveReader(int id);
-            internal abstract void RemoveWriter(int id);
+            internal abstract bool TryClose(int id);
         }
     }
 }

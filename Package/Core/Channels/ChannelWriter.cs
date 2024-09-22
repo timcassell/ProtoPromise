@@ -7,7 +7,6 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Threading;
 
 namespace Proto.Promises.Channels
 {
@@ -18,7 +17,7 @@ namespace Proto.Promises.Channels
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public readonly struct ChannelWriter<T> : IDisposable, IEquatable<ChannelWriter<T>>
+    public readonly struct ChannelWriter<T> : IEquatable<ChannelWriter<T>>
     {
         private readonly Channel<T> _channel;
 
@@ -48,8 +47,8 @@ namespace Proto.Promises.Channels
             var channel = _channel.ValidateAndGetRef();
             // Check before potentially boxing reason.
             var channelId = _channel._id;
-            bool isValid = channelId == channel.Id & channel._writerCount > 0;
-            if (!isValid | channel._rejection != null | channel._readerCount == 0)
+            bool isValid = channelId == channel.Id;
+            if (!isValid | channel._closedReason != null)
             {
                 if (isValid)
                 {
@@ -61,24 +60,11 @@ namespace Proto.Promises.Channels
         }
 
         /// <summary>
-        /// Adds a writer to the channel. Call <see cref="Dispose"/> to remove the writer.
+        /// Attempts to close the channel in a resolved state.
         /// </summary>
-        /// <returns><see langword="this"/></returns>
-        public ChannelWriter<T> AddWriter()
-        {
-            _channel.ValidateAndGetRef().AddWriter(_channel._id);
-            return this;
-        }
-
-        /// <summary>
-        /// Removes the writer from the channel.
-        /// </summary>
-        /// <remarks>
-        /// When all writers have been disposed, the channel will be completed in a resolved state if it was not rejected.
-        /// Every writer should be disposed, even if it was rejected, in order to ensure proper cleanup of the channel.
-        /// </remarks>
-        public void Dispose()
-            => _channel.ValidateAndGetRef().RemoveWriter(_channel._id);
+        /// <returns><see langword="true"/> if the channel was not already closed, <see langword="false"/> otherwise.</returns>
+        public bool TryClose()
+            => _channel.ValidateAndGetRef().TryClose(_channel._id);
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="ChannelWriter{T}"/>.</summary>
         [MethodImpl(Internal.InlineOption)]

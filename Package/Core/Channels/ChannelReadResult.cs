@@ -15,7 +15,7 @@ namespace Proto.Promises.Channels
     public enum ChannelReadResult : byte
     {
         /// <summary>
-        /// The item was not read from the channel because it was empty, and all writers were disposed, ensuring no more items will ever be written to the channel.
+        /// The item was not read from the channel because it was empty, and the channel was closed.
         /// </summary>
         Closed,
         /// <summary>

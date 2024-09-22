@@ -19,6 +19,14 @@ namespace Proto.Promises
             // This must not be readonly.
             private ValueLinkedQueue<ChannelWritePromise<T>> _writers;
 
+            internal bool TryRemoveWaiter(ChannelWritePromise<T> promise)
+            {
+                _smallFields._locker.Enter();
+                bool success = _writers.TryRemove(promise);
+                _smallFields._locker.Exit();
+                return success;
+            }
+
             internal override int GetCount(int id)
             {
                 throw new System.NotImplementedException();
@@ -39,27 +47,45 @@ namespace Proto.Promises
                 throw new System.NotImplementedException();
             }
 
+            internal override bool TryClose(int id)
+            {
+                throw new System.NotImplementedException();
+            }
+
             internal override bool TryReject(object reason, int id)
             {
                 throw new System.NotImplementedException();
             }
 
-            internal override void RemoveReader(int id)
+            protected override void Dispose()
             {
-                throw new System.NotImplementedException();
-            }
-
-            internal override void RemoveWriter(int id)
-            {
-                throw new System.NotImplementedException();
-            }
-
-            internal bool TryRemoveWaiter(ChannelWritePromise<T> promise)
-            {
+                base.Dispose();
                 _smallFields._locker.Enter();
-                bool success = _writers.TryRemove(promise);
-                _smallFields._locker.Exit();
-                return success;
+                {
+                    //_queue.Clear();
+                    var peekers = _peekers.MoveElementsToStack();
+                    var readers = _readers.MoveElementsToStack();
+                    var writers = _writers.MoveElementsToStack();
+                    _smallFields._locker.Exit();
+
+                    if (peekers.IsNotEmpty | readers.IsNotEmpty | writers.IsNotEmpty)
+                    {
+                        var rejection = CreateRejectContainer(new System.ObjectDisposedException(nameof(Channel<T>)), 3, null, this);
+                        while (peekers.IsNotEmpty)
+                        {
+                            peekers.Pop().Reject(rejection);
+                        }
+                        while (readers.IsNotEmpty)
+                        {
+                            readers.Pop().Reject(rejection);
+                        }
+                        while (writers.IsNotEmpty)
+                        {
+                            writers.Pop().Reject(rejection);
+                        }
+                    }
+                }
+                ObjectPool.MaybeRepool(this);
             }
         }
     }
