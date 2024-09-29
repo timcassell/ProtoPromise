@@ -68,12 +68,21 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static ChannelWritePromise<T> GetOrCreate(BoundedChannel<T> owner, SynchronizationContext callerContext)
+            internal static ChannelWritePromise<T> GetOrCreate(in T item, BoundedChannel<T> owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
                 promise.Reset(callerContext);
                 promise._owner = owner;
+                // We store the item in the result so it can be added to the buffer when this is resolved.
+                promise._result = new ChannelWriteResult<T>(item, ChannelWriteResult.Success);
                 return promise;
+            }
+
+            [MethodImpl(InlineOption)]
+            internal T GetItem()
+            {
+                ThrowIfInPool(this);
+                return _result._droppedItem;
             }
 
             internal override void MaybeDispose()

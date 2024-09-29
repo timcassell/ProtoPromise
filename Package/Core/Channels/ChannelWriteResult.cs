@@ -37,7 +37,7 @@ namespace Proto.Promises.Channels
 #endif
     public readonly struct ChannelWriteResult<T>
     {
-        private readonly T _droppedItem;
+        internal readonly T _droppedItem;
         private readonly ChannelWriteResult _result;
 
         /// <summary>

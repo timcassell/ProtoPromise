@@ -33,16 +33,20 @@ namespace Proto.Promises.Channels
         }
 
         /// <summary>
-        /// Creates a bounded channel subject to the provided options, usable by any number of readers and writers concurrently, initialized with 1 reader and 1 writer.
+        /// Creates a bounded channel subject to the provided options.
         /// </summary>
         /// <returns>The created channel.</returns>
         public static Channel<T> NewBounded(BoundedChannelOptions<T> options)
         {
-            throw new NotImplementedException();
+            if (options.Capacity < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(options), "Capacity must be greater than zero.", Internal.GetFormattedStacktrace(1));
+            }
+            return new Channel<T>(Internal.BoundedChannel<T>.GetOrCreate(options.Capacity, options.FullMode));
         }
 
         /// <summary>
-        /// Creates an unbounded channel usable by any number of readers and writers concurrently, initialized with 1 reader and 1 writer.
+        /// Creates an unbounded channel.
         /// </summary>
         /// <returns>The created channel.</returns>
         public static Channel<T> NewUnbounded()

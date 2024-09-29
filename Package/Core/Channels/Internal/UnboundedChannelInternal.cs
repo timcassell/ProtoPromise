@@ -165,19 +165,20 @@ namespace Proto.Promises
 
                     ChannelReadPromise<T> reader;
                     var peekers = _peekers.MoveElementsToStack();
-                    // If there are no waiting readers, we just add the item to the queue. Otherwise, we grab a reader and complete it outside of the lock.
-                    if (_readers.IsEmpty)
+                    // If there is at least 1 waiting reader, we grab one and complete it outside of the lock.
+                    if (_readers.IsNotEmpty)
+                    {
+                        reader = _readers.Dequeue();
+                        _smallFields._locker.Exit();
+                        reader.Resolve(new ChannelReadResult<T>(item, ChannelReadResult.Success));
+                    }
+                    // Otherwise, we just add the item to the queue.
+                    else
                     {
                         _queue.Enqueue(item);
                         _smallFields._locker.Exit();
-                        goto SkipReader;
                     }
-
-                    reader = _readers.Dequeue();
-                    _smallFields._locker.Exit();
-                    reader.Resolve(new ChannelReadResult<T>(item, ChannelReadResult.Success));
                 
-                SkipReader:
                     // All waiting peekers receive the item, even if there was a waiting reader preventing it from entering the queue.
                     while (peekers.IsNotEmpty)
                     {

@@ -103,6 +103,15 @@ namespace Proto.Promises
                 }
             }
 
+            protected void ValidateInsideLock(int id)
+            {
+                if (id != Id | _closedReason == ChannelSmallFields.DisposedReason)
+                {
+                    _smallFields._locker.Exit();
+                    throw new System.ObjectDisposedException(nameof(Channel<T>));
+                }
+            }
+
             internal abstract int GetCount(int id);
             internal abstract Promise<ChannelPeekResult<T>> PeekAsync(int id, CancelationToken cancelationToken);
             internal abstract Promise<ChannelReadResult<T>> ReadAsync(int id, CancelationToken cancelationToken);
