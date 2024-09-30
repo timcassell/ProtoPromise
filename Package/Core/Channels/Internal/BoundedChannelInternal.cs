@@ -19,7 +19,7 @@ namespace Proto.Promises
         internal sealed class BoundedChannel<T> : ChannelBase<T>
         {
             // These must not be readonly.
-            private ValueLinkedQueue<ChannelWritePromise<T>> _writers;
+            private ValueLinkedQueue<ChannelWritePromise<T>> _writers = new ValueLinkedQueue<ChannelWritePromise<T>>();
             private PoolBackedDeque<T> _queue;
             private int _capacity;
             private BoundedChannelFullMode _fullMode;

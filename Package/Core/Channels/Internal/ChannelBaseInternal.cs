@@ -48,8 +48,8 @@ namespace Proto.Promises
 
             internal object _closedReason;
             // These must not be readonly.
-            protected ValueLinkedQueue<ChannelReadPromise<T>> _readers;
-            protected ValueLinkedQueue<ChannelPeekPromise<T>> _peekers;
+            protected ValueLinkedQueue<ChannelReadPromise<T>> _readers = new ValueLinkedQueue<ChannelReadPromise<T>>();
+            protected ValueLinkedQueue<ChannelPeekPromise<T>> _peekers = new ValueLinkedQueue<ChannelPeekPromise<T>>();
             protected ChannelSmallFields _smallFields;
 
             internal int Id
