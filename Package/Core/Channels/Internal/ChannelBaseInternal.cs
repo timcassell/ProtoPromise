@@ -64,12 +64,6 @@ namespace Proto.Promises
                 SetCreatedStacktrace(this, 3);
             }
 
-            protected virtual void Dispose()
-            {
-                ThrowIfInPool(this);
-                _closedReason = ChannelSmallFields.DisposedReason;
-            }
-
             internal bool TryRemoveWaiter(ChannelReadPromise<T> promise)
             {
                 _smallFields._locker.Enter();
@@ -84,23 +78,6 @@ namespace Proto.Promises
                 bool success = _peekers.TryRemove(promise);
                 _smallFields._locker.Exit();
                 return success;
-            }
-
-            internal void Dispose(int id)
-            {
-                if (Interlocked.CompareExchange(ref _smallFields._id, id + 1, id) == id)
-                {
-                    Dispose();
-                }
-                // Do nothing if the id doesn't match, it was already disposed.
-            }
-
-            protected void Validate(int id)
-            {
-                if (id != Id | _closedReason == ChannelSmallFields.DisposedReason)
-                {
-                    throw new System.ObjectDisposedException(nameof(Channel<T>));
-                }
             }
 
             protected void ValidateInsideLock(int id)
@@ -118,6 +95,7 @@ namespace Proto.Promises
             internal abstract Promise<ChannelWriteResult<T>> WriteAsync(in T item, int id, CancelationToken cancelationToken);
             internal abstract bool TryReject(object reason, int id);
             internal abstract bool TryClose(int id);
+            internal abstract void Dispose(int id);
         }
     }
 }

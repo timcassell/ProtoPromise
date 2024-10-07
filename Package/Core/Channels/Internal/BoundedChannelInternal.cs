@@ -24,6 +24,8 @@ namespace Proto.Promises
             private int _capacity;
             private BoundedChannelFullMode _fullMode;
 
+            private BoundedChannel() { }
+
             [MethodImpl(InlineOption)]
             private static BoundedChannel<T> GetFromPoolOrCreate()
             {
@@ -62,6 +64,16 @@ namespace Proto.Promises
                     return count;
                 }
             }
+
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            private void Validate(int id)
+            {
+                if (id != Id | _closedReason == ChannelSmallFields.DisposedReason)
+                {
+                    throw new System.ObjectDisposedException(nameof(Channel<T>));
+                }
+            }
+#endif
 
             internal override Promise<ChannelPeekResult<T>> PeekAsync(int id, CancelationToken cancelationToken)
             {
@@ -315,35 +327,43 @@ namespace Proto.Promises
                 return true;
             }
 
-            protected override void Dispose()
+            internal override void Dispose(int id)
             {
-                base.Dispose();
                 _smallFields._locker.Enter();
+                if (id != _smallFields._id)
                 {
-                    _queue.Dispose();
-                    var peekers = _peekers.MoveElementsToStack();
-                    var readers = _readers.MoveElementsToStack();
-                    var writers = _writers.MoveElementsToStack();
+                    // Do nothing if the id doesn't match, it was already disposed.
                     _smallFields._locker.Exit();
+                    return;
+                }
 
-                    if (peekers.IsNotEmpty | readers.IsNotEmpty | writers.IsNotEmpty)
+                ThrowIfInPool(this);
+                unchecked { _smallFields._id = id + 1; }
+                _closedReason = ChannelSmallFields.DisposedReason;
+                _queue.Dispose();
+                var peekers = _peekers.MoveElementsToStack();
+                var readers = _readers.MoveElementsToStack();
+                var writers = _writers.MoveElementsToStack();
+                _smallFields._locker.Exit();
+
+                ObjectPool.MaybeRepool(this);
+
+                if (peekers.IsNotEmpty | readers.IsNotEmpty | writers.IsNotEmpty)
+                {
+                    var rejection = CreateRejectContainer(new System.ObjectDisposedException(nameof(Channel<T>)), 3, null, this);
+                    while (peekers.IsNotEmpty)
                     {
-                        var rejection = CreateRejectContainer(new System.ObjectDisposedException(nameof(Channel<T>)), 3, null, this);
-                        while (peekers.IsNotEmpty)
-                        {
-                            peekers.Pop().Reject(rejection);
-                        }
-                        while (readers.IsNotEmpty)
-                        {
-                            readers.Pop().Reject(rejection);
-                        }
-                        while (writers.IsNotEmpty)
-                        {
-                            writers.Pop().Reject(rejection);
-                        }
+                        peekers.Pop().Reject(rejection);
+                    }
+                    while (readers.IsNotEmpty)
+                    {
+                        readers.Pop().Reject(rejection);
+                    }
+                    while (writers.IsNotEmpty)
+                    {
+                        writers.Pop().Reject(rejection);
                     }
                 }
-                ObjectPool.MaybeRepool(this);
             }
         }
     }
