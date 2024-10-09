@@ -164,6 +164,14 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
+            internal T Peek()
+                => _head;
+
+            [MethodImpl(InlineOption)]
+            internal void Clear()
+                => _head = null;
+
+            [MethodImpl(InlineOption)]
             internal void PushInterlocked(T item)
             {
                 AssertNotInCollection(item);
