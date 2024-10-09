@@ -54,7 +54,7 @@ namespace Proto.Promises.Channels
                 {
                     return false;
                 }
-                throw new InvalidOperationException("Channel writer is invalid.", Internal.GetFormattedStacktrace(1));
+                throw new ObjectDisposedException(nameof(Channel<T>));
             }
             return channel.TryReject(reason, channelId);
         }

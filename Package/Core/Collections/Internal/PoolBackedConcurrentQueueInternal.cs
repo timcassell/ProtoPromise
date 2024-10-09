@@ -10,7 +10,6 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace Proto.Promises.Collections
@@ -18,81 +17,30 @@ namespace Proto.Promises.Collections
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    [StructLayout(LayoutKind.Explicit)]
     internal struct PoolBackedConcurrentQueueRetainer
     {
-        // TODO: use bit-shifting and `Interlocked.Add` to remove the loops.
+        // Lowest bit is the isDisposed flag, higher bits are the retain counter.
+        private long _value;
 
-        [FieldOffset(0)]
-        private uint _retainCounter;
-        [FieldOffset(4)]
-        private bool _isDisposed;
-        // Long overlapping both fields so they can be updated atomically.
-        [FieldOffset(0)]
-        private long _long;
-
+        [MethodImpl(Internal.InlineOption)]
         internal void IncrementRetainCounter()
-        {
-            PoolBackedConcurrentQueueRetainer initialValue = this;
-            while (true)
-            {
-                PoolBackedConcurrentQueueRetainer newValue = initialValue;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                checked
-#else
-                unchecked
-#endif
-                {
-                    ++newValue._retainCounter;
-                }
-                long oldValue = Interlocked.CompareExchange(ref _long, newValue._long, initialValue._long);
-                if (oldValue == initialValue._long)
-                {
-                    return;
-                }
-                initialValue._long = oldValue;
-            }
-        }
+            => Interlocked.Add(ref _value, 1L << 1);
 
+        [MethodImpl(Internal.InlineOption)]
         internal (bool zeroRetains, bool isDisposed) DecrementRetainCounter()
         {
-            PoolBackedConcurrentQueueRetainer initialValue = this;
-            while (true)
-            {
-                PoolBackedConcurrentQueueRetainer newValue = initialValue;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                checked
-#else
-                unchecked
-#endif
-                {
-                    --newValue._retainCounter;
-                }
-                long oldValue = Interlocked.CompareExchange(ref _long, newValue._long, initialValue._long);
-                if (oldValue == initialValue._long)
-                {
-                    return (newValue._retainCounter == 0, newValue._isDisposed);
-                }
-                initialValue._long = oldValue;
-            }
+            long newValue = Interlocked.Add(ref _value, -(1L << 1));
+            return ((newValue & ~1L) == 0L, (newValue & 1L) == 1L);
         }
 
-        internal (bool zeroRetains, bool isDisposed) Dispose()
+        [MethodImpl(Internal.InlineOption)]
+        internal bool Dispose()
         {
-            PoolBackedConcurrentQueueRetainer initialValue = this;
-            while (true)
-            {
-                Debug.Assert(!initialValue._isDisposed);
+            Debug.Assert((_value & 1L) == 0L);
 
-                PoolBackedConcurrentQueueRetainer newValue = initialValue;
-                newValue._isDisposed = true;
-                long oldValue = Interlocked.CompareExchange(ref _long, newValue._long, initialValue._long);
-                if (oldValue == initialValue._long)
-                {
-                    return (newValue._retainCounter == 0, newValue._isDisposed);
-                }
-                initialValue._long = oldValue;
-            }
+            long newValue = Interlocked.Add(ref _value, 1L);
+            // Return true if the retain counter is zero.
+            return (newValue & ~1L) == 0L;
         }
     }
 
@@ -158,9 +106,9 @@ namespace Proto.Promises.Collections
         public bool DisposeAndGetIsComplete()
         {
             var needToDisposeHead = _needToDispose.Peek();
-            var (zeroRetains, isDisposed) = _retainer.Dispose();
-            MaybeCleanup(needToDisposeHead, zeroRetains, isDisposed);
-            return isDisposed & zeroRetains;
+            bool zeroRetains = _retainer.Dispose();
+            MaybeCleanup(needToDisposeHead, zeroRetains, true);
+            return zeroRetains;
         }
 
         // To prevent a race condition with a new segment sneaking into the _needToDispose stack on another thread,

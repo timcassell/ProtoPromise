@@ -71,7 +71,15 @@ namespace ProtoPromiseTests.Concurrency.Channels
                             return;
                         }
                     }
-                    Assert.True(channel.Writer.TryClose());
+                    if (writerCount > 0)
+                    {
+                        // If multiple writer threads are racing, we don't assert the result.
+                        channel.Writer.TryClose();
+                    }
+                    else
+                    {
+                        Assert.True(channel.Writer.TryClose());
+                    }
                 }, SynchronizationOption.Background));
             }
             for (int i = 0; i < readerCount; ++i)
