@@ -153,13 +153,11 @@ namespace Proto.Promises.Collections
                 }
                 _crossSegmentLock.Exit();
 
+                var disposeStack = new Internal.ValueLinkedStack<ConcurrentQueueSegment<T>>(needToDisposeHead);
                 do
                 {
-                    var temp = needToDisposeHead;
-                    needToDisposeHead = temp._nextForDelayedDispose;
-                    temp._nextForDelayedDispose = null;
-                    temp.Dispose();
-                } while (needToDisposeHead != null);
+                    disposeStack.Pop().Dispose();
+                } while (disposeStack.IsNotEmpty);
             }
 
         SkipToDispose:

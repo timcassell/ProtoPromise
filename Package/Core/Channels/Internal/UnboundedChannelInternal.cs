@@ -145,8 +145,8 @@ namespace Proto.Promises
                         if (closedReason != null)
                         {
                             _smallFields._locker.Exit();
-                            return closedReason == ChannelSmallFields.ClosedResolvedReason
-                                ? Promise.Resolved(new ChannelPeekResult<T>(default, ChannelPeekResult.Closed))
+                            return closedReason == ChannelSmallFields.ClosedResolvedReason ? Promise.Resolved(new ChannelPeekResult<T>(default, ChannelPeekResult.Closed))
+                                : closedReason == ChannelSmallFields.ClosedCanceledReason ? Promise<ChannelPeekResult<T>>.Canceled()
                                 : Promise<ChannelPeekResult<T>>.Rejected(closedReason);
                         }
 
@@ -199,8 +199,8 @@ namespace Proto.Promises
                         if (closedReason != null)
                         {
                             _smallFields._locker.Exit();
-                            return closedReason == ChannelSmallFields.ClosedResolvedReason
-                                ? Promise.Resolved(new ChannelReadResult<T>(default, ChannelReadResult.Closed))
+                            return closedReason == ChannelSmallFields.ClosedResolvedReason ? Promise.Resolved(new ChannelReadResult<T>(default, ChannelReadResult.Closed))
+                                : closedReason == ChannelSmallFields.ClosedCanceledReason ? Promise<ChannelReadResult<T>>.Canceled()
                                 : Promise<ChannelReadResult<T>>.Rejected(closedReason);
                         }
 
@@ -244,8 +244,8 @@ namespace Proto.Promises
                     if (closedReason != null)
                     {
                         _smallFields._locker.Exit();
-                        return closedReason == ChannelSmallFields.ClosedResolvedReason
-                            ? Promise.Resolved(new ChannelWriteResult<T>(default, ChannelWriteResult.Closed))
+                        return closedReason == ChannelSmallFields.ClosedResolvedReason ? Promise.Resolved(new ChannelWriteResult<T>(default, ChannelWriteResult.Closed))
+                            : closedReason == ChannelSmallFields.ClosedCanceledReason ? Promise<ChannelWriteResult<T>>.Canceled()
                             : Promise<ChannelWriteResult<T>>.Rejected(closedReason);
                     }
 
@@ -304,6 +304,40 @@ namespace Proto.Promises
                     while (readers.IsNotEmpty)
                     {
                         readers.Pop().Reject(rejection);
+                    }
+                    return true;
+                }
+                finally
+                {
+                    Release();
+                }
+            }
+
+            internal override bool TryCancel(int id)
+            {
+                _smallFields._locker.Enter();
+                ValidateAndRetainInsideLock(id);
+
+                try
+                {
+                    if (_closedReason != null)
+                    {
+                        _smallFields._locker.Exit();
+                        return false;
+                    }
+
+                    _closedReason = ChannelSmallFields.ClosedCanceledReason;
+                    var peekers = _peekers.MoveElementsToStack();
+                    var readers = _readers.MoveElementsToStack();
+                    _smallFields._locker.Exit();
+
+                    while (peekers.IsNotEmpty)
+                    {
+                        peekers.Pop().CancelDirect();
+                    }
+                    while (readers.IsNotEmpty)
+                    {
+                        readers.Pop().CancelDirect();
                     }
                     return true;
                 }

@@ -183,6 +183,29 @@ namespace ProtoPromiseTests.APIs.Channels
         }
 
         [Test]
+        public void TryCancel_Propagates()
+        {
+            Promise.Run(async () =>
+            {
+                var channel = Channel<int>.NewUnbounded();
+
+                var readPromise = channel.Reader.ReadAsync();
+                var peekPromise = channel.Reader.PeekAsync();
+
+                Assert.True(channel.Writer.TryCancel());
+
+                await TestHelper.AssertCanceledAsync(() => readPromise);
+                await TestHelper.AssertCanceledAsync(() => peekPromise);
+                await TestHelper.AssertCanceledAsync(() => channel.Reader.ReadAsync());
+                await TestHelper.AssertCanceledAsync(() => channel.Reader.PeekAsync());
+                await TestHelper.AssertCanceledAsync(() => channel.Writer.WriteAsync(1));
+
+                channel.Dispose();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
         public void PingPong_Success(
             [Values(SynchronizationOption.Synchronous, SynchronizationOption.Background)] SynchronizationOption synchronizationOption)
         {

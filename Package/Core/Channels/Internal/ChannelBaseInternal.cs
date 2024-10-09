@@ -23,6 +23,7 @@ namespace Proto.Promises
         internal struct ChannelSmallFields
         {
             internal static readonly object ClosedResolvedReason = new object();
+            internal static readonly object ClosedCanceledReason = Promise.CancelException();
             internal static readonly object DisposedReason = new object();
 
             internal SpinLocker _locker;
@@ -60,6 +61,7 @@ namespace Proto.Promises
 
             protected void Reset()
             {
+                _next = null;
                 _closedReason = null;
                 SetCreatedStacktrace(this, 3);
             }
@@ -94,6 +96,7 @@ namespace Proto.Promises
             internal abstract Promise<ChannelReadResult<T>> ReadAsync(int id, CancelationToken cancelationToken);
             internal abstract Promise<ChannelWriteResult<T>> WriteAsync(in T item, int id, CancelationToken cancelationToken);
             internal abstract bool TryReject(object reason, int id);
+            internal abstract bool TryCancel(int id);
             internal abstract bool TryClose(int id);
             internal abstract void Dispose(int id);
         }

@@ -77,6 +77,7 @@ namespace Proto.Promises.Collections
             Debug.Assert((boundedLength & (boundedLength - 1)) == 0, $"Must be a power of 2, got {boundedLength}");
 
             var segment = GetOrCreate();
+            segment._next = null;
 
             var slots = ArrayPool<Slot>.Shared.Rent(boundedLength);
             segment._slots = slots;

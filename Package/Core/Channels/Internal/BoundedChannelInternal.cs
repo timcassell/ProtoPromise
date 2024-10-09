@@ -16,7 +16,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class BoundedChannel<T> : ChannelBase<T>
+        internal sealed partial class BoundedChannel<T> : ChannelBase<T>
         {
             // These must not be readonly.
             private ValueLinkedQueue<ChannelWritePromise<T>> _writers = new ValueLinkedQueue<ChannelWritePromise<T>>();
@@ -65,21 +65,9 @@ namespace Proto.Promises
                 }
             }
 
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            private void Validate(int id)
-            {
-                if (id != Id | _closedReason == ChannelSmallFields.DisposedReason)
-                {
-                    throw new System.ObjectDisposedException(nameof(Channel<T>));
-                }
-            }
-#endif
-
             internal override Promise<ChannelPeekResult<T>> PeekAsync(int id, CancelationToken cancelationToken)
             {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 Validate(id);
-#endif
 
                 // Quick cancelation check before we perform the operation.
                 if (cancelationToken.IsCancelationRequested)
@@ -102,8 +90,8 @@ namespace Proto.Promises
                     if (closedReason != null)
                     {
                         _smallFields._locker.Exit();
-                        return closedReason == ChannelSmallFields.ClosedResolvedReason
-                            ? Promise.Resolved(new ChannelPeekResult<T>(default, ChannelPeekResult.Closed))
+                        return closedReason == ChannelSmallFields.ClosedResolvedReason ? Promise.Resolved(new ChannelPeekResult<T>(default, ChannelPeekResult.Closed))
+                            : closedReason == ChannelSmallFields.ClosedCanceledReason ? Promise<ChannelPeekResult<T>>.Canceled()
                             : Promise<ChannelPeekResult<T>>.Rejected(closedReason);
                     }
 
@@ -123,9 +111,7 @@ namespace Proto.Promises
 
             internal override Promise<ChannelReadResult<T>> ReadAsync(int id, CancelationToken cancelationToken)
             {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 Validate(id);
-#endif
 
                 // Quick cancelation check before we perform the operation.
                 if (cancelationToken.IsCancelationRequested)
@@ -160,8 +146,8 @@ namespace Proto.Promises
                     if (closedReason != null)
                     {
                         _smallFields._locker.Exit();
-                        return closedReason == ChannelSmallFields.ClosedResolvedReason
-                            ? Promise.Resolved(new ChannelReadResult<T>(default, ChannelReadResult.Closed))
+                        return closedReason == ChannelSmallFields.ClosedResolvedReason ? Promise.Resolved(new ChannelReadResult<T>(default, ChannelReadResult.Closed))
+                            : closedReason == ChannelSmallFields.ClosedCanceledReason ? Promise<ChannelReadResult<T>>.Canceled()
                             : Promise<ChannelReadResult<T>>.Rejected(closedReason);
                     }
 
@@ -181,9 +167,7 @@ namespace Proto.Promises
 
             internal override Promise<ChannelWriteResult<T>> WriteAsync(in T item, int id, CancelationToken cancelationToken)
             {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 Validate(id);
-#endif
 
                 // Quick cancelation check before we perform the operation.
                 if (cancelationToken.IsCancelationRequested)
@@ -199,8 +183,8 @@ namespace Proto.Promises
                     if (closedReason != null)
                     {
                         _smallFields._locker.Exit();
-                        return closedReason == ChannelSmallFields.ClosedResolvedReason
-                            ? Promise.Resolved(new ChannelWriteResult<T>(item, ChannelWriteResult.Closed))
+                        return closedReason == ChannelSmallFields.ClosedResolvedReason ? Promise.Resolved(new ChannelWriteResult<T>(item, ChannelWriteResult.Closed))
+                            : closedReason == ChannelSmallFields.ClosedCanceledReason ? Promise<ChannelWriteResult<T>>.Canceled()
                             : Promise<ChannelWriteResult<T>>.Rejected(closedReason);
                     }
 
@@ -293,6 +277,40 @@ namespace Proto.Promises
                 return true;
             }
 
+            internal override bool TryCancel(int id)
+            {
+                _smallFields._locker.Enter();
+                {
+                    ValidateInsideLock(id);
+
+                    if (_closedReason != null)
+                    {
+                        _smallFields._locker.Exit();
+                        return false;
+                    }
+
+                    _closedReason = ChannelSmallFields.ClosedCanceledReason;
+                    var peekers = _peekers.MoveElementsToStack();
+                    var readers = _readers.MoveElementsToStack();
+                    var writers = _writers.MoveElementsToStack();
+                    _smallFields._locker.Exit();
+
+                    while (peekers.IsNotEmpty)
+                    {
+                        peekers.Pop().CancelDirect();
+                    }
+                    while (readers.IsNotEmpty)
+                    {
+                        readers.Pop().CancelDirect();
+                    }
+                    while (writers.IsNotEmpty)
+                    {
+                        writers.Pop().CancelDirect();
+                    }
+                }
+                return true;
+            }
+
             internal override bool TryClose(int id)
             {
                 _smallFields._locker.Enter();
@@ -365,6 +383,17 @@ namespace Proto.Promises
                     }
                 }
             }
-        }
-    }
-}
+
+            partial void Validate(int id);
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            partial void Validate(int id)
+            {
+                if (id != Id | _closedReason == ChannelSmallFields.DisposedReason)
+                {
+                    throw new System.ObjectDisposedException(nameof(Channel<T>));
+                }
+            }
+#endif
+        } // class BoundedChannel<T>
+    } // class Internal
+} // namespace Proto.Promises

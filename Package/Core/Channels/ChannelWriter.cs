@@ -60,6 +60,13 @@ namespace Proto.Promises.Channels
         }
 
         /// <summary>
+        /// Attempts to close the channel in a canceled state.
+        /// </summary>
+        /// <returns><see langword="true"/> if the channel was not already closed, <see langword="false"/> otherwise.</returns>
+        public bool TryCancel()
+            => _channel.ValidateAndGetRef().TryCancel(_channel._id);
+
+        /// <summary>
         /// Attempts to close the channel in a resolved state.
         /// </summary>
         /// <returns><see langword="true"/> if the channel was not already closed, <see langword="false"/> otherwise.</returns>

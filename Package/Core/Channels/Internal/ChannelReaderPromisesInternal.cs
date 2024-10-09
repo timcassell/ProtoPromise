@@ -95,7 +95,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void DisposeImmediate()
             {
-                this.PrepareEarlyDispose();
+                PrepareEarlyDispose();
                 MaybeDispose();
             }
 
@@ -152,7 +152,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void DisposeImmediate()
             {
-                this.PrepareEarlyDispose();
+                PrepareEarlyDispose();
                 MaybeDispose();
             }
 
@@ -209,7 +209,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void DisposeImmediate()
             {
-                this.PrepareEarlyDispose();
+                PrepareEarlyDispose();
                 MaybeDispose();
             }
 
