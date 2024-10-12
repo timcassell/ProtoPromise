@@ -89,6 +89,7 @@ namespace Proto.Promises
                     _smallFields._locker.Exit();
                     throw new System.ObjectDisposedException(nameof(Channel<T>));
                 }
+                ThrowIfInPool(this);
             }
 
             internal abstract int GetCount(int id);

@@ -5,7 +5,6 @@
 #endif
 
 #pragma warning disable IDE0251 // Make member 'readonly'
-#pragma warning disable IDE0290 // Use primary constructor
 
 using System;
 using System.Diagnostics;
@@ -17,36 +16,24 @@ namespace Proto.Promises.Collections
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    internal struct PoolBackedConcurrentQueueRetainer
+    // Wrapping struct fields smaller than 64-bits in another struct fixes issue with extra padding
+    // (see https://stackoverflow.com/questions/67068942/c-sharp-why-do-class-fields-of-struct-types-take-up-more-space-than-the-size-of).
+    internal struct PoolBackedConcurrentQueueSmallFields
     {
-        // Lowest bit is the isDisposed flag, higher bits are the retain counter.
-        private long _value;
-
-        [MethodImpl(Internal.InlineOption)]
-        internal void IncrementRetainCounter()
-            => Interlocked.Add(ref _value, 1L << 1);
-
-        [MethodImpl(Internal.InlineOption)]
-        internal (bool zeroRetains, bool isDisposed) DecrementRetainCounter()
-        {
-            long newValue = Interlocked.Add(ref _value, -(1L << 1));
-            return ((newValue & ~1L) == 0L, (newValue & 1L) == 1L);
-        }
-
-        [MethodImpl(Internal.InlineOption)]
-        internal bool Dispose()
-        {
-            Debug.Assert((_value & 1L) == 0L);
-
-            long newValue = Interlocked.Add(ref _value, 1L);
-            // Return true if the retain counter is zero.
-            return (newValue & ~1L) == 0L;
-        }
+        internal int _retainCounter;
+        /// <summary>
+        /// Spin lock used to protect cross-segment operations, including any updates to <see cref="PoolBackedConcurrentQueue{T}._tail"/> or <see cref="PoolBackedConcurrentQueue{T}._head"/>
+        /// and any operations that need to get a consistent view of them.
+        /// </summary>
+        internal Internal.SpinLocker _crossSegmentLock;
     }
 
-    // An implementation of ConcurrentQueue that uses a struct instead of a class,
-    // doesn't include enumeration support, and pools the segments instead of dropping them.
-    // WARNING: This type is not thread-safe after it has been disposed. Users should make sure that this is never accessed after it has been disposed.
+    /// <summary>
+    /// An implementation of ConcurrentQueue that uses a struct instead of a class,
+    /// doesn't include enumeration support, and pools the segments instead of dropping them.
+    /// <para/>WARNING: This type is not thread-safe after it has been disposed. Users should make sure that this is
+    /// never accessed after it has been disposed (aside from <see cref="Retain"/> and <see cref="Release"/>).
+    /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
@@ -68,103 +55,112 @@ namespace Proto.Promises.Collections
         /// <summary>Segments that need to be disposed.</summary>
         // These must not be readonly.
         private Internal.ValueLinkedStack<ConcurrentQueueSegment<T>> _needToDispose;
-        private PoolBackedConcurrentQueueRetainer _retainer;
-        /// <summary>
-        /// Spin lock used to protect cross-segment operations, including any updates to <see cref="PoolBackedConcurrentQueue{T}._tail"/> or <see cref="PoolBackedConcurrentQueue{T}._head"/>
-        /// and any operations that need to get a consistent view of them.
-        /// </summary>
-        internal Internal.SpinLocker _crossSegmentLock;
+        private PoolBackedConcurrentQueueSmallFields _smallFields;
 
         [MethodImpl(Internal.InlineOption)]
-        // We can't use parameterless struct ctors in old runtimes, so we use a dummy arg to get around it.
-        internal PoolBackedConcurrentQueue(bool _)
+        // We use a reset method instead of a constructor to avoid mutating the retain counter that could be used on other threads.
+        internal void Reset()
         {
             _tail = _head = ConcurrentQueueSegment<T>.GetOrCreate(InitialSegmentLength);
             _needToDispose = new Internal.ValueLinkedStack<ConcurrentQueueSegment<T>>();
-            _retainer = default;
-            _crossSegmentLock = new Internal.SpinLocker();
+            _smallFields._crossSegmentLock = new Internal.SpinLocker();
         }
 
         [MethodImpl(Internal.InlineOption)]
-        internal void IncrementRetainCounter()
-            => _retainer.IncrementRetainCounter();
+        internal void Retain()
+            => Internal.InterlockedAddWithUnsignedOverflowCheck(ref _smallFields._retainCounter, 1);
 
         [MethodImpl(Internal.InlineOption)]
-        internal bool TryReleaseComplete()
+        internal void Release()
         {
+            // To handle a race condition with a new segment sneaking into the _needToDispose stack on another thread,
+            // we read the current head before we modify the retainer, then compare the values after the modification.
             var needToDisposeHead = _needToDispose.Peek();
-            var (zeroRetains, isDisposed) = _retainer.DecrementRetainCounter();
-            MaybeCleanup(needToDisposeHead, zeroRetains, isDisposed);
-            return isDisposed & zeroRetains;
+            if (Internal.InterlockedAddWithUnsignedOverflowCheck(ref _smallFields._retainCounter, -1) != 0
+                | needToDisposeHead == null)
+            {
+                return;
+            }
+
+            // This is a safe point to dispose completed segments.
+            // We dispose completed segments at safe intervals (the retain counter is zero) instead of waiting
+            // for Dispose in order to prevent a memory leak due to caching dropped segments for too long.
+            // We do this instead of simply dropping the references and allowing GC to clean them up to keep this non-allocating.
+
+            // It is possible another thread is racing to clean up the same segments, which we need to handle.
+            _smallFields._crossSegmentLock.Enter();
+            {
+                // Handle the case of new completed segments added to the stack on another thread after the retainer was modified.
+                var newHead = _needToDispose.Peek();
+                if (newHead == needToDisposeHead)
+                {
+                    _needToDispose.Clear();
+                }
+                else
+                {
+                    // It is not safe to dispose newly added segments, we just break the link. The new segments will be cleaned up at the next safe point.
+                    ConcurrentQueueSegment<T> temp;
+                    var tempNext = newHead;
+                    do
+                    {
+                        temp = tempNext;
+                        if (temp == null)
+                        {
+                            // Another thread already cleaned up the segments.
+                            _smallFields._crossSegmentLock.Exit();
+                            return;
+                        }
+                        tempNext = temp._nextForDelayedDispose;
+                    } while (tempNext != needToDisposeHead);
+                    temp._nextForDelayedDispose = null;
+                }
+            }
+            _smallFields._crossSegmentLock.Exit();
+
+            var disposeStack = new Internal.ValueLinkedStack<ConcurrentQueueSegment<T>>(needToDisposeHead);
+            do
+            {
+                disposeStack.Pop().Dispose();
+            } while (disposeStack.IsNotEmpty);
         }
 
         /// <summary>
-        /// Try to dispose this <see cref="PoolBackedConcurrentQueue{T}"/>. If successful, all cached items will be dropped, and all segments returned to the pool.
-        /// WARNING: This method should only be called once! Use <see cref="IncrementRetainCounter"/> combined with <see cref="TryReleaseComplete"/> for proper use.
+        /// Must be called before <see cref="Dispose"/>.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public bool DisposeAndGetIsComplete()
-        {
-            var needToDisposeHead = _needToDispose.Peek();
-            bool zeroRetains = _retainer.Dispose();
-            MaybeCleanup(needToDisposeHead, zeroRetains, true);
-            return zeroRetains;
-        }
+        internal void PreDispose()
+            // We add to the retain counter so it will not go back to 0 to prevent other threads from needlessly
+            // cleaning up the completed segments, since we will be doing it in Dispose.
+            => Retain();
 
-        // To prevent a race condition with a new segment sneaking into the _needToDispose stack on another thread,
-        // we read the current head before we modify the retainer, then compare the new values after the modification.
-        private void MaybeCleanup(ConcurrentQueueSegment<T> needToDisposeHead, bool zeroRetains, bool isDisposed)
+        /// <summary>
+        /// Dispose this <see cref="PoolBackedConcurrentQueue{T}"/>. All cached items will be dropped, and all segments returned to the pool.
+        /// <para/>Make sure to call <see cref="PreDispose"/> before calling <see cref="Dispose"/>.
+        /// <para/>WARNING: This method should only be called once! Use <see cref="Retain"/> combined with <see cref="Release"/> for proper use.
+        /// </summary>
+        [MethodImpl(Internal.InlineOption)]
+        internal void Dispose()
         {
-            if (!zeroRetains)
+            // PreDispose should be called before Dispose.
+            Debug.Assert(_smallFields._retainCounter != 0);
+
+            // Spin until all other threads are complete.
+            var spinner = new SpinWait();
+            while (_smallFields._retainCounter != 1)
             {
-                return;
+                spinner.SpinOnce();
             }
 
-            // This is a safe point to dispose any completed segments.
-            // It is possible another thread is racing to clean up the same segments, which we need to handle.
-            if (needToDisposeHead != null)
+            // This instance should not be mutated after Dispose is called.
+            Debug.Assert(_smallFields._crossSegmentLock.TryEnter());
+            // We release the retain counter back to zero for future re-use.
+            // We can't assert the value, becaues other threads retain this before validation.
+            Internal.InterlockedAddWithUnsignedOverflowCheck(ref _smallFields._retainCounter, -1);
+
+            var disposeStack = _needToDispose.TakeAndClear();
+            while (disposeStack.IsNotEmpty)
             {
-                _crossSegmentLock.Enter();
-                {
-                    // Handle the case of new segments added to the stack on another thread after the retainer was modified.
-                    var newHead = _needToDispose.Peek();
-                    if (newHead == needToDisposeHead)
-                    {
-                        _needToDispose.Clear();
-                    }
-                    else
-                    {
-                        // It is not safe to dispose newly added segments, we just break the link. The new segments will be cleaned up at the next safe point.
-                        ConcurrentQueueSegment<T> temp;
-                        var tempNext = newHead;
-                        do
-                        {
-                            temp = tempNext;
-                            if (temp == null)
-                            {
-                                // Another thread already cleaned up the segments.
-                                _crossSegmentLock.Exit();
-                                goto SkipToDispose;
-                            }
-                            tempNext = temp._nextForDelayedDispose;
-                        } while (tempNext != needToDisposeHead);
-                        temp._nextForDelayedDispose = null;
-                    }
-                }
-                _crossSegmentLock.Exit();
-
-                var disposeStack = new Internal.ValueLinkedStack<ConcurrentQueueSegment<T>>(needToDisposeHead);
-                do
-                {
-                    disposeStack.Pop().Dispose();
-                } while (disposeStack.IsNotEmpty);
-            }
-
-        SkipToDispose:
-
-            if (!isDisposed)
-            {
-                return;
+                disposeStack.Pop().Dispose();
             }
 
             var head = _head;
@@ -253,7 +249,7 @@ namespace Proto.Promises.Collections
                         // which will ensure that the head and tail segments we read are stable (since the lock is needed to change them);
                         // for the two-segment case above, we can simply rely on subsequent comparisons, but for the two+ case, we need
                         // to be able to trust the internal segments between the head and tail.
-                        _crossSegmentLock.Enter();
+                        _smallFields._crossSegmentLock.Enter();
                         {
                             // Now that we hold the lock, re-read the previously captured head and tail segments and head positions.
                             // If either has changed, start over.
@@ -290,7 +286,7 @@ namespace Proto.Promises.Collections
                                 }
                             }
                         }
-                        _crossSegmentLock.Exit();
+                        _smallFields._crossSegmentLock.Exit();
                     }
 
                     // We raced with enqueues/dequeues and captured an inconsistent picture of the queue.
@@ -344,7 +340,7 @@ namespace Proto.Promises.Collections
                 // If we were unsuccessful, take the lock so that we can compare and manipulate
                 // the tail.  Assuming another enqueuer hasn't already added a new segment,
                 // do so, then loop around to try enqueueing again.
-                _crossSegmentLock.Enter();
+                _smallFields._crossSegmentLock.Enter();
                 {
                     if (tail == _tail)
                     {
@@ -368,7 +364,7 @@ namespace Proto.Promises.Collections
                         _tail = newTail;
                     }
                 }
-                _crossSegmentLock.Exit();
+                _smallFields._crossSegmentLock.Exit();
             }
         }
 
@@ -443,7 +439,7 @@ namespace Proto.Promises.Collections
 
                 // This segment is frozen (nothing more can be added) and empty (nothing is in it).
                 // Update head to point to the next segment in the list, assuming no one's beat us to it.
-                _crossSegmentLock.Enter();
+                _smallFields._crossSegmentLock.Enter();
                 {
                     if (head == _head)
                     {
@@ -453,7 +449,7 @@ namespace Proto.Promises.Collections
                         _needToDispose.Push(head);
                     }
                 }
-                _crossSegmentLock.Exit();
+                _smallFields._crossSegmentLock.Exit();
             }
         }
 

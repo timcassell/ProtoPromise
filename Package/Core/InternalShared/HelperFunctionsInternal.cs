@@ -120,7 +120,7 @@ namespace Proto.Promises
         }
 
         [MethodImpl(InlineOption)]
-        private static int InterlockedAddWithUnsignedOverflowCheck(ref int location, int value)
+        internal static int InterlockedAddWithUnsignedOverflowCheck(ref int location, int value)
         {
             // ints are treated as uints, we just use int because Interlocked does not support uint on old runtimes.
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
