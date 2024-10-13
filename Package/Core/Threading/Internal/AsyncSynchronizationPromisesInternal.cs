@@ -59,10 +59,9 @@ namespace Proto.Promises
                     );
                 }
 
+                [MethodImpl(InlineOption)]
                 private void HandleFromContext()
-                {
-                    HandleNextInternal(_tempState);
-                }
+                    => HandleNextInternal(_tempState);
 
                 [MethodImpl(InlineOption)]
                 internal bool HookupAndGetIsCanceled(CancelationToken cancelationToken)
@@ -77,7 +76,6 @@ namespace Proto.Promises
 
                 internal override sealed void Handle(PromiseRefBase handler, Promise.State state) => throw new System.InvalidOperationException();
 
-#if PROMISE_DEBUG
                 internal void Reject(IRejectContainer rejectContainer)
                 {
                     _cancelationRegistration.Dispose();
@@ -85,7 +83,13 @@ namespace Proto.Promises
                     _tempState = Promise.State.Rejected;
                     Continue();
                 }
-#endif
+
+                internal void CancelDirect()
+                {
+                    _cancelationRegistration.Dispose();
+                    _tempState = Promise.State.Canceled;
+                    Continue();
+                }
             }
         }
 
