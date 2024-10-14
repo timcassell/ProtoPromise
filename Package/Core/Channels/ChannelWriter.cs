@@ -28,6 +28,25 @@ namespace Proto.Promises.Channels
         }
 
         /// <summary>
+        /// Asynchronously waits for space to be available to write an item.
+        /// </summary>
+        /// <param name="cancelationToken">A <see cref="CancelationToken"/> used to cancel the wait operation.</param>
+        /// <returns>
+        /// A <see cref="Promise{T}"/> that will resolve with <see langword="true"/> when space is available to write an item,
+        /// or <see langword="false"/> when the channel is closed.
+        /// </returns>
+        public Promise<bool> WaitToWriteAsync(CancelationToken cancelationToken = default)
+            => _channel.ValidateAndGetRef().WaitToWriteAsync(_channel._id, cancelationToken);
+
+        /// <summary>
+        /// Attempts to write an item to the channel in a non-blocking manner.
+        /// </summary>
+        /// <param name="item">The value to write to the channel.</param>
+        /// <returns>The result of the write operation.</returns>
+        public ChannelWriteResult<T> TryWrite(T item)
+            => _channel.ValidateAndGetRef().TryWrite(item, _channel._id);
+
+        /// <summary>
         /// Asynchronously writes an item to the channel.
         /// </summary>
         /// <param name="item">The value to write to the channel.</param>

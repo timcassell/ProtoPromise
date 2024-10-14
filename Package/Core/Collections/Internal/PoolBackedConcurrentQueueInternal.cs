@@ -313,7 +313,7 @@ namespace Proto.Promises.Collections
         /// The object to add to the end of the <see cref="PoolBackedConcurrentQueue{T}"/>.
         /// The value can be a null reference (<see langword="Nothing" /> in Visual Basic) for reference types.
         /// </param>
-        internal void Enqueue(T item)
+        internal void Enqueue(in T item)
         {
             // Try to enqueue to the current tail.
             if (!_tail.TryEnqueue(item))
@@ -325,7 +325,7 @@ namespace Proto.Promises.Collections
         }
 
         /// <summary>Adds to the end of the queue, adding a new segment if necessary.</summary>
-        private void EnqueueSlow(T item)
+        private void EnqueueSlow(in T item)
         {
             while (true)
             {
@@ -444,9 +444,19 @@ namespace Proto.Promises.Collections
                     if (head == _head)
                     {
                         _head = head.Next;
-                        // The segment could still be used on another thread, so to prevent race conditions,
-                        // we cache it and dispose it at a later safe point.
-                        _needToDispose.Push(head);
+                        if (Promise.Config.ObjectPoolingEnabled)
+                        {
+                            // The segment could still be used on another thread, so to prevent race conditions,
+                            // we cache it and dispose it at a later safe point.
+                            _needToDispose.Push(head);
+                        }
+                        else
+                        {
+                            // If object pooling is disabled, we can simply drop the segment.
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                            Internal.Discard(head);
+#endif
+                        }
                     }
                 }
                 _smallFields._crossSegmentLock.Exit();

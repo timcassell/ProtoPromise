@@ -21,7 +21,7 @@ namespace Proto.Promises.Collections
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    internal sealed class ConcurrentQueueSegment<T> : Internal.HandleablePromiseBase, IDisposable, Internal.ILinked<ConcurrentQueueSegment<T>>
+    internal sealed class ConcurrentQueueSegment<T> : Internal.HandleablePromiseBase, Internal.ILinked<ConcurrentQueueSegment<T>>
     {
         public ConcurrentQueueSegment<T> Next
         {
@@ -56,6 +56,18 @@ namespace Proto.Promises.Collections
 
         private ConcurrentQueueSegment() { }
 
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+        private bool _isDisposed;
+
+        ~ConcurrentQueueSegment()
+        {
+            if (!_isDisposed)
+            {
+                Internal.ReportRejection(new UnreleasedObjectException("A ConcurrentQueueSegment was garbage collected without being disposed"), null);
+            }
+        }
+#endif
+
         [MethodImpl(Internal.InlineOption)]
         private static ConcurrentQueueSegment<T> GetOrCreate()
         {
@@ -78,6 +90,9 @@ namespace Proto.Promises.Collections
 
             var segment = GetOrCreate();
             segment._next = null;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            segment._isDisposed = false;
+#endif
 
             var slots = ArrayPool<Slot>.Shared.Rent(boundedLength);
             segment._slots = slots;
@@ -111,6 +126,9 @@ namespace Proto.Promises.Collections
 
         public void Dispose()
         {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            _isDisposed = true;
+#endif
             ArrayPool<Slot>.Shared.Return(_slots, true);
             _slots = null;
             Internal.ObjectPool.MaybeRepool(this);
@@ -319,7 +337,7 @@ namespace Proto.Promises.Collections
         /// in the queue and true will be returned; otherwise, the item won't be stored, and false
         /// will be returned.
         /// </summary>
-        internal bool TryEnqueue(T item)
+        internal bool TryEnqueue(in T item)
         {
             Slot[] slots = _slots;
 

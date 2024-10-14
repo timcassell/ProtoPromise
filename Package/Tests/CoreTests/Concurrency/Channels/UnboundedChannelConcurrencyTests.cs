@@ -34,23 +34,27 @@ namespace ProtoPromiseTests.Concurrency.Channels
         {
             foreach (int writerCount in new int[] { 1, 2 })
             foreach (int readerCount in new int[] { 0, 1, 2 })
+            foreach (int waitToWriteCount in new int[] { 0, 1, 2 })
+            foreach (int waitToReadCount in new int[] { 0, 1, 2 })
             foreach (int peekerCount in new int[] { 0, 1, 2 })
             {
                 if (readerCount > writerCount) continue;
-                yield return new TestCaseData(writerCount, readerCount, peekerCount);
+                yield return new TestCaseData(writerCount, readerCount, waitToWriteCount, waitToReadCount, peekerCount);
             }
         }
 
         [Test, TestCaseSource(nameof(GetArgs))]
-        public void Write_Read_Peek_Concurrent(int writerCount, int readerCount, int peekerCount)
+        public void Write_Read_Peek_Concurrent(int writerCount, int readerCount, int waitToWriteCount, int waitToReadCount, int peekerCount)
         {
             const int NumWrites = 100;
 
             var channel = Channel<int>.NewUnbounded();
             var readersAndWriters = new Stack<Promise>();
-            var peekers = new Stack<Promise>();
+            var waitsAndPeeks = new Stack<Promise>();
             // Make all background threads start at the same time.
-            var barrier = new Barrier(1 + writerCount + readerCount + peekerCount);
+            var barrier = new Barrier(writerCount + readerCount + peekerCount + waitToWriteCount + waitToReadCount);
+
+            bool isClosed = false;
 
             for (int i = 0; i < writerCount; ++i)
             {
@@ -79,41 +83,50 @@ namespace ProtoPromiseTests.Concurrency.Channels
                     }
                 }, SynchronizationOption.Background));
             }
+            for (int i = 0; i < waitToWriteCount; ++i)
+            {
+                waitsAndPeeks.Push(Promise.Run(async () =>
+                {
+                    barrier.SignalAndWait();
+                    while (!isClosed && await channel.Writer.WaitToWriteAsync())
+                    {
+                        // WaitToWriteAsync never waits for UnboundedChannel, so we yield the thread.
+                        Thread.Yield();
+                    }
+                }, SynchronizationOption.Background));
+            }
+            for (int i = 0; i < waitToReadCount; ++i)
+            {
+                waitsAndPeeks.Push(Promise.Run(async () =>
+                {
+                    barrier.SignalAndWait();
+                    while (!isClosed && await channel.Reader.WaitToReadAsync())
+                    {
+                    }
+                }, SynchronizationOption.Background));
+            }
             for (int i = 0; i < peekerCount; ++i)
             {
-                peekers.Push(Promise.Run(async () =>
+                waitsAndPeeks.Push(Promise.Run(() =>
                 {
-                    Exception ex = null;
-                    try
+                    barrier.SignalAndWait();
+                    while (!isClosed && channel.Reader.TryPeek().Result != ChannelPeekResult.Closed)
                     {
-                        barrier.SignalAndWait();
-                        while ((await channel.Reader.PeekAsync()).TryGetItem(out var item))
-                        {
-                            // We can't assert the read value.
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        ex = e;
-                    }
-                    if (readerCount < writerCount)
-                    {
-                        Assert.IsInstanceOf<ObjectDisposedException>(ex);
+                        // We can't assert the peeked value.
+                        Thread.Yield();
                     }
                 }, SynchronizationOption.Background));
             }
 
-            barrier.SignalAndWait();
             Promise.All(readersAndWriters)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(NumWrites * (writerCount + readerCount)));
+            
             Assert.True(channel.Writer.TryClose());
-            if (readerCount < writerCount)
-            {
-                channel.Dispose();
-            }
-            Promise.All(peekers)
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(peekerCount));
-            // Double dispose is a no-op.
+            isClosed = true;
+
+            Promise.All(waitsAndPeeks)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(3));
+
             channel.Dispose();
         }
     }

@@ -34,32 +34,35 @@ namespace ProtoPromiseTests.Concurrency.Channels
         {
             foreach (int writerCount in new int[] { 1, 2 })
             foreach (int readerCount in new int[] { 0, 1, 2 })
-            foreach (int peekerCount in new int[] { 0, 1, 2 })
+            foreach (int waitToWriteCount in new int[] { 1, 2 })
+            foreach (int waitToReadCount in new int[] { 1, 2 })
+            foreach (int peekerCount in new int[] { 1, 2 })
             foreach (int capacity in new int[] { 1, 10, 100 })
             foreach (BoundedChannelFullMode fullMode in Enum.GetValues(typeof(BoundedChannelFullMode)))
             {
                 if (readerCount > writerCount) continue;
                 if (fullMode == BoundedChannelFullMode.Wait && readerCount == 0) continue;
 
-                yield return new TestCaseData(writerCount, readerCount, peekerCount, capacity, fullMode);
+                yield return new TestCaseData(writerCount, readerCount, waitToWriteCount, waitToReadCount, peekerCount, capacity, fullMode);
             }
         }
 
         [Test, TestCaseSource(nameof(GetArgs))]
-        public void Write_Read_Peek_Concurrent(int writerCount, int readerCount, int peekerCount, int capacity, BoundedChannelFullMode fullMode)
+        public void Write_Read_Peek_Concurrent(int writerCount, int readerCount, int waitToWriteCount, int waitToReadCount, int peekerCount, int capacity, BoundedChannelFullMode fullMode)
         {
             const int NumWrites = 100;
 
             var channel = Channel<int>.NewBounded(new BoundedChannelOptions<int>() { Capacity = capacity, FullMode = fullMode });
-            var writers= new Stack<Promise>();
-            var readers = new Stack<Promise>();
-            var peekers = new Stack<Promise>();
+            var readersAndWriters = new Stack<Promise>();
+            var waitsAndPeeks = new Stack<Promise>();
             // Make all background threads start at the same time.
-            var barrier = new Barrier(1 + writerCount + readerCount + peekerCount);
+            var barrier = new Barrier(writerCount + readerCount + waitToWriteCount + waitToReadCount + peekerCount);
+
+            bool isClosed = false;
 
             for (int i = 0; i < writerCount; ++i)
             {
-                writers.Push(Promise.Run(async () =>
+                readersAndWriters.Push(Promise.Run(async () =>
                 {
                     barrier.SignalAndWait();
                     for (int j = 0; j < NumWrites; ++j)
@@ -80,11 +83,12 @@ namespace ProtoPromiseTests.Concurrency.Channels
                     {
                         Assert.True(channel.Writer.TryClose());
                     }
+                    isClosed = true;
                 }, SynchronizationOption.Background));
             }
             for (int i = 0; i < readerCount; ++i)
             {
-                readers.Push(Promise.Run(async () =>
+                readersAndWriters.Push(Promise.Run(async () =>
                 {
                     barrier.SignalAndWait();
                     // Some items may be dropped, so we read until there are no more items, rather than a fixed number of reads.
@@ -94,42 +98,48 @@ namespace ProtoPromiseTests.Concurrency.Channels
                     }
                 }, SynchronizationOption.Background));
             }
-            for (int i = 0; i < peekerCount; ++i)
+            for (int i = 0; i < waitToWriteCount; ++i)
             {
-                peekers.Push(Promise.Run(async () =>
+                waitsAndPeeks.Push(Promise.Run(async () =>
                 {
-                    Exception ex = null;
-                    try
+                    barrier.SignalAndWait();
+                    while (!isClosed && await channel.Writer.WaitToWriteAsync())
                     {
-                        barrier.SignalAndWait();
-                        while ((await channel.Reader.PeekAsync()).TryGetItem(out var item))
+                        if (fullMode != BoundedChannelFullMode.Wait)
                         {
-                            // We can't assert the read value.
+                            Thread.Yield();
                         }
                     }
-                    catch (Exception e)
+                }, SynchronizationOption.Background));
+            }
+            for (int i = 0; i < waitToReadCount; ++i)
+            {
+                waitsAndPeeks.Push(Promise.Run(async () =>
+                {
+                    barrier.SignalAndWait();
+                    while (!isClosed && await channel.Reader.WaitToReadAsync())
                     {
-                        ex = e;
                     }
-                    if (readerCount == 0)
+                }, SynchronizationOption.Background));
+            }
+            for (int i = 0; i < peekerCount; ++i)
+            {
+                waitsAndPeeks.Push(Promise.Run(() =>
+                {
+                    barrier.SignalAndWait();
+                    while (!isClosed && channel.Reader.TryPeek().Result != ChannelPeekResult.Closed)
                     {
-                        Assert.IsInstanceOf<ObjectDisposedException>(ex);
+                        // We can't assert the peeked value.
+                        Thread.Yield();
                     }
                 }, SynchronizationOption.Background));
             }
 
-            barrier.SignalAndWait();
-            Promise.All(writers)
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(NumWrites * writerCount));
-            Promise.All(readers)
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(NumWrites * readerCount));
-            if (readerCount == 0)
-            {
-                channel.Dispose();
-            }
-            Promise.All(peekers)
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(peekerCount));
-            // Double dispose is a no-op.
+            Promise.All(readersAndWriters)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(NumWrites * (writerCount + readerCount)));
+            Promise.All(waitsAndPeeks)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(3));
+
             channel.Dispose();
         }
     }

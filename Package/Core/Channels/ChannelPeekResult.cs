@@ -21,9 +21,11 @@ namespace Proto.Promises.Channels
         /// <summary>
         /// An item was successfully peeked at from the channel.
         /// </summary>
-        Success
-
-        // TODO: If we add a ChannelReader<T>.TryPeek synchronous method that does not wait, we need to add the Empty result.
+        Success,
+        /// <summary>
+        /// An item was not peeked at from the channel because it was empty.
+        /// </summary>
+        Empty
     }
 
     /// <summary>
@@ -48,7 +50,7 @@ namespace Proto.Promises.Channels
         }
 
         [MethodImpl(Internal.InlineOption)]
-        internal ChannelPeekResult(T item, ChannelPeekResult result)
+        internal ChannelPeekResult(in T item, ChannelPeekResult result)
         {
             _result = result;
             _item = item;

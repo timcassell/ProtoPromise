@@ -7,7 +7,6 @@
 using Proto.Promises.Channels;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Threading;
 
 #pragma warning disable IDE0090 // Use 'new(...)'
 
@@ -50,7 +49,7 @@ namespace Proto.Promises
             internal object _closedReason;
             // These must not be readonly.
             protected ValueLinkedQueue<ChannelReadPromise<T>> _readers = new ValueLinkedQueue<ChannelReadPromise<T>>();
-            protected ValueLinkedQueue<ChannelPeekPromise<T>> _peekers = new ValueLinkedQueue<ChannelPeekPromise<T>>();
+            protected ValueLinkedQueue<ChannelWaitToReadPromise<T>> _waitToReaders = new ValueLinkedQueue<ChannelWaitToReadPromise<T>>();
             protected ChannelSmallFields _smallFields;
 
             internal int Id
@@ -74,10 +73,10 @@ namespace Proto.Promises
                 return success;
             }
 
-            internal bool TryRemoveWaiter(ChannelPeekPromise<T> promise)
+            internal bool TryRemoveWaiter(ChannelWaitToReadPromise<T> promise)
             {
                 _smallFields._locker.Enter();
-                bool success = _peekers.TryRemove(promise);
+                bool success = _waitToReaders.TryRemove(promise);
                 _smallFields._locker.Exit();
                 return success;
             }
@@ -93,9 +92,13 @@ namespace Proto.Promises
             }
 
             internal abstract int GetCount(int id);
-            internal abstract Promise<ChannelPeekResult<T>> PeekAsync(int id, CancelationToken cancelationToken);
+            internal abstract ChannelPeekResult<T> TryPeek(int id);
+            internal abstract ChannelReadResult<T> TryRead(int id);
+            internal abstract ChannelWriteResult<T> TryWrite(in T item, int id);
             internal abstract Promise<ChannelReadResult<T>> ReadAsync(int id, CancelationToken cancelationToken);
             internal abstract Promise<ChannelWriteResult<T>> WriteAsync(in T item, int id, CancelationToken cancelationToken);
+            internal abstract Promise<bool> WaitToReadAsync(int id, CancelationToken cancelationToken);
+            internal abstract Promise<bool> WaitToWriteAsync(int id, CancelationToken cancelationToken);
             internal abstract bool TryReject(object reason, int id);
             internal abstract bool TryCancel(int id);
             internal abstract bool TryClose(int id);

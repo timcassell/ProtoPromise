@@ -33,10 +33,10 @@ namespace ProtoPromiseTests.APIs.Channels
             {
                 for (int i = 0; i < Bound; i++)
                 {
-                    Assert.AreEqual(i, channel.Count);
+                    Assert.AreEqual(i, channel.Reader.Count);
 
                     Assert.AreEqual(ChannelWriteResult.Success, channel.Writer.WriteAsync(i).WaitForResult().Result);
-                    Assert.AreEqual(i + 1, channel.Count);
+                    Assert.AreEqual(i + 1, channel.Reader.Count);
                 }
 
                 if (iter != 0)
@@ -45,7 +45,7 @@ namespace ProtoPromiseTests.APIs.Channels
 
                     while (channel.Reader.ReadAsync().WaitForResult().TryGetItem(out var item))
                     {
-                        Assert.AreEqual(Bound - (item + 1), channel.Count);
+                        Assert.AreEqual(Bound - (item + 1), channel.Reader.Count);
                     }
                 }
                 else
@@ -53,11 +53,11 @@ namespace ProtoPromiseTests.APIs.Channels
                     for (int i = Bound; i > 0; --i)
                     {
                         Assert.True(channel.Reader.ReadAsync().WaitForResult().TryGetItem(out var item));
-                        Assert.AreEqual(Bound - (item + 1), channel.Count);
+                        Assert.AreEqual(Bound - (item + 1), channel.Reader.Count);
                     }
                 }
 
-                Assert.AreEqual(0, channel.Count);
+                Assert.AreEqual(0, channel.Reader.Count);
             }
 
             channel.Dispose();
@@ -241,15 +241,17 @@ namespace ProtoPromiseTests.APIs.Channels
                 var channel = Channel<int>.NewBounded(options);
 
                 var readPromise = channel.Reader.ReadAsync();
-                var peekPromise = channel.Reader.PeekAsync();
+                var waitToReadPromise = channel.Reader.WaitToReadAsync();
 
                 Assert.True(channel.Writer.TryClose());
 
                 Assert.AreEqual(ChannelReadResult.Closed, (await readPromise).Result);
-                Assert.AreEqual(ChannelPeekResult.Closed, (await peekPromise).Result);
+                Assert.False(await waitToReadPromise);
 
                 Assert.AreEqual(ChannelReadResult.Closed, (await channel.Reader.ReadAsync()).Result);
-                Assert.AreEqual(ChannelPeekResult.Closed, (await channel.Reader.PeekAsync()).Result);
+                Assert.False(await channel.Reader.WaitToReadAsync());
+                Assert.AreEqual(ChannelReadResult.Closed, channel.Reader.TryRead().Result);
+                Assert.AreEqual(ChannelPeekResult.Closed, channel.Reader.TryPeek().Result);
 
                 channel.Dispose();
             }, SynchronizationOption.Synchronous)
@@ -277,16 +279,22 @@ namespace ProtoPromiseTests.APIs.Channels
                 var channel = Channel<int>.NewBounded(options);
 
                 var readPromise = channel.Reader.ReadAsync();
-                var peekPromise = channel.Reader.PeekAsync();
+                var waitToReadPromise = channel.Reader.WaitToReadAsync();
 
                 Exception expectedException = new FormatException();
                 Assert.True(channel.Writer.TryReject(expectedException));
 
                 await TestHelper.AssertThrowsAsync(() => readPromise, expectedException);
-                await TestHelper.AssertThrowsAsync(() => peekPromise, expectedException);
+                await TestHelper.AssertThrowsAsync(() => waitToReadPromise, expectedException);
                 await TestHelper.AssertThrowsAsync(() => channel.Reader.ReadAsync(), expectedException);
-                await TestHelper.AssertThrowsAsync(() => channel.Reader.PeekAsync(), expectedException);
+                await TestHelper.AssertThrowsAsync(() => channel.Reader.WaitToReadAsync(), expectedException);
                 await TestHelper.AssertThrowsAsync(() => channel.Writer.WriteAsync(1), expectedException);
+                await TestHelper.AssertThrowsAsync(() => channel.Writer.WaitToWriteAsync(), expectedException);
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+                await TestHelper.AssertThrowsAsync(async () => channel.Reader.TryPeek(), expectedException);
+                await TestHelper.AssertThrowsAsync(async () => channel.Reader.TryRead(), expectedException);
+                await TestHelper.AssertThrowsAsync(async () => channel.Writer.TryWrite(1), expectedException);
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
 
                 channel.Dispose();
             }, SynchronizationOption.Synchronous)
@@ -302,15 +310,21 @@ namespace ProtoPromiseTests.APIs.Channels
                 var channel = Channel<int>.NewBounded(options);
 
                 var readPromise = channel.Reader.ReadAsync();
-                var peekPromise = channel.Reader.PeekAsync();
+                var waitToReadPromise = channel.Reader.WaitToReadAsync();
 
                 Assert.True(channel.Writer.TryCancel());
 
                 await TestHelper.AssertCanceledAsync(() => readPromise);
-                await TestHelper.AssertCanceledAsync(() => peekPromise);
+                await TestHelper.AssertCanceledAsync(() => waitToReadPromise);
                 await TestHelper.AssertCanceledAsync(() => channel.Reader.ReadAsync());
-                await TestHelper.AssertCanceledAsync(() => channel.Reader.PeekAsync());
+                await TestHelper.AssertCanceledAsync(() => channel.Reader.WaitToReadAsync());
                 await TestHelper.AssertCanceledAsync(() => channel.Writer.WriteAsync(1));
+                await TestHelper.AssertCanceledAsync(() => channel.Writer.WaitToWriteAsync());
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+                await TestHelper.AssertCanceledAsync(async () => channel.Reader.TryPeek());
+                await TestHelper.AssertCanceledAsync(async () => channel.Reader.TryRead());
+                await TestHelper.AssertCanceledAsync(async () => channel.Writer.TryWrite(1));
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
 
                 channel.Dispose();
             }, SynchronizationOption.Synchronous)
@@ -359,11 +373,14 @@ namespace ProtoPromiseTests.APIs.Channels
                 var options = new BoundedChannelOptions<int>() { Capacity = 3, FullMode = BoundedChannelFullMode.Wait };
                 var channel = Channel<int>.NewBounded(options);
 
+                // Peek before items are available.
+                Assert.AreEqual(ChannelPeekResult.Empty, channel.Reader.TryPeek().Result);
+
                 // Write a value
                 Assert.AreEqual(ChannelWriteResult.Success, (await channel.Writer.WriteAsync(42)).Result);
 
                 // Can peek at the written value
-                Assert.True((await channel.Reader.PeekAsync()).TryGetItem(out int peekedResult));
+                Assert.True(channel.Reader.TryPeek().TryGetItem(out int peekedResult));
                 Assert.AreEqual(42, peekedResult);
 
                 // Can still read out that value
@@ -371,21 +388,24 @@ namespace ProtoPromiseTests.APIs.Channels
                 Assert.AreEqual(42, readResult);
 
                 // Peeking has to wait for another item.
-                var peekPromise = channel.Reader.PeekAsync();
+                Assert.False(channel.Reader.TryPeek().TryGetItem(out peekedResult));
+                Assert.AreEqual(ChannelPeekResult.Empty, channel.Reader.TryPeek().Result);
+                var waitToReadPromise = channel.Reader.WaitToReadAsync();
 
                 // Write another value
                 Assert.AreEqual(ChannelWriteResult.Success, (await channel.Writer.WriteAsync(84)).Result);
 
                 // Peek is successful
-                Assert.True((await peekPromise).TryGetItem(out readResult));
-                Assert.AreEqual(84, readResult);
+                Assert.True(await waitToReadPromise);
+                Assert.True(channel.Reader.TryPeek().TryGetItem(out peekedResult));
+                Assert.AreEqual(84, peekedResult);
 
                 // Can still read out that value
                 Assert.True((await channel.Reader.ReadAsync()).TryGetItem(out readResult));
                 Assert.AreEqual(84, readResult);
 
-                // Now we read and peek at the same time before an item is available.
-                peekPromise = channel.Reader.PeekAsync();
+                // Now we read and wait to read at the same time before an item is available.
+                waitToReadPromise = channel.Reader.WaitToReadAsync();
                 var readPromise = channel.Reader.ReadAsync();
 
                 // Write another value
@@ -394,28 +414,15 @@ namespace ProtoPromiseTests.APIs.Channels
                 // Close the channel
                 channel.Writer.TryClose();
 
-                // Peek and read are successful
-                Assert.True((await peekPromise).TryGetItem(out readResult));
-                Assert.AreEqual(101, readResult);
+                // Read is successful
                 Assert.True((await readPromise).TryGetItem(out readResult));
                 Assert.AreEqual(101, readResult);
 
-                // No more items and channel is closed, peek fails.
-                Assert.AreEqual(ChannelPeekResult.Closed, (await channel.Reader.PeekAsync()).Result);
-
-                channel.Dispose();
-
-
-                channel = Channel<int>.NewBounded(options);
-
-                // Peek before items are available.
-                peekPromise = channel.Reader.PeekAsync();
-
-                // Close the channel
-                channel.Writer.TryClose();
+                // WaitToRead is false
+                Assert.False(await waitToReadPromise);
 
                 // No more items and channel is closed, peek fails.
-                Assert.AreEqual(ChannelPeekResult.Closed, (await peekPromise).Result);
+                Assert.AreEqual(ChannelPeekResult.Closed, channel.Reader.TryPeek().Result);
 
                 channel.Dispose();
             }, SynchronizationOption.Synchronous)
@@ -449,6 +456,32 @@ namespace ProtoPromiseTests.APIs.Channels
         }
 
         [Test]
+        public void Cancel_WaitToWriteAsync(
+            [Values] bool alreadyCanceled)
+        {
+            Promise.Run(async () =>
+            {
+                var options = new BoundedChannelOptions<int>() { Capacity = 3, FullMode = BoundedChannelFullMode.Wait };
+                var channel = Channel<int>.NewBounded(options);
+                var cancelationSource = CancelationSource.New();
+
+                // Fill the channel to capacity.
+                Assert.AreEqual(ChannelWriteResult.Success, (await channel.Writer.WriteAsync(1)).Result);
+                Assert.AreEqual(ChannelWriteResult.Success, (await channel.Writer.WriteAsync(2)).Result);
+                Assert.AreEqual(ChannelWriteResult.Success, (await channel.Writer.WriteAsync(3)).Result);
+
+                var waitToWritePromise = channel.Writer.WaitToWriteAsync(alreadyCanceled ? CancelationToken.Canceled() : cancelationSource.Token);
+                cancelationSource.Cancel();
+
+                await TestHelper.AssertCanceledAsync(() => waitToWritePromise);
+
+                cancelationSource.Dispose();
+                channel.Dispose();
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
         public void Cancel_Read(
             [Values] bool alreadyCanceled)
         {
@@ -470,7 +503,7 @@ namespace ProtoPromiseTests.APIs.Channels
         }
 
         [Test]
-        public void Cancel_Peek(
+        public void Cancel_WaitToReadAsync(
             [Values] bool alreadyCanceled)
         {
             Promise.Run(async () =>
@@ -479,10 +512,10 @@ namespace ProtoPromiseTests.APIs.Channels
                 var channel = Channel<int>.NewBounded(options);
                 var cancelationSource = CancelationSource.New();
 
-                var peekPromise = channel.Reader.PeekAsync(alreadyCanceled ? CancelationToken.Canceled() : cancelationSource.Token);
+                var waitToReadPromise = channel.Reader.WaitToReadAsync(alreadyCanceled ? CancelationToken.Canceled() : cancelationSource.Token);
                 cancelationSource.Cancel();
 
-                await TestHelper.AssertCanceledAsync(() => peekPromise);
+                await TestHelper.AssertCanceledAsync(() => waitToReadPromise);
 
                 channel.Dispose();
                 cancelationSource.Dispose();

@@ -71,11 +71,6 @@ namespace Proto.Promises.Channels
         }
 
         /// <summary>
-        /// Gets the current number of items available from this channel.
-        /// </summary>
-        public int Count => ValidateAndGetRef().GetCount(_id);
-
-        /// <summary>
         /// Releases all resources from this channel.
         /// If any items are remaining in the channel, they will be discarded.
         /// If any read or write operations are pending, they will be rejected with <see cref="ObjectDisposedException"/>.

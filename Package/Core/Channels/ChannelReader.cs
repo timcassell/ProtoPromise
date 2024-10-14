@@ -31,12 +31,34 @@ namespace Proto.Promises.Channels
         }
 
         /// <summary>
-        /// Asynchronously peeks at an item from the channel.
+        /// Gets the current number of items available from the channel.
         /// </summary>
-        /// <param name="cancelationToken">A <see cref="CancelationToken"/> used to cancel the peek operation.</param>
-        /// <returns>A <see cref="Promise{T}"/> that yields the result of the peek operation.</returns>
-        public Promise<ChannelPeekResult<T>> PeekAsync(CancelationToken cancelationToken = default)
-            => _channel.ValidateAndGetRef().PeekAsync(_channel._id, cancelationToken);
+        public int Count => _channel.ValidateAndGetRef().GetCount(_channel._id);
+
+        /// <summary>
+        /// Asynchronously waits for data to be available to be read.
+        /// </summary>
+        /// <param name="cancelationToken">A <see cref="CancelationToken"/> used to cancel the wait operation.</param>
+        /// <returns>
+        /// A <see cref="Promise{T}"/> that will resolve with <see langword="true"/> when data is available to be read,
+        /// or <see langword="false"/> when the channel is closed.
+        /// </returns>
+        public Promise<bool> WaitToReadAsync(CancelationToken cancelationToken = default)
+            => _channel.ValidateAndGetRef().WaitToReadAsync(_channel._id, cancelationToken);
+
+        /// <summary>
+        /// Attempts to peek at an item from the channel in a non-blocking manner.
+        /// </summary>
+        /// <returns>The result of the peek operation.</returns>
+        public ChannelPeekResult<T> TryPeek()
+            => _channel.ValidateAndGetRef().TryPeek(_channel._id);
+
+        /// <summary>
+        /// Attempts to read an item from the channel in a non-blocking manner.
+        /// </summary>
+        /// <returns>The result of the read operation.</returns>
+        public ChannelReadResult<T> TryRead()
+            => _channel.ValidateAndGetRef().TryRead(_channel._id);
 
         /// <summary>
         /// Asynchronously reads an item from the channel.

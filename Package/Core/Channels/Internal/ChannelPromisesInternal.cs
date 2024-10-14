@@ -19,7 +19,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal abstract class ChannelPromiseBase<T, TResult, TOwner> : PromiseRefBase.AsyncSynchronizationPromiseBase<TResult>
+        internal abstract class ChannelPromiseBase<TResult, TOwner> : PromiseRefBase.AsyncSynchronizationPromiseBase<TResult>
             where TOwner : class
         {
 #if PROMISE_DEBUG
@@ -54,7 +54,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class ChannelWritePromise<T> : ChannelPromiseBase<T, ChannelWriteResult<T>, BoundedChannel<T>>, ILinked<ChannelWritePromise<T>>
+        internal sealed class ChannelWritePromise<T> : ChannelPromiseBase<ChannelWriteResult<T>, BoundedChannel<T>>, ILinked<ChannelWritePromise<T>>
         {
             ChannelWritePromise<T> ILinked<ChannelWritePromise<T>>.Next { get; set; }
 
@@ -120,7 +120,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class ChannelReadPromise<T> : ChannelPromiseBase<T, ChannelReadResult<T>, ChannelBase<T>>, ILinked<ChannelReadPromise<T>>
+        internal sealed class ChannelReadPromise<T> : ChannelPromiseBase<ChannelReadResult<T>, ChannelBase<T>>, ILinked<ChannelReadPromise<T>>
         {
             ChannelReadPromise<T> ILinked<ChannelReadPromise<T>>.Next { get; set; }
 
@@ -177,21 +177,78 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class ChannelPeekPromise<T> : ChannelPromiseBase<T, ChannelPeekResult<T>, ChannelBase<T>>, ILinked<ChannelPeekPromise<T>>
+        internal sealed class ChannelWaitToWritePromise<T> : ChannelPromiseBase<bool, BoundedChannel<T>>, ILinked<ChannelWaitToWritePromise<T>>
         {
-            ChannelPeekPromise<T> ILinked<ChannelPeekPromise<T>>.Next { get; set; }
+            ChannelWaitToWritePromise<T> ILinked<ChannelWaitToWritePromise<T>>.Next { get; set; }
 
             [MethodImpl(InlineOption)]
-            private static ChannelPeekPromise<T> GetOrCreate()
+            private static ChannelWaitToWritePromise<T> GetOrCreate()
             {
-                var obj = ObjectPool.TryTakeOrInvalid<ChannelPeekPromise<T>>();
+                var obj = ObjectPool.TryTakeOrInvalid<ChannelWaitToWritePromise<T>>();
                 return obj == InvalidAwaitSentinel.s_instance
-                    ? new ChannelPeekPromise<T>()
-                    : obj.UnsafeAs<ChannelPeekPromise<T>>();
+                    ? new ChannelWaitToWritePromise<T>()
+                    : obj.UnsafeAs<ChannelWaitToWritePromise<T>>();
             }
 
             [MethodImpl(InlineOption)]
-            internal static ChannelPeekPromise<T> GetOrCreate(ChannelBase<T> owner, SynchronizationContext callerContext)
+            internal static ChannelWaitToWritePromise<T> GetOrCreate(BoundedChannel<T> owner, SynchronizationContext callerContext)
+            {
+                var promise = GetOrCreate();
+                promise.Reset(callerContext);
+                promise._owner = owner;
+                return promise;
+            }
+
+            internal override void MaybeDispose()
+            {
+                Dispose();
+                _owner = null;
+                ObjectPool.MaybeRepool(this);
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void DisposeImmediate()
+            {
+                PrepareEarlyDispose();
+                MaybeDispose();
+            }
+
+            public override void Cancel()
+            {
+                ThrowIfInPool(this);
+#if PROMISE_DEBUG
+                var _owner = base._owner;
+                if (_owner == null)
+                {
+                    return;
+                }
+#endif
+                if (_owner.TryRemoveWaiter(this))
+                {
+                    _tempState = Promise.State.Canceled;
+                    Continue();
+                }
+            }
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal sealed class ChannelWaitToReadPromise<T> : ChannelPromiseBase<bool, ChannelBase<T>>, ILinked<ChannelWaitToReadPromise<T>>
+        {
+            ChannelWaitToReadPromise<T> ILinked<ChannelWaitToReadPromise<T>>.Next { get; set; }
+
+            [MethodImpl(InlineOption)]
+            private static ChannelWaitToReadPromise<T> GetOrCreate()
+            {
+                var obj = ObjectPool.TryTakeOrInvalid<ChannelWaitToReadPromise<T>>();
+                return obj == InvalidAwaitSentinel.s_instance
+                    ? new ChannelWaitToReadPromise<T>()
+                    : obj.UnsafeAs<ChannelWaitToReadPromise<T>>();
+            }
+
+            [MethodImpl(InlineOption)]
+            internal static ChannelWaitToReadPromise<T> GetOrCreate(ChannelBase<T> owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
                 promise.Reset(callerContext);

@@ -15,13 +15,17 @@ namespace Proto.Promises.Channels
     public enum ChannelReadResult : byte
     {
         /// <summary>
-        /// The item was not read from the channel because it was empty, and the channel was closed.
+        /// An item was not read from the channel because it was empty, and the channel was closed.
         /// </summary>
         Closed,
         /// <summary>
-        /// The item was successfully read from the channel.
+        /// An item was successfully read from the channel.
         /// </summary>
-        Success
+        Success,
+        /// <summary>
+        /// An item was not read from the channel because it was empty.
+        /// </summary>
+        Empty
     }
 
     /// <summary>
@@ -46,7 +50,7 @@ namespace Proto.Promises.Channels
         }
 
         [MethodImpl(Internal.InlineOption)]
-        internal ChannelReadResult(T item, ChannelReadResult result)
+        internal ChannelReadResult(in T item, ChannelReadResult result)
         {
             _result = result;
             _item = item;

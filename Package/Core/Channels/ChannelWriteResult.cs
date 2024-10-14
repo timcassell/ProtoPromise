@@ -50,7 +50,7 @@ namespace Proto.Promises.Channels
         }
 
         [MethodImpl(Internal.InlineOption)]
-        internal ChannelWriteResult(T droppedItem, ChannelWriteResult result)
+        internal ChannelWriteResult(in T droppedItem, ChannelWriteResult result)
         {
             _result = result;
             _droppedItem = droppedItem;

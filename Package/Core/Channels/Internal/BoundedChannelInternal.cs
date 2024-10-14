@@ -9,6 +9,8 @@ using Proto.Promises.Collections;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
+#pragma warning disable IDE0090 // Use 'new(...)'
+
 namespace Proto.Promises
 {
     partial class Internal
@@ -20,6 +22,7 @@ namespace Proto.Promises
         {
             // These must not be readonly.
             private ValueLinkedQueue<ChannelWritePromise<T>> _writers = new ValueLinkedQueue<ChannelWritePromise<T>>();
+            private ValueLinkedQueue<ChannelWaitToWritePromise<T>> _waitToWriters = new ValueLinkedQueue<ChannelWaitToWritePromise<T>>();
             private PoolBackedDeque<T> _queue;
             private int _capacity;
             private BoundedChannelFullMode _fullMode;
@@ -54,6 +57,14 @@ namespace Proto.Promises
                 return success;
             }
 
+            internal bool TryRemoveWaiter(ChannelWaitToWritePromise<T> promise)
+            {
+                _smallFields._locker.Enter();
+                bool success = _waitToWriters.TryRemove(promise);
+                _smallFields._locker.Exit();
+                return success;
+            }
+
             internal override int GetCount(int id)
             {
                 _smallFields._locker.Enter();
@@ -65,16 +76,8 @@ namespace Proto.Promises
                 }
             }
 
-            internal override Promise<ChannelPeekResult<T>> PeekAsync(int id, CancelationToken cancelationToken)
+            internal override ChannelPeekResult<T> TryPeek(int id)
             {
-                Validate(id);
-
-                // Quick cancelation check before we perform the operation.
-                if (cancelationToken.IsCancelationRequested)
-                {
-                    return Promise<ChannelPeekResult<T>>.Canceled();
-                }
-
                 _smallFields._locker.Enter();
                 {
                     ValidateInsideLock(id);
@@ -83,29 +86,141 @@ namespace Proto.Promises
                     {
                         var item = _queue.PeekHead();
                         _smallFields._locker.Exit();
-                        return Promise.Resolved(new ChannelPeekResult<T>(item, ChannelPeekResult.Success));
+                        return new ChannelPeekResult<T>(item, ChannelPeekResult.Success);
                     }
 
                     var closedReason = _closedReason;
                     if (closedReason != null)
                     {
                         _smallFields._locker.Exit();
-                        return closedReason == ChannelSmallFields.ClosedResolvedReason ? Promise.Resolved(new ChannelPeekResult<T>(default, ChannelPeekResult.Closed))
-                            : closedReason == ChannelSmallFields.ClosedCanceledReason ? Promise<ChannelPeekResult<T>>.Canceled()
-                            : Promise<ChannelPeekResult<T>>.Rejected(closedReason);
+                        if (closedReason == ChannelSmallFields.ClosedResolvedReason)
+                        {
+                            return new ChannelPeekResult<T>(default, ChannelPeekResult.Closed);
+                        }
+                        if (closedReason == ChannelSmallFields.ClosedCanceledReason)
+                        {
+                            throw Promise.CancelException();
+                        }
+                        closedReason.UnsafeAs<IRejectContainer>().GetExceptionDispatchInfo().Throw();
+                    }
+                }
+                _smallFields._locker.Exit();
+                return new ChannelPeekResult<T>(default, ChannelPeekResult.Empty);
+            }
+
+            internal override ChannelReadResult<T> TryRead(int id)
+            {
+                _smallFields._locker.Enter();
+                {
+                    ValidateInsideLock(id);
+
+                    if (_queue.IsNotEmpty)
+                    {
+                        var item = _queue.DequeueHead();
+                        // If there is at least 1 writer, grab one, add its item to the queue, and resolve it outside of the lock.
+                        if (_writers.IsNotEmpty)
+                        {
+                            var writer = _writers.Dequeue();
+                            _queue.EnqueueTail(writer.GetItem());
+                            _smallFields._locker.Exit();
+
+                            writer.Resolve(new ChannelWriteResult<T>(default, ChannelWriteResult.Success));
+                        }
+                        else
+                        {
+                            // Otherwise, notify waiting writers.
+                            var waitToWriters = _waitToWriters.MoveElementsToStack();
+                            _smallFields._locker.Exit();
+
+                            while (waitToWriters.IsNotEmpty)
+                            {
+                                waitToWriters.Pop().Resolve(true);
+                            }
+                        }
+                        return new ChannelReadResult<T>(item, ChannelReadResult.Success);
                     }
 
-                    var promise = ChannelPeekPromise<T>.GetOrCreate(this, CaptureContext());
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    var closedReason = _closedReason;
+                    if (closedReason != null)
                     {
                         _smallFields._locker.Exit();
-                        promise.DisposeImmediate();
-                        return Promise<ChannelPeekResult<T>>.Canceled();
+                        if (closedReason == ChannelSmallFields.ClosedResolvedReason)
+                        {
+                            return new ChannelReadResult<T>(default, ChannelReadResult.Closed);
+                        }
+                        if (closedReason == ChannelSmallFields.ClosedCanceledReason)
+                        {
+                            throw Promise.CancelException();
+                        }
+                        closedReason.UnsafeAs<IRejectContainer>().GetExceptionDispatchInfo().Throw();
+                    }
+                }
+                _smallFields._locker.Exit();
+                return new ChannelReadResult<T>(default, ChannelReadResult.Empty);
+            }
+
+            internal override ChannelWriteResult<T> TryWrite(in T item, int id)
+            {
+                _smallFields._locker.Enter();
+                {
+                    ValidateInsideLock(id);
+
+                    var closedReason = _closedReason;
+                    if (closedReason != null)
+                    {
+                        _smallFields._locker.Exit();
+                        if (closedReason == ChannelSmallFields.ClosedResolvedReason)
+                        {
+                            return new ChannelWriteResult<T>(default, ChannelWriteResult.Closed);
+                        }
+                        if (closedReason == ChannelSmallFields.ClosedCanceledReason)
+                        {
+                            throw Promise.CancelException();
+                        }
+                        if (closedReason == ChannelSmallFields.DisposedReason)
+                        {
+                            throw new System.ObjectDisposedException(nameof(Channel<T>));
+                        }
+                        closedReason.UnsafeAs<IRejectContainer>().GetExceptionDispatchInfo().Throw();
                     }
 
-                    _peekers.Enqueue(promise);
+                    // If there is at least 1 reader, we grab one and complete it outside of the lock.
+                    if (_readers.IsNotEmpty)
+                    {
+                        var reader = _readers.Dequeue();
+                        _smallFields._locker.Exit();
+                        reader.Resolve(new ChannelReadResult<T>(item, ChannelReadResult.Success));
+                        return new ChannelWriteResult<T>(default, ChannelWriteResult.Success);
+                    }
+
+                    // Otherwise, we attempt to add the item to the queue.
+                    if (_queue.Count < _capacity)
+                    {
+                        // Notify waiting readers.
+                        var waitToReaders = _waitToReaders.MoveElementsToStack();
+                        _queue.EnqueueTail(item);
+                        _smallFields._locker.Exit();
+
+                        while (waitToReaders.IsNotEmpty)
+                        {
+                            waitToReaders.Pop().Resolve(true);
+                        }
+                        return new ChannelWriteResult<T>(default, ChannelWriteResult.Success);
+                    }
+
+                    // The queue is at max capacity. Drop an item, depending on the full mode.
+                    if (_fullMode == BoundedChannelFullMode.Wait | _fullMode == BoundedChannelFullMode.DropWrite)
+                    {
+                        _smallFields._locker.Exit();
+                        return new ChannelWriteResult<T>(item, ChannelWriteResult.DroppedItem);
+                    }
+
+                    T droppedItem = _fullMode == BoundedChannelFullMode.DropNewest
+                        ? _queue.DequeueTail()
+                        : _queue.DequeueHead();
+                    _queue.EnqueueTail(item);
                     _smallFields._locker.Exit();
-                    return new Promise<ChannelPeekResult<T>>(promise, promise.Id);
+                    return new ChannelWriteResult<T>(droppedItem, ChannelWriteResult.DroppedItem);
                 }
             }
 
@@ -188,23 +303,32 @@ namespace Proto.Promises
                             : Promise<ChannelWriteResult<T>>.Rejected(closedReason);
                     }
 
-                    ChannelReadPromise<T> reader;
-                    var peekers = _peekers.MoveElementsToStack();
-                    // If there is at least 1 waiting reader, we grab one and complete it outside of the lock.
+                    // If there is at least 1 reader, we grab one and complete it outside of the lock.
                     if (_readers.IsNotEmpty)
                     {
-                        reader = _readers.Dequeue();
+                        var reader = _readers.Dequeue();
                         _smallFields._locker.Exit();
                         reader.Resolve(new ChannelReadResult<T>(item, ChannelReadResult.Success));
+                        return Promise.Resolved(new ChannelWriteResult<T>(default, ChannelWriteResult.Success));
                     }
+
                     // Otherwise, we attempt to add the item to the queue.
-                    else if (_queue.Count < _capacity)
+                    if (_queue.Count < _capacity)
                     {
+                        // Notify waiting readers.
+                        var waitToReaders = _waitToReaders.MoveElementsToStack();
                         _queue.EnqueueTail(item);
                         _smallFields._locker.Exit();
+
+                        while (waitToReaders.IsNotEmpty)
+                        {
+                            waitToReaders.Pop().Resolve(true);
+                        }
+                        return Promise.Resolved(new ChannelWriteResult<T>(default, ChannelWriteResult.Success));
                     }
-                    // If the queue is at max capacity, we either drop an item, or wait for an item to be read, depending on the full mode.
-                    else if (_fullMode == BoundedChannelFullMode.Wait)
+
+                    // The queue is at max capacity. Either drop an item, or wait for an item to be read, depending on the full mode.
+                    if (_fullMode == BoundedChannelFullMode.Wait)
                     {
                         var promise = ChannelWritePromise<T>.GetOrCreate(item, this, CaptureContext());
                         if (promise.HookupAndGetIsCanceled(cancelationToken))
@@ -218,28 +342,106 @@ namespace Proto.Promises
                         _smallFields._locker.Exit();
                         return new Promise<ChannelWriteResult<T>>(promise, promise.Id);
                     }
-                    else if (_fullMode == BoundedChannelFullMode.DropWrite)
+
+                    if (_fullMode == BoundedChannelFullMode.DropWrite)
                     {
                         _smallFields._locker.Exit();
                         return Promise.Resolved(new ChannelWriteResult<T>(item, ChannelWriteResult.DroppedItem));
                     }
-                    else
+
+                    T droppedItem = _fullMode == BoundedChannelFullMode.DropNewest
+                        ? _queue.DequeueTail()
+                        : _queue.DequeueHead();
+                    _queue.EnqueueTail(item);
+                    _smallFields._locker.Exit();
+                    return Promise.Resolved(new ChannelWriteResult<T>(droppedItem, ChannelWriteResult.DroppedItem));
+                }
+            }
+
+            internal override Promise<bool> WaitToReadAsync(int id, CancelationToken cancelationToken)
+            {
+                Validate(id);
+
+                // Quick cancelation check before we perform the operation.
+                if (cancelationToken.IsCancelationRequested)
+                {
+                    return Promise<bool>.Canceled();
+                }
+
+                _smallFields._locker.Enter();
+                {
+                    ValidateInsideLock(id);
+
+                    if (!_queue.IsEmpty)
                     {
-                        T droppedItem = _fullMode == BoundedChannelFullMode.DropNewest
-                            ? _queue.DequeueTail()
-                            : _queue.DequeueHead();
-                        _queue.EnqueueTail(item);
                         _smallFields._locker.Exit();
-                        return Promise.Resolved(new ChannelWriteResult<T>(droppedItem, ChannelWriteResult.DroppedItem));
+                        return Promise.Resolved(true);
                     }
 
-                    // All waiting peekers receive the item, even if there was a waiting reader preventing it from entering the queue.
-                    while (peekers.IsNotEmpty)
+                    var closedReason = _closedReason;
+                    if (closedReason != null)
                     {
-                        peekers.Pop().Resolve(new ChannelPeekResult<T>(item, ChannelPeekResult.Success));
+                        _smallFields._locker.Exit();
+                        return closedReason == ChannelSmallFields.ClosedResolvedReason ? Promise.Resolved(false)
+                            : closedReason == ChannelSmallFields.ClosedCanceledReason ? Promise<bool>.Canceled()
+                            : Promise<bool>.Rejected(closedReason);
                     }
+
+                    var promise = ChannelWaitToReadPromise<T>.GetOrCreate(this, CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        _smallFields._locker.Exit();
+                        promise.DisposeImmediate();
+                        return Promise<bool>.Canceled();
+                    }
+
+                    _waitToReaders.Enqueue(promise);
+                    _smallFields._locker.Exit();
+                    return new Promise<bool>(promise, promise.Id);
                 }
-                return Promise.Resolved(new ChannelWriteResult<T>(default, ChannelWriteResult.Success));
+            }
+
+            internal override Promise<bool> WaitToWriteAsync(int id, CancelationToken cancelationToken)
+            {
+                Validate(id);
+
+                // Quick cancelation check before we perform the operation.
+                if (cancelationToken.IsCancelationRequested)
+                {
+                    return Promise<bool>.Canceled();
+                }
+
+                _smallFields._locker.Enter();
+                {
+                    ValidateInsideLock(id);
+
+                    var closedReason = _closedReason;
+                    if (closedReason != null)
+                    {
+                        _smallFields._locker.Exit();
+                        return closedReason == ChannelSmallFields.ClosedResolvedReason ? Promise.Resolved(false)
+                            : closedReason == ChannelSmallFields.ClosedCanceledReason ? Promise<bool>.Canceled()
+                            : Promise<bool>.Rejected(closedReason);
+                    }
+
+                    if (_queue.Count < _capacity)
+                    {
+                        _smallFields._locker.Exit();
+                        return Promise.Resolved(true);
+                    }
+
+                    var promise = ChannelWaitToWritePromise<T>.GetOrCreate(this, CaptureContext());
+                    if (promise.HookupAndGetIsCanceled(cancelationToken))
+                    {
+                        _smallFields._locker.Exit();
+                        promise.DisposeImmediate();
+                        return Promise<bool>.Canceled();
+                    }
+
+                    _waitToWriters.Enqueue(promise);
+                    _smallFields._locker.Exit();
+                    return new Promise<bool>(promise, promise.Id);
+                }
             }
 
             internal override bool TryReject(object reason, int id)
@@ -256,15 +458,12 @@ namespace Proto.Promises
 
                     var rejection = CreateRejectContainer(reason, 1, null, this);
                     _closedReason = rejection;
-                    var peekers = _peekers.MoveElementsToStack();
                     var readers = _readers.MoveElementsToStack();
                     var writers = _writers.MoveElementsToStack();
+                    var waitToReaders = _waitToReaders.MoveElementsToStack();
+                    var waitToWriters = _waitToWriters.MoveElementsToStack();
                     _smallFields._locker.Exit();
 
-                    while (peekers.IsNotEmpty)
-                    {
-                        peekers.Pop().Reject(rejection);
-                    }
                     while (readers.IsNotEmpty)
                     {
                         readers.Pop().Reject(rejection);
@@ -272,6 +471,14 @@ namespace Proto.Promises
                     while (writers.IsNotEmpty)
                     {
                         writers.Pop().Reject(rejection);
+                    }
+                    while (waitToReaders.IsNotEmpty)
+                    {
+                        waitToReaders.Pop().Reject(rejection);
+                    }
+                    while (waitToWriters.IsNotEmpty)
+                    {
+                        waitToWriters.Pop().Reject(rejection);
                     }
                 }
                 return true;
@@ -290,15 +497,12 @@ namespace Proto.Promises
                     }
 
                     _closedReason = ChannelSmallFields.ClosedCanceledReason;
-                    var peekers = _peekers.MoveElementsToStack();
                     var readers = _readers.MoveElementsToStack();
                     var writers = _writers.MoveElementsToStack();
+                    var waitToReaders = _waitToReaders.MoveElementsToStack();
+                    var waitToWriters = _waitToWriters.MoveElementsToStack();
                     _smallFields._locker.Exit();
 
-                    while (peekers.IsNotEmpty)
-                    {
-                        peekers.Pop().CancelDirect();
-                    }
                     while (readers.IsNotEmpty)
                     {
                         readers.Pop().CancelDirect();
@@ -306,6 +510,14 @@ namespace Proto.Promises
                     while (writers.IsNotEmpty)
                     {
                         writers.Pop().CancelDirect();
+                    }
+                    while (waitToReaders.IsNotEmpty)
+                    {
+                        waitToReaders.Pop().CancelDirect();
+                    }
+                    while (waitToWriters.IsNotEmpty)
+                    {
+                        waitToWriters.Pop().CancelDirect();
                     }
                 }
                 return true;
@@ -324,15 +536,12 @@ namespace Proto.Promises
                     }
 
                     _closedReason = ChannelSmallFields.ClosedResolvedReason;
-                    var peekers = _peekers.MoveElementsToStack();
                     var readers = _readers.MoveElementsToStack();
                     var writers = _writers.MoveElementsToStack();
+                    var waitToReaders = _waitToReaders.MoveElementsToStack();
+                    var waitToWriters = _waitToWriters.MoveElementsToStack();
                     _smallFields._locker.Exit();
 
-                    while (peekers.IsNotEmpty)
-                    {
-                        peekers.Pop().Resolve(new ChannelPeekResult<T>(default, ChannelPeekResult.Closed));
-                    }
                     while (readers.IsNotEmpty)
                     {
                         readers.Pop().Resolve(new ChannelReadResult<T>(default, ChannelReadResult.Closed));
@@ -340,6 +549,14 @@ namespace Proto.Promises
                     while (writers.IsNotEmpty)
                     {
                         writers.Pop().Resolve(new ChannelWriteResult<T>(default, ChannelWriteResult.Closed));
+                    }
+                    while (waitToReaders.IsNotEmpty)
+                    {
+                        waitToReaders.Pop().Resolve(false);
+                    }
+                    while (waitToWriters.IsNotEmpty)
+                    {
+                        waitToWriters.Pop().Resolve(false);
                     }
                 }
                 return true;
@@ -359,20 +576,17 @@ namespace Proto.Promises
                 unchecked { _smallFields._id = id + 1; }
                 _closedReason = ChannelSmallFields.DisposedReason;
                 _queue.Dispose();
-                var peekers = _peekers.MoveElementsToStack();
                 var readers = _readers.MoveElementsToStack();
                 var writers = _writers.MoveElementsToStack();
+                var waitToReaders = _waitToReaders.MoveElementsToStack();
+                var waitToWriters = _waitToWriters.MoveElementsToStack();
                 _smallFields._locker.Exit();
 
                 ObjectPool.MaybeRepool(this);
 
-                if (peekers.IsNotEmpty | readers.IsNotEmpty | writers.IsNotEmpty)
+                if (readers.IsNotEmpty | writers.IsNotEmpty | waitToReaders.IsNotEmpty | waitToWriters.IsNotEmpty)
                 {
                     var rejection = CreateRejectContainer(new System.ObjectDisposedException(nameof(Channel<T>)), 3, null, this);
-                    while (peekers.IsNotEmpty)
-                    {
-                        peekers.Pop().Reject(rejection);
-                    }
                     while (readers.IsNotEmpty)
                     {
                         readers.Pop().Reject(rejection);
@@ -380,6 +594,14 @@ namespace Proto.Promises
                     while (writers.IsNotEmpty)
                     {
                         writers.Pop().Reject(rejection);
+                    }
+                    while (waitToReaders.IsNotEmpty)
+                    {
+                        waitToReaders.Pop().Reject(rejection);
+                    }
+                    while (waitToWriters.IsNotEmpty)
+                    {
+                        waitToWriters.Pop().Reject(rejection);
                     }
                 }
             }
