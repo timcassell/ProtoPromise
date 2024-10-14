@@ -380,7 +380,7 @@ namespace Proto.Promises
                             : Promise<bool>.Rejected(closedReason);
                     }
 
-                    var promise = ChannelWaitToReadPromise<T>.GetOrCreate(this, CaptureContext());
+                    var promise = ChannelWaitToReadPromise.GetOrCreate(this, CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();

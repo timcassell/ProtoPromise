@@ -177,21 +177,21 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class ChannelWaitToWritePromise<T> : ChannelPromiseBase<bool, BoundedChannel<T>>, ILinked<ChannelWaitToWritePromise<T>>
+        internal sealed class ChannelWaitToWritePromise : ChannelPromiseBase<bool, ChannelBase>, ILinked<ChannelWaitToWritePromise>
         {
-            ChannelWaitToWritePromise<T> ILinked<ChannelWaitToWritePromise<T>>.Next { get; set; }
+            ChannelWaitToWritePromise ILinked<ChannelWaitToWritePromise>.Next { get; set; }
 
             [MethodImpl(InlineOption)]
-            private static ChannelWaitToWritePromise<T> GetOrCreate()
+            private static ChannelWaitToWritePromise GetOrCreate()
             {
-                var obj = ObjectPool.TryTakeOrInvalid<ChannelWaitToWritePromise<T>>();
+                var obj = ObjectPool.TryTakeOrInvalid<ChannelWaitToWritePromise>();
                 return obj == InvalidAwaitSentinel.s_instance
-                    ? new ChannelWaitToWritePromise<T>()
-                    : obj.UnsafeAs<ChannelWaitToWritePromise<T>>();
+                    ? new ChannelWaitToWritePromise()
+                    : obj.UnsafeAs<ChannelWaitToWritePromise>();
             }
 
             [MethodImpl(InlineOption)]
-            internal static ChannelWaitToWritePromise<T> GetOrCreate(BoundedChannel<T> owner, SynchronizationContext callerContext)
+            internal static ChannelWaitToWritePromise GetOrCreate(ChannelBase owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
                 promise.Reset(callerContext);
@@ -234,21 +234,21 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class ChannelWaitToReadPromise<T> : ChannelPromiseBase<bool, ChannelBase<T>>, ILinked<ChannelWaitToReadPromise<T>>
+        internal sealed class ChannelWaitToReadPromise : ChannelPromiseBase<bool, ChannelBase>, ILinked<ChannelWaitToReadPromise>
         {
-            ChannelWaitToReadPromise<T> ILinked<ChannelWaitToReadPromise<T>>.Next { get; set; }
+            ChannelWaitToReadPromise ILinked<ChannelWaitToReadPromise>.Next { get; set; }
 
             [MethodImpl(InlineOption)]
-            private static ChannelWaitToReadPromise<T> GetOrCreate()
+            private static ChannelWaitToReadPromise GetOrCreate()
             {
-                var obj = ObjectPool.TryTakeOrInvalid<ChannelWaitToReadPromise<T>>();
+                var obj = ObjectPool.TryTakeOrInvalid<ChannelWaitToReadPromise>();
                 return obj == InvalidAwaitSentinel.s_instance
-                    ? new ChannelWaitToReadPromise<T>()
-                    : obj.UnsafeAs<ChannelWaitToReadPromise<T>>();
+                    ? new ChannelWaitToReadPromise()
+                    : obj.UnsafeAs<ChannelWaitToReadPromise>();
             }
 
             [MethodImpl(InlineOption)]
-            internal static ChannelWaitToReadPromise<T> GetOrCreate(ChannelBase<T> owner, SynchronizationContext callerContext)
+            internal static ChannelWaitToReadPromise GetOrCreate(ChannelBase owner, SynchronizationContext callerContext)
             {
                 var promise = GetOrCreate();
                 promise.Reset(callerContext);

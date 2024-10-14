@@ -32,7 +32,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal abstract class ChannelBase<T> : HandleablePromiseBase, ITraceable
+        internal abstract class ChannelBase : HandleablePromiseBase, ITraceable
         {
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
@@ -47,10 +47,9 @@ namespace Proto.Promises
             }
 
             internal object _closedReason;
-            // These must not be readonly.
-            protected ValueLinkedQueue<ChannelReadPromise<T>> _readers = new ValueLinkedQueue<ChannelReadPromise<T>>();
-            protected ValueLinkedQueue<ChannelWaitToReadPromise<T>> _waitToReaders = new ValueLinkedQueue<ChannelWaitToReadPromise<T>>();
             protected ChannelSmallFields _smallFields;
+            // This must not be readonly.
+            protected ValueLinkedQueue<ChannelWaitToReadPromise> _waitToReaders = new ValueLinkedQueue<ChannelWaitToReadPromise>();
 
             internal int Id
             {
@@ -65,18 +64,29 @@ namespace Proto.Promises
                 SetCreatedStacktrace(this, 3);
             }
 
-            internal bool TryRemoveWaiter(ChannelReadPromise<T> promise)
+            internal bool TryRemoveWaiter(ChannelWaitToReadPromise promise)
             {
                 _smallFields._locker.Enter();
-                bool success = _readers.TryRemove(promise);
+                bool success = _waitToReaders.TryRemove(promise);
                 _smallFields._locker.Exit();
                 return success;
             }
 
-            internal bool TryRemoveWaiter(ChannelWaitToReadPromise<T> promise)
+            internal virtual bool TryRemoveWaiter(ChannelWaitToWritePromise promise) => throw new System.InvalidOperationException();
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal abstract class ChannelBase<T> : ChannelBase, ITraceable
+        {
+            // This must not be readonly.
+            protected ValueLinkedQueue<ChannelReadPromise<T>> _readers = new ValueLinkedQueue<ChannelReadPromise<T>>();
+
+            internal bool TryRemoveWaiter(ChannelReadPromise<T> promise)
             {
                 _smallFields._locker.Enter();
-                bool success = _waitToReaders.TryRemove(promise);
+                bool success = _readers.TryRemove(promise);
                 _smallFields._locker.Exit();
                 return success;
             }

@@ -22,7 +22,7 @@ namespace Proto.Promises
         {
             // These must not be readonly.
             private ValueLinkedQueue<ChannelWritePromise<T>> _writers = new ValueLinkedQueue<ChannelWritePromise<T>>();
-            private ValueLinkedQueue<ChannelWaitToWritePromise<T>> _waitToWriters = new ValueLinkedQueue<ChannelWaitToWritePromise<T>>();
+            private ValueLinkedQueue<ChannelWaitToWritePromise> _waitToWriters = new ValueLinkedQueue<ChannelWaitToWritePromise>();
             private PoolBackedDeque<T> _queue;
             private int _capacity;
             private BoundedChannelFullMode _fullMode;
@@ -57,7 +57,7 @@ namespace Proto.Promises
                 return success;
             }
 
-            internal bool TryRemoveWaiter(ChannelWaitToWritePromise<T> promise)
+            internal override bool TryRemoveWaiter(ChannelWaitToWritePromise promise)
             {
                 _smallFields._locker.Enter();
                 bool success = _waitToWriters.TryRemove(promise);
@@ -387,7 +387,7 @@ namespace Proto.Promises
                             : Promise<bool>.Rejected(closedReason);
                     }
 
-                    var promise = ChannelWaitToReadPromise<T>.GetOrCreate(this, CaptureContext());
+                    var promise = ChannelWaitToReadPromise.GetOrCreate(this, CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
@@ -430,7 +430,7 @@ namespace Proto.Promises
                         return Promise.Resolved(true);
                     }
 
-                    var promise = ChannelWaitToWritePromise<T>.GetOrCreate(this, CaptureContext());
+                    var promise = ChannelWaitToWritePromise.GetOrCreate(this, CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
