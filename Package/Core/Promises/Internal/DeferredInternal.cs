@@ -23,15 +23,6 @@ namespace Proto.Promises
             void CancelDirect();
         }
 
-        internal static class DeferredPromiseHelper
-        {
-            internal static bool GetIsValidAndPending(IDeferredPromise _this, int deferredId)
-                => _this?.DeferredId == deferredId;
-
-            internal static bool TryIncrementDeferredId(IDeferredPromise _this, int deferredId)
-                => _this?.TryIncrementDeferredId(deferredId) == true;
-        }
-
         partial class PromiseRefBase
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
