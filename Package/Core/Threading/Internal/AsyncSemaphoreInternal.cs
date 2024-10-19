@@ -122,7 +122,7 @@ namespace Proto.Promises
                         _locker.Exit();
                         return Promise.Resolved();
                     }
-                    promise = Internal.AsyncSemaphorePromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncSemaphorePromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     _waiters.Enqueue(promise);
                 }
                 _locker.Exit();
@@ -152,7 +152,7 @@ namespace Proto.Promises
                         _locker.Exit();
                         return Promise.Resolved(false);
                     }
-                    promise = Internal.AsyncSemaphorePromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncSemaphorePromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _locker.Exit();

@@ -6,6 +6,7 @@
 
 #pragma warning disable IDE0090 // Use 'new(...)'
 
+using Proto.Promises.CompilerServices;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -188,7 +189,7 @@ namespace Proto.Promises
         public Promise<T> Duplicate()
         {
             ValidateOperation(1);
-            return Internal.PromiseRefBase.CallbackHelperVoid.Duplicate(this);
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.Duplicate(this);
         }
 
         /// <summary>
@@ -198,11 +199,9 @@ namespace Proto.Promises
         /// <param name="continuationOption">Indicates on which context the next continuation will be executed.</param>
         /// <param name="forceAsync">If true, forces the next continuation to be invoked asynchronously. If <paramref name="continuationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
         /// <param name="cancelationToken">If canceled before this is complete, the returned <see cref="Promise{T}"/> will be canceled, and the cancelation will propagate on the context of the provided <paramref name="continuationOption"/>.</param>
+        [Obsolete("Prefer ConfigureAwait"), EditorBrowsable(EditorBrowsableState.Never)]
         public Promise<T> WaitAsync(SynchronizationOption continuationOption, bool forceAsync = false, CancelationToken cancelationToken = default)
-        {
-            ValidateOperation(1);
-            return Internal.PromiseRefBase.CallbackHelperVoid.WaitAsync(this, (Internal.SynchronizationOption) continuationOption, null, forceAsync, cancelationToken);
-        }
+            => WaitAsync(cancelationToken).ConfigureContinuation(new ContinuationOptions(continuationOption, forceAsync));
 
         /// <summary>
         /// Mark this as awaited and schedule the next continuation to execute on <paramref name="continuationContext"/>.
@@ -211,11 +210,9 @@ namespace Proto.Promises
         /// <param name="continuationContext">The context on which context the next continuation will be executed. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the next continuation to be invoked asynchronously.</param>
         /// <param name="cancelationToken">If canceled before this is complete, the returned <see cref="Promise{T}"/> will be canceled, and the cancelation will propagate on the provided <paramref name="continuationContext"/>.</param>
+        [Obsolete("Prefer ConfigureAwait"), EditorBrowsable(EditorBrowsableState.Never)]
         public Promise<T> WaitAsync(SynchronizationContext continuationContext, bool forceAsync = false, CancelationToken cancelationToken = default)
-        {
-            ValidateOperation(1);
-            return Internal.PromiseRefBase.CallbackHelperVoid.WaitAsync(this, Internal.SynchronizationOption.Explicit, continuationContext, forceAsync, cancelationToken);
-        }
+            => WaitAsync(cancelationToken).ConfigureContinuation(new ContinuationOptions(continuationContext, forceAsync));
 
         /// <summary>
         /// Returns a new <see cref="Promise{T}"/> that inherits the state of this, or will be canceled if/when the <paramref name="cancelationToken"/> is canceled before this is complete.
@@ -224,7 +221,31 @@ namespace Proto.Promises
         public Promise<T> WaitAsync(CancelationToken cancelationToken)
         {
             ValidateOperation(1);
-            return Internal.PromiseRefBase.CallbackHelperVoid.WaitAsync(this, cancelationToken);
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.WaitAsync(this, cancelationToken);
+        }
+
+        /// <summary>
+        /// Configure the next continuation.
+        /// Returns a new <see cref="Promise"/> that will adopt the state of this and be completed according to the provided <paramref name="continuationOptions"/>.
+        /// </summary>
+        /// <param name="continuationOptions">The options used to configure the execution behavior of the next continuation.</param>
+        [MethodImpl(Internal.InlineOption)]
+        public Promise<T> ConfigureContinuation(ContinuationOptions continuationOptions)
+        {
+            ValidateOperation(1);
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.ConfigureContinuation(this, continuationOptions);
+        }
+
+        /// <summary>
+        /// Configure the await.
+        /// Returns a <see cref="ConfiguredPromiseAwaiter{T}"/> that configures the continuation behavior of the await according to the provided <paramref name="continuationOptions"/>.
+        /// </summary>
+        /// <param name="continuationOptions">The options used to configure the execution behavior of the async continuation.</param>
+        [MethodImpl(Internal.InlineOption)]
+        public ConfiguredPromiseAwaiter<T> ConfigureAwait(ContinuationOptions continuationOptions)
+        {
+            ValidateOperation(1);
+            return new ConfiguredPromiseAwaiter<T>(this, continuationOptions);
         }
 
         /// <summary>

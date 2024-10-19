@@ -122,15 +122,12 @@ namespace Proto.Promises
                 internal CancelationHelper _cancelationHelper;
             }
 
-            partial class PromiseConfigured<TResult> : PromiseSingleAwait<TResult>
+            partial class ConfiguredPromise<TResult> : PromiseSingleAwait<TResult>
             {
                 private SynchronizationContext _synchronizationContext;
-                internal CancelationHelper _cancelationHelper;
-                private int _isScheduling; // Flag used so that only Cancel() or Handle() will schedule the continuation. Int for Interlocked.
                 // We have to store the previous state in a separate field until the next awaiter is ready to be invoked on the proper context.
-                volatile private Promise.State _tempState;
-                volatile private bool _wasCanceled;
-                private bool _forceAsync;
+                private Promise.State _tempState;
+                private CompletedContinuationBehavior _completedBehavior;
             }
 
             partial class RunPromise<TResult, TDelegate> : PromiseSingleAwait<TResult>

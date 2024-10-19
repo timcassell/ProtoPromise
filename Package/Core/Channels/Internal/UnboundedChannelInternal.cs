@@ -278,7 +278,7 @@ namespace Proto.Promises
                             : Promise<ChannelReadResult<T>>.Rejected(closedReason);
                     }
 
-                    var promise = ChannelReadPromise<T>.GetOrCreate(this, CaptureContext());
+                    var promise = ChannelReadPromise<T>.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
@@ -380,7 +380,7 @@ namespace Proto.Promises
                             : Promise<bool>.Rejected(closedReason);
                     }
 
-                    var promise = ChannelWaitToReadPromise.GetOrCreate(this, CaptureContext());
+                    var promise = ChannelWaitToReadPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
