@@ -86,6 +86,7 @@ namespace Proto.Promises.Linq
         /// <param name="synchronizationOption">On which context the continuations will be executed.</param>
         /// <param name="forceAsync">If true, forces the continuations to be invoked asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
         /// <returns>The configured enumerable.</returns>
+        [EditorBrowsable(EditorBrowsableState.Never)] // This is not deprecated, but hidden to encourage users to use the newer overload accepting ContinuationOptions.
         public ConfiguredAsyncEnumerable<T> ConfigureAwait(SynchronizationOption synchronizationOption, bool forceAsync = false)
             => ConfigureAwait(new ContinuationOptions(synchronizationOption, forceAsync));
 
@@ -95,6 +96,7 @@ namespace Proto.Promises.Linq
         /// <param name="synchronizationContext">The context on which the continuations will be executed. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the continuations to be invoked asynchronously.</param>
         /// <returns>The configured enumerable.</returns>
+        [EditorBrowsable(EditorBrowsableState.Never)] // This is not deprecated, but hidden to encourage users to use the newer overload accepting ContinuationOptions.
         public ConfiguredAsyncEnumerable<T> ConfigureAwait(SynchronizationContext synchronizationContext, bool forceAsync = false)
             => ConfigureAwait(new ContinuationOptions(synchronizationContext, forceAsync));
 

@@ -164,7 +164,7 @@ namespace Proto.Promises
         /// <param name="continuationOption">Indicates on which context the next continuation will be executed.</param>
         /// <param name="forceAsync">If true, forces the next continuation to be invoked asynchronously. If <paramref name="continuationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
         /// <param name="cancelationToken">If canceled before this is complete, the returned <see cref="Promise"/> will be canceled, and the cancelation will propagate on the context of the provided <paramref name="continuationOption"/>.</param>
-        [Obsolete("Prefer ConfigureAwait"), EditorBrowsable(EditorBrowsableState.Never)]
+        [Obsolete("Prefer ConfigureAwait", false), EditorBrowsable(EditorBrowsableState.Never)]
         public Promise WaitAsync(SynchronizationOption continuationOption, bool forceAsync = false, CancelationToken cancelationToken = default)
             => WaitAsync(cancelationToken).ConfigureContinuation(new ContinuationOptions(continuationOption, forceAsync));
 
@@ -175,7 +175,7 @@ namespace Proto.Promises
         /// <param name="continuationContext">The context on which context the next continuation will be executed. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the next continuation to be invoked asynchronously.</param>
         /// <param name="cancelationToken">If canceled before this is complete, the returned <see cref="Promise{T}"/> will be canceled, and the cancelation will propagate on the provided <paramref name="continuationContext"/>.</param>
-        [Obsolete("Prefer ConfigureAwait"), EditorBrowsable(EditorBrowsableState.Never)]
+        [Obsolete("Prefer ConfigureAwait", false), EditorBrowsable(EditorBrowsableState.Never)]
         public Promise WaitAsync(SynchronizationContext continuationContext, bool forceAsync = false, CancelationToken cancelationToken = default)
             => WaitAsync(cancelationToken).ConfigureContinuation(new ContinuationOptions(continuationContext, forceAsync));
 

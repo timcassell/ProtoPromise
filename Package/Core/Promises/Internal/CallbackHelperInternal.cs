@@ -319,6 +319,12 @@ namespace Proto.Promises
                         return Duplicate(_this);
                     }
 
+                    if (continuationOptions.CompletedBehavior == CompletedContinuationBehavior.Synchronous
+                        && (_this._ref == null || _this._ref.State != Promise.State.Pending))
+                    {
+                        return Duplicate(_this);
+                    }
+
                     var synchronizationContext = continuationOptions.GetContinuationContext();
                     ConfiguredPromise<TResult> promise;
                     if (_this._ref == null)
@@ -877,6 +883,12 @@ namespace Proto.Promises
                 internal static Promise ConfigureContinuation(Promise _this, ContinuationOptions continuationOptions)
                 {
                     if (continuationOptions.IsSynchronous)
+                    {
+                        return Duplicate(_this);
+                    }
+
+                    if (continuationOptions.CompletedBehavior == CompletedContinuationBehavior.Synchronous
+                        && (_this._ref == null || _this._ref.State != Promise.State.Pending))
                     {
                         return Duplicate(_this);
                     }

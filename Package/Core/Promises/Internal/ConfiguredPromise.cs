@@ -120,24 +120,25 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private bool GetShouldContinueSynchronously()
-                    => _completedBehavior == CompletedContinuationBehavior.SynchronousIfSameContext
-                    && _synchronizationContext == Promise.Manager.ThreadStaticSynchronizationContext;
+                private bool GetShouldContinueImmediately()
+                    => _completedBehavior == CompletedContinuationBehavior.Synchronous
+                    || (_completedBehavior == CompletedContinuationBehavior.SynchronousIfSameContext
+                        && _synchronizationContext == Promise.Manager.ThreadStaticSynchronizationContext);
 
                 // This is unusual, only happens when the promise already completed, or if a promise is incorrectly awaited twice.
                 [MethodImpl(MethodImplOptions.NoInlining)]
                 private PromiseRefBase VerifyAndHandleWaiter(HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter)
                 {
                     // We do the verification process here instead of in the caller, because we need to handle continuations on the synchronization context.
-                    bool shouldContinueSynchronously = GetShouldContinueSynchronously();
-                    var setWaiter = shouldContinueSynchronously ? InvalidAwaitSentinel.s_instance : waiter;
+                    bool shouldContinueImmediately = GetShouldContinueImmediately();
+                    var setWaiter = shouldContinueImmediately ? InvalidAwaitSentinel.s_instance : waiter;
                     if (CompareExchangeWaiter(setWaiter, PromiseCompletionSentinel.s_instance) != PromiseCompletionSentinel.s_instance)
                     {
                         previousWaiter = InvalidAwaitSentinel.s_instance;
                         return InvalidAwaitSentinel.s_instance;
                     }
 
-                    if (shouldContinueSynchronously)
+                    if (shouldContinueImmediately)
                     {
                         SetCompletionState(_tempState);
                         previousWaiter = waiter;
@@ -154,7 +155,7 @@ namespace Proto.Promises
                     ValidateId(promiseId, this, 2);
                     ThrowIfInPool(this);
                     // Make sure the continuation executes on the synchronization context.
-                    if (GetShouldContinueSynchronously()
+                    if (GetShouldContinueImmediately()
                         && CompareExchangeWaiter(InvalidAwaitSentinel.s_instance, PromiseCompletionSentinel.s_instance) == PromiseCompletionSentinel.s_instance)
                     {
                         WasAwaitedOrForgotten = true;

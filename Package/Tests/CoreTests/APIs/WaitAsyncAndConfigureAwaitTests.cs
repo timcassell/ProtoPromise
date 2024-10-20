@@ -13,7 +13,7 @@ using System.Threading;
 
 namespace ProtoPromiseTests.APIs
 {
-    public class WaitAsyncTests
+    public class WaitAsyncAndConfigureAwaitTests
     {
         public enum ConfigureAwaitCancelType
         {
@@ -217,7 +217,7 @@ namespace ProtoPromiseTests.APIs
                     };
 
                     bool isFirstCancelExpected = configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled
-                        || (configureAwaitCancelType == ConfigureAwaitCancelType.CancelFirst && (!isFirstAlreadyComplete || firstWaitType != SynchronizationType.Synchronous));
+                        || (configureAwaitCancelType == ConfigureAwaitCancelType.CancelFirst && !isFirstAlreadyComplete);
 
                     if (firstCompleteType == CompleteType.Resolve)
                     {
@@ -434,7 +434,7 @@ namespace ProtoPromiseTests.APIs
                     };
 
                     bool isFirstCancelExpected = configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled
-                        || (configureAwaitCancelType == ConfigureAwaitCancelType.CancelFirst && (!isFirstAlreadyComplete || firstWaitType != SynchronizationType.Synchronous));
+                        || (configureAwaitCancelType == ConfigureAwaitCancelType.CancelFirst && !isFirstAlreadyComplete);
 
                     if (firstCompleteType == CompleteType.Resolve)
                     {
@@ -817,6 +817,11 @@ namespace ProtoPromiseTests.APIs
             var foregroundThread = Thread.CurrentThread;
             var threadHelper = new ThreadHelper();
 
+            var continuationOptions = waitType == SynchronizationType.Foreground ? ContinuationOptions.Foreground
+                : waitType == SynchronizationType.Background ? ContinuationOptions.Background
+                : waitType == SynchronizationType.Explicit ? new ContinuationOptions(TestHelper._foregroundContext, false)
+                : ContinuationOptions.Synchronous;
+
             using (var promiseRetainer = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejectValue, out var tryCompleter)
                 .GetRetainer())
             {
@@ -826,7 +831,7 @@ namespace ProtoPromiseTests.APIs
                 foreach (var p in TestHelper.GetTestablePromises(promiseRetainer))
                 {
                     ++expectedInvokes;
-                    p.ConfigureAwait((ConfigureAwaitType) waitType)
+                    p.ConfigureContinuation(continuationOptions)
                         .CatchCancelation(() =>
                         {
                             TestHelper.AssertCallbackContext(waitType, reportType, foregroundThread);
@@ -837,7 +842,7 @@ namespace ProtoPromiseTests.APIs
                 foreach (var p in TestHelper.GetTestablePromises(promiseRetainer))
                 {
                     ++expectedInvokes;
-                    p.ConfigureAwait((ConfigureAwaitType) waitType)
+                    p.ConfigureContinuation(continuationOptions)
                         .CatchCancelation(1, cv =>
                         {
                             TestHelper.AssertCallbackContext(waitType, reportType, foregroundThread);
@@ -865,6 +870,11 @@ namespace ProtoPromiseTests.APIs
             var foregroundThread = Thread.CurrentThread;
             var threadHelper = new ThreadHelper();
 
+            var continuationOptions = waitType == SynchronizationType.Foreground ? ContinuationOptions.Foreground
+                : waitType == SynchronizationType.Background ? ContinuationOptions.Background
+                : waitType == SynchronizationType.Explicit ? new ContinuationOptions(TestHelper._foregroundContext, false)
+                : ContinuationOptions.Synchronous;
+
             using (var promiseRetainer = TestHelper.BuildPromise(completeType, isAlreadyComplete, 1, rejectValue, out var tryCompleter)
                 .GetRetainer())
             {
@@ -874,7 +884,7 @@ namespace ProtoPromiseTests.APIs
                 foreach (var p in TestHelper.GetTestablePromises(promiseRetainer))
                 {
                     ++expectedInvokes;
-                    p.ConfigureAwait((ConfigureAwaitType) waitType)
+                    p.ConfigureContinuation(continuationOptions)
                         .CatchCancelation(() =>
                         {
                             TestHelper.AssertCallbackContext(waitType, reportType, foregroundThread);
@@ -885,7 +895,7 @@ namespace ProtoPromiseTests.APIs
                 foreach (var p in TestHelper.GetTestablePromises(promiseRetainer))
                 {
                     ++expectedInvokes;
-                    p.ConfigureAwait((ConfigureAwaitType) waitType)
+                    p.ConfigureContinuation(continuationOptions)
                         .CatchCancelation(1, cv =>
                         {
                             TestHelper.AssertCallbackContext(waitType, reportType, foregroundThread);
@@ -913,6 +923,11 @@ namespace ProtoPromiseTests.APIs
             var foregroundThread = Thread.CurrentThread;
             var threadHelper = new ThreadHelper();
 
+            var continuationOptions = waitType == SynchronizationType.Foreground ? ContinuationOptions.Foreground
+                : waitType == SynchronizationType.Background ? ContinuationOptions.Background
+                : waitType == SynchronizationType.Explicit ? new ContinuationOptions(TestHelper._foregroundContext, false)
+                : ContinuationOptions.Synchronous;
+
             using (var promiseRetainer = TestHelper.BuildPromise(completeType, isAlreadyComplete, rejectValue, out var tryCompleter)
                 .GetRetainer())
             {
@@ -922,7 +937,7 @@ namespace ProtoPromiseTests.APIs
                 foreach (var p in TestHelper.GetTestablePromises(promiseRetainer))
                 {
                     ++expectedInvokes;
-                    p.ConfigureAwait((ConfigureAwaitType) waitType)
+                    p.ConfigureContinuation(continuationOptions)
                         .Finally(() =>
                         {
                             TestHelper.AssertCallbackContext(waitType, reportType, foregroundThread);
@@ -934,7 +949,7 @@ namespace ProtoPromiseTests.APIs
                 foreach (var p in TestHelper.GetTestablePromises(promiseRetainer))
                 {
                     ++expectedInvokes;
-                    p.ConfigureAwait((ConfigureAwaitType) waitType)
+                    p.ConfigureContinuation(continuationOptions)
                         .Finally(1, cv =>
                         {
                             TestHelper.AssertCallbackContext(waitType, reportType, foregroundThread);
@@ -963,6 +978,11 @@ namespace ProtoPromiseTests.APIs
             var foregroundThread = Thread.CurrentThread;
             var threadHelper = new ThreadHelper();
 
+            var continuationOptions = waitType == SynchronizationType.Foreground ? ContinuationOptions.Foreground
+                : waitType == SynchronizationType.Background ? ContinuationOptions.Background
+                : waitType == SynchronizationType.Explicit ? new ContinuationOptions(TestHelper._foregroundContext, false)
+                : ContinuationOptions.Synchronous;
+
             using (var promiseRetainer = TestHelper.BuildPromise(completeType, isAlreadyComplete, 1, rejectValue, out var tryCompleter)
                 .GetRetainer())
             {
@@ -972,7 +992,7 @@ namespace ProtoPromiseTests.APIs
                 foreach (var p in TestHelper.GetTestablePromises(promiseRetainer))
                 {
                     ++expectedInvokes;
-                    p.ConfigureAwait((ConfigureAwaitType) waitType)
+                    p.ConfigureContinuation(continuationOptions)
                         .Finally(() =>
                         {
                             TestHelper.AssertCallbackContext(waitType, reportType, foregroundThread);
@@ -984,7 +1004,7 @@ namespace ProtoPromiseTests.APIs
                 foreach (var p in TestHelper.GetTestablePromises(promiseRetainer))
                 {
                     ++expectedInvokes;
-                    p.ConfigureAwait((ConfigureAwaitType) waitType)
+                    p.ConfigureContinuation(continuationOptions)
                         .Finally(1, cv =>
                         {
                             TestHelper.AssertCallbackContext(waitType, reportType, foregroundThread);
@@ -1014,9 +1034,10 @@ namespace ProtoPromiseTests.APIs
             [Values] bool isAlreadyComplete)
         {
             var foregroundThread = Thread.CurrentThread;
+            var continuationOptions = waitType == ConfigureAwaitType.Foreground ? new ContinuationOptions(SynchronizationOption.Foreground, forceAsync)
+                : waitType == ConfigureAwaitType.Background ? new ContinuationOptions(SynchronizationOption.Background, forceAsync)
+                : new ContinuationOptions(TestHelper._foregroundContext, forceAsync);
 
-            // We're testing an implementation detail that if forceAsync is false, the continuation is invoked synchronously if the current context is the same.
-            // It may still be executed asynchronously if forceAsync is false. But if it's true, it is guaranteed to be invoked asynchronously.
             // Lock helps us assert that the callback is not invoked synchronously if forceAsync is true.
             var lockObj = new object();
             bool didInvoke = false;
@@ -1026,7 +1047,7 @@ namespace ProtoPromiseTests.APIs
                 lock (lockObj)
                 {
                     TestHelper.BuildPromise(CompleteType.Resolve, isAlreadyComplete, rejectValue, out var tryCompleter)
-                        .ConfigureAwait(waitType, forceAsync)
+                        .ConfigureContinuation(continuationOptions)
                         .ContinueWith(_ =>
                         {
                             TestHelper.AssertCallbackContext((SynchronizationType) waitType, (SynchronizationType) waitType, foregroundThread);
@@ -1037,7 +1058,9 @@ namespace ProtoPromiseTests.APIs
                         })
                         .Forget();
                     tryCompleter();
-                    Assert.AreNotEqual(forceAsync, didInvoke);
+                    // Implementation detail - if the promise is not already complete, the continuation will always be invoked asynchronously.
+                    // This is a change from previous behavior when ContinuationOptions were added, where it used to compare the provided context to the current context before invoking.
+                    Assert.AreNotEqual(forceAsync || !isAlreadyComplete, didInvoke);
                 }
             };
 
@@ -1066,9 +1089,10 @@ namespace ProtoPromiseTests.APIs
             [Values] bool isAlreadyComplete)
         {
             var foregroundThread = Thread.CurrentThread;
+            var continuationOptions = waitType == ConfigureAwaitType.Foreground ? new ContinuationOptions(SynchronizationOption.Foreground, forceAsync)
+                : waitType == ConfigureAwaitType.Background ? new ContinuationOptions(SynchronizationOption.Background, forceAsync)
+                : new ContinuationOptions(TestHelper._foregroundContext, forceAsync);
 
-            // We're testing an implementation detail that if forceAsync is false, the continuation is invoked synchronously if the current context is the same.
-            // It may still be executed asynchronously if forceAsync is false. But if it's true, it is guaranteed to be invoked asynchronously.
             // Lock helps us assert that the callback is not invoked synchronously if forceAsync is true.
             var lockObj = new object();
             bool didInvoke = false;
@@ -1078,7 +1102,7 @@ namespace ProtoPromiseTests.APIs
                 lock (lockObj)
                 {
                     TestHelper.BuildPromise(CompleteType.Resolve, isAlreadyComplete, 1, rejectValue, out var tryCompleter)
-                        .ConfigureAwait(waitType, forceAsync)
+                        .ConfigureContinuation(continuationOptions)
                         .ContinueWith(_ =>
                         {
                             TestHelper.AssertCallbackContext((SynchronizationType) waitType, (SynchronizationType) waitType, foregroundThread);
@@ -1089,7 +1113,9 @@ namespace ProtoPromiseTests.APIs
                         })
                         .Forget();
                     tryCompleter();
-                    Assert.AreNotEqual(forceAsync, didInvoke);
+                    // Implementation detail - if the promise is not already complete, the continuation will always be invoked asynchronously.
+                    // This is a change from previous behavior when ContinuationOptions were added, where it used to compare the provided context to the current context before invoking.
+                    Assert.AreNotEqual(forceAsync || !isAlreadyComplete, didInvoke);
                 }
             };
 
@@ -1348,7 +1374,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void WaitAsyncAndConfigureAwaitForceAsync_CallbacksWillBeInvokedProperly_await_void(
+        public void ConfigureAwaitForceAsync_CallbacksWillBeInvokedProperly_await_void(
             [Values(ConfigureAwaitType.Foreground, ConfigureAwaitType.Explicit
 #if !UNITY_WEBGL
                 , ConfigureAwaitType.Background
@@ -1362,8 +1388,6 @@ namespace ProtoPromiseTests.APIs
                 : waitType == ConfigureAwaitType.Background ? new ContinuationOptions(SynchronizationOption.Background, forceAsync)
                 : new ContinuationOptions(TestHelper._foregroundContext, forceAsync);
 
-            // We're testing an implementation detail that if forceAsync is false, the continuation is invoked synchronously if the current context is the same.
-            // It may still be executed asynchronously if forceAsync is false. But if it's true, it is guaranteed to be invoked asynchronously.
             // Lock helps us assert that the callback is not invoked synchronously if forceAsync is true.
             var lockObj = new object();
             bool didInvoke = false;
@@ -1388,7 +1412,9 @@ namespace ProtoPromiseTests.APIs
                     }
 
                     tryCompleter();
-                    Assert.AreNotEqual(forceAsync, didInvoke);
+                    // Implementation detail - if the promise is not already complete, the continuation will always be invoked asynchronously.
+                    // This is a change from previous behavior when ContinuationOptions were added, where it used to compare the provided context to the current context before invoking.
+                    Assert.AreNotEqual(forceAsync || !isAlreadyComplete, didInvoke);
                 }
             };
 
@@ -1407,7 +1433,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void WaitAsyncAndConfigureAwaitForceAsync_CallbacksWillBeInvokedProperly_await_T(
+        public void ConfigureAwaitForceAsync_CallbacksWillBeInvokedProperly_await_T(
             [Values(ConfigureAwaitType.Foreground, ConfigureAwaitType.Explicit
 #if !UNITY_WEBGL
                 , ConfigureAwaitType.Background
@@ -1421,8 +1447,6 @@ namespace ProtoPromiseTests.APIs
                 : waitType == ConfigureAwaitType.Background ? new ContinuationOptions(SynchronizationOption.Background, forceAsync)
                 : new ContinuationOptions(TestHelper._foregroundContext, forceAsync);
 
-            // We're testing an implementation detail that if forceAsync is false, the continuation is invoked synchronously if the current context is the same.
-            // It may still be executed asynchronously if forceAsync is false. But if it's true, it is guaranteed to be invoked asynchronously.
             // Lock helps us assert that the callback is not invoked synchronously if forceAsync is true.
             var lockObj = new object();
             bool didInvoke = false;
@@ -1447,7 +1471,9 @@ namespace ProtoPromiseTests.APIs
                     }
 
                     tryCompleter();
-                    Assert.AreNotEqual(forceAsync, didInvoke);
+                    // Implementation detail - if the promise is not already complete, the continuation will always be invoked asynchronously.
+                    // This is a change from previous behavior when ContinuationOptions were added, where it used to compare the provided context to the current context before invoking.
+                    Assert.AreNotEqual(forceAsync || !isAlreadyComplete, didInvoke);
                 }
             };
 
@@ -1466,7 +1492,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void WaitAsyncWithCancelationTokenWillBeCompletedProperly_void(
+        public void WaitAsyncWithCancelationTokenAndConfigureAwaitWillBeCompletedProperly_void(
             [Values] CompleteType completeType,
             [Values(ConfigureAwaitCancelType.NoToken, ConfigureAwaitCancelType.WithToken_NoCancel, ConfigureAwaitCancelType.AlreadyCanceled, ConfigureAwaitCancelType.CancelFirst)] ConfigureAwaitCancelType waitAsyncCancelType,
             [Values] bool isAlreadyComplete)
@@ -1537,7 +1563,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void WaitAsyncWithCancelationTokenWillBeCompletedProperly_T(
+        public void WaitAsyncWithCancelationTokenAndConfigureAwaitWillBeCompletedProperly_T(
             [Values] CompleteType completeType,
             [Values(ConfigureAwaitCancelType.NoToken, ConfigureAwaitCancelType.WithToken_NoCancel, ConfigureAwaitCancelType.AlreadyCanceled, ConfigureAwaitCancelType.CancelFirst)] ConfigureAwaitCancelType waitAsyncCancelType,
             [Values] bool isAlreadyComplete)

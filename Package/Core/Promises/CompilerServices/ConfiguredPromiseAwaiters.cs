@@ -125,6 +125,16 @@ namespace Proto.Promises.CompilerServices
         {
             ValidateArgument(continuation, nameof(continuation), 1);
             var _ref = _promise._ref;
+            if (_continuationOptions.IsSynchronous)
+            {
+                if (_ref == null)
+                {
+                    continuation();
+                    return;
+                }
+                _ref.OnCompleted(continuation, _promise._id);
+                return;
+            }
             if (_ref != null)
             {
                 _ref.OnCompleted(continuation, _continuationOptions.GetContinuationContext(), _promise._id);
@@ -146,7 +156,14 @@ namespace Proto.Promises.CompilerServices
 
         [MethodImpl(Internal.InlineOption)]
         void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
-            => Internal.PromiseRefBase.ConfiguredAsyncPromiseContinuer.ConfigureAsyncContinuation(asyncPromiseRef, _continuationOptions.GetContinuationContext(), _promise._ref, _promise._id);
+        {
+            if (_continuationOptions.IsSynchronous)
+            {
+                asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
+                return;
+            }
+            Internal.PromiseRefBase.ConfiguredAsyncPromiseContinuer.ConfigureAsyncContinuation(asyncPromiseRef, _continuationOptions.GetContinuationContext(), _promise._ref, _promise._id);
+        }
 
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
 #if PROMISE_DEBUG
@@ -221,6 +238,16 @@ namespace Proto.Promises.CompilerServices
         {
             ValidateArgument(continuation, nameof(continuation), 1);
             var _ref = _promise._ref;
+            if (_continuationOptions.IsSynchronous)
+            {
+                if (_ref == null)
+                {
+                    continuation();
+                    return;
+                }
+                _ref.OnCompleted(continuation, _promise._id);
+                return;
+            }
             if (_ref != null)
             {
                 _ref.OnCompleted(continuation, _continuationOptions.GetContinuationContext(), _promise._id);
@@ -242,7 +269,14 @@ namespace Proto.Promises.CompilerServices
 
         [MethodImpl(Internal.InlineOption)]
         void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
-            => Internal.PromiseRefBase.ConfiguredAsyncPromiseContinuer.ConfigureAsyncContinuation(asyncPromiseRef, _continuationOptions.GetContinuationContext(), _promise._ref, _promise._id);
+        {
+            if (_continuationOptions.IsSynchronous)
+            {
+                asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
+                return;
+            }
+            Internal.PromiseRefBase.ConfiguredAsyncPromiseContinuer.ConfigureAsyncContinuation(asyncPromiseRef, _continuationOptions.GetContinuationContext(), _promise._ref, _promise._id);
+        }
 
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
 #if PROMISE_DEBUG
@@ -309,6 +343,16 @@ namespace Proto.Promises.CompilerServices
         {
             ValidateArgument(continuation, nameof(continuation), 1);
             var _ref = _promise._ref;
+            if (_continuationOptions.IsSynchronous)
+            {
+                if (_ref == null)
+                {
+                    continuation();
+                    return;
+                }
+                _ref.OnCompleted(continuation, _promise._id);
+                return;
+            }
             if (_ref != null)
             {
                 _ref.OnCompleted(continuation, _continuationOptions.GetContinuationContext(), _promise._id);
@@ -330,7 +374,14 @@ namespace Proto.Promises.CompilerServices
 
         [MethodImpl(Internal.InlineOption)]
         void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
-            => Internal.PromiseRefBase.ConfiguredAsyncPromiseContinuer.ConfigureAsyncContinuation(asyncPromiseRef, _continuationOptions.GetContinuationContext(), _promise._ref, _promise._id);
+        {
+            if (_continuationOptions.IsSynchronous)
+            {
+                asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
+                return;
+            }
+            Internal.PromiseRefBase.ConfiguredAsyncPromiseContinuer.ConfigureAsyncContinuation(asyncPromiseRef, _continuationOptions.GetContinuationContext(), _promise._ref, _promise._id);
+        }
 
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
 #if PROMISE_DEBUG
@@ -397,6 +448,16 @@ namespace Proto.Promises.CompilerServices
         {
             ValidateArgument(continuation, nameof(continuation), 1);
             var _ref = _promise._ref;
+            if (_continuationOptions.IsSynchronous)
+            {
+                if (_ref == null)
+                {
+                    continuation();
+                    return;
+                }
+                _ref.OnCompleted(continuation, _promise._id);
+                return;
+            }
             if (_ref != null)
             {
                 _ref.OnCompleted(continuation, _continuationOptions.GetContinuationContext(), _promise._id);
@@ -418,7 +479,14 @@ namespace Proto.Promises.CompilerServices
 
         [MethodImpl(Internal.InlineOption)]
         void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
-            => Internal.PromiseRefBase.ConfiguredAsyncPromiseContinuer.ConfigureAsyncContinuation(asyncPromiseRef, _continuationOptions.GetContinuationContext(), _promise._ref, _promise._id);
+        {
+            if (_continuationOptions.IsSynchronous)
+            {
+                asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
+                return;
+            }
+            Internal.PromiseRefBase.ConfiguredAsyncPromiseContinuer.ConfigureAsyncContinuation(asyncPromiseRef, _continuationOptions.GetContinuationContext(), _promise._ref, _promise._id);
+        }
 
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
 #if PROMISE_DEBUG
