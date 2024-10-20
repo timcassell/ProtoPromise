@@ -114,7 +114,7 @@ namespace Proto.Promises.Linq
 
         [EditorBrowsable(EditorBrowsableState.Never)]
         public ConfiguredAsyncEnumerable<T> ConfigureAwait(bool continueOnCapturedContext)
-            => continueOnCapturedContext ? ConfigureAwait(SynchronizationContext.Current) : ConfigureAwait(SynchronizationOption.Synchronous);
+            => ConfigureAwait(continueOnCapturedContext ? ContinuationOptions.CapturedContext : ContinuationOptions.Synchronous);
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
     }
 

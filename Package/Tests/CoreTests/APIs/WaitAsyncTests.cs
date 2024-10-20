@@ -1131,6 +1131,15 @@ namespace ProtoPromiseTests.APIs
                 : configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? CancelationToken.Canceled()
                 : configureAwaitCancelationSource2.Token;
 
+            var continuationOptions1 = firstWaitType == SynchronizationType.Foreground ? new ContinuationOptions(SynchronizationOption.Foreground, true)
+                : firstWaitType == SynchronizationType.Background ? new ContinuationOptions(SynchronizationOption.Background, true)
+                : firstWaitType == SynchronizationType.Explicit ? new ContinuationOptions(TestHelper._foregroundContext, true)
+                : ContinuationOptions.Synchronous;
+            var continuationOptions2 = secondWaitType == SynchronizationType.Foreground ? new ContinuationOptions(SynchronizationOption.Foreground, false)
+                : secondWaitType == SynchronizationType.Background ? new ContinuationOptions(SynchronizationOption.Background, false)
+                : secondWaitType == SynchronizationType.Explicit ? new ContinuationOptions(TestHelper._foregroundContext, false)
+                : ContinuationOptions.Synchronous;
+
             using (var firstPromiseRetainer = TestHelper.BuildPromise(firstCompleteType, isFirstAlreadyComplete, rejectValue, out var tryCompleter1).GetRetainer())
             {
                 using (var secondPromiseRetainer = TestHelper.BuildPromise(secondCompleteType, isSecondAlreadyComplete, rejectValue, out var tryCompleter2).GetRetainer())
@@ -1157,7 +1166,7 @@ namespace ProtoPromiseTests.APIs
                     {
                         try
                         {
-                            await p1.ConfigureAwait((ConfigureAwaitType) firstWaitType, true, configureAwaitCancelationToken1);
+                            await p1.WaitAsync(configureAwaitCancelationToken1).ConfigureAwait(continuationOptions1);
                         }
                         catch { }
                         finally
@@ -1168,7 +1177,7 @@ namespace ProtoPromiseTests.APIs
 
                         try
                         {
-                            await p2.ConfigureAwait((ConfigureAwaitType) secondWaitType, false, configureAwaitCancelationToken2);
+                            await p2.WaitAsync(configureAwaitCancelationToken2).ConfigureAwait(continuationOptions2);
                         }
                         catch { }
                         finally
@@ -1242,6 +1251,15 @@ namespace ProtoPromiseTests.APIs
                 : configureAwaitCancelType == ConfigureAwaitCancelType.AlreadyCanceled ? CancelationToken.Canceled()
                 : configureAwaitCancelationSource2.Token;
 
+            var continuationOptions1 = firstWaitType == SynchronizationType.Foreground ? new ContinuationOptions(SynchronizationOption.Foreground, true)
+                : firstWaitType == SynchronizationType.Background ? new ContinuationOptions(SynchronizationOption.Background, true)
+                : firstWaitType == SynchronizationType.Explicit ? new ContinuationOptions(TestHelper._foregroundContext, true)
+                : ContinuationOptions.Synchronous;
+            var continuationOptions2 = secondWaitType == SynchronizationType.Foreground ? new ContinuationOptions(SynchronizationOption.Foreground, false)
+                : secondWaitType == SynchronizationType.Background ? new ContinuationOptions(SynchronizationOption.Background, false)
+                : secondWaitType == SynchronizationType.Explicit ? new ContinuationOptions(TestHelper._foregroundContext, false)
+                : ContinuationOptions.Synchronous;
+
             using (var firstPromiseRetainer = TestHelper.BuildPromise(firstCompleteType, isFirstAlreadyComplete, 1, rejectValue, out var tryCompleter1).GetRetainer())
             {
                 using (var secondPromiseRetainer = TestHelper.BuildPromise(secondCompleteType, isSecondAlreadyComplete, 1, rejectValue, out var tryCompleter2).GetRetainer())
@@ -1268,7 +1286,7 @@ namespace ProtoPromiseTests.APIs
                     {
                         try
                         {
-                            _ = await p1.ConfigureAwait((ConfigureAwaitType) firstWaitType, true, configureAwaitCancelationToken1);
+                            _ = await p1.WaitAsync(configureAwaitCancelationToken1).ConfigureAwait(continuationOptions1);
                         }
                         catch { }
                         finally
@@ -1279,7 +1297,7 @@ namespace ProtoPromiseTests.APIs
 
                         try
                         {
-                            _ = await p2.ConfigureAwait((ConfigureAwaitType) secondWaitType, false, configureAwaitCancelationToken2);
+                            _ = await p2.WaitAsync(configureAwaitCancelationToken2).ConfigureAwait(continuationOptions2);
                         }
                         catch { }
                         finally
@@ -1330,7 +1348,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void WaitAsyncForceAsync_CallbacksWillBeInvokedProperly_await_void(
+        public void WaitAsyncAndConfigureAwaitForceAsync_CallbacksWillBeInvokedProperly_await_void(
             [Values(ConfigureAwaitType.Foreground, ConfigureAwaitType.Explicit
 #if !UNITY_WEBGL
                 , ConfigureAwaitType.Background
@@ -1340,6 +1358,9 @@ namespace ProtoPromiseTests.APIs
             [Values] bool isAlreadyComplete)
         {
             var foregroundThread = Thread.CurrentThread;
+            var continuationOptions = waitType == ConfigureAwaitType.Foreground ? new ContinuationOptions(SynchronizationOption.Foreground, forceAsync)
+                : waitType == ConfigureAwaitType.Background ? new ContinuationOptions(SynchronizationOption.Background, forceAsync)
+                : new ContinuationOptions(TestHelper._foregroundContext, forceAsync);
 
             // We're testing an implementation detail that if forceAsync is false, the continuation is invoked synchronously if the current context is the same.
             // It may still be executed asynchronously if forceAsync is false. But if it's true, it is guaranteed to be invoked asynchronously.
@@ -1357,7 +1378,7 @@ namespace ProtoPromiseTests.APIs
 
                     async Promise Await()
                     {
-                        await promise.ConfigureAwait(waitType, forceAsync);
+                        await promise.ConfigureAwait(continuationOptions);
 
                         TestHelper.AssertCallbackContext((SynchronizationType) waitType, (SynchronizationType) waitType, foregroundThread);
                         lock (lockObj)
@@ -1386,7 +1407,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void WaitAsyncForceAsync_CallbacksWillBeInvokedProperly_await_T(
+        public void WaitAsyncAndConfigureAwaitForceAsync_CallbacksWillBeInvokedProperly_await_T(
             [Values(ConfigureAwaitType.Foreground, ConfigureAwaitType.Explicit
 #if !UNITY_WEBGL
                 , ConfigureAwaitType.Background
@@ -1396,6 +1417,9 @@ namespace ProtoPromiseTests.APIs
             [Values] bool isAlreadyComplete)
         {
             var foregroundThread = Thread.CurrentThread;
+            var continuationOptions = waitType == ConfigureAwaitType.Foreground ? new ContinuationOptions(SynchronizationOption.Foreground, forceAsync)
+                : waitType == ConfigureAwaitType.Background ? new ContinuationOptions(SynchronizationOption.Background, forceAsync)
+                : new ContinuationOptions(TestHelper._foregroundContext, forceAsync);
 
             // We're testing an implementation detail that if forceAsync is false, the continuation is invoked synchronously if the current context is the same.
             // It may still be executed asynchronously if forceAsync is false. But if it's true, it is guaranteed to be invoked asynchronously.
@@ -1413,7 +1437,7 @@ namespace ProtoPromiseTests.APIs
 
                     async Promise Await()
                     {
-                        _ = await promise.ConfigureAwait(waitType, forceAsync);
+                        _ = await promise.ConfigureAwait(continuationOptions);
 
                         TestHelper.AssertCallbackContext((SynchronizationType) waitType, (SynchronizationType) waitType, foregroundThread);
                         lock (lockObj)

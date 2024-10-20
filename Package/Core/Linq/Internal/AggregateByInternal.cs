@@ -295,7 +295,7 @@ namespace Proto.Promises
                         {
                             var element = _configuredAsyncEnumerator.Current;
                             // The key selector function could have switched context, make sure we're on the configured context before invoking the comparer and accumulator.
-                            var key = await _keySelector.Invoke(element).ConfigureAwait(_configuredAsyncEnumerator._continuationOptions);
+                            var key = await _keySelector.Invoke(element).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                             var accNode = dict.GetOrCreateNode(key, out bool exists);
                             accNode._value = await _accumulator.Invoke(exists ? accNode._value : _seed, element);
                         } while (await _configuredAsyncEnumerator.MoveNextAsync());
@@ -627,7 +627,7 @@ namespace Proto.Promises
                         {
                             var element = _configuredAsyncEnumerator.Current;
                             // The key selector function could have switched context, make sure we're on the configured context before invoking the comparer and seed selector.
-                            var key = await _keySelector.Invoke(element).ConfigureAwait(_configuredAsyncEnumerator._continuationOptions);
+                            var key = await _keySelector.Invoke(element).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                             var accNode = dict.GetOrCreateNode(key, out bool exists);
                             TAccumulate acc;
                             if (exists)
@@ -637,7 +637,7 @@ namespace Proto.Promises
                             else
                             {
                                 // The seed selector function could have switched context, make sure we're on the configured context before invoking the accumulator.
-                                acc = await _seedSelector.Invoke(key).ConfigureAwait(_configuredAsyncEnumerator._continuationOptions);
+                                acc = await _seedSelector.Invoke(key).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                             }
                             accNode._value = await _accumulator.Invoke(acc, element);
                         } while (await _configuredAsyncEnumerator.MoveNextAsync());

@@ -138,11 +138,7 @@ namespace Proto.Promises
             public bool IsCompleted
             {
                 [MethodImpl(Internal.InlineOption)]
-                get
-                {
-                    var _ref = _promise._ref;
-                    return _ref == null || _ref.GetIsCompleted(_promise._id);
-                }
+                get => _promise._ref?.GetIsCompleted(_promise._id) != false;
             }
 
             /// <summary>Ends the await on the completed <see cref="Promise"/>.</summary>
@@ -229,11 +225,7 @@ namespace Proto.Promises
             public bool IsCompleted
             {
                 [MethodImpl(Internal.InlineOption)]
-                get
-                {
-                    var _ref = _promise._ref;
-                    return _ref == null || _ref.GetIsCompleted(_promise._id);
-                }
+                get => _promise._ref?.GetIsCompleted(_promise._id) != false;
             }
 
             /// <summary>Ends the await on the completed <see cref="Promise{T}"/>.</summary>
@@ -326,11 +318,7 @@ namespace Proto.Promises
             public bool IsCompleted
             {
                 [MethodImpl(Internal.InlineOption)]
-                get
-                {
-                    var _ref = _promise._ref;
-                    return _ref == null || _ref.GetIsCompleted(_promise._id);
-                }
+                get => _promise._ref?.GetIsCompleted(_promise._id) != false;
             }
 
             /// <summary>Ends the await on the completed <see cref="Promise"/>.</summary>
@@ -424,11 +412,7 @@ namespace Proto.Promises
             public bool IsCompleted
             {
                 [MethodImpl(Internal.InlineOption)]
-                get
-                {
-                    var _ref = _promise._ref;
-                    return _ref == null || _ref.GetIsCompleted(_promise._id);
-                }
+                get => _promise._ref?.GetIsCompleted(_promise._id) != false;
             }
 
             /// <summary>Ends the await on the completed <see cref="Promise{T}"/>.</summary>

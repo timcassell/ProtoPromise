@@ -119,10 +119,9 @@ namespace Proto.Promises
                     {
                         using (var set = new PoolBackedSet<TSource, TEqualityComparer>(_comparer))
                         {
-                            while (await _secondAsyncEnumerator.MoveNextAsync())
+                            // We need to make sure we're on the configured context before invoking the comparer.
+                            while (await _secondAsyncEnumerator.MoveNextAsync().ConfigureAwait(_firstAsyncEnumerator.ContinuationOptions))
                             {
-                                // We need to make sure we're on the configured context before invoking the comparer.
-                                await _firstAsyncEnumerator.SwitchToContext();
                                 set.Add(_secondAsyncEnumerator.Current);
                             }
 
@@ -360,10 +359,9 @@ namespace Proto.Promises
                     {
                         using (var set = new PoolBackedSet<TKey, TEqualityComparer>(_comparer))
                         {
-                            while (await _secondAsyncEnumerator.MoveNextAsync())
+                            // We need to make sure we're on the configured context before invoking the key selector and comparer.
+                            while (await _secondAsyncEnumerator.MoveNextAsync().ConfigureAwait(_firstAsyncEnumerator.ContinuationOptions))
                             {
-                                // We need to make sure we're on the configured context before invoking the key selector.
-                                await _firstAsyncEnumerator.SwitchToContext();
                                 set.Add(_keySelector.Invoke(_secondAsyncEnumerator.Current));
                             }
 
@@ -443,22 +441,19 @@ namespace Proto.Promises
                     {
                         using (var set = new PoolBackedSet<TKey, TEqualityComparer>(_comparer))
                         {
-                            while (await _secondAsyncEnumerator.MoveNextAsync())
+                            // We need to make sure we're on the configured context before invoking the key selector.
+                            while (await _secondAsyncEnumerator.MoveNextAsync().ConfigureAwait(_firstAsyncEnumerator.ContinuationOptions))
                             {
-                                // We need to make sure we're on the configured context before invoking the key selector.
-                                await _firstAsyncEnumerator.SwitchToContext();
-                                var key = await _keySelector.Invoke(_secondAsyncEnumerator.Current);
                                 // In case the key selector changed context, we need to make sure we're on the configured context before invoking the comparer.
-                                await _firstAsyncEnumerator.SwitchToContext();
+                                var key = await _keySelector.Invoke(_secondAsyncEnumerator.Current).ConfigureAwait(_firstAsyncEnumerator.ContinuationOptions);
                                 set.Add(key);
                             }
 
                             while (await _firstAsyncEnumerator.MoveNextAsync())
                             {
                                 var element = _firstAsyncEnumerator.Current;
-                                var key = await _keySelector.Invoke(element);
                                 // In case the key selector changed context, we need to make sure we're on the configured context before invoking the comparer.
-                                await _firstAsyncEnumerator.SwitchToContext();
+                                var key = await _keySelector.Invoke(element).ConfigureAwait(_firstAsyncEnumerator.ContinuationOptions);
                                 if (set.Remove(key))
                                 {
                                     await writer.YieldAsync(element);

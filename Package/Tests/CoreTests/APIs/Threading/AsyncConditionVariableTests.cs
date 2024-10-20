@@ -345,7 +345,7 @@ namespace ProtoPromiseTests.APIs.Threading
             }, SynchronizationOption.Background, forceAsync: true);
 
             readyDeferred.Promise
-                .WaitAsync(SynchronizationOption.Background, forceAsync: true)
+                .ConfigureContinuation(new ContinuationOptions(SynchronizationOption.Background, CompletedContinuationBehavior.Asynchronous))
                 .Then(() =>
                 {
                     Thread.Sleep(TimeSpan.FromMilliseconds(100)); // Give a little extra time for the Wait.
@@ -364,7 +364,7 @@ namespace ProtoPromiseTests.APIs.Threading
             var cts = CancelationSource.New();
             var readyDeferred = Promise.NewDeferred();
             var waitPromise = mutex.LockAsync()
-                .WaitAsync(SynchronizationOption.Background, forceAsync: true)
+                .ConfigureContinuation(new ContinuationOptions(SynchronizationOption.Background, CompletedContinuationBehavior.Asynchronous))
                 .Then(key =>
                 {
                     readyDeferred.Resolve();
@@ -377,7 +377,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 });
 
             readyDeferred.Promise
-                .WaitAsync(SynchronizationOption.Background, forceAsync: true)
+                .ConfigureContinuation(new ContinuationOptions(SynchronizationOption.Background, CompletedContinuationBehavior.Asynchronous))
                 .Then(() =>
                 {
                     Thread.Sleep(TimeSpan.FromMilliseconds(100)); // Give a little extra time for the Wait.
@@ -405,7 +405,7 @@ namespace ProtoPromiseTests.APIs.Threading
             }, SynchronizationOption.Background, forceAsync: true);
 
             readyDeferred.Promise
-                .WaitAsync(SynchronizationOption.Background, forceAsync: true)
+                .ConfigureContinuation(new ContinuationOptions(SynchronizationOption.Background, CompletedContinuationBehavior.Asynchronous))
                 .Then(() => mutex.LockAsync())
                 .Then(key =>
                 {
@@ -426,7 +426,7 @@ namespace ProtoPromiseTests.APIs.Threading
             var cts = CancelationSource.New();
             var readyDeferred = Promise.NewDeferred();
             var waitPromise = mutex.LockAsync()
-                .WaitAsync(SynchronizationOption.Background, forceAsync: true)
+                .ConfigureContinuation(new ContinuationOptions(SynchronizationOption.Background, CompletedContinuationBehavior.Asynchronous))
                 .Then(key =>
                 {
                     readyDeferred.Resolve();
@@ -439,7 +439,7 @@ namespace ProtoPromiseTests.APIs.Threading
                 });
 
             readyDeferred.Promise
-                .WaitAsync(SynchronizationOption.Background, forceAsync: true)
+                .ConfigureContinuation(new ContinuationOptions(SynchronizationOption.Background, CompletedContinuationBehavior.Asynchronous))
                 .Then(() => mutex.LockAsync())
                 .Then(key =>
                 {
@@ -470,7 +470,7 @@ namespace ProtoPromiseTests.APIs.Threading
             });
 
             deferredReady.Promise
-                .WaitAsync(SynchronizationOption.Background, forceAsync: true)
+                .ConfigureContinuation(new ContinuationOptions(SynchronizationOption.Background, CompletedContinuationBehavior.Asynchronous))
                 .Then(() =>
                 {
                     using (var key = mutex.Lock())
@@ -514,7 +514,7 @@ namespace ProtoPromiseTests.APIs.Threading
             });
 
             Promise.All(deferred1Ready.Promise, deferred2Ready.Promise)
-                .WaitAsync(SynchronizationOption.Background, forceAsync: true)
+                .ConfigureContinuation(new ContinuationOptions(SynchronizationOption.Background, CompletedContinuationBehavior.Asynchronous))
                 .Then(() =>
                 {
                     using (var key = mutex.Lock())
@@ -575,7 +575,7 @@ namespace ProtoPromiseTests.APIs.Threading
                     });
             });
             Promise.All(deferred1Ready.Promise, deferred2Ready.Promise)
-                .WaitAsync(SynchronizationOption.Background, forceAsync: true)
+                .ConfigureContinuation(new ContinuationOptions(SynchronizationOption.Background, CompletedContinuationBehavior.Asynchronous))
                 .Then(() =>
                 {
                     return mutex.LockAsync()
@@ -645,7 +645,7 @@ namespace ProtoPromiseTests.APIs.Threading
                     });
             });
             Promise.All(deferred1Ready.Promise, deferred2Ready.Promise)
-                .WaitAsync(SynchronizationOption.Background, forceAsync: true)
+                .ConfigureContinuation(new ContinuationOptions(SynchronizationOption.Background, CompletedContinuationBehavior.Asynchronous))
                 .Then(() =>
                 {
                     return mutex.LockAsync()

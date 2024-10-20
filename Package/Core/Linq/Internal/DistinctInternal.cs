@@ -396,13 +396,17 @@ namespace Proto.Promises
                         using (var set = new PoolBackedSet<TKey, TEqualityComparer>(_comparer))
                         {
                             var current = _configuredAsyncEnumerator.Current;
-                            set.Add(await _keySelector.Invoke(current));
+                            // In case the key selector changed context, we need to make sure we're on the configured context before invoking the comparer.
+                            var key = await _keySelector.Invoke(current).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
+                            set.Add(key);
                             await writer.YieldAsync(current);
 
                             while (await _configuredAsyncEnumerator.MoveNextAsync())
                             {
                                 current = _configuredAsyncEnumerator.Current;
-                                if (set.Add(await _keySelector.Invoke(current)))
+                                // In case the key selector changed context, we need to make sure we're on the configured context before invoking the comparer.
+                                key = await _keySelector.Invoke(current).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
+                                if (set.Add(key))
                                 {
                                     await writer.YieldAsync(current);
                                 }

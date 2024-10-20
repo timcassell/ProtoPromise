@@ -130,11 +130,6 @@ namespace Proto.Promises.CompilerServices
                 _ref.OnCompleted(continuation, _continuationOptions.GetContinuationContext(), _promise._id);
                 return;
             }
-            if (_continuationOptions.GetShouldContinueImmediately())
-            {
-                continuation();
-                return;
-            }
             Internal.ScheduleContextCallback(_continuationOptions.GetContinuationContext(), continuation,
                 obj => obj.UnsafeAs<Action>().Invoke(),
                 obj => obj.UnsafeAs<Action>().Invoke()
@@ -231,11 +226,6 @@ namespace Proto.Promises.CompilerServices
                 _ref.OnCompleted(continuation, _continuationOptions.GetContinuationContext(), _promise._id);
                 return;
             }
-            if (_continuationOptions.GetShouldContinueImmediately())
-            {
-                continuation();
-                return;
-            }
             Internal.ScheduleContextCallback(_continuationOptions.GetContinuationContext(), continuation,
                 obj => obj.UnsafeAs<Action>().Invoke(),
                 obj => obj.UnsafeAs<Action>().Invoke()
@@ -324,11 +314,6 @@ namespace Proto.Promises.CompilerServices
                 _ref.OnCompleted(continuation, _continuationOptions.GetContinuationContext(), _promise._id);
                 return;
             }
-            if (_continuationOptions.GetShouldContinueImmediately())
-            {
-                continuation();
-                return;
-            }
             Internal.ScheduleContextCallback(_continuationOptions.GetContinuationContext(), continuation,
                 obj => obj.UnsafeAs<Action>().Invoke(),
                 obj => obj.UnsafeAs<Action>().Invoke()
@@ -415,11 +400,6 @@ namespace Proto.Promises.CompilerServices
             if (_ref != null)
             {
                 _ref.OnCompleted(continuation, _continuationOptions.GetContinuationContext(), _promise._id);
-                return;
-            }
-            if (_continuationOptions.GetShouldContinueImmediately())
-            {
-                continuation();
                 return;
             }
             Internal.ScheduleContextCallback(_continuationOptions.GetContinuationContext(), continuation,

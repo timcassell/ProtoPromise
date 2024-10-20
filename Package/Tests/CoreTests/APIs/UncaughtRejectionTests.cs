@@ -246,7 +246,7 @@ namespace ProtoPromiseTests.APIs
                     new System.Func<Promise, CancelationToken, Promise>[]
                     {
                         (promise, token) => promise.WaitAsync(token),
-                        (promise, token) => promise.WaitAsync(SynchronizationOption.Foreground, cancelationToken: token)
+                        (promise, token) => promise.ConfigureContinuation(ContinuationOptions.Foreground).WaitAsync(token)
                     }
                 }
                 .SelectMany(x => x);
@@ -313,7 +313,7 @@ namespace ProtoPromiseTests.APIs
                     new System.Func<Promise<int>, CancelationToken, Promise>[]
                     {
                         (promise, token) => promise.WaitAsync(token),
-                        (promise, token) => promise.WaitAsync(SynchronizationOption.Foreground, cancelationToken: token)
+                        (promise, token) => promise.ConfigureContinuation(ContinuationOptions.Foreground).WaitAsync(token)
                     }
                 }
                 .SelectMany(x => x);

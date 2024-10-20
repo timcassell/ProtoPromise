@@ -13,7 +13,7 @@ namespace Proto.Promises.CompilerServices
     public readonly struct ConfiguredAsyncEnumerable<T>
     {
         internal readonly AsyncEnumerable<T> _enumerable;
-        internal readonly CancelationToken _cancelationToken;
+        private readonly CancelationToken _cancelationToken;
         private readonly ContinuationOptions _continuationOptions;
 
         /// <summary>
@@ -82,7 +82,7 @@ namespace Proto.Promises.CompilerServices
         public readonly struct Enumerator
         {
             internal readonly AsyncEnumerator<T> _enumerator;
-            internal readonly ContinuationOptions _continuationOptions;
+            private readonly ContinuationOptions _continuationOptions;
 
             /// <summary>
             /// Gets the <see cref="ContinuationOptions"/> that this was configured with.

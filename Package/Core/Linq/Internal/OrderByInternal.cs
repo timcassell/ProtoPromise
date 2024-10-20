@@ -394,7 +394,7 @@ namespace Proto.Promises
                             
                             for (var next = _next; next != null; next = next._next)
                             {
-                                await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements, _configuredSource._continuationOptions);
+                                await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements, _configuredSource.ContinuationOptions);
                             }
 
                             using (var indices = new TempCollectionBuilder<int>(elements._count, elements._count))
@@ -656,7 +656,7 @@ namespace Proto.Promises
                                     ComputeKeys(elements.ReadOnlySpan, keys);
                                     for (var next = _next; next != null; next = next._next)
                                     {
-                                        await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements, _configuredSource._continuationOptions);
+                                        await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements, _configuredSource.ContinuationOptions);
                                     }
                                     indices.Span.Sort(new IndexComparer<TKey, TComparer>(this, keys._items, _comparer));
                                 }
@@ -874,11 +874,11 @@ namespace Proto.Promises
                                 {
                                     for (int i = 0; i < keys._count; ++i)
                                     {
-                                        keys._items[i] = await _keySelector.Invoke(elements._items[i]).ConfigureAwait(_configuredSource._continuationOptions);
+                                        keys._items[i] = await _keySelector.Invoke(elements._items[i]).ConfigureAwait(_configuredSource.ContinuationOptions);
                                     }
                                     for (var next = _next; next != null; next = next._next)
                                     {
-                                        await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements, _configuredSource._continuationOptions);
+                                        await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements, _configuredSource.ContinuationOptions);
                                     }
                                     indices.Span.Sort(new IndexComparer<TKey, TComparer>(this, keys._items, _comparer));
                                 }
