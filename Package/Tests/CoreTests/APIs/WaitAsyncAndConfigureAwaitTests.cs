@@ -818,7 +818,7 @@ namespace ProtoPromiseTests.APIs
             var threadHelper = new ThreadHelper();
 
             var continuationOptions = waitType == SynchronizationType.Foreground ? ContinuationOptions.Foreground
-                : waitType == SynchronizationType.Background ? ContinuationOptions.Background
+                : waitType == TestHelper.backgroundType ? ContinuationOptions.Background
                 : waitType == SynchronizationType.Explicit ? new ContinuationOptions(TestHelper._foregroundContext, false)
                 : ContinuationOptions.Synchronous;
 
@@ -871,7 +871,7 @@ namespace ProtoPromiseTests.APIs
             var threadHelper = new ThreadHelper();
 
             var continuationOptions = waitType == SynchronizationType.Foreground ? ContinuationOptions.Foreground
-                : waitType == SynchronizationType.Background ? ContinuationOptions.Background
+                : waitType == TestHelper.backgroundType ? ContinuationOptions.Background
                 : waitType == SynchronizationType.Explicit ? new ContinuationOptions(TestHelper._foregroundContext, false)
                 : ContinuationOptions.Synchronous;
 
@@ -924,7 +924,7 @@ namespace ProtoPromiseTests.APIs
             var threadHelper = new ThreadHelper();
 
             var continuationOptions = waitType == SynchronizationType.Foreground ? ContinuationOptions.Foreground
-                : waitType == SynchronizationType.Background ? ContinuationOptions.Background
+                : waitType == TestHelper.backgroundType ? ContinuationOptions.Background
                 : waitType == SynchronizationType.Explicit ? new ContinuationOptions(TestHelper._foregroundContext, false)
                 : ContinuationOptions.Synchronous;
 
@@ -979,7 +979,7 @@ namespace ProtoPromiseTests.APIs
             var threadHelper = new ThreadHelper();
 
             var continuationOptions = waitType == SynchronizationType.Foreground ? ContinuationOptions.Foreground
-                : waitType == SynchronizationType.Background ? ContinuationOptions.Background
+                : waitType == TestHelper.backgroundType ? ContinuationOptions.Background
                 : waitType == SynchronizationType.Explicit ? new ContinuationOptions(TestHelper._foregroundContext, false)
                 : ContinuationOptions.Synchronous;
 
@@ -1035,7 +1035,9 @@ namespace ProtoPromiseTests.APIs
         {
             var foregroundThread = Thread.CurrentThread;
             var continuationOptions = waitType == ConfigureAwaitType.Foreground ? new ContinuationOptions(SynchronizationOption.Foreground, forceAsync)
+#if !UNITY_WEBGL
                 : waitType == ConfigureAwaitType.Background ? new ContinuationOptions(SynchronizationOption.Background, forceAsync)
+#endif
                 : new ContinuationOptions(TestHelper._foregroundContext, forceAsync);
 
             // Lock helps us assert that the callback is not invoked synchronously if forceAsync is true.
@@ -1090,7 +1092,9 @@ namespace ProtoPromiseTests.APIs
         {
             var foregroundThread = Thread.CurrentThread;
             var continuationOptions = waitType == ConfigureAwaitType.Foreground ? new ContinuationOptions(SynchronizationOption.Foreground, forceAsync)
+#if !UNITY_WEBGL
                 : waitType == ConfigureAwaitType.Background ? new ContinuationOptions(SynchronizationOption.Background, forceAsync)
+#endif
                 : new ContinuationOptions(TestHelper._foregroundContext, forceAsync);
 
             // Lock helps us assert that the callback is not invoked synchronously if forceAsync is true.
@@ -1158,11 +1162,11 @@ namespace ProtoPromiseTests.APIs
                 : configureAwaitCancelationSource2.Token;
 
             var continuationOptions1 = firstWaitType == SynchronizationType.Foreground ? new ContinuationOptions(SynchronizationOption.Foreground, true)
-                : firstWaitType == SynchronizationType.Background ? new ContinuationOptions(SynchronizationOption.Background, true)
+                : firstWaitType == TestHelper.backgroundType ? new ContinuationOptions(SynchronizationOption.Background, true)
                 : firstWaitType == SynchronizationType.Explicit ? new ContinuationOptions(TestHelper._foregroundContext, true)
                 : ContinuationOptions.Synchronous;
             var continuationOptions2 = secondWaitType == SynchronizationType.Foreground ? new ContinuationOptions(SynchronizationOption.Foreground, false)
-                : secondWaitType == SynchronizationType.Background ? new ContinuationOptions(SynchronizationOption.Background, false)
+                : secondWaitType == TestHelper.backgroundType ? new ContinuationOptions(SynchronizationOption.Background, false)
                 : secondWaitType == SynchronizationType.Explicit ? new ContinuationOptions(TestHelper._foregroundContext, false)
                 : ContinuationOptions.Synchronous;
 
@@ -1278,11 +1282,11 @@ namespace ProtoPromiseTests.APIs
                 : configureAwaitCancelationSource2.Token;
 
             var continuationOptions1 = firstWaitType == SynchronizationType.Foreground ? new ContinuationOptions(SynchronizationOption.Foreground, true)
-                : firstWaitType == SynchronizationType.Background ? new ContinuationOptions(SynchronizationOption.Background, true)
+                : firstWaitType == TestHelper.backgroundType ? new ContinuationOptions(SynchronizationOption.Background, true)
                 : firstWaitType == SynchronizationType.Explicit ? new ContinuationOptions(TestHelper._foregroundContext, true)
                 : ContinuationOptions.Synchronous;
             var continuationOptions2 = secondWaitType == SynchronizationType.Foreground ? new ContinuationOptions(SynchronizationOption.Foreground, false)
-                : secondWaitType == SynchronizationType.Background ? new ContinuationOptions(SynchronizationOption.Background, false)
+                : secondWaitType == TestHelper.backgroundType ? new ContinuationOptions(SynchronizationOption.Background, false)
                 : secondWaitType == SynchronizationType.Explicit ? new ContinuationOptions(TestHelper._foregroundContext, false)
                 : ContinuationOptions.Synchronous;
 
@@ -1385,7 +1389,9 @@ namespace ProtoPromiseTests.APIs
         {
             var foregroundThread = Thread.CurrentThread;
             var continuationOptions = waitType == ConfigureAwaitType.Foreground ? new ContinuationOptions(SynchronizationOption.Foreground, forceAsync)
+#if !UNITY_WEBGL
                 : waitType == ConfigureAwaitType.Background ? new ContinuationOptions(SynchronizationOption.Background, forceAsync)
+#endif
                 : new ContinuationOptions(TestHelper._foregroundContext, forceAsync);
 
             // Lock helps us assert that the callback is not invoked synchronously if forceAsync is true.
@@ -1444,7 +1450,9 @@ namespace ProtoPromiseTests.APIs
         {
             var foregroundThread = Thread.CurrentThread;
             var continuationOptions = waitType == ConfigureAwaitType.Foreground ? new ContinuationOptions(SynchronizationOption.Foreground, forceAsync)
+#if !UNITY_WEBGL
                 : waitType == ConfigureAwaitType.Background ? new ContinuationOptions(SynchronizationOption.Background, forceAsync)
+#endif
                 : new ContinuationOptions(TestHelper._foregroundContext, forceAsync);
 
             // Lock helps us assert that the callback is not invoked synchronously if forceAsync is true.

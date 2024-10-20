@@ -68,7 +68,7 @@ namespace ProtoPromiseTests
     // These help test all Then/Catch/ContinueWith methods at once.
     public static class TestHelper
     {
-        public const SynchronizationType backgroundType = (SynchronizationType) 2;
+        public const SynchronizationType backgroundType = (SynchronizationType) SynchronizationOption.Background;
 
         private static Thread _foregroundContextThread;
         public static PromiseSynchronizationContext _foregroundContext;
