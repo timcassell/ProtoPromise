@@ -10,6 +10,8 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Proto.Promises.CompilerServices;
 
+#pragma warning disable IDE0090 // Use 'new(...)'
+
 namespace Proto.Promises
 {
     partial struct Promise
@@ -136,11 +138,7 @@ namespace Proto.Promises
             public bool IsCompleted
             {
                 [MethodImpl(Internal.InlineOption)]
-                get
-                {
-                    var _ref = _promise._ref;
-                    return _ref == null || _ref.GetIsCompleted(_promise._id);
-                }
+                get => _promise._ref?.GetIsCompleted(_promise._id) != false;
             }
 
             /// <summary>Ends the await on the completed <see cref="Promise"/>.</summary>
@@ -227,11 +225,7 @@ namespace Proto.Promises
             public bool IsCompleted
             {
                 [MethodImpl(Internal.InlineOption)]
-                get
-                {
-                    var _ref = _promise._ref;
-                    return _ref == null || _ref.GetIsCompleted(_promise._id);
-                }
+                get => _promise._ref?.GetIsCompleted(_promise._id) != false;
             }
 
             /// <summary>Ends the await on the completed <see cref="Promise{T}"/>.</summary>
@@ -324,11 +318,7 @@ namespace Proto.Promises
             public bool IsCompleted
             {
                 [MethodImpl(Internal.InlineOption)]
-                get
-                {
-                    var _ref = _promise._ref;
-                    return _ref == null || _ref.GetIsCompleted(_promise._id);
-                }
+                get => _promise._ref?.GetIsCompleted(_promise._id) != false;
             }
 
             /// <summary>Ends the await on the completed <see cref="Promise"/>.</summary>
@@ -373,6 +363,15 @@ namespace Proto.Promises
             void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
                 => asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
 
+            /// <summary>
+            /// Configure the await.
+            /// Returns a <see cref="ConfiguredPromiseNoThrowAwaiterVoid"/> that configures the continuation behavior of the await according to the provided <paramref name="continuationOptions"/>.
+            /// </summary>
+            /// <param name="continuationOptions">The options used to configure the execution behavior of the async continuation.</param>
+            [MethodImpl(Internal.InlineOption)]
+            public ConfiguredPromiseNoThrowAwaiterVoid ConfigureAwait(ContinuationOptions continuationOptions)
+                => new ConfiguredPromiseNoThrowAwaiterVoid(_promise, continuationOptions);
+
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
 #if PROMISE_DEBUG
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
@@ -413,11 +412,7 @@ namespace Proto.Promises
             public bool IsCompleted
             {
                 [MethodImpl(Internal.InlineOption)]
-                get
-                {
-                    var _ref = _promise._ref;
-                    return _ref == null || _ref.GetIsCompleted(_promise._id);
-                }
+                get => _promise._ref?.GetIsCompleted(_promise._id) != false;
             }
 
             /// <summary>Ends the await on the completed <see cref="Promise{T}"/>.</summary>
@@ -461,6 +456,15 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
                 => asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
+
+            /// <summary>
+            /// Configure the await.
+            /// Returns a <see cref="ConfiguredPromiseNoThrowAwaiter{T}"/> that configures the continuation behavior of the await according to the provided <paramref name="continuationOptions"/>.
+            /// </summary>
+            /// <param name="continuationOptions">The options used to configure the execution behavior of the async continuation.</param>
+            [MethodImpl(Internal.InlineOption)]
+            public ConfiguredPromiseNoThrowAwaiter<T> ConfigureAwait(ContinuationOptions continuationOptions)
+                => new ConfiguredPromiseNoThrowAwaiter<T>(_promise, continuationOptions);
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
 #if PROMISE_DEBUG

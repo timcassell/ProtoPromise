@@ -237,19 +237,11 @@ namespace ProtoPromiseTests.APIs
 
                 var cancelationSource = CancelationSource.New();
 
-                var actions = new System.Func<Promise, CancelationToken, Promise>[][]
-                {
-                    TestHelper.ResolveActionsVoidWithCancelation(),
-                    TestHelper.ThenActionsVoidWithCancelation(onRejected: () => { }),
-                    TestHelper.CatchActionsVoidWithCancelation(onRejected: () => { }),
-                    TestHelper.ContinueWithActionsVoidWithCancelation(() => { }),
-                    new System.Func<Promise, CancelationToken, Promise>[]
-                    {
-                        (promise, token) => promise.WaitAsync(token),
-                        (promise, token) => promise.WaitAsync(SynchronizationOption.Foreground, cancelationToken: token)
-                    }
-                }
-                .SelectMany(x => x);
+                var actions = TestHelper.ResolveActionsVoidWithCancelation()
+                    .Concat(TestHelper.ThenActionsVoidWithCancelation(onRejected: () => { }))
+                    .Concat(TestHelper.CatchActionsVoidWithCancelation(onRejected: () => { }))
+                    .Concat(TestHelper.ContinueWithActionsVoidWithCancelation(() => { }))
+                    .Append((promise, token) => promise.WaitAsync(token));
 
                 var deferred = Promise.NewDeferred();
                 using (var promiseRetainer = deferred.Promise.GetRetainer())
@@ -304,19 +296,11 @@ namespace ProtoPromiseTests.APIs
 
                 var cancelationSource = CancelationSource.New();
 
-                var actions = new System.Func<Promise<int>, CancelationToken, Promise>[][]
-                {
-                    TestHelper.ResolveActionsWithCancelation<int>(),
-                    TestHelper.ThenActionsWithCancelation<int>(onRejected: () => { }),
-                    TestHelper.CatchActionsWithCancelation<int>(onRejected: () => { }),
-                    TestHelper.ContinueWithActionsWithCancelation<int>(() => { }),
-                    new System.Func<Promise<int>, CancelationToken, Promise>[]
-                    {
-                        (promise, token) => promise.WaitAsync(token),
-                        (promise, token) => promise.WaitAsync(SynchronizationOption.Foreground, cancelationToken: token)
-                    }
-                }
-                .SelectMany(x => x);
+                var actions = TestHelper.ResolveActionsWithCancelation<int>()
+                    .Concat(TestHelper.ThenActionsWithCancelation<int>(onRejected: () => { }))
+                    .Concat(TestHelper.CatchActionsWithCancelation<int>(onRejected: () => { }))
+                    .Concat(TestHelper.ContinueWithActionsWithCancelation<int>(() => { }))
+                    .Append((promise, token) => promise.WaitAsync(token));
 
                 var deferred = Promise.NewDeferred<int>();
                 using (var promiseRetainer = deferred.Promise.GetRetainer())

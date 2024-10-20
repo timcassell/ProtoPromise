@@ -1,24 +1,5 @@
 ﻿namespace Proto.Promises
 {
-    /// <summary>
-    /// How the next continuation should be scheduled.
-    /// </summary>
-    public enum SynchronizationOption : byte
-    {
-        /// <summary>
-        /// Schedule the next continuation to execute synchronously.
-        /// </summary>
-        Synchronous,
-        /// <summary>
-        /// Schedule the next continuation to execute on the <see cref="Promise.Config.ForegroundContext"/>.
-        /// </summary>
-        Foreground,
-        /// <summary>
-        /// Schedule the next continuation to execute on the <see cref="Promise.Config.BackgroundContext"/>.
-        /// </summary>
-        Background
-    }
-
     partial struct Promise
     {
         /// <summary>

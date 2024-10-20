@@ -32,6 +32,8 @@ namespace Proto.Promises
 
         partial class PromiseRefBase
         {
+            internal virtual void ContinueAsyncFunction() => throw new System.InvalidOperationException();
+
             [MethodImpl(InlineOption)]
             internal void HookupAwaiter(PromiseRefBase awaiter, short promiseId)
             {
@@ -271,6 +273,13 @@ namespace Proto.Promises
                     this.SetPrevious(null);
                     _continuer.MoveNext.Invoke();
                 }
+
+                internal override void ContinueAsyncFunction()
+                {
+                    ThrowIfInPool(this);
+                    this.SetPrevious(null);
+                    _continuer.MoveNext.Invoke();
+                }
             } // class AsyncPromiseRef
 
 #else // !OPTIMIZED_ASYNC_MODE
@@ -287,7 +296,7 @@ namespace Proto.Promises
 
                     private AsyncPromiseRefMachine()
                     {
-                        _moveNext = ContinueMethod;
+                        _moveNext = Continue;
                     }
 
                     [MethodImpl(InlineOption)]
@@ -318,7 +327,7 @@ namespace Proto.Promises
                     }
 
                     [MethodImpl(InlineOption)]
-                    private void ContinueMethod()
+                    private void Continue()
                     {
                         if (_executionContext != null)
                         {
@@ -334,7 +343,13 @@ namespace Proto.Promises
                     {
                         ThrowIfInPool(this);
                         handler.SetCompletionState(state);
-                        ContinueMethod();
+                        Continue();
+                    }
+
+                    internal override void ContinueAsyncFunction()
+                    {
+                        ThrowIfInPool(this);
+                        Continue();
                     }
                 }
 

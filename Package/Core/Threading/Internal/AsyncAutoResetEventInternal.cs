@@ -121,7 +121,7 @@ namespace Proto.Promises
                         return Promise.Resolved();
                     }
 
-                    promise = Internal.AsyncAutoResetEventPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncAutoResetEventPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     _waiterQueue.Enqueue(promise);
                 }
                 _locker.Exit();
@@ -146,7 +146,7 @@ namespace Proto.Promises
                         return Promise.Resolved(isSet);
                     }
 
-                    promise = Internal.AsyncAutoResetEventPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncAutoResetEventPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _isSet = false;

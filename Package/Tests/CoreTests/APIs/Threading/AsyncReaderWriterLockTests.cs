@@ -2543,11 +2543,11 @@ namespace ProtoPromiseTests.APIs.Threading
                 TakeNextUpgradeablePlace.InsideWriterLock,
                 TakeNextUpgradeablePlace.AfterDowngrade
             };
-            SynchronizationOption[] runnerOptions = new[]
+            ContinuationOptions[] runnerOptions = new[]
             {
-                SynchronizationOption.Synchronous,
+                ContinuationOptions.Synchronous,
 #if !UNITY_WEBGL
-                SynchronizationOption.Background
+                ContinuationOptions.Background
 #endif
             };
             foreach (var upgradeablePlace in upgradeablePlaces)
@@ -2568,7 +2568,7 @@ namespace ProtoPromiseTests.APIs.Threading
             ReaderWriterLockType second,
             ReaderWriterLockType third,
             TakeNextUpgradeablePlace upgradeablePlace,
-            SynchronizationOption runnerOption)
+            ContinuationOptions runnerOption)
         {
             // A lock that does not balance the types of locks acquired will fail this test (reader-preferred or writer-preferred),
             // causing the favored lock type to loop forever, never allowing the other lock types access.
@@ -2592,14 +2592,14 @@ namespace ProtoPromiseTests.APIs.Threading
                 .GetRetainer();
 
             var readerRunner = readerStartDeferred.Promise
-                .WaitAsync(runnerOption)
+                .ConfigureContinuation(runnerOption)
                 .Then(async () =>
                 {
                     // We take the lock first, then always take another lock before releasing the current.
                     var lockPromise = rwl.ReaderLockAsync();
 
                     readerReadyDeferred.Resolve();
-                    await allReadyPromiseRetainer.WaitAsync().WaitAsync(runnerOption); // Wait for the other runners to start.
+                    await allReadyPromiseRetainer.WaitAsync().ConfigureAwait(runnerOption); // Wait for the other runners to start.
 
                     while (readerCount < expectedCounts || writerCount < expectedCounts || upgradeableReaderCount < expectedCounts || upgradedWriterCount < expectedCounts)
                     {
@@ -2614,14 +2614,14 @@ namespace ProtoPromiseTests.APIs.Threading
                 });
 
             var writerRunner = writerStartDeferred.Promise
-                .WaitAsync(runnerOption)
+                .ConfigureContinuation(runnerOption)
                 .Then(async () =>
                 {
                     // We take the lock first, then always take another lock before releasing the current.
                     var lockPromise = rwl.WriterLockAsync();
 
                     writerReadyDeferred.Resolve();
-                    await allReadyPromiseRetainer.WaitAsync().WaitAsync(runnerOption); // Wait for the other runners to start.
+                    await allReadyPromiseRetainer.WaitAsync().ConfigureAwait(runnerOption); // Wait for the other runners to start.
 
                     while (readerCount < expectedCounts || writerCount < expectedCounts || upgradeableReaderCount < expectedCounts || upgradedWriterCount < expectedCounts)
                     {
@@ -2636,14 +2636,14 @@ namespace ProtoPromiseTests.APIs.Threading
                 });
 
             var upgradeableReaderRunner = upgradeableReaderStartDeferred.Promise
-                .WaitAsync(runnerOption)
+                .ConfigureContinuation(runnerOption)
                 .Then(async () =>
                 {
                     // We take the lock first, then always take another lock before releasing the current.
                     var lockPromise = rwl.UpgradeableReaderLockAsync();
 
                     upgradeableReaderReadyDeferred.Resolve();
-                    await allReadyPromiseRetainer.WaitAsync().WaitAsync(runnerOption); // Wait for the other runners to start.
+                    await allReadyPromiseRetainer.WaitAsync().ConfigureAwait(runnerOption); // Wait for the other runners to start.
 
                     while (readerCount < expectedCounts || writerCount < expectedCounts || upgradeableReaderCount < expectedCounts || upgradedWriterCount < expectedCounts)
                     {

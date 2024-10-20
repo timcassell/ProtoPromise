@@ -32,7 +32,8 @@ namespace ProtoPromiseTests
 #if !UNITY_WEBGL // WebGL doesn't support threads.
         Background = 2,
 #endif
-        Explicit = 3
+        // CapturedContext = 3,
+        Explicit = 4
     }
 
     public enum ConfigureAwaitType
@@ -43,7 +44,8 @@ namespace ProtoPromiseTests
 #if !UNITY_WEBGL // WebGL doesn't support threads.
         Background = 2,
 #endif
-        Explicit = 3
+        // CapturedContext = 3,
+        Explicit = 4
     }
 
     public enum AdoptLocation
@@ -66,7 +68,7 @@ namespace ProtoPromiseTests
     // These help test all Then/Catch/ContinueWith methods at once.
     public static class TestHelper
     {
-        public const SynchronizationType backgroundType = (SynchronizationType) 2;
+        public const SynchronizationType backgroundType = (SynchronizationType) SynchronizationOption.Background;
 
         private static Thread _foregroundContextThread;
         public static PromiseSynchronizationContext _foregroundContext;
@@ -472,9 +474,9 @@ namespace ProtoPromiseTests
             }
             if (configureType == ConfigureAwaitType.Explicit)
             {
-                return promise.WaitAsync(_foregroundContext, forceAsync, cancelationToken);
+                return promise.WaitAsync(cancelationToken).ConfigureContinuation(new ContinuationOptions(_foregroundContext, forceAsync));
             }
-            return promise.WaitAsync((SynchronizationOption) configureType, forceAsync, cancelationToken);
+            return promise.WaitAsync(cancelationToken).ConfigureContinuation(new ContinuationOptions((SynchronizationOption) configureType, forceAsync));
         }
 
         public static Promise<T> ConfigureAwait<T>(this Promise<T> promise, ConfigureAwaitType configureType, bool forceAsync = false, CancelationToken cancelationToken = default(CancelationToken))
@@ -485,9 +487,9 @@ namespace ProtoPromiseTests
             }
             if (configureType == ConfigureAwaitType.Explicit)
             {
-                return promise.WaitAsync(_foregroundContext, forceAsync, cancelationToken);
+                return promise.WaitAsync(cancelationToken).ConfigureContinuation(new ContinuationOptions(_foregroundContext, forceAsync));
             }
-            return promise.WaitAsync((SynchronizationOption) configureType, forceAsync, cancelationToken);
+            return promise.WaitAsync(cancelationToken).ConfigureContinuation(new ContinuationOptions((SynchronizationOption) configureType, forceAsync));
         }
 
         public static void WaitWithTimeout(this Promise promise, TimeSpan timeout)

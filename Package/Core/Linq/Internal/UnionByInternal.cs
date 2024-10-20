@@ -220,10 +220,9 @@ namespace Proto.Promises
                                     await writer.YieldAsync(element);
                                 }
                             }
-                            while (await _secondAsyncEnumerator.MoveNextAsync())
+                            // We need to make sure we're on the configured context before invoking the key selector and comparer.
+                            while (await _secondAsyncEnumerator.MoveNextAsync().ConfigureAwait(_firstAsyncEnumerator.ContinuationOptions))
                             {
-                                // We need to make sure we're on the configured context before invoking the key selector.
-                                await _firstAsyncEnumerator.SwitchToContext();
                                 var element = _secondAsyncEnumerator.Current;
                                 if (set.Add(_keySelector.Invoke(element)))
                                 {
@@ -301,22 +300,19 @@ namespace Proto.Promises
                             while (await _firstAsyncEnumerator.MoveNextAsync())
                             {
                                 var element = _firstAsyncEnumerator.Current;
-                                var key = await _keySelector.Invoke(element);
                                 // In case the key selector changed context, we need to make sure we're on the configured context before invoking the comparer.
-                                await _firstAsyncEnumerator.SwitchToContext();
+                                var key = await _keySelector.Invoke(element).ConfigureAwait(_firstAsyncEnumerator.ContinuationOptions);
                                 if (set.Add(key))
                                 {
                                     await writer.YieldAsync(element);
                                 }
                             }
-                            while (await _secondAsyncEnumerator.MoveNextAsync())
+                            // We need to make sure we're on the configured context before invoking the key selector.
+                            while (await _secondAsyncEnumerator.MoveNextAsync().ConfigureAwait(_firstAsyncEnumerator.ContinuationOptions))
                             {
-                                // We need to make sure we're on the configured context before invoking the key selector.
-                                await _firstAsyncEnumerator.SwitchToContext();
                                 var element = _secondAsyncEnumerator.Current;
-                                var key = await _keySelector.Invoke(element);
                                 // In case the key selector changed context, we need to make sure we're on the configured context before invoking the comparer.
-                                await _firstAsyncEnumerator.SwitchToContext();
+                                var key = await _keySelector.Invoke(element).ConfigureAwait(_firstAsyncEnumerator.ContinuationOptions);
                                 if (set.Add(key))
                                 {
                                     await writer.YieldAsync(element);
