@@ -1910,18 +1910,6 @@ namespace Proto.Promises
 #endif
             internal partial class PromisePassThrough : HandleablePromiseBase
             {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                ~PromisePassThrough()
-                {
-                    if (!_disposed)
-                    {
-                        // For debugging. This should never happen.
-                        string message = $"A {GetType()} was garbage collected without it being released. _index: {_index}, _owner: {_owner}, _next: {_next}";
-                        ReportRejection(new UnreleasedObjectException(message), _owner);
-                    }
-                }
-#endif
-
                 protected PromisePassThrough() { }
 
                 [MethodImpl(InlineOption)]
@@ -1941,7 +1929,6 @@ namespace Proto.Promises
                     passThrough._index = index;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     passThrough._owner = owner;
-                    passThrough._disposed = false;
 #endif
                     return passThrough;
                 }
@@ -1959,7 +1946,6 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     _owner = null;
-                    _disposed = true;
 #endif
                     ObjectPool.MaybeRepool(this);
                 }

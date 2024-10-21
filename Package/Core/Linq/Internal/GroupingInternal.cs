@@ -26,18 +26,6 @@ namespace Proto.Promises
             internal TempCollectionBuilder<TElement> _elements;
             internal TKey _key;
             internal int _hashCode;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            private bool _disposed;
-
-            ~Grouping()
-            {
-                if (!_disposed)
-                {
-                    // For debugging. This should never happen.
-                    ReportRejection(new UnreleasedObjectException("A Grouping was garbage collected without it being disposed."), null);
-                }
-            }
-#endif
 
             private Grouping() { }
 
@@ -59,7 +47,6 @@ namespace Proto.Promises
                 grouping._hashNext = hashNext;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 // ToLookupAsync does not dispose. GroupByAsync does.
-                grouping._disposed = !willBeDisposed;
                 if (!willBeDisposed)
                 {
                     Discard(grouping._elements._disposedChecker);
@@ -106,9 +93,6 @@ namespace Proto.Promises
 
             public void Dispose()
             {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                _disposed = true;
-#endif
                 _hashNext = null;
                 _nextGrouping = null;
                 _elements.Dispose();

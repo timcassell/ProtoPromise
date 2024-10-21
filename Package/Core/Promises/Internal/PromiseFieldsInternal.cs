@@ -353,7 +353,6 @@ namespace Proto.Promises
                 protected int _index;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 protected PromiseRefBase _owner;
-                protected bool _disposed;
 #endif
             }
 
