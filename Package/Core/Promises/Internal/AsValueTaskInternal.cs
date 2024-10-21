@@ -29,7 +29,7 @@ namespace Proto.Promises
                     return new ValueTask();
                 }
 
-                var source = PooledValueTaskSource<VoidResult>.GetOrCreate();
+                var source = PooledValueTaskSource<VoidResult>.GetOrCreate(this);
                 HookupNewWaiter(id, source);
                 return source.TaskVoid;
             }
@@ -45,7 +45,7 @@ namespace Proto.Promises
                         return new ValueTask<TResult>(result);
                     }
 
-                    var source = PooledValueTaskSource<TResult>.GetOrCreate();
+                    var source = PooledValueTaskSource<TResult>.GetOrCreate(this);
                     HookupNewWaiter(id, source);
                     return source.Task;
                 }
@@ -56,7 +56,8 @@ namespace Proto.Promises
 #endif
             private sealed class PooledValueTaskSource<TResult> : HandleablePromiseBase, IValueTaskSource, IValueTaskSource<TResult>
             {
-                ManualResetValueTaskSourceCore<TResult> _core;
+                private ManualResetValueTaskSourceCore<TResult> _core;
+                private ValueTaskSourceOnCompletedFlags _flagsMask;
 
                 internal ValueTask TaskVoid
                 {
@@ -73,12 +74,24 @@ namespace Proto.Promises
                 private PooledValueTaskSource() { }
 
                 [MethodImpl(InlineOption)]
-                internal static PooledValueTaskSource<TResult> GetOrCreate()
+                private static PooledValueTaskSource<TResult> GetOrCreate()
                 {
                     var obj = ObjectPool.TryTakeOrInvalid<PooledValueTaskSource<TResult>>();
                     return obj == InvalidAwaitSentinel.s_instance
                         ? new PooledValueTaskSource<TResult>()
                         : obj.UnsafeAs<PooledValueTaskSource<TResult>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static PooledValueTaskSource<TResult> GetOrCreate(PromiseRefBase promise)
+                {
+                    var source = GetOrCreate();
+                    // If the promise we're converting to a ValueTask is already configured to execute on a certain context,
+                    // we ignore the context scheduling of the ValueTask continuation and continue synchronously.
+                    source._flagsMask = promise is IConfiguredPromise
+                        ? ~ValueTaskSourceOnCompletedFlags.UseSchedulingContext
+                        : ~ValueTaskSourceOnCompletedFlags.None;
+                    return source;
                 }
 
                 [MethodImpl(InlineOption)]
@@ -134,7 +147,7 @@ namespace Proto.Promises
                     => _core.GetStatus(token);
 
                 public void OnCompleted(Action<object> continuation, object state, short token, ValueTaskSourceOnCompletedFlags flags)
-                    => _core.OnCompleted(continuation, state, token, flags);
+                    => _core.OnCompleted(continuation, state, token, flags & _flagsMask);
             }
         }
     } // class Internal
