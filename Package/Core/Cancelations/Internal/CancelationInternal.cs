@@ -658,20 +658,6 @@ namespace Proto.Promises
 
                 private CallbackNodeImpl() { }
 
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                private bool _disposed;
-
-                ~CallbackNodeImpl()
-                {
-                    if (!_disposed)
-                    {
-                        // For debugging. This should never happen.
-                        string message = $"A {GetType()} was garbage collected without it being disposed.";
-                        ReportRejection(new UnreleasedObjectException(message), this);
-                    }
-                }
-#endif
-
                 [MethodImpl(InlineOption)]
                 private static CallbackNodeImpl<TCancelable> GetOrCreate()
                 {
@@ -687,10 +673,6 @@ namespace Proto.Promises
                     var node = GetOrCreate();
                     node._parentId = parent._smallFields._instanceId;
                     node._cancelable = cancelable;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    // If the CancelationRef was attached to a BCL token, it is possible this will not be disposed, so we won't check for it.
-                    node._disposed = parent._linkedToBclToken;
-#endif
                     SetCreatedStacktrace(node, 2);
                     return node;
                 }
@@ -719,9 +701,6 @@ namespace Proto.Promises
                         ++_nodeId;
                     }
                     _cancelable = default;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    _disposed = true;
-#endif
                     ObjectPool.MaybeRepool(this);
                 }
             } // class CallbackNodeImpl<TCancelable>
@@ -737,20 +716,6 @@ namespace Proto.Promises
                 private CancelationRef _parent;
 
                 private LinkedCancelationNode() { }
-
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                private bool _disposed;
-
-                ~LinkedCancelationNode()
-                {
-                    if (!_disposed)
-                    {
-                        // For debugging. This should never happen.
-                        string message = "A LinkedCancelationNode was garbage collected without it being disposed.";
-                        ReportRejection(new UnreleasedObjectException(message), _target);
-                    }
-                }
-#endif
 
                 [MethodImpl(InlineOption)]
                 private static LinkedCancelationNode GetOrCreate()
@@ -800,9 +765,6 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 private void Repool()
                 {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    _disposed = true;
-#endif
                     ObjectPool.MaybeRepool(this);
                 }
 
