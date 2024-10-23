@@ -253,7 +253,7 @@ namespace Proto.Promises
                         return Promise.Resolved(new Key(this, _currentKey, null));
                     }
 
-                    promise = Internal.PromiseRefBase.AsyncLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.PromiseRefBase.AsyncLockPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     _queue.Enqueue(promise);
                 }
                 _locker.Exit();
@@ -285,7 +285,7 @@ namespace Proto.Promises
                         return Promise.Resolved(new Key(this, _currentKey, null));
                     }
 
-                    promise = Internal.PromiseRefBase.AsyncLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.PromiseRefBase.AsyncLockPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _locker.Exit();
@@ -415,7 +415,7 @@ namespace Proto.Promises
                         return Promise.Resolved((false, default(Key)));
                     }
 
-                    promise = Internal.PromiseRefBase.AsyncLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.PromiseRefBase.AsyncLockPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _locker.Exit();
@@ -876,7 +876,7 @@ namespace Proto.Promises
                     copy.ValidateOwnerAndDisposedChecker();
                     lock (copy._disposedChecker)
                     {
-                        return copy._disposedChecker.TryWaitAsync(condVar, copy._key, default, Internal.CaptureContext());
+                        return copy._disposedChecker.TryWaitAsync(condVar, copy._key, default, ContinuationOptions.CaptureContext());
                     }
                 }
 
@@ -886,7 +886,7 @@ namespace Proto.Promises
                     copy.ValidateOwnerAndDisposedChecker();
                     lock (copy._disposedChecker)
                     {
-                        return copy._disposedChecker.TryWaitAsync(condVar, copy._key, cancelationToken, Internal.CaptureContext());
+                        return copy._disposedChecker.TryWaitAsync(condVar, copy._key, cancelationToken, ContinuationOptions.CaptureContext());
                     }
                 }
 
@@ -971,10 +971,10 @@ namespace Proto.Promises
                 }
 
                 internal Promise WaitAsync(AsyncConditionVariable condVar)
-                    => ValidateAndGetOwner().WaitAsyncImpl(condVar, _key, Internal.CaptureContext());
+                    => ValidateAndGetOwner().WaitAsyncImpl(condVar, _key, ContinuationOptions.CaptureContext());
 
                 internal Promise<bool> TryWaitAsync(AsyncConditionVariable condVar, CancelationToken cancelationToken)
-                    => ValidateAndGetOwner().TryWaitAsyncImpl(condVar, _key, cancelationToken, Internal.CaptureContext());
+                    => ValidateAndGetOwner().TryWaitAsyncImpl(condVar, _key, cancelationToken, ContinuationOptions.CaptureContext());
 
                 internal void Wait(AsyncConditionVariable condVar)
                     => ValidateAndGetOwner().WaitAsyncImpl(condVar, _key, null).Wait();

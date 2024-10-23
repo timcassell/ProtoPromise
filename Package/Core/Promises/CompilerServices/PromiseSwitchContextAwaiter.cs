@@ -42,7 +42,15 @@ namespace Proto.Promises.CompilerServices
         public bool IsCompleted
         {
             [MethodImpl(Internal.InlineOption)]
-            get => !_forceAsync & _context == Promise.Manager.ThreadStaticSynchronizationContext;
+            get
+            {
+                if (_forceAsync)
+                {
+                    return false;
+                }
+                var context = _context;
+                return context is null ? Thread.CurrentThread.IsThreadPoolThread : context == Promise.Manager.ThreadStaticSynchronizationContext;
+            }
         }
 
         /// <summary>Ends the await on the context.</summary>

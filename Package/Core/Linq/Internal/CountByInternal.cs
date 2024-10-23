@@ -418,9 +418,8 @@ namespace Proto.Promises
                         dict = new LookupSingleValue<TKey, int, TEqualityComparer>(_comparer);
                         do
                         {
-                            var key = await _keySelector.Invoke(_configuredAsyncEnumerator.Current);
                             // The async selector function could have switched context, make sure we're on the configured context before invoking the comparer.
-                            await _configuredAsyncEnumerator.SwitchToContext();
+                            var key = await _keySelector.Invoke(_configuredAsyncEnumerator.Current).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                             ++dict.GetOrCreateNode(key, out _)._value;
                         } while (await _configuredAsyncEnumerator.MoveNextAsync());
 

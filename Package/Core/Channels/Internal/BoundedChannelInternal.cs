@@ -266,7 +266,7 @@ namespace Proto.Promises
                             : Promise<ChannelReadResult<T>>.Rejected(closedReason);
                     }
 
-                    var promise = ChannelReadPromise<T>.GetOrCreate(this, CaptureContext());
+                    var promise = ChannelReadPromise<T>.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
@@ -330,7 +330,7 @@ namespace Proto.Promises
                     // The queue is at max capacity. Either drop an item, or wait for an item to be read, depending on the full mode.
                     if (_fullMode == BoundedChannelFullMode.Wait)
                     {
-                        var promise = ChannelWritePromise<T>.GetOrCreate(item, this, CaptureContext());
+                        var promise = ChannelWritePromise<T>.GetOrCreate(item, this, ContinuationOptions.CaptureContext());
                         if (promise.HookupAndGetIsCanceled(cancelationToken))
                         {
                             _smallFields._locker.Exit();
@@ -387,7 +387,7 @@ namespace Proto.Promises
                             : Promise<bool>.Rejected(closedReason);
                     }
 
-                    var promise = ChannelWaitToReadPromise.GetOrCreate(this, CaptureContext());
+                    var promise = ChannelWaitToReadPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
@@ -430,7 +430,7 @@ namespace Proto.Promises
                         return Promise.Resolved(true);
                     }
 
-                    var promise = ChannelWaitToWritePromise.GetOrCreate(this, CaptureContext());
+                    var promise = ChannelWaitToWritePromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();

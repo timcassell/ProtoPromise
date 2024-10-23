@@ -125,7 +125,7 @@ namespace Proto.Promises
                         _locker.Exit();
                         return Promise.Resolved();
                     }
-                    promise = Internal.AsyncCountdownEventPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncCountdownEventPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     _waiters.Enqueue(promise);
                 }
                 _locker.Exit();
@@ -150,7 +150,7 @@ namespace Proto.Promises
                         _locker.Exit();
                         return Promise.Resolved(true);
                     }
-                    promise = Internal.AsyncCountdownEventPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncCountdownEventPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _locker.Exit();

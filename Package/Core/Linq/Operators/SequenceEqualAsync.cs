@@ -92,7 +92,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return SequenceEqualAsyncCore(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(configuredFirst._cancelationToken), comparer);
+            return SequenceEqualAsyncCore(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(configuredFirst.CancelationToken), comparer);
         }
 
         private static async Promise<bool> SequenceEqualAsyncCore<TSource, TComparer>(ConfiguredAsyncEnumerable<TSource>.Enumerator first, AsyncEnumerator<TSource> second, TComparer comparer)
@@ -102,12 +102,11 @@ namespace Proto.Promises.Linq
             {
                 while (await first.MoveNextAsync())
                 {
-                    if (!await second.MoveNextAsync())
+                    // Switch to the configured context before invoking the comparer.
+                    if (!await second.MoveNextAsync().ConfigureAwait(first.ContinuationOptions))
                     {
                         return false;
                     }
-                    // Switch to the configured context before invoking the comparer.
-                    await first.SwitchToContext();
                     if (!comparer.Equals(first.Current, second.Current))
                     {
                         return false;

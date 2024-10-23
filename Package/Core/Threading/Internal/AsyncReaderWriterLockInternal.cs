@@ -659,7 +659,7 @@ namespace Proto.Promises
                     {
                         ++_readerWaitCount;
                     }
-                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     _readerQueue.Enqueue(promise);
                 }
                 _smallFields._locker.Exit();
@@ -705,7 +705,7 @@ namespace Proto.Promises
                     {
                         ++_readerWaitCount;
                     }
-                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
@@ -992,7 +992,7 @@ namespace Proto.Promises
                         return Promise.Resolved(new WriterKey(this, key, null));
                     }
 
-                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     _writerQueue.Enqueue(promise);
                 }
                 _smallFields._locker.Exit();
@@ -1028,7 +1028,7 @@ namespace Proto.Promises
                         return Promise.Resolved(new WriterKey(this, key, null));
                     }
 
-                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
@@ -1179,7 +1179,7 @@ namespace Proto.Promises
                     }
 
                     _smallFields._lockType = lockType | AsyncReaderWriterLockType.Writer;
-                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
@@ -1234,7 +1234,7 @@ namespace Proto.Promises
                     }
 
                     _smallFields._lockType = lockType | AsyncReaderWriterLockType.Writer;
-                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
@@ -1289,7 +1289,7 @@ namespace Proto.Promises
                         return Promise.Resolved(new UpgradeableReaderKey(this, key, null));
                     }
 
-                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     _upgradeQueue.Enqueue(promise);
                 }
                 _smallFields._locker.Exit();
@@ -1329,7 +1329,7 @@ namespace Proto.Promises
                         return Promise.Resolved(new UpgradeableReaderKey(this, key, null));
                     }
 
-                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
@@ -1495,7 +1495,7 @@ namespace Proto.Promises
                         return Promise.Resolved((false, default(UpgradeableReaderKey)));
                     }
 
-                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
@@ -1553,7 +1553,7 @@ namespace Proto.Promises
                         return false;
                     }
 
-                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
@@ -1596,7 +1596,7 @@ namespace Proto.Promises
                         return Promise.Resolved(new UpgradedWriterKey(this, key, null));
                     }
 
-                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     _upgradeWaiter = promise;
                 }
                 _smallFields._locker.Exit();
@@ -1638,7 +1638,7 @@ namespace Proto.Promises
                         return Promise.Resolved(new UpgradedWriterKey(this, key, null));
                     }
 
-                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
@@ -1814,7 +1814,7 @@ namespace Proto.Promises
 
                     DecrementReaderLockCount();
                     _smallFields._lockType |= AsyncReaderWriterLockType.Writer;
-                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
@@ -1876,7 +1876,7 @@ namespace Proto.Promises
 
                     DecrementReaderLockCount();
                     _smallFields._lockType |= AsyncReaderWriterLockType.Writer;
-                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();

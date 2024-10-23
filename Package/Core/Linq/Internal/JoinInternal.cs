@@ -267,10 +267,9 @@ namespace Proto.Promises
                     LookupImpl<TKey, TInner, TEqualityComparer> lookup = new LookupImpl<TKey, TInner, TEqualityComparer>(_comparer, true);
                     try
                     {
-                        while (await _innerAsyncEnumerator.MoveNextAsync())
+                        // The inner enumerator is not configured, so we have to configure the await manually so that the inner key selector and comparer will be invoked on the configured context.
+                        while (await _innerAsyncEnumerator.MoveNextAsync().ConfigureAwait(_configuredOuterAsyncEnumerator.ContinuationOptions))
                         {
-                            // The inner enumerator is not configured, so we have to switch to the context of the configured outer enumerator before invoking the inner key selector.
-                            await _configuredOuterAsyncEnumerator.SwitchToContext();
                             var item = _innerAsyncEnumerator.Current;
                             var key = _innerKeySelector.Invoke(item);
                             // Unlike GroupBy, Join ignores null keys.
@@ -375,12 +374,12 @@ namespace Proto.Promises
                     LookupImpl<TKey, TInner, TEqualityComparer> lookup = new LookupImpl<TKey, TInner, TEqualityComparer>(_comparer, true);
                     try
                     {
-                        while (await _innerAsyncEnumerator.MoveNextAsync())
+                        // The inner enumerator is not configured, so we have to configure the await manually so that the inner key selector will be invoked on the configured context.
+                        while (await _innerAsyncEnumerator.MoveNextAsync().ConfigureAwait(_configuredOuterAsyncEnumerator.ContinuationOptions))
                         {
-                            // The inner enumerator is not configured, so we have to switch to the context of the configured outer enumerator before invoking the inner key selector.
-                            await _configuredOuterAsyncEnumerator.SwitchToContext();
                             var item = _innerAsyncEnumerator.Current;
-                            var key = await _innerKeySelector.Invoke(item);
+                            // The key selector function could have switched context, make sure we're on the configured context before invoking the comparer.
+                            var key = await _innerKeySelector.Invoke(item).ConfigureAwait(_configuredOuterAsyncEnumerator.ContinuationOptions);
                             // Unlike GroupBy, Join ignores null keys.
                             if (key != null)
                             {
@@ -393,7 +392,9 @@ namespace Proto.Promises
                         while (await _configuredOuterAsyncEnumerator.MoveNextAsync())
                         {
                             var outer = _configuredOuterAsyncEnumerator.Current;
-                            var g = lookup.GetGrouping(await _outerKeySelector.Invoke(outer));
+                            // The key selector function could have switched context, make sure we're on the configured context before invoking the comparer.
+                            var key = await _outerKeySelector.Invoke(outer).ConfigureAwait(_configuredOuterAsyncEnumerator.ContinuationOptions);
+                            var g = lookup.GetGrouping(key);
                             if (g == null)
                             {
                                 continue;
