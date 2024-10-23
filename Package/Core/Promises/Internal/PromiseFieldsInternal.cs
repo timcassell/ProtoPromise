@@ -174,6 +174,7 @@ namespace Proto.Promises
             partial class DeferredNewPromise<TResult, TDelegate> : DeferredPromise<TResult>
                 where TDelegate : IDelegateNew<TResult>
             {
+                private int _disposeCounter;
                 private TDelegate _runner;
             }
 
