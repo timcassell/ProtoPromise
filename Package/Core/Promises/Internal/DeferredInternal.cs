@@ -148,8 +148,14 @@ namespace Proto.Promises
 
                 internal override void MaybeDispose()
                 {
-                    Dispose();
-                    ObjectPool.MaybeRepool(this);
+                    // It is theoretically possible for this to be completed from the callback, and then the callback throws,
+                    // causing this to attempt to complete again. The thread could be starved while another thread
+                    // re-uses this object from the pool. This interlocked operation protects against that.
+                    if (InterlockedAddWithUnsignedOverflowCheck(ref _disposeCounter, -1) == 0)
+                    {
+                        Dispose();
+                        ObjectPool.MaybeRepool(this);
+                    }
                 }
 
                 [MethodImpl(InlineOption)]
@@ -166,6 +172,7 @@ namespace Proto.Promises
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
+                    promise._disposeCounter = 2;
                     promise._runner = runner;
                     return promise;
                 }
@@ -253,6 +260,7 @@ namespace Proto.Promises
                         }
                     }
                     ClearCurrentInvoker();
+                    MaybeDispose();
                 }
             }
         } // class PromiseRef
