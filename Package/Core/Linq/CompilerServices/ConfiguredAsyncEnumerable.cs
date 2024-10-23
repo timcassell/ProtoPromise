@@ -1,4 +1,5 @@
 using Proto.Promises.Linq;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -12,7 +13,7 @@ namespace Proto.Promises.CompilerServices
     /// <typeparam name="T">The type of values to enumerate.</typeparam>
     public readonly struct ConfiguredAsyncEnumerable<T>
     {
-        internal readonly AsyncEnumerable<T> _enumerable;
+        private readonly AsyncEnumerable<T> _enumerable;
         private readonly CancelationToken _cancelationToken;
         private readonly ContinuationOptions _continuationOptions;
 
@@ -57,8 +58,9 @@ namespace Proto.Promises.CompilerServices
         /// <param name="synchronizationOption">On which context the continuations will be executed.</param>
         /// <param name="forceAsync">If true, forces the continuations to be invoked asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
         /// <returns>The configured enumerable.</returns>
+        [EditorBrowsable(EditorBrowsableState.Never)] // This is not deprecated, but hidden to encourage users to use the newer overload accepting ContinuationOptions.
         public ConfiguredAsyncEnumerable<T> ConfigureAwait(SynchronizationOption synchronizationOption, bool forceAsync = false)
-            => new ConfiguredAsyncEnumerable<T>(_enumerable, _cancelationToken, new ContinuationOptions(synchronizationOption, forceAsync));
+            => ConfigureAwait(new ContinuationOptions(synchronizationOption, forceAsync));
 
         /// <summary>
         /// Configures how awaits on the promises returned from an async iteration will be performed.
@@ -66,8 +68,17 @@ namespace Proto.Promises.CompilerServices
         /// <param name="synchronizationContext">The context on which the continuations will be executed. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="forceAsync">If true, forces the continuations to be invoked asynchronously.</param>
         /// <returns>The configured enumerable.</returns>
+        [EditorBrowsable(EditorBrowsableState.Never)] // This is not deprecated, but hidden to encourage users to use the newer overload accepting ContinuationOptions.
         public ConfiguredAsyncEnumerable<T> ConfigureAwait(SynchronizationContext synchronizationContext, bool forceAsync = false)
-            => new ConfiguredAsyncEnumerable<T>(_enumerable, _cancelationToken, new ContinuationOptions(synchronizationContext, forceAsync));
+            => ConfigureAwait(new ContinuationOptions(synchronizationContext, forceAsync));
+
+        /// <summary>
+        /// Configures how awaits on the promises returned from an async iteration will be performed.
+        /// </summary>
+        /// <param name="continuationOptions">The options used to configure the execution behavior of async continuations.</param>
+        /// <returns>The configured enumerable.</returns>
+        public ConfiguredAsyncEnumerable<T> ConfigureAwait(ContinuationOptions continuationOptions)
+            => new ConfiguredAsyncEnumerable<T>(_enumerable, _cancelationToken, continuationOptions);
 
         /// <summary>
         /// Returns an enumerator that iterates asynchronously through collections that enables cancelable iteration and configured awaits.
