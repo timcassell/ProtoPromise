@@ -38,7 +38,7 @@ namespace Proto.Promises
     /// <summary>
     /// Specifies the continuation execution behavior to use when a promise is already complete.
     /// </summary>
-    public enum CompletedContinuationBehavior
+    public enum CompletedContinuationBehavior : byte
     {
         /// <summary>
         /// The continuation will be executed synchronously if the provided context is the same as the current context. Otherwise, the continuation will be executed asynchronously.
@@ -232,11 +232,21 @@ namespace Proto.Promises
                 return true;
             }
 
-            var context = _option == Option.Foreground ? GetForegroundContext()
-                : _option == Option.Background ? Promise.Config.BackgroundContext ?? Internal.BackgroundSynchronizationContextSentinel.s_instance
-                // Explicit
-                : _continuationContext ?? Internal.BackgroundSynchronizationContextSentinel.s_instance;
-            return context == Promise.Manager.ThreadStaticSynchronizationContext;
+            SynchronizationContext c;
+            if (_option == Option.Foreground)
+            {
+                c = GetForegroundContext();
+            }
+            // Background or Explicit
+            else
+            {
+                c = _option == Option.Background ? Promise.Config.BackgroundContext : _continuationContext;
+                if (c is null)
+                {
+                    return Thread.CurrentThread.IsThreadPoolThread;
+                }
+            }
+            return c == Promise.Manager.ThreadStaticSynchronizationContext;
         }
 
         internal bool GetShouldContinueImmediately(out SynchronizationContext context)
@@ -257,11 +267,23 @@ namespace Proto.Promises
                 return true;
             }
 
-            context = _option == Option.Foreground ? GetForegroundContext()
-                : _option == Option.Background ? Promise.Config.BackgroundContext ?? Internal.BackgroundSynchronizationContextSentinel.s_instance
-                // Explicit
-                : _continuationContext ?? Internal.BackgroundSynchronizationContextSentinel.s_instance;
-            return context == Promise.Manager.ThreadStaticSynchronizationContext;
+            SynchronizationContext c;
+            if (_option == Option.Foreground)
+            {
+                c = GetForegroundContext();
+            }
+            // Background or Explicit
+            else
+            {
+                c = _option == Option.Background ? Promise.Config.BackgroundContext : _continuationContext;
+                if (c is null)
+                {
+                    context = Internal.BackgroundSynchronizationContextSentinel.s_instance;
+                    return Thread.CurrentThread.IsThreadPoolThread;
+                }
+            }
+            context = c;
+            return c == Promise.Manager.ThreadStaticSynchronizationContext;
         }
 
         private static SynchronizationContext GetForegroundContext()

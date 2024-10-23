@@ -431,6 +431,10 @@ namespace Proto.Promises
 
             partial class AsyncPromiseRef<TResult> : PromiseSingleAwait<TResult>
             {
+                // TODO: change this field to object. Either store ExecutionContext or SynchronizationContext.
+                // If both contexts need to be used, use ConfiguredAsyncPromiseContinuer to wrap them both.
+                // We already null-check it, so it won't cost anything in the common case. If it's not null, then we proceed to type-check.
+                // This should improve performance of Promise.ConfigureAwait so that it can avoid allocating ConfiguredAsyncPromiseContinuer in the common case.
                 private ExecutionContext _executionContext;
 
 #if !OPTIMIZED_ASYNC_MODE
