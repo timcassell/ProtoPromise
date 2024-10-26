@@ -498,14 +498,12 @@ namespace ProtoPromiseTests.APIs
             {
                 TestHelper.AddResolveCallbacks<bool, string>(promiseRetainer.WaitAsync(),
                     () => resolved = true,
-                    configureAwaitType: ConfigureAwaitType.Foreground,
-                    configureAwaitForceAsync: true
+                    continuationOptions: new ContinuationOptions(SynchronizationOption.Foreground, forceAsync: true)
                 );
                 TestHelper.AddCallbacks<bool, object, string>(promiseRetainer.WaitAsync(),
                     () => resolved = true,
                     s => Assert.Fail("Promise was rejected when it should have been resolved."),
-                    configureAwaitType: ConfigureAwaitType.Foreground,
-                    configureAwaitForceAsync: true
+                    continuationOptions: new ContinuationOptions(SynchronizationOption.Foreground, forceAsync: true)
                 );
                 deferred.Resolve();
                 Assert.False(resolved);
@@ -524,14 +522,12 @@ namespace ProtoPromiseTests.APIs
             {
                 TestHelper.AddResolveCallbacks<int, bool, string>(promiseRetainer.WaitAsync(),
                     v => resolved = true,
-                    configureAwaitType: ConfigureAwaitType.Foreground,
-                    configureAwaitForceAsync: true
+                    continuationOptions: new ContinuationOptions(SynchronizationOption.Foreground, forceAsync: true)
                 );
                 TestHelper.AddCallbacks<int, bool, object, string>(promiseRetainer.WaitAsync(),
                     v => resolved = true,
                     s => Assert.Fail("Promise was rejected when it should have been resolved."),
-                    configureAwaitType: ConfigureAwaitType.Foreground,
-                    configureAwaitForceAsync: true
+                    continuationOptions: new ContinuationOptions(SynchronizationOption.Foreground, forceAsync: true)
                 );
                 deferred.Resolve(1);
                 Assert.False(resolved);
@@ -550,8 +546,7 @@ namespace ProtoPromiseTests.APIs
             TestHelper.AddCallbacks<bool, object, string>(deferred.Promise,
                 () => Assert.Fail("Promise was resolved when it should have been rejected."),
                 s => errored = true,
-                configureAwaitType: ConfigureAwaitType.Foreground,
-                configureAwaitForceAsync: true
+                continuationOptions: new ContinuationOptions(SynchronizationOption.Foreground, forceAsync: true)
             );
             deferred.Reject("Fail value");
             Assert.False(errored);
@@ -569,8 +564,7 @@ namespace ProtoPromiseTests.APIs
             TestHelper.AddCallbacks<int, bool, object, string>(deferred.Promise,
                 v => Assert.Fail("Promise was resolved when it should have been rejected."),
                 s => errored = true,
-                configureAwaitType: ConfigureAwaitType.Foreground,
-                configureAwaitForceAsync: true
+                continuationOptions: new ContinuationOptions(SynchronizationOption.Foreground, forceAsync: true)
             );
             deferred.Reject("Fail value");
             Assert.False(errored);

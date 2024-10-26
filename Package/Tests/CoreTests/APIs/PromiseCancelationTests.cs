@@ -555,8 +555,7 @@ namespace ProtoPromiseTests.APIs
             bool canceled = false;
             TestHelper.AddCancelCallbacks<float>(deferred.Promise,
                 onCancel: () => canceled = true,
-                configureAwaitType: ConfigureAwaitType.Foreground,
-                configureAwaitForceAsync: true
+                continuationOptions: new ContinuationOptions(SynchronizationOption.Foreground, forceAsync: true)
             );
             cancelationSource.Cancel();
             Assert.False(canceled);
@@ -577,8 +576,7 @@ namespace ProtoPromiseTests.APIs
             bool canceled = false;
             TestHelper.AddCancelCallbacks<int, float>(deferred.Promise,
                 onCancel: () => canceled = true,
-                configureAwaitType: ConfigureAwaitType.Foreground,
-                configureAwaitForceAsync: true
+                continuationOptions: new ContinuationOptions(SynchronizationOption.Foreground, forceAsync: true)
             );
             cancelationSource.Cancel();
             Assert.False(canceled);

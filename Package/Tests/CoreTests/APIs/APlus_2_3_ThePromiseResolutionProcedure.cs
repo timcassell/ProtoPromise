@@ -624,7 +624,7 @@ namespace ProtoPromiseTests.APIs
                                             onCallbackAddedT: onCallbackAddedConvert,
                                             onAdoptCallbackAdded: (ref Promise p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Resolve,
                                             onAdoptCallbackAddedConvert: (ref Promise<int> p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Resolve,
-                                            onAdoptCallbackAddedT: onAdoptCallbackAddedConvert
+                                            onAdoptCallbackAddedCatch: onAdoptCallbackAddedConvert
                                         );
                                         TestHelper.AddContinueCallbacks<int, int, string>(rejectPromiseIntRetainer.WaitAsync(),
                                             promiseToPromise: p =>
@@ -665,7 +665,7 @@ namespace ProtoPromiseTests.APIs
                                             onCallbackAddedT: onCallbackAddedConvert,
                                             onAdoptCallbackAdded: (ref Promise p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Resolve,
                                             onAdoptCallbackAddedConvert: (ref Promise<int> p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Resolve,
-                                            onAdoptCallbackAddedT: onAdoptCallbackAddedConvert
+                                            onAdoptCallbackAddedCatch: onAdoptCallbackAddedConvert
                                         );
                                         TestHelper.AddContinueCallbacks<int, int, string>(rejectPromiseIntRetainer.WaitAsync(),
                                             promiseToPromise: p =>
@@ -1553,7 +1553,7 @@ namespace ProtoPromiseTests.APIs
                         onCallbackAddedT: onCallbackAddedConvert,
                         onAdoptCallbackAdded: (ref Promise p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Resolve,
                         onAdoptCallbackAddedConvert: (ref Promise<int> p, AdoptLocation adoptLocation) => adopted = adoptLocation != AdoptLocation.Resolve,
-                        onAdoptCallbackAddedT: onAdoptCallbackAddedConvert
+                        onAdoptCallbackAddedCatch: onAdoptCallbackAddedConvert
                     );
                     TestHelper.AddContinueCallbacks<int, int, string>(rejectPromiseIntRetainer.WaitAsync(),
                         promiseToPromise: promiseToPromise,
