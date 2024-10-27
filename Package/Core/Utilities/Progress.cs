@@ -42,7 +42,7 @@ namespace Proto.Promises
         /// <returns>A new progress object.</returns>
         /// <remarks>Depending on the invoke option, the <paramref name="handler"/> may be invoked concurrently with itself.</remarks>
         public static Progress New(Action<double> handler,
-            SynchronizationOption invokeOption = SynchronizationOption.Foreground,
+            SynchronizationOption invokeOption = SynchronizationOption.CapturedContext,
             bool forceAsync = false,
             CancelationToken cancelationToken = default)
         {
@@ -68,7 +68,7 @@ namespace Proto.Promises
         /// <returns>A new progress object.</returns>
         /// <remarks>Depending on the invoke option, the <paramref name="handler"/> may be invoked concurrently with itself.</remarks>
         public static Progress New<TCapture>(TCapture captureValue, Action<TCapture, double> handler,
-            SynchronizationOption invokeOption = SynchronizationOption.Foreground,
+            SynchronizationOption invokeOption = SynchronizationOption.CapturedContext,
             bool forceAsync = false,
             CancelationToken cancelationToken = default)
         {
@@ -94,7 +94,7 @@ namespace Proto.Promises
         /// <remarks>Depending on the invoke option, the <paramref name="handler"/> may be invoked concurrently with itself.</remarks>
 
         public static Progress New<TProgress>(TProgress handler,
-            SynchronizationOption invokeOption = SynchronizationOption.Foreground,
+            SynchronizationOption invokeOption = SynchronizationOption.CapturedContext,
             bool forceAsync = false,
             CancelationToken cancelationToken = default)
             where TProgress : IProgress<double>
