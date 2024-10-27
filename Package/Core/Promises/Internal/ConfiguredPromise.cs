@@ -249,7 +249,7 @@ namespace Proto.Promises
                     Dispose();
 #endif
                 }
-            } // class ConfiguredAsyncContinuer
+            } // class ConfiguredAsyncGenericContinuer
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -312,7 +312,7 @@ namespace Proto.Promises
                         obj => obj.UnsafeAs<PromiseRefBase>().ContinueAsyncFunction()
                     );
                 }
-            } // class ConfiguredAwaiterContinuer
+            } // class ConfiguredAsyncPromiseContinuer
         } // class PromiseRefBase
     } // class Internal
 }
