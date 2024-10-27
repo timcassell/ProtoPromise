@@ -32,7 +32,7 @@ namespace ProtoPromiseTests
 #if !UNITY_WEBGL // WebGL doesn't support threads.
         Background = 2,
 #endif
-        // CapturedContext = 3,
+        CapturedContext = 3,
         Explicit = 4
     }
 
@@ -537,6 +537,7 @@ namespace ProtoPromiseTests
         {
             switch (expectedContext)
             {
+                case SynchronizationType.CapturedContext:
                 case SynchronizationType.Foreground:
                 case SynchronizationType.Explicit:
                 {

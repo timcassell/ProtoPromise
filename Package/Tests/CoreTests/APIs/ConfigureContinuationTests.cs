@@ -31,15 +31,6 @@ namespace ProtoPromiseTests.APIs
 
         private static IEnumerable<TestCaseData> GetArgs(params CompleteType[] completeTypes)
         {
-            var continuationContexts = new[]
-            {
-                SynchronizationType.Synchronous,
-                //SynchronizationType.Foreground, // Ignore foreground to reduce number of tests, testing explicit is effectively the same.
-#if !UNITY_WEBGL
-                SynchronizationType.Background,
-#endif
-                SynchronizationType.Explicit
-            };
             SynchronizationType[] completeContexts = new[]
             {
                 SynchronizationType.Foreground
@@ -50,7 +41,7 @@ namespace ProtoPromiseTests.APIs
             var foregroundOnlyContext = new[] { SynchronizationType.Foreground };
 
             foreach (CompleteType completeType in completeTypes)
-            foreach (SynchronizationType continuationContext in continuationContexts)
+            foreach (SynchronizationType continuationContext in Enum.GetValues(typeof(SynchronizationType)))
             foreach (CompletedContinuationBehavior completedBehavior in Enum.GetValues(typeof(CompletedContinuationBehavior)))
             foreach (bool alreadyComplete in new[] { true, false })
             foreach (SynchronizationType completeContext in alreadyComplete ? foregroundOnlyContext : completeContexts)
