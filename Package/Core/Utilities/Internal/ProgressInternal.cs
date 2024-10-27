@@ -132,9 +132,9 @@ namespace Proto.Promises
 
         // Helper method to avoid typing out the TProgress.
         [MethodImpl(InlineOption)]
-        internal static Progress NewProgress<TProgress>(TProgress progress, SynchronizationContext invokeContext, bool forceAsync, CancelationToken cancelationToken)
+        internal static Progress NewProgress<TProgress>(TProgress progress, ContinuationOptions invokeOptions, CancelationToken cancelationToken)
             where TProgress : IProgress<double>
-            => new Progress(Progress<TProgress>.GetOrCreate(progress, invokeContext, forceAsync, cancelationToken));
+            => new Progress(Progress<TProgress>.GetOrCreate(progress, invokeOptions, cancelationToken));
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
@@ -171,13 +171,13 @@ namespace Proto.Promises
                     : obj.UnsafeAs<Progress<TProgress>>();
             }
 
-            internal static Progress<TProgress> GetOrCreate(TProgress progress, SynchronizationContext invokeContext, bool forceAsync, CancelationToken cancelationToken)
+            internal static Progress<TProgress> GetOrCreate(TProgress progress, ContinuationOptions invokeOptions, CancelationToken cancelationToken)
             {
                 var instance = GetOrCreate();
                 instance._next = null;
                 instance._progress = progress;
-                instance._invokeContext = invokeContext;
-                instance._forceAsync = forceAsync;
+                instance._invokeContext = invokeOptions.GetContinuationContext();
+                instance._forceAsync = invokeOptions.CompletedBehavior == CompletedContinuationBehavior.Asynchronous;
                 // Set to nan so the first Report(0) will invoke.
                 instance._current = float.NaN;
                 instance._retainCounter = 1;
