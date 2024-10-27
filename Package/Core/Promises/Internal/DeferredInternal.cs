@@ -178,43 +178,9 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal void RunOrScheduleOnContext(SynchronizationOption invokeOption, SynchronizationContext context, bool forceAsync)
+                internal void RunOrScheduleOnContext(ContinuationOptions invokeOptions)
                 {
-                    switch (invokeOption)
-                    {
-                        case SynchronizationOption.Synchronous:
-                        {
-                            Run();
-                            return;
-                        }
-                        case SynchronizationOption.Foreground:
-                        {
-                            context = Promise.Config.ForegroundContext;
-                            if (context == null)
-                            {
-                                throw new InvalidOperationException(
-                                    "SynchronizationOption.Foreground was provided, but Promise.Config.ForegroundContext was null. " +
-                                    "You should set Promise.Config.ForegroundContext at the start of your application (which may be as simple as 'Promise.Config.ForegroundContext = SynchronizationContext.Current;').",
-                                    GetFormattedStacktrace(2));
-                            }
-                            break;
-                        }
-                        case SynchronizationOption.Background:
-                        {
-                            context = Promise.Config.BackgroundContext;
-                            goto default;
-                        }
-                        default: // SynchronizationOption.Explicit
-                        {
-                            if (context == null)
-                            {
-                                context = BackgroundSynchronizationContextSentinel.s_instance;
-                            }
-                            break;
-                        }
-                    }
-
-                    if (!forceAsync & context == Promise.Manager.ThreadStaticSynchronizationContext)
+                    if (invokeOptions.GetShouldContinueImmediately(out var context))
                     {
                         Run();
                         return;

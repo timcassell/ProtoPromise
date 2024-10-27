@@ -385,12 +385,9 @@ namespace Proto.Promises
                     while (await configuredAsyncEnumerator.MoveNextAsync())
                     {
                         var item = configuredAsyncEnumerator.Current;
-                        var key = await keySelector.Invoke(item);
+                        // In case the key selector changed context, we need to make sure we're on the configured context before invoking the comparer and elementSelector.
+                        var key = await keySelector.Invoke(item).ConfigureAwait(configuredAsyncEnumerator.ContinuationOptions);
                         var group = lookup.GetOrCreateGrouping(key, false);
-
-                        // The keySelector could have switched contexts.
-                        // We switch back to the configured context before invoking the elementSelector.
-                        await configuredAsyncEnumerator.SwitchToContext();
                         var element = await elementSelector.Invoke(item);
                         group.Add(element);
                     }
@@ -417,7 +414,8 @@ namespace Proto.Promises
                     while (await configuredAsyncEnumerator.MoveNextAsync())
                     {
                         var item = configuredAsyncEnumerator.Current;
-                        var key = await keySelector.Invoke(item);
+                        // In case the key selector changed context, we need to make sure we're on the configured context before invoking the comparer.
+                        var key = await keySelector.Invoke(item).ConfigureAwait(configuredAsyncEnumerator.ContinuationOptions);
                         lookup.GetOrCreateGrouping(key, false).Add(item);
                     }
                 }

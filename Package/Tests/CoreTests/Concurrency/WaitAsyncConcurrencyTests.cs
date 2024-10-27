@@ -30,16 +30,6 @@ namespace ProtoPromiseTests.Concurrency
 
         private static IEnumerable<TestCaseData> GetArgs()
         {
-            var waitTypes = new ConfigureAwaitType[]
-            {
-                ConfigureAwaitType.None,
-                ConfigureAwaitType.Synchronous,
-                ConfigureAwaitType.Foreground,
-#if !UNITY_WEBGL
-                ConfigureAwaitType.Background,
-#endif
-                // ConfigureAwaitType.Explicit // Skip explicit to reduce number of tests.
-            };
             var waitAsyncPlaces = new ActionPlace[]
             {
                 ActionPlace.InSetup,
@@ -53,13 +43,12 @@ namespace ProtoPromiseTests.Concurrency
                 ContinuationType.Await
             };
 
-            foreach (var waitType in waitTypes)
             foreach (var waitAsyncPlace in waitAsyncPlaces)
             foreach (var continuePlace in GetContinuePlace(waitAsyncPlace))
             foreach (var continuationType in continuationTypes)
             {
-                yield return new TestCaseData(waitType, waitAsyncPlace, continuePlace, true, continuationType);
-                yield return new TestCaseData(waitType, waitAsyncPlace, continuePlace, false, continuationType);
+                yield return new TestCaseData(waitAsyncPlace, continuePlace, true, continuationType);
+                yield return new TestCaseData(waitAsyncPlace, continuePlace, false, continuationType);
             }
         }
 
@@ -79,8 +68,7 @@ namespace ProtoPromiseTests.Concurrency
         private readonly TimeSpan timeout = TimeSpan.FromSeconds(2);
 
         [Test, TestCaseSource(nameof(GetArgs))]
-        public void WaitAsyncContinuationWillBeInvokedOnTheCorrectContext_Concurrent_void(
-            ConfigureAwaitType waitType,
+        public void WaitAsync_Concurrent_void(
             ActionPlace waitAsyncSubscribePlace,
             ActionPlace continuePlace,
             bool withCancelation,
@@ -110,11 +98,6 @@ namespace ProtoPromiseTests.Concurrency
                         catch (OperationCanceledException) { }
                         finally
                         {
-                            // None and Synchronous don't care about the continuation context.
-                            if (waitType != ConfigureAwaitType.None && waitType != ConfigureAwaitType.Synchronous)
-                            {
-                                TestHelper.AssertCallbackContext((SynchronizationType) waitType, SynchronizationType.Background, foregroundThread);
-                            }
                             didContinue = true;
                         }
                     }
@@ -122,15 +105,7 @@ namespace ProtoPromiseTests.Concurrency
                 else
                 {
                     promise
-                        .ContinueWith(_ =>
-                        {
-                            // None and Synchronous don't care about the continuation context.
-                            if (waitType != ConfigureAwaitType.None && waitType != ConfigureAwaitType.Synchronous)
-                            {
-                                TestHelper.AssertCallbackContext((SynchronizationType) waitType, SynchronizationType.Background, foregroundThread);
-                            }
-                            didContinue = true;
-                        })
+                        .ContinueWith(_ => didContinue = true)
                         .Forget();
                 }
             };
@@ -149,13 +124,13 @@ namespace ProtoPromiseTests.Concurrency
             {
                 parallelActions.Add(() =>
                 {
-                    promise = promise.ConfigureAwait(waitType, false, cancelationToken);
+                    promise = promise.WaitAsync(cancelationToken);
                     SubscribeContinuation();
                 });
             }
             else if (waitAsyncSubscribePlace == ActionPlace.Parallel)
             {
-                parallelActions.Add(() => promise = promise.ConfigureAwait(waitType, false, cancelationToken));
+                parallelActions.Add(() => promise = promise.WaitAsync(cancelationToken));
             }
             else if (continuePlace == ActionPlace.Parallel)
             {
@@ -176,7 +151,7 @@ namespace ProtoPromiseTests.Concurrency
                     promise = deferred.Promise;
                     if (waitAsyncSubscribePlace == ActionPlace.InSetup)
                     {
-                        promise = promise.ConfigureAwait(waitType, false, cancelationToken);
+                        promise = promise.WaitAsync(cancelationToken);
                     }
                     if (continuePlace == ActionPlace.InSetup)
                     {
@@ -187,7 +162,7 @@ namespace ProtoPromiseTests.Concurrency
                 {
                     if (waitAsyncSubscribePlace == ActionPlace.InTeardown)
                     {
-                        promise = promise.ConfigureAwait(waitType, false, cancelationToken);
+                        promise = promise.WaitAsync(cancelationToken);
                     }
                     if (continuePlace == ActionPlace.InTeardown)
                     {
@@ -203,8 +178,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test, TestCaseSource(nameof(GetArgs))]
-        public void WaitAsyncContinuationWillBeInvokedOnTheCorrectContext_Concurrent_T(
-            ConfigureAwaitType waitType,
+        public void WaitAsync_Concurrent_T(
             ActionPlace waitAsyncSubscribePlace,
             ActionPlace continuePlace,
             bool withCancelation,
@@ -234,11 +208,6 @@ namespace ProtoPromiseTests.Concurrency
                         catch (OperationCanceledException) { }
                         finally
                         {
-                            // None and Synchronous don't care about the continuation context.
-                            if (waitType != ConfigureAwaitType.None && waitType != ConfigureAwaitType.Synchronous)
-                            {
-                                TestHelper.AssertCallbackContext((SynchronizationType) waitType, SynchronizationType.Background, foregroundThread);
-                            }
                             didContinue = true;
                         }
                     }
@@ -246,15 +215,7 @@ namespace ProtoPromiseTests.Concurrency
                 else
                 {
                     promise
-                        .ContinueWith(_ =>
-                        {
-                            // None and Synchronous don't care about the continuation context.
-                            if (waitType != ConfigureAwaitType.None && waitType != ConfigureAwaitType.Synchronous)
-                            {
-                                TestHelper.AssertCallbackContext((SynchronizationType) waitType, SynchronizationType.Background, foregroundThread);
-                            }
-                            didContinue = true;
-                        })
+                        .ContinueWith(_ => didContinue = true)
                         .Forget();
                 }
             };
@@ -273,13 +234,13 @@ namespace ProtoPromiseTests.Concurrency
             {
                 parallelActions.Add(() =>
                 {
-                    promise = promise.ConfigureAwait(waitType, false, cancelationToken);
+                    promise = promise.WaitAsync(cancelationToken);
                     SubscribeContinuation();
                 });
             }
             else if (waitAsyncSubscribePlace == ActionPlace.Parallel)
             {
-                parallelActions.Add(() => promise = promise.ConfigureAwait(waitType, false, cancelationToken));
+                parallelActions.Add(() => promise = promise.WaitAsync(cancelationToken));
             }
             else if (continuePlace == ActionPlace.Parallel)
             {
@@ -300,7 +261,7 @@ namespace ProtoPromiseTests.Concurrency
                     promise = deferred.Promise;
                     if (waitAsyncSubscribePlace == ActionPlace.InSetup)
                     {
-                        promise = promise.ConfigureAwait(waitType, false, cancelationToken);
+                        promise = promise.WaitAsync(cancelationToken);
                     }
                     if (continuePlace == ActionPlace.InSetup)
                     {
@@ -311,7 +272,7 @@ namespace ProtoPromiseTests.Concurrency
                 {
                     if (waitAsyncSubscribePlace == ActionPlace.InTeardown)
                     {
-                        promise = promise.ConfigureAwait(waitType, false, cancelationToken);
+                        promise = promise.WaitAsync(cancelationToken);
                     }
                     if (continuePlace == ActionPlace.InTeardown)
                     {

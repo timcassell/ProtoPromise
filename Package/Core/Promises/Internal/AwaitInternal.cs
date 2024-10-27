@@ -8,6 +8,7 @@ using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
+using System.Threading;
 
 namespace Proto.Promises
 {
@@ -44,6 +45,10 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void OnCompleted(Action continuation, short promiseId)
                 => HookupNewWaiter(promiseId, AwaiterContinuer.GetOrCreate(continuation));
+
+            [MethodImpl(InlineOption)]
+            internal void OnCompleted(Action continuation, SynchronizationContext context, short promiseId)
+                => HookupNewWaiter(promiseId, ConfiguredAsyncGenericContinuer.GetOrCreate(continuation, context));
 
             [MethodImpl(InlineOption)]
             internal Promise.ResultContainer GetResultContainerAndMaybeDispose(short promiseId)
@@ -128,6 +133,7 @@ namespace Proto.Promises
                 internal static AwaiterContinuer GetOrCreate(Action continuation)
                 {
                     var continuer = GetOrCreate();
+                    continuer._next = null;
                     continuer._continuation = continuation;
                     SetCreatedStacktrace(continuer, 3);
                     return continuer;

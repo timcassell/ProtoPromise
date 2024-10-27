@@ -32,18 +32,8 @@ namespace ProtoPromiseTests
 #if !UNITY_WEBGL // WebGL doesn't support threads.
         Background = 2,
 #endif
-        Explicit = 3
-    }
-
-    public enum ConfigureAwaitType
-    {
-        None = -1,
-        Synchronous = 0,
-        Foreground = 1,
-#if !UNITY_WEBGL // WebGL doesn't support threads.
-        Background = 2,
-#endif
-        Explicit = 3
+        CapturedContext = 3,
+        Explicit = 4
     }
 
     public enum AdoptLocation
@@ -66,7 +56,7 @@ namespace ProtoPromiseTests
     // These help test all Then/Catch/ContinueWith methods at once.
     public static class TestHelper
     {
-        public const SynchronizationType backgroundType = (SynchronizationType) 2;
+        public const SynchronizationType backgroundType = (SynchronizationType) SynchronizationOption.Background;
 
         private static Thread _foregroundContextThread;
         public static PromiseSynchronizationContext _foregroundContext;
@@ -464,31 +454,18 @@ namespace ProtoPromiseTests
             return promise.Then(v => v, cancelationToken);
         }
 
-        public static Promise ConfigureAwait(this Promise promise, ConfigureAwaitType configureType, bool forceAsync = false, CancelationToken cancelationToken = default(CancelationToken))
+        public static ContinuationOptions GetContinuationOptions(SynchronizationType continuationContext, CompletedContinuationBehavior completedBehavior)
         {
-            if (configureType == ConfigureAwaitType.None)
-            {
-                return promise.WaitAsync(cancelationToken);
-            }
-            if (configureType == ConfigureAwaitType.Explicit)
-            {
-                return promise.WaitAsync(_foregroundContext, forceAsync, cancelationToken);
-            }
-            return promise.WaitAsync((SynchronizationOption) configureType, forceAsync, cancelationToken);
+            return continuationContext == SynchronizationType.Explicit
+                ? new ContinuationOptions(_foregroundContext, completedBehavior)
+                : new ContinuationOptions((SynchronizationOption) continuationContext, completedBehavior);
         }
 
-        public static Promise<T> ConfigureAwait<T>(this Promise<T> promise, ConfigureAwaitType configureType, bool forceAsync = false, CancelationToken cancelationToken = default(CancelationToken))
-        {
-            if (configureType == ConfigureAwaitType.None)
-            {
-                return promise.WaitAsync(cancelationToken);
-            }
-            if (configureType == ConfigureAwaitType.Explicit)
-            {
-                return promise.WaitAsync(_foregroundContext, forceAsync, cancelationToken);
-            }
-            return promise.WaitAsync((SynchronizationOption) configureType, forceAsync, cancelationToken);
-        }
+        public static Promise ConfigureContinuation(this Promise promise, ContinuationOptions? continuationOptions)
+            => continuationOptions == null ? promise : promise.ConfigureContinuation(continuationOptions.Value);
+
+        public static Promise<T> ConfigureContinuation<T>(this Promise<T> promise, ContinuationOptions? continuationOptions)
+            => continuationOptions == null ? promise : promise.ConfigureContinuation(continuationOptions.Value);
 
         public static void WaitWithTimeout(this Promise promise, TimeSpan timeout)
         {
@@ -560,6 +537,7 @@ namespace ProtoPromiseTests
         {
             switch (expectedContext)
             {
+                case SynchronizationType.CapturedContext:
                 case SynchronizationType.Foreground:
                 case SynchronizationType.Explicit:
                 {
@@ -729,7 +707,7 @@ namespace ProtoPromiseTests
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
             Action onCancel = null,
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
-            ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
+            ContinuationOptions? continuationOptions = null)
         {
             using (var retainer = promise.GetRetainer())
             {
@@ -741,10 +719,10 @@ namespace ProtoPromiseTests
                     onResolveCapture, captureValue,
                     promiseToPromise, promiseToPromiseConvert,
                     onCallbackAdded, onCallbackAddedConvert,
-                    default(CancelationToken), default(CancelationToken),
+                    default(CancelationToken),
                     onCancel,
                     onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                    configureAwaitType, configureAwaitForceAsync
+                    continuationOptions
                 );
 
                 CancelationSource cancelationSource = CancelationSource.New();
@@ -754,10 +732,10 @@ namespace ProtoPromiseTests
                     onResolveCapture, captureValue,
                     promiseToPromise, promiseToPromiseConvert,
                     onCallbackAdded, onCallbackAddedConvert,
-                    cancelationSource.Token, cancelationSource.Token,
+                    cancelationSource.Token,
                     onCancel,
                     onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                    configureAwaitType, configureAwaitForceAsync
+                    continuationOptions
                 );
                 cancelationSource.Dispose();
             }
@@ -768,10 +746,10 @@ namespace ProtoPromiseTests
             Action<TCapture> onResolveCapture = null, TCapture captureValue = default(TCapture),
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
-            CancelationToken cancelationToken = default(CancelationToken), CancelationToken waitAsyncCancelationToken = default(CancelationToken),
+            CancelationToken cancelationToken = default(CancelationToken),
             Action onCancel = null,
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
-            ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
+            ContinuationOptions? continuationOptions = null)
         {
             using (var retainer = promise.GetRetainer())
             {
@@ -809,7 +787,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p1 = default(Promise);
-                    p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p1 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onCallbackAdded(ref p1);
@@ -817,7 +795,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p2 = default(Promise<TConvert>);
-                    p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p2 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onCallbackAddedConvert(ref p2);
@@ -825,7 +803,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p3 = default(Promise);
-                    p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p3 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return promiseToPromise(p3); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p3);
@@ -834,7 +812,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p4 = default(Promise<TConvert>);
-                    p4 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p4 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return promiseToPromiseConvert(p4); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p4);
@@ -844,7 +822,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p5 = default(Promise);
-                    p5 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p5 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onCallbackAdded(ref p5);
@@ -852,7 +830,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p6 = default(Promise<TConvert>);
-                    p6 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p6 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onCallbackAddedConvert(ref p6);
@@ -860,7 +838,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p7 = default(Promise);
-                    p7 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p7 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p7); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p7);
@@ -869,7 +847,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p8 = default(Promise<TConvert>);
-                    p8 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p8 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p8); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p8);
@@ -885,7 +863,7 @@ namespace ProtoPromiseTests
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
             Action onCancel = null,
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
-            ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
+            ContinuationOptions? continuationOptions = null)
         {
             using (var retainer = promise.GetRetainer())
             {
@@ -897,10 +875,10 @@ namespace ProtoPromiseTests
                 onResolveCapture, captureValue,
                 promiseToPromise, promiseToPromiseConvert,
                 onCallbackAdded, onCallbackAddedConvert,
-                default(CancelationToken), default(CancelationToken),
+                default(CancelationToken),
                 onCancel,
                 onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                configureAwaitType, configureAwaitForceAsync
+                continuationOptions
             );
 
                 CancelationSource cancelationSource = CancelationSource.New();
@@ -910,10 +888,10 @@ namespace ProtoPromiseTests
                     onResolveCapture, captureValue,
                     promiseToPromise, promiseToPromiseConvert,
                     onCallbackAdded, onCallbackAddedConvert,
-                    cancelationSource.Token, cancelationSource.Token,
+                    cancelationSource.Token,
                     onCancel,
                     onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                    configureAwaitType, configureAwaitForceAsync
+                    continuationOptions
                 );
                 cancelationSource.Dispose();
             }
@@ -924,10 +902,10 @@ namespace ProtoPromiseTests
             Action<TCapture> onResolveCapture = null, TCapture captureValue = default(TCapture),
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
-            CancelationToken cancelationToken = default(CancelationToken), CancelationToken waitAsyncCancelationToken = default(CancelationToken),
+            CancelationToken cancelationToken = default(CancelationToken),
             Action onCancel = null,
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
-            ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
+            ContinuationOptions? continuationOptions = null)
         {
             using (var retainer = promise.GetRetainer())
             {
@@ -965,7 +943,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p1 = default(Promise);
-                    p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p1 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onCallbackAdded(ref p1);
@@ -973,7 +951,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p2 = default(Promise<TConvert>);
-                    p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p2 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onCallbackAddedConvert(ref p2);
@@ -981,7 +959,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p3 = default(Promise);
-                    p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p3 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return promiseToPromise(p3); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p3);
@@ -990,7 +968,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p4 = default(Promise<TConvert>);
-                    p4 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p4 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return promiseToPromiseConvert(p4); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p4);
@@ -1000,7 +978,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p5 = default(Promise);
-                    p5 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p5 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onCallbackAdded(ref p5);
@@ -1008,7 +986,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p6 = default(Promise<TConvert>);
-                    p6 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p6 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onCallbackAddedConvert(ref p6);
@@ -1016,7 +994,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p7 = default(Promise);
-                    p7 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p7 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p7); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p7);
@@ -1025,7 +1003,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p8 = default(Promise<TConvert>);
-                    p8 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p8 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p8); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p8);
@@ -1042,7 +1020,7 @@ namespace ProtoPromiseTests
             Action onCancel = null,
             TestAction<Promise> onDirectCallbackAdded = null, TestAction<Promise<TConvert>> onDirectCallbackAddedConvert = null, TestAction<Promise> onDirectCallbackAddedCatch = null,
             TestAction<Promise, AdoptLocation> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>, AdoptLocation> onAdoptCallbackAddedConvert = null, TestAction<Promise> onAdoptCallbackAddedCatch = null,
-            ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
+            ContinuationOptions? continuationOptions = null)
         {
             using (var retainer = promise.GetRetainer())
             {
@@ -1054,11 +1032,11 @@ namespace ProtoPromiseTests
                     onResolveCapture, onRejectCapture, onUnknownRejectionCapture, captureValue,
                     promiseToPromise, promiseToPromiseConvert,
                     onCallbackAdded, onCallbackAddedConvert,
-                    default(CancelationToken), default(CancelationToken),
+                    default(CancelationToken),
                     onCancel,
                     onDirectCallbackAdded, onDirectCallbackAddedConvert, onDirectCallbackAddedCatch,
                     onAdoptCallbackAdded, onAdoptCallbackAddedConvert, onAdoptCallbackAddedCatch,
-                    configureAwaitType, configureAwaitForceAsync
+                    continuationOptions
                 );
 
                 CancelationSource cancelationSource = CancelationSource.New();
@@ -1068,11 +1046,11 @@ namespace ProtoPromiseTests
                     onResolveCapture, onRejectCapture, onUnknownRejectionCapture, captureValue,
                     promiseToPromise, promiseToPromiseConvert,
                     onCallbackAdded, onCallbackAddedConvert,
-                    cancelationSource.Token, cancelationSource.Token,
+                    cancelationSource.Token,
                     onCancel,
                     onDirectCallbackAdded, onDirectCallbackAddedConvert, onDirectCallbackAddedCatch,
                     onAdoptCallbackAdded, onAdoptCallbackAddedConvert, onAdoptCallbackAddedCatch,
-                    configureAwaitType, configureAwaitForceAsync
+                    continuationOptions
                 );
                 cancelationSource.Dispose();
             }
@@ -1083,11 +1061,11 @@ namespace ProtoPromiseTests
             Action<TCapture> onResolveCapture = null, Action<TCapture> onRejectCapture = null, Action<TCapture> onUnknownRejectionCapture = null, TCapture captureValue = default(TCapture),
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
-            CancelationToken cancelationToken = default(CancelationToken), CancelationToken waitAsyncCancelationToken = default(CancelationToken),
+            CancelationToken cancelationToken = default(CancelationToken),
             Action onCancel = null,
             TestAction<Promise> onDirectCallbackAdded = null, TestAction<Promise<TConvert>> onDirectCallbackAddedConvert = null, TestAction<Promise> onDirectCallbackAddedCatch = null,
             TestAction<Promise, AdoptLocation> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>, AdoptLocation> onAdoptCallbackAddedConvert = null, TestAction<Promise> onAdoptCallbackAddedCatch = null,
-            ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
+            ContinuationOptions? continuationOptions = null)
         {
             using (var retainer = promise.GetRetainer())
             {
@@ -1145,7 +1123,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p1 = default(Promise);
-                    p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p1 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); }, () => { onUnknownRejection(); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onDirectCallbackAdded(ref p1);
@@ -1154,7 +1132,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p2 = default(Promise);
-                    p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p2 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onDirectCallbackAdded(ref p2);
@@ -1163,7 +1141,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p3 = default(Promise);
-                    p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p3 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); }, () => { onUnknownRejection(); return promiseToPromise(p3); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p3, AdoptLocation.Reject);
@@ -1172,7 +1150,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p4 = default(Promise);
-                    p4 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p4 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p4); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p4, AdoptLocation.Reject);
@@ -1182,7 +1160,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p5 = default(Promise<TConvert>);
-                    p5 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p5 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return convertValue; }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onDirectCallbackAddedConvert(ref p5);
@@ -1191,7 +1169,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p6 = default(Promise<TConvert>);
-                    p6 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p6 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return convertValue; }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onDirectCallbackAddedConvert(ref p6);
@@ -1200,7 +1178,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p7 = default(Promise<TConvert>);
-                    p7 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p7 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return convertValue; }, () => { onUnknownRejection(); return promiseToPromiseConvert(p7); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p7, AdoptLocation.Reject);
@@ -1209,7 +1187,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p8 = default(Promise<TConvert>);
-                    p8 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p8 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return convertValue; }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p8); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p8, AdoptLocation.Reject);
@@ -1219,7 +1197,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p9 = default(Promise);
-                    p9 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p9 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return promiseToPromise(p9); }, () => { onUnknownRejection(); return promiseToPromise(p9); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p9, AdoptLocation.Both);
@@ -1228,7 +1206,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p10 = default(Promise);
-                    p10 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p10 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return promiseToPromise(p10); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p10); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p10, AdoptLocation.Both);
@@ -1237,7 +1215,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p11 = default(Promise);
-                    p11 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p11 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return promiseToPromise(p11); }, () => { onUnknownRejection(); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p11, AdoptLocation.Resolve);
@@ -1246,7 +1224,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p12 = default(Promise);
-                    p12 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p12 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return promiseToPromise(p12); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p12, AdoptLocation.Resolve);
@@ -1256,7 +1234,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p13 = default(Promise<TConvert>);
-                    p13 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p13 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return promiseToPromiseConvert(p13); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p13); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p13, AdoptLocation.Both);
@@ -1265,7 +1243,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p14 = default(Promise<TConvert>);
-                    p14 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p14 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return promiseToPromiseConvert(p14); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p14); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p14, AdoptLocation.Both);
@@ -1274,7 +1252,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p15 = default(Promise<TConvert>);
-                    p15 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p15 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return promiseToPromiseConvert(p15); }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p15, AdoptLocation.Resolve);
@@ -1283,7 +1261,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p16 = default(Promise<TConvert>);
-                    p16 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p16 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return promiseToPromiseConvert(p16); }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p16, AdoptLocation.Resolve);
@@ -1294,7 +1272,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p17 = default(Promise);
-                    p17 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p17 = p.ConfigureContinuation(continuationOptions)
                         .Catch(() => { onUnknownRejection(); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onDirectCallbackAddedCatch(ref p17);
@@ -1303,7 +1281,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p18 = default(Promise);
-                    p18 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p18 = p.ConfigureContinuation(continuationOptions)
                         .Catch((TReject failValue) => { onReject(failValue); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onDirectCallbackAddedCatch(ref p18);
@@ -1312,7 +1290,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p19 = default(Promise);
-                    p19 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p19 = p.ConfigureContinuation(continuationOptions)
                         .Catch(() => { onUnknownRejection(); return promiseToPromise(p19); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAddedCatch(ref p19);
@@ -1321,7 +1299,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p20 = default(Promise);
-                    p20 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p20 = p.ConfigureContinuation(continuationOptions)
                         .Catch((TReject failValue) => { onReject(failValue); return promiseToPromise(p20); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAddedCatch(ref p20);
@@ -1332,7 +1310,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p21 = default(Promise);
-                    p21 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p21 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onDirectCallbackAdded(ref p21);
@@ -1341,7 +1319,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p22 = default(Promise);
-                    p22 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p22 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onDirectCallbackAdded(ref p22);
@@ -1350,7 +1328,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p23 = default(Promise);
-                    p23 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p23 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p23); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p23, AdoptLocation.Reject);
@@ -1359,7 +1337,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p24 = default(Promise);
-                    p24 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p24 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p24); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p24, AdoptLocation.Reject);
@@ -1369,7 +1347,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p25 = default(Promise<TConvert>);
-                    p25 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p25 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onDirectCallbackAddedConvert(ref p25);
@@ -1378,7 +1356,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p26 = default(Promise<TConvert>);
-                    p26 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p26 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onDirectCallbackAddedConvert(ref p26);
@@ -1387,7 +1365,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p27 = default(Promise<TConvert>);
-                    p27 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p27 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p27); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p27, AdoptLocation.Reject);
@@ -1396,7 +1374,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p28 = default(Promise<TConvert>);
-                    p28 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p28 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p28); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p28, AdoptLocation.Reject);
@@ -1406,7 +1384,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p29 = default(Promise);
-                    p29 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p29 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p29); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p29); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p29, AdoptLocation.Both);
@@ -1415,7 +1393,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p30 = default(Promise);
-                    p30 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p30 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p30); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p30); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p30, AdoptLocation.Both);
@@ -1424,7 +1402,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p31 = default(Promise);
-                    p31 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p31 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p31); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p31, AdoptLocation.Resolve);
@@ -1433,7 +1411,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p32 = default(Promise);
-                    p32 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p32 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p32); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p32, AdoptLocation.Resolve);
@@ -1443,7 +1421,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p33 = default(Promise<TConvert>);
-                    p33 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p33 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p33); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p33); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p33, AdoptLocation.Both);
@@ -1452,7 +1430,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p34 = default(Promise<TConvert>);
-                    p34 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p34 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p34); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p34); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p34, AdoptLocation.Both);
@@ -1461,7 +1439,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p35 = default(Promise<TConvert>);
-                    p35 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p35 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p35); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p35, AdoptLocation.Resolve);
@@ -1470,7 +1448,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p36 = default(Promise<TConvert>);
-                    p36 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p36 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p36); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p36, AdoptLocation.Resolve);
@@ -1481,7 +1459,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p37 = default(Promise);
-                    p37 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p37 = p.ConfigureContinuation(continuationOptions)
                         .Catch(captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onDirectCallbackAddedCatch(ref p37);
@@ -1490,7 +1468,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p38 = default(Promise);
-                    p38 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p38 = p.ConfigureContinuation(continuationOptions)
                         .Catch(captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onDirectCallbackAddedCatch(ref p38);
@@ -1499,7 +1477,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p39 = default(Promise);
-                    p39 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p39 = p.ConfigureContinuation(continuationOptions)
                         .Catch(captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p39); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAddedCatch(ref p39);
@@ -1508,7 +1486,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p40 = default(Promise);
-                    p40 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p40 = p.ConfigureContinuation(continuationOptions)
                         .Catch(captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p40); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAddedCatch(ref p40);
@@ -1519,7 +1497,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p41 = default(Promise);
-                    p41 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p41 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, () => { onUnknownRejection(); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onDirectCallbackAdded(ref p41);
@@ -1528,7 +1506,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p42 = default(Promise);
-                    p42 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p42 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onDirectCallbackAdded(ref p42);
@@ -1537,7 +1515,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p43 = default(Promise);
-                    p43 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p43 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, () => { onUnknownRejection(); return promiseToPromise(p43); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p43, AdoptLocation.Reject);
@@ -1546,7 +1524,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p44 = default(Promise);
-                    p44 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p44 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p44); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p44, AdoptLocation.Reject);
@@ -1556,7 +1534,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p45 = default(Promise<TConvert>);
-                    p45 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p45 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onDirectCallbackAddedConvert(ref p45);
@@ -1565,7 +1543,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p46 = default(Promise<TConvert>);
-                    p46 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p46 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onDirectCallbackAddedConvert(ref p46);
@@ -1574,7 +1552,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p47 = default(Promise<TConvert>);
-                    p47 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p47 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, () => { onUnknownRejection(); return promiseToPromiseConvert(p47); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p47, AdoptLocation.Reject);
@@ -1583,7 +1561,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p48 = default(Promise<TConvert>);
-                    p48 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p48 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return convertValue; }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p48); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p48, AdoptLocation.Reject);
@@ -1593,7 +1571,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p49 = default(Promise);
-                    p49 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p49 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p49); }, () => { onUnknownRejection(); return promiseToPromise(p49); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p49, AdoptLocation.Both);
@@ -1602,7 +1580,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p50 = default(Promise);
-                    p50 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p50 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p50); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p50); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p50, AdoptLocation.Both);
@@ -1611,7 +1589,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p51 = default(Promise);
-                    p51 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p51 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p51); }, () => { onUnknownRejection(); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p51, AdoptLocation.Resolve);
@@ -1620,7 +1598,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p52 = default(Promise);
-                    p52 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p52 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromise(p52); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p52, AdoptLocation.Resolve);
@@ -1630,7 +1608,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p53 = default(Promise<TConvert>);
-                    p53 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p53 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p53); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p53); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p53, AdoptLocation.Both);
@@ -1639,7 +1617,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p54 = default(Promise<TConvert>);
-                    p54 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p54 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p54); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p54); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p54, AdoptLocation.Both);
@@ -1648,7 +1626,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p55 = default(Promise<TConvert>);
-                    p55 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p55 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p55); }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p55, AdoptLocation.Resolve);
@@ -1657,7 +1635,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p56 = default(Promise<TConvert>);
-                    p56 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p56 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, cv => { onResolveCapture(cv); onResolve(); return promiseToPromiseConvert(p56); }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p56, AdoptLocation.Resolve);
@@ -1668,7 +1646,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p57 = default(Promise);
-                    p57 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p57 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onDirectCallbackAdded(ref p57);
@@ -1677,7 +1655,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p58 = default(Promise);
-                    p58 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p58 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onDirectCallbackAdded(ref p58);
@@ -1686,7 +1664,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p59 = default(Promise);
-                    p59 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p59 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p59); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p59, AdoptLocation.Reject);
@@ -1695,7 +1673,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p60 = default(Promise);
-                    p60 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p60 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p60); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p60, AdoptLocation.Reject);
@@ -1705,7 +1683,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p61 = default(Promise<TConvert>);
-                    p61 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p61 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onDirectCallbackAddedConvert(ref p61);
@@ -1714,7 +1692,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p62 = default(Promise<TConvert>);
-                    p62 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p62 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onDirectCallbackAddedConvert(ref p62);
@@ -1723,7 +1701,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p63 = default(Promise<TConvert>);
-                    p63 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p63 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p63); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p63, AdoptLocation.Reject);
@@ -1732,7 +1710,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p64 = default(Promise<TConvert>);
-                    p64 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p64 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p64); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p64, AdoptLocation.Reject);
@@ -1742,7 +1720,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p65 = default(Promise);
-                    p65 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p65 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return promiseToPromise(p65); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p65); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p65, AdoptLocation.Both);
@@ -1751,7 +1729,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p66 = default(Promise);
-                    p66 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p66 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return promiseToPromise(p66); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p66); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p66, AdoptLocation.Both);
@@ -1760,7 +1738,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p67 = default(Promise);
-                    p67 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p67 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return promiseToPromise(p67); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p67, AdoptLocation.Resolve);
@@ -1769,7 +1747,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p68 = default(Promise);
-                    p68 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p68 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return promiseToPromise(p68); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p68, AdoptLocation.Resolve);
@@ -1779,7 +1757,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p69 = default(Promise<TConvert>);
-                    p69 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p69 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return promiseToPromiseConvert(p69); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p69); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p69, AdoptLocation.Both);
@@ -1788,7 +1766,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p70 = default(Promise<TConvert>);
-                    p70 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p70 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return promiseToPromiseConvert(p70); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p70); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p70, AdoptLocation.Both);
@@ -1797,7 +1775,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p71 = default(Promise<TConvert>);
-                    p71 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p71 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return promiseToPromiseConvert(p71); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p71, AdoptLocation.Resolve);
@@ -1806,7 +1784,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p72 = default(Promise<TConvert>);
-                    p72 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p72 = p.ConfigureContinuation(continuationOptions)
                         .Then(() => { onResolve(); return promiseToPromiseConvert(p72); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p72, AdoptLocation.Resolve);
@@ -1822,8 +1800,8 @@ namespace ProtoPromiseTests
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null, TestAction<Promise<T>> onCallbackAddedT = null,
             Action onCancel = null,
             TestAction<Promise> onDirectCallbackAdded = null, TestAction<Promise<TConvert>> onDirectCallbackAddedConvert = null, TestAction<Promise<T>> onDirectCallbackAddedT = null,
-            TestAction<Promise, AdoptLocation> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>, AdoptLocation> onAdoptCallbackAddedConvert = null, TestAction<Promise<T>> onAdoptCallbackAddedT = null,
-            ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
+            TestAction<Promise, AdoptLocation> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>, AdoptLocation> onAdoptCallbackAddedConvert = null, TestAction<Promise<T>> onAdoptCallbackAddedCatch = null,
+            ContinuationOptions? continuationOptions = null)
         {
             using (var retainer = promise.GetRetainer())
             {
@@ -1835,11 +1813,11 @@ namespace ProtoPromiseTests
                     onResolveCapture, onRejectCapture, onUnknownRejectionCapture, captureValue,
                     promiseToPromise, promiseToPromiseConvert, promiseToPromiseT,
                     onCallbackAdded, onCallbackAddedConvert, onCallbackAddedT,
-                    default(CancelationToken), default(CancelationToken),
+                    default(CancelationToken),
                     onCancel,
                     onDirectCallbackAdded, onDirectCallbackAddedConvert, onDirectCallbackAddedT,
-                    onAdoptCallbackAdded, onAdoptCallbackAddedConvert, onAdoptCallbackAddedT,
-                    configureAwaitType, configureAwaitForceAsync
+                    onAdoptCallbackAdded, onAdoptCallbackAddedConvert, onAdoptCallbackAddedCatch,
+                    continuationOptions
                 );
 
                 CancelationSource cancelationSource = CancelationSource.New();
@@ -1849,11 +1827,11 @@ namespace ProtoPromiseTests
                     onResolveCapture, onRejectCapture, onUnknownRejectionCapture, captureValue,
                     promiseToPromise, promiseToPromiseConvert, promiseToPromiseT,
                     onCallbackAdded, onCallbackAddedConvert, onCallbackAddedT,
-                    cancelationSource.Token, cancelationSource.Token,
+                    cancelationSource.Token,
                     onCancel,
                     onDirectCallbackAdded, onDirectCallbackAddedConvert, onDirectCallbackAddedT,
-                    onAdoptCallbackAdded, onAdoptCallbackAddedConvert, onAdoptCallbackAddedT,
-                    configureAwaitType, configureAwaitForceAsync
+                    onAdoptCallbackAdded, onAdoptCallbackAddedConvert, onAdoptCallbackAddedCatch,
+                    continuationOptions
                 );
                 cancelationSource.Dispose();
             }
@@ -1863,12 +1841,12 @@ namespace ProtoPromiseTests
             Action<T> onResolve = null, Action<TReject> onReject = null, Action onUnknownRejection = null, TConvert convertValue = default(TConvert), T TValue = default(T),
             Action<TCapture> onResolveCapture = null, Action<TCapture> onRejectCapture = null, Action<TCapture> onUnknownRejectionCapture = null, TCapture captureValue = default(TCapture),
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null, Func<Promise<T>, Promise<T>> promiseToPromiseT = null,
-            TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null, TestAction<Promise<T>> onCallbackAddedT = null,
-            CancelationToken cancelationToken = default(CancelationToken), CancelationToken waitAsyncCancelationToken = default(CancelationToken),
+            TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null, TestAction<Promise<T>> onAdoptCallbackAddedCatch = null,
+            CancelationToken cancelationToken = default(CancelationToken),
             Action onCancel = null,
             TestAction<Promise> onDirectCallbackAdded = null, TestAction<Promise<TConvert>> onDirectCallbackAddedConvert = null, TestAction<Promise<T>> onDirectCallbackAddedT = null,
             TestAction<Promise, AdoptLocation> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>, AdoptLocation> onAdoptCallbackAddedConvert = null, TestAction<Promise<T>> onAdoptCallbackAddedT = null,
-            ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
+            ContinuationOptions? continuationOptions = null)
         {
             using (var retainer = promise.GetRetainer())
             {
@@ -1901,9 +1879,9 @@ namespace ProtoPromiseTests
                 {
                     onCallbackAddedConvert = (ref Promise<TConvert> p) => p.Forget();
                 }
-                if (onCallbackAddedT == null)
+                if (onAdoptCallbackAddedCatch == null)
                 {
-                    onCallbackAddedT = (ref Promise<T> p) => p.Forget();
+                    onAdoptCallbackAddedCatch = (ref Promise<T> p) => p.Forget();
                 }
                 if (onDirectCallbackAdded == null)
                 {
@@ -1934,7 +1912,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p1 = default(Promise);
-                    p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p1 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); }, () => { onUnknownRejection(); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onDirectCallbackAdded(ref p1);
@@ -1943,7 +1921,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p2 = default(Promise);
-                    p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p2 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onDirectCallbackAdded(ref p2);
@@ -1952,7 +1930,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p3 = default(Promise);
-                    p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p3 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); }, () => { onUnknownRejection(); return promiseToPromise(p3); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p3, AdoptLocation.Reject);
@@ -1961,7 +1939,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p4 = default(Promise);
-                    p4 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p4 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p4); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p4, AdoptLocation.Reject);
@@ -1971,7 +1949,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p5 = default(Promise<TConvert>);
-                    p5 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p5 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return convertValue; }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onDirectCallbackAddedConvert(ref p5);
@@ -1980,7 +1958,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p6 = default(Promise<TConvert>);
-                    p6 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p6 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return convertValue; }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onDirectCallbackAddedConvert(ref p6);
@@ -1989,7 +1967,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p7 = default(Promise<TConvert>);
-                    p7 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p7 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return convertValue; }, () => { onUnknownRejection(); return promiseToPromiseConvert(p7); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p7, AdoptLocation.Reject);
@@ -1998,7 +1976,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p8 = default(Promise<TConvert>);
-                    p8 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p8 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return convertValue; }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p8); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p8, AdoptLocation.Reject);
@@ -2008,7 +1986,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p9 = default(Promise);
-                    p9 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p9 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return promiseToPromise(p9); }, () => { onUnknownRejection(); return promiseToPromise(p9); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p9, AdoptLocation.Both);
@@ -2017,7 +1995,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p10 = default(Promise);
-                    p10 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p10 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return promiseToPromise(p10); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p10); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p10, AdoptLocation.Both);
@@ -2026,7 +2004,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p11 = default(Promise);
-                    p11 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p11 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return promiseToPromise(p11); }, () => { onUnknownRejection(); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p11, AdoptLocation.Resolve);
@@ -2035,7 +2013,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p12 = default(Promise);
-                    p12 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p12 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return promiseToPromise(p12); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p12, AdoptLocation.Resolve);
@@ -2045,7 +2023,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p13 = default(Promise<TConvert>);
-                    p13 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p13 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return promiseToPromiseConvert(p13); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p13); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p13, AdoptLocation.Both);
@@ -2054,7 +2032,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p14 = default(Promise<TConvert>);
-                    p14 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p14 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return promiseToPromiseConvert(p14); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p14); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p14, AdoptLocation.Both);
@@ -2063,7 +2041,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p15 = default(Promise<TConvert>);
-                    p15 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p15 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return promiseToPromiseConvert(p15); }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p15, AdoptLocation.Resolve);
@@ -2072,7 +2050,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p16 = default(Promise<TConvert>);
-                    p16 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p16 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return promiseToPromiseConvert(p16); }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p16, AdoptLocation.Resolve);
@@ -2083,45 +2061,45 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<T> p17 = default(Promise<T>);
-                    p17 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p17 = p.ConfigureContinuation(continuationOptions)
                         .Catch(() => { onUnknownRejection(); return TValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return TValue; });
                     onDirectCallbackAddedT(ref p17);
-                    onCallbackAddedT(ref p17);
+                    onAdoptCallbackAddedCatch(ref p17);
                 }
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<T> p18 = default(Promise<T>);
-                    p18 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p18 = p.ConfigureContinuation(continuationOptions)
                         .Catch((TReject failValue) => { onReject(failValue); return TValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return TValue; });
                     onDirectCallbackAddedT(ref p18);
-                    onCallbackAddedT(ref p18);
+                    onAdoptCallbackAddedCatch(ref p18);
                 }
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<T> p19 = default(Promise<T>);
-                    p19 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p19 = p.ConfigureContinuation(continuationOptions)
                         .Catch(() => { onUnknownRejection(); return promiseToPromiseT(p19); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return TValue; });
                     onAdoptCallbackAddedT(ref p19);
-                    onCallbackAddedT(ref p19);
+                    onAdoptCallbackAddedCatch(ref p19);
                 }
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<T> p20 = default(Promise<T>);
-                    p20 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p20 = p.ConfigureContinuation(continuationOptions)
                         .Catch((TReject failValue) => { onReject(failValue); return promiseToPromiseT(p20); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return TValue; });
                     onAdoptCallbackAddedT(ref p20);
-                    onCallbackAddedT(ref p20);
+                    onAdoptCallbackAddedCatch(ref p20);
                 }
 
 
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p21 = default(Promise);
-                    p21 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p21 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onDirectCallbackAdded(ref p21);
@@ -2130,7 +2108,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p22 = default(Promise);
-                    p22 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p22 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onDirectCallbackAdded(ref p22);
@@ -2139,7 +2117,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p23 = default(Promise);
-                    p23 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p23 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p23); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p23, AdoptLocation.Reject);
@@ -2148,7 +2126,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p24 = default(Promise);
-                    p24 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p24 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p24); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p24, AdoptLocation.Reject);
@@ -2158,7 +2136,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p25 = default(Promise<TConvert>);
-                    p25 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p25 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onDirectCallbackAddedConvert(ref p25);
@@ -2167,7 +2145,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p26 = default(Promise<TConvert>);
-                    p26 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p26 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onDirectCallbackAddedConvert(ref p26);
@@ -2176,7 +2154,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p27 = default(Promise<TConvert>);
-                    p27 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p27 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p27); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p27, AdoptLocation.Reject);
@@ -2185,7 +2163,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p28 = default(Promise<TConvert>);
-                    p28 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p28 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p28); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p28, AdoptLocation.Reject);
@@ -2195,7 +2173,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p29 = default(Promise);
-                    p29 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p29 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p29); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p29); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p29, AdoptLocation.Both);
@@ -2204,7 +2182,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p30 = default(Promise);
-                    p30 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p30 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p30); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p30); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p30, AdoptLocation.Both);
@@ -2213,7 +2191,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p31 = default(Promise);
-                    p31 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p31 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p31); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p31, AdoptLocation.Resolve);
@@ -2222,7 +2200,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p32 = default(Promise);
-                    p32 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p32 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p32); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p32, AdoptLocation.Resolve);
@@ -2233,7 +2211,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p33 = default(Promise<TConvert>);
-                    p33 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p33 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p33); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p33); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p33, AdoptLocation.Both);
@@ -2242,7 +2220,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p34 = default(Promise<TConvert>);
-                    p34 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p34 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p34); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p34); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p34, AdoptLocation.Both);
@@ -2251,7 +2229,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p35 = default(Promise<TConvert>);
-                    p35 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p35 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p35); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p35, AdoptLocation.Resolve);
@@ -2260,7 +2238,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p36 = default(Promise<TConvert>);
-                    p36 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p36 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p36); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p36, AdoptLocation.Resolve);
@@ -2271,45 +2249,45 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<T> p37 = default(Promise<T>);
-                    p37 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p37 = p.ConfigureContinuation(continuationOptions)
                         .Catch(captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return TValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return TValue; });
                     onDirectCallbackAddedT(ref p37);
-                    onCallbackAddedT(ref p37);
+                    onAdoptCallbackAddedCatch(ref p37);
                 }
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<T> p38 = default(Promise<T>);
-                    p38 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p38 = p.ConfigureContinuation(continuationOptions)
                         .Catch(captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return TValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return TValue; });
                     onDirectCallbackAddedT(ref p38);
-                    onCallbackAddedT(ref p38);
+                    onAdoptCallbackAddedCatch(ref p38);
                 }
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<T> p39 = default(Promise<T>);
-                    p39 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p39 = p.ConfigureContinuation(continuationOptions)
                         .Catch(captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseT(p39); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return TValue; });
                     onAdoptCallbackAddedT(ref p39);
-                    onCallbackAddedT(ref p39);
+                    onAdoptCallbackAddedCatch(ref p39);
                 }
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<T> p40 = default(Promise<T>);
-                    p40 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p40 = p.ConfigureContinuation(continuationOptions)
                         .Catch(captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseT(p40); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return TValue; });
                     onAdoptCallbackAddedT(ref p40);
-                    onCallbackAddedT(ref p40);
+                    onAdoptCallbackAddedCatch(ref p40);
                 }
 
 
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p41 = default(Promise);
-                    p41 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p41 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, () => { onUnknownRejection(); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onDirectCallbackAdded(ref p41);
@@ -2318,7 +2296,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p42 = default(Promise);
-                    p42 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p42 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onDirectCallbackAdded(ref p42);
@@ -2327,7 +2305,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p43 = default(Promise);
-                    p43 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p43 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, () => { onUnknownRejection(); return promiseToPromise(p43); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p43, AdoptLocation.Reject);
@@ -2336,7 +2314,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p44 = default(Promise);
-                    p44 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p44 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p44); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p44, AdoptLocation.Reject);
@@ -2346,7 +2324,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p45 = default(Promise<TConvert>);
-                    p45 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p45 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onDirectCallbackAddedConvert(ref p45);
@@ -2355,7 +2333,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p46 = default(Promise<TConvert>);
-                    p46 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p46 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onDirectCallbackAddedConvert(ref p46);
@@ -2364,7 +2342,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p47 = default(Promise<TConvert>);
-                    p47 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p47 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, () => { onUnknownRejection(); return promiseToPromiseConvert(p47); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p47, AdoptLocation.Reject);
@@ -2373,7 +2351,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p48 = default(Promise<TConvert>);
-                    p48 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p48 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return convertValue; }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p48); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p48, AdoptLocation.Reject);
@@ -2383,7 +2361,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p49 = default(Promise);
-                    p49 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p49 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p49); }, () => { onUnknownRejection(); return promiseToPromise(p49); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p49, AdoptLocation.Both);
@@ -2392,7 +2370,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p50 = default(Promise);
-                    p50 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p50 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p50); }, (TReject failValue) => { onReject(failValue); return promiseToPromise(p50); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p50, AdoptLocation.Both);
@@ -2401,7 +2379,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p51 = default(Promise);
-                    p51 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p51 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p51); }, () => { onUnknownRejection(); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p51, AdoptLocation.Resolve);
@@ -2410,7 +2388,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p52 = default(Promise);
-                    p52 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p52 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromise(p52); }, (TReject failValue) => { onReject(failValue); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p52, AdoptLocation.Resolve);
@@ -2420,7 +2398,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p53 = default(Promise<TConvert>);
-                    p53 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p53 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p53); }, () => { onUnknownRejection(); return promiseToPromiseConvert(p53); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p53, AdoptLocation.Both);
@@ -2429,7 +2407,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p54 = default(Promise<TConvert>);
-                    p54 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p54 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p54); }, (TReject failValue) => { onReject(failValue); return promiseToPromiseConvert(p54); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p54, AdoptLocation.Both);
@@ -2438,7 +2416,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p55 = default(Promise<TConvert>);
-                    p55 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p55 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p55); }, () => { onUnknownRejection(); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p55, AdoptLocation.Resolve);
@@ -2447,7 +2425,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p56 = default(Promise<TConvert>);
-                    p56 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p56 = p.ConfigureContinuation(continuationOptions)
                         .Then(captureValue, (cv, x) => { onResolveCapture(cv); onResolve(x); return promiseToPromiseConvert(p56); }, (TReject failValue) => { onReject(failValue); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p56, AdoptLocation.Resolve);
@@ -2458,7 +2436,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p57 = default(Promise);
-                    p57 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p57 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onDirectCallbackAdded(ref p57);
@@ -2467,7 +2445,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p58 = default(Promise);
-                    p58 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p58 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onDirectCallbackAdded(ref p58);
@@ -2476,7 +2454,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p59 = default(Promise);
-                    p59 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p59 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p59); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p59, AdoptLocation.Reject);
@@ -2485,7 +2463,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p60 = default(Promise);
-                    p60 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p60 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p60); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p60, AdoptLocation.Reject);
@@ -2495,7 +2473,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p61 = default(Promise<TConvert>);
-                    p61 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p61 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onDirectCallbackAddedConvert(ref p61);
@@ -2504,7 +2482,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p62 = default(Promise<TConvert>);
-                    p62 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p62 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onDirectCallbackAddedConvert(ref p62);
@@ -2513,7 +2491,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p63 = default(Promise<TConvert>);
-                    p63 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p63 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return convertValue; }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p63); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p63, AdoptLocation.Reject);
@@ -2522,7 +2500,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p64 = default(Promise<TConvert>);
-                    p64 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p64 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return convertValue; }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p64); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p64, AdoptLocation.Reject);
@@ -2532,7 +2510,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p65 = default(Promise);
-                    p65 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p65 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return promiseToPromise(p65); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromise(p65); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p65, AdoptLocation.Both);
@@ -2541,7 +2519,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p66 = default(Promise);
-                    p66 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p66 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return promiseToPromise(p66); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromise(p66); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p66, AdoptLocation.Both);
@@ -2550,7 +2528,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p67 = default(Promise);
-                    p67 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p67 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return promiseToPromise(p67); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p67, AdoptLocation.Resolve);
@@ -2559,7 +2537,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p68 = default(Promise);
-                    p68 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p68 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return promiseToPromise(p68); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p68, AdoptLocation.Resolve);
@@ -2569,7 +2547,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p69 = default(Promise<TConvert>);
-                    p69 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p69 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return promiseToPromiseConvert(p69); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return promiseToPromiseConvert(p69); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p69, AdoptLocation.Both);
@@ -2578,7 +2556,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p70 = default(Promise<TConvert>);
-                    p70 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p70 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return promiseToPromiseConvert(p70); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return promiseToPromiseConvert(p70); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p70, AdoptLocation.Both);
@@ -2587,7 +2565,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p71 = default(Promise<TConvert>);
-                    p71 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p71 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return promiseToPromiseConvert(p71); }, captureValue, cv => { onUnknownRejectionCapture(cv); onUnknownRejection(); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p71, AdoptLocation.Resolve);
@@ -2596,7 +2574,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p72 = default(Promise<TConvert>);
-                    p72 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p72 = p.ConfigureContinuation(continuationOptions)
                         .Then(x => { onResolve(x); return promiseToPromiseConvert(p72); }, captureValue, (TCapture cv, TReject failValue) => { onRejectCapture(cv); onReject(failValue); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p72, AdoptLocation.Resolve);
@@ -2612,23 +2590,23 @@ namespace ProtoPromiseTests
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
             Action onCancel = null,
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
-            ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
+            ContinuationOptions? continuationOptions = null)
         {
             using (var retainer = promise.GetRetainer())
             {
                 retainer.WaitAsync().Catch(() => { }).Forget(); // Suppress any rejections from the retained promise.
 
                 AddContinueCallbacksWithCancelation(
-                retainer.WaitAsync(),
-                onContinue, convertValue,
-                onContinueCapture, captureValue,
-                promiseToPromise, promiseToPromiseConvert,
-                onCallbackAdded, onCallbackAddedConvert,
-                default(CancelationToken), default(CancelationToken),
-                onCancel,
-                onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                configureAwaitType, configureAwaitForceAsync
-            );
+                    retainer.WaitAsync(),
+                    onContinue, convertValue,
+                    onContinueCapture, captureValue,
+                    promiseToPromise, promiseToPromiseConvert,
+                    onCallbackAdded, onCallbackAddedConvert,
+                    default(CancelationToken),
+                    onCancel,
+                    onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
+                    continuationOptions
+                );
 
                 CancelationSource cancelationSource = CancelationSource.New();
                 AddContinueCallbacksWithCancelation(
@@ -2637,10 +2615,10 @@ namespace ProtoPromiseTests
                     onContinueCapture, captureValue,
                     promiseToPromise, promiseToPromiseConvert,
                     onCallbackAdded, onCallbackAddedConvert,
-                    cancelationSource.Token, cancelationSource.Token,
+                    cancelationSource.Token,
                     onCancel,
                     onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                    configureAwaitType, configureAwaitForceAsync
+                    continuationOptions
                 );
                 cancelationSource.Dispose();
             }
@@ -2651,10 +2629,10 @@ namespace ProtoPromiseTests
             Action<TCapture, Promise.ResultContainer> onContinueCapture = null, TCapture captureValue = default(TCapture),
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
-            CancelationToken cancelationToken = default(CancelationToken), CancelationToken waitAsyncCancelationToken = default(CancelationToken),
+            CancelationToken cancelationToken = default(CancelationToken),
             Action onCancel = null,
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
-            ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
+            ContinuationOptions? continuationOptions = null)
         {
             using (var retainer = promise.GetRetainer())
             {
@@ -2692,7 +2670,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p1 = default(Promise);
-                    p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p1 = p.ConfigureContinuation(continuationOptions)
                         .ContinueWith(r => { onContinue(r); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onCallbackAdded(ref p1);
@@ -2700,7 +2678,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p2 = default(Promise<TConvert>);
-                    p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p2 = p.ConfigureContinuation(continuationOptions)
                         .ContinueWith(r => { onContinue(r); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onCallbackAddedConvert(ref p2);
@@ -2708,7 +2686,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p3 = default(Promise);
-                    p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p3 = p.ConfigureContinuation(continuationOptions)
                         .ContinueWith(r => { onContinue(r); return promiseToPromise(p3); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p3);
@@ -2717,7 +2695,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p4 = default(Promise<TConvert>);
-                    p4 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p4 = p.ConfigureContinuation(continuationOptions)
                         .ContinueWith(r => { onContinue(r); return promiseToPromiseConvert(p4); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p4);
@@ -2727,7 +2705,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p5 = default(Promise);
-                    p5 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p5 = p.ConfigureContinuation(continuationOptions)
                         .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onCallbackAdded(ref p5);
@@ -2735,7 +2713,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p6 = default(Promise<TConvert>);
-                    p6 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p6 = p.ConfigureContinuation(continuationOptions)
                         .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onCallbackAddedConvert(ref p6);
@@ -2743,7 +2721,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p7 = default(Promise);
-                    p7 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p7 = p.ConfigureContinuation(continuationOptions)
                         .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromise(p7); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p7);
@@ -2752,7 +2730,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p8 = default(Promise<TConvert>);
-                    p8 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p8 = p.ConfigureContinuation(continuationOptions)
                         .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromiseConvert(p8); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p8);
@@ -2768,7 +2746,7 @@ namespace ProtoPromiseTests
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
             Action onCancel = null,
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
-            ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
+            ContinuationOptions? continuationOptions = null)
         {
             using (var retainer = promise.GetRetainer())
             {
@@ -2780,10 +2758,10 @@ namespace ProtoPromiseTests
                     onContinueCapture, captureValue,
                     promiseToPromise, promiseToPromiseConvert,
                     onCallbackAdded, onCallbackAddedConvert,
-                    default(CancelationToken), default(CancelationToken),
+                    default(CancelationToken),
                     onCancel,
                     onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                    configureAwaitType, configureAwaitForceAsync
+                    continuationOptions
                 );
 
                 CancelationSource cancelationSource = CancelationSource.New();
@@ -2793,10 +2771,10 @@ namespace ProtoPromiseTests
                     onContinueCapture, captureValue,
                     promiseToPromise, promiseToPromiseConvert,
                     onCallbackAdded, onCallbackAddedConvert,
-                    cancelationSource.Token, cancelationSource.Token,
+                    cancelationSource.Token,
                     onCancel,
                     onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                    configureAwaitType, configureAwaitForceAsync
+                    continuationOptions
                 );
                 cancelationSource.Dispose();
             }
@@ -2807,10 +2785,10 @@ namespace ProtoPromiseTests
             Action<TCapture, Promise<T>.ResultContainer> onContinueCapture = null, TCapture captureValue = default(TCapture),
             Func<Promise, Promise> promiseToPromise = null, Func<Promise<TConvert>, Promise<TConvert>> promiseToPromiseConvert = null,
             TestAction<Promise> onCallbackAdded = null, TestAction<Promise<TConvert>> onCallbackAddedConvert = null,
-            CancelationToken cancelationToken = default(CancelationToken), CancelationToken waitAsyncCancelationToken = default(CancelationToken),
+            CancelationToken cancelationToken = default(CancelationToken),
             Action onCancel = null,
             TestAction<Promise> onAdoptCallbackAdded = null, TestAction<Promise<TConvert>> onAdoptCallbackAddedConvert = null,
-            ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
+            ContinuationOptions? continuationOptions = null)
         {
             using (var retainer = promise.GetRetainer())
             {
@@ -2848,7 +2826,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p1 = default(Promise);
-                    p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p1 = p.ConfigureContinuation(continuationOptions)
                         .ContinueWith(r => { onContinue(r); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onCallbackAdded(ref p1);
@@ -2856,7 +2834,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p2 = default(Promise<TConvert>);
-                    p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p2 = p.ConfigureContinuation(continuationOptions)
                         .ContinueWith(r => { onContinue(r); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onCallbackAddedConvert(ref p2);
@@ -2864,7 +2842,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p3 = default(Promise);
-                    p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p3 = p.ConfigureContinuation(continuationOptions)
                         .ContinueWith(r => { onContinue(r); return promiseToPromise(p3); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p3);
@@ -2873,7 +2851,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p4 = default(Promise<TConvert>);
-                    p4 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p4 = p.ConfigureContinuation(continuationOptions)
                         .ContinueWith(r => { onContinue(r); return promiseToPromiseConvert(p4); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p4);
@@ -2883,7 +2861,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p5 = default(Promise);
-                    p5 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p5 = p.ConfigureContinuation(continuationOptions)
                         .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onCallbackAdded(ref p5);
@@ -2891,7 +2869,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p6 = default(Promise<TConvert>);
-                    p6 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p6 = p.ConfigureContinuation(continuationOptions)
                         .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return convertValue; }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onCallbackAddedConvert(ref p6);
@@ -2899,7 +2877,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p7 = default(Promise);
-                    p7 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p7 = p.ConfigureContinuation(continuationOptions)
                         .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromise(p7); }, cancelationToken)
                         .CatchCancelation(onCancel);
                     onAdoptCallbackAdded(ref p7);
@@ -2908,7 +2886,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<TConvert> p8 = default(Promise<TConvert>);
-                    p8 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p8 = p.ConfigureContinuation(continuationOptions)
                         .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromiseConvert(p8); }, cancelationToken)
                         .CatchCancelation(() => { onCancel(); return convertValue; });
                     onAdoptCallbackAddedConvert(ref p8);
@@ -2923,7 +2901,7 @@ namespace ProtoPromiseTests
             Func<Promise, Promise> promiseToPromise = null,
             TestAction<Promise> onCallbackAdded = null,
             TestAction<Promise> onAdoptCallbackAdded = null,
-            ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
+            ContinuationOptions? continuationOptions = null)
         {
             using (var retainer = promise.GetRetainer())
             {
@@ -2937,9 +2915,7 @@ namespace ProtoPromiseTests
                     promiseToPromise,
                     onCallbackAdded,
                     onAdoptCallbackAdded,
-                    default(CancelationToken),
-                    configureAwaitType,
-                    configureAwaitForceAsync
+                    continuationOptions
                 );
 
                 CancelationSource cancelationSource = CancelationSource.New();
@@ -2951,9 +2927,7 @@ namespace ProtoPromiseTests
                     promiseToPromise,
                     onCallbackAdded,
                     onAdoptCallbackAdded,
-                    cancelationSource.Token,
-                    configureAwaitType,
-                    configureAwaitForceAsync
+                    continuationOptions
                 );
                 cancelationSource.Dispose();
             }
@@ -2966,8 +2940,7 @@ namespace ProtoPromiseTests
             Func<Promise, Promise> promiseToPromise = null,
             TestAction<Promise> onCallbackAdded = null,
             TestAction<Promise> onAdoptCallbackAdded = null,
-            CancelationToken waitAsyncCancelationToken = default(CancelationToken),
-            ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
+            ContinuationOptions? continuationOptions = null)
         {
             using (var retainer = promise.GetRetainer())
             {
@@ -2992,21 +2965,21 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p1 = default(Promise);
-                    p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, cancelationToken)
+                    p1 = p.ConfigureContinuation(continuationOptions)
                         .CatchCancelation(() => { onCancel(); }, cancelationToken);
                     onCallbackAdded(ref p1);
                 }
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p2 = default(Promise);
-                    p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p2 = p.ConfigureContinuation(continuationOptions)
                         .CatchCancelation(captureValue, cv => { onCancelCapture(cv); }, cancelationToken);
                     onCallbackAdded(ref p2);
                 }
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p3 = default(Promise);
-                    p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p3 = p.ConfigureContinuation(continuationOptions)
                         .CatchCancelation(() => { onCancel(); return promiseToPromise(p3); }, cancelationToken);
                     onAdoptCallbackAdded(ref p3);
                     onCallbackAdded(ref p3);
@@ -3014,7 +2987,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise p3 = default(Promise);
-                    p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p3 = p.ConfigureContinuation(continuationOptions)
                         .CatchCancelation(captureValue, cv => { onCancelCapture(cv); return promiseToPromise(p3); }, cancelationToken);
                     onAdoptCallbackAdded(ref p3);
                     onCallbackAdded(ref p3);
@@ -3028,7 +3001,7 @@ namespace ProtoPromiseTests
             Func<Promise<T>, Promise<T>> promiseToPromise = null,
             TestAction<Promise<T>> onCallbackAdded = null,
             TestAction<Promise<T>> onAdoptCallbackAdded = null,
-            ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
+            ContinuationOptions? continuationOptions = null)
         {
             using (var retainer = promise.GetRetainer())
             {
@@ -3042,9 +3015,7 @@ namespace ProtoPromiseTests
                     promiseToPromise,
                     onCallbackAdded,
                     onAdoptCallbackAdded,
-                    default(CancelationToken),
-                    configureAwaitType,
-                    configureAwaitForceAsync
+                    continuationOptions
                 );
 
                 CancelationSource cancelationSource = CancelationSource.New();
@@ -3056,9 +3027,7 @@ namespace ProtoPromiseTests
                     promiseToPromise,
                     onCallbackAdded,
                     onAdoptCallbackAdded,
-                    cancelationSource.Token,
-                    configureAwaitType,
-                    configureAwaitForceAsync
+                    continuationOptions
                 );
                 cancelationSource.Dispose();
             }
@@ -3071,8 +3040,7 @@ namespace ProtoPromiseTests
             Func<Promise<T>, Promise<T>> promiseToPromise = null,
             TestAction<Promise<T>> onCallbackAdded = null,
             TestAction<Promise<T>> onAdoptCallbackAdded = null,
-            CancelationToken waitAsyncCancelationToken = default(CancelationToken),
-            ConfigureAwaitType configureAwaitType = ConfigureAwaitType.None, bool configureAwaitForceAsync = false)
+            ContinuationOptions? continuationOptions = null)
         {
             using (var retainer = promise.GetRetainer())
             {
@@ -3097,21 +3065,21 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<T> p1 = default(Promise<T>);
-                    p1 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p1 = p.ConfigureContinuation(continuationOptions)
                         .CatchCancelation(() => { onCancel(); return TValue; }, cancelationToken);
                     onCallbackAdded(ref p1);
                 }
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<T> p2 = default(Promise<T>);
-                    p2 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p2 = p.ConfigureContinuation(continuationOptions)
                         .CatchCancelation(captureValue, cv => { onCancelCapture(cv); return TValue; }, cancelationToken);
                     onCallbackAdded(ref p2);
                 }
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<T> p3 = default(Promise<T>);
-                    p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p3 = p.ConfigureContinuation(continuationOptions)
                         .CatchCancelation(() => { onCancel(); return promiseToPromise(p3); }, cancelationToken);
                     onAdoptCallbackAdded(ref p3);
                     onCallbackAdded(ref p3);
@@ -3119,7 +3087,7 @@ namespace ProtoPromiseTests
                 foreach (var p in GetTestablePromises(retainer))
                 {
                     Promise<T> p3 = default(Promise<T>);
-                    p3 = p.ConfigureAwait(configureAwaitType, configureAwaitForceAsync, waitAsyncCancelationToken)
+                    p3 = p.ConfigureContinuation(continuationOptions)
                         .CatchCancelation(captureValue, cv => { onCancelCapture(cv); return promiseToPromise(p3); }, cancelationToken);
                     onAdoptCallbackAdded(ref p3);
                     onCallbackAdded(ref p3);
