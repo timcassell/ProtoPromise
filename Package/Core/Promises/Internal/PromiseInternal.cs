@@ -284,6 +284,9 @@ namespace Proto.Promises
                 _state = Promise.State.Pending;
                 _wasAwaitedorForgotten = false;
                 _suppressRejection = false;
+#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
+                _ignoreValueTaskContextScheduling = false;
+#endif
             }
 
             [MethodImpl(InlineOption)]

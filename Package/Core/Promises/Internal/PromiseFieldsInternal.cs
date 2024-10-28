@@ -103,6 +103,9 @@ namespace Proto.Promises
             volatile private Promise.State _state;
             private bool _suppressRejection;
             private bool _wasAwaitedorForgotten;
+#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
+            internal bool _ignoreValueTaskContextScheduling;
+#endif
 
             partial class PromiseRef<TResult> : PromiseRefBase
             {
