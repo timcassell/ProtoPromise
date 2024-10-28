@@ -29,7 +29,7 @@ namespace Proto.Promises
                     return new ValueTask();
                 }
 
-                var source = PooledValueTaskSource<VoidResult>.GetOrCreate(this);
+                var source = PooledValueTaskSource<VoidResult>.GetOrCreate(_ignoreValueTaskContextScheduling);
                 HookupNewWaiter(id, source);
                 return source.TaskVoid;
             }
@@ -45,7 +45,7 @@ namespace Proto.Promises
                         return new ValueTask<TResult>(result);
                     }
 
-                    var source = PooledValueTaskSource<TResult>.GetOrCreate(this);
+                    var source = PooledValueTaskSource<TResult>.GetOrCreate(_ignoreValueTaskContextScheduling);
                     HookupNewWaiter(id, source);
                     return source.Task;
                 }
@@ -83,12 +83,12 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static PooledValueTaskSource<TResult> GetOrCreate(PromiseRefBase promise)
+                internal static PooledValueTaskSource<TResult> GetOrCreate(bool ignoreValueTaskContextScheduling)
                 {
                     var source = GetOrCreate();
                     // If the promise we're converting to a ValueTask is already configured to execute on a certain context,
-                    // we ignore the context scheduling of the ValueTask continuation and continue synchronously.
-                    source._flagsMask = promise is IConfiguredPromise
+                    // we ignore the context scheduling of the ValueTask continuation, and continue synchronously.
+                    source._flagsMask = ignoreValueTaskContextScheduling
                         ? ~ValueTaskSourceOnCompletedFlags.UseSchedulingContext
                         : ~ValueTaskSourceOnCompletedFlags.None;
                     return source;

@@ -15,13 +15,10 @@ namespace Proto.Promises
     {
         partial class PromiseRefBase : HandleablePromiseBase, ITraceable
         {
-            // A marker interface for AsValueTask.
-            internal interface IConfiguredPromise { }
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class ConfiguredPromise<TResult> : PromiseSingleAwait<TResult>, IConfiguredPromise
+            internal sealed partial class ConfiguredPromise<TResult> : PromiseSingleAwait<TResult>
             {
                 private ConfiguredPromise() { }
 
@@ -53,6 +50,11 @@ namespace Proto.Promises
 #endif
                     var promise = GetOrCreate();
                     promise.Reset();
+#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
+                    // If the promise is converted to ValueTask, we ignore the context scheduling,
+                    // since this is already configured to continue on a specified context.
+                    promise._ignoreValueTaskContextScheduling = true;
+#endif
                     promise._synchronizationContext = synchronizationContext;
                     promise._completedBehavior = completedBehavior;
                     return promise;

@@ -198,8 +198,21 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            private bool ShouldInvokeSynchronous()
-                => _invokeContext == null | (!_forceAsync & _invokeContext == Promise.Manager.ThreadStaticSynchronizationContext);
+            private bool GetShouldInvokeSynchronously()
+            {
+                var context = _invokeContext;
+                if (context == null)
+                {
+                    return true;
+                }
+                if (_forceAsync)
+                {
+                    return false;
+                }
+                return context == BackgroundSynchronizationContextSentinel.s_instance
+                    ? Thread.CurrentThread.IsThreadPoolThread
+                    : context == Promise.Manager.ThreadStaticSynchronizationContext;
+            }
 
             [MethodImpl(InlineOption)]
             private void Retain()
@@ -243,7 +256,7 @@ namespace Proto.Promises
 
                 _current = value;
 
-                if (ShouldInvokeSynchronous())
+                if (GetShouldInvokeSynchronously())
                 {
                     Retain();
                     // Exit the lock before invoking so we're not holding the lock while user code runs.
@@ -355,6 +368,11 @@ namespace Proto.Promises
 
                     // Not all invokes are complete yet, create a deferred promise that will be resolved when all invokes are complete.
                     var deferredPromise = PromiseRefBase.DeferredPromise<VoidResult>.GetOrCreate();
+#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
+                    // If the promise is converted to ValueTask, we ignore the context scheduling,
+                    // since we already resolve the promise on the same context that we report progress on.
+                    deferredPromise._ignoreValueTaskContextScheduling = true;
+#endif
                     // We store the deferred promise in _next to save memory.
                     _next = deferredPromise;
                     registration.Dispose();
