@@ -62,7 +62,8 @@ namespace Proto.Promises.Threading
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<Key> LockAsync() => LockAsyncImpl();
+        public Promise<Key> LockAsync()
+            => LockAsyncImpl(ContinuationOptions.CapturedContext);
 
         /// <summary>
         /// Asynchronously acquire the lock, while observing a <see cref="CancelationToken"/>.
@@ -71,13 +72,26 @@ namespace Proto.Promises.Threading
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<Key> LockAsync(CancelationToken cancelationToken) => LockAsyncImpl(cancelationToken);
+        public Promise<Key> LockAsync(CancelationToken cancelationToken)
+            => LockAsyncImpl(cancelationToken, ContinuationOptions.CapturedContext);
+
+        /// <summary>
+        /// Asynchronously acquire the lock, while observing a <see cref="CancelationToken"/>.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
+        /// The result of the promise is the key that will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
+        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        [MethodImpl(Internal.InlineOption)]
+        public Promise<Key> LockAsync(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
+            => LockAsyncImpl(cancelationToken, continuationOptions.GetValidated());
 
         /// <summary>
         /// Synchronously acquire the lock. Returns the key that will release the lock when it is disposed.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
-        public Key Lock() => LockImpl();
+        public Key Lock()
+            => LockImpl();
 
         /// <summary>
         /// Synchronously acquire the lock, while observing a <see cref="CancelationToken"/>.
@@ -85,7 +99,8 @@ namespace Proto.Promises.Threading
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, a <see cref="CanceledException"/> will be thrown.</param>
         [MethodImpl(Internal.InlineOption)]
-        public Key Lock(CancelationToken cancelationToken) => LockImpl(cancelationToken);
+        public Key Lock(CancelationToken cancelationToken)
+            => LockImpl(cancelationToken);
 
         /// <summary>
         /// A disposable object used to release the associated <see cref="AsyncLock"/>.
@@ -98,22 +113,28 @@ namespace Proto.Promises.Threading
             /// <summary>
             /// Release the lock on the associated <see cref="AsyncLock"/>.
             /// </summary>
-            public void Dispose() => Release();
+            public void Dispose()
+                => Release();
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="Key"/>.</summary>
-            public bool Equals(Key other) => this == other;
+            public bool Equals(Key other)
+                => this == other;
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
-            public override bool Equals(object obj) => obj is Key token && Equals(token);
+            public override bool Equals(object obj)
+                => obj is Key token && Equals(token);
 
             /// <summary>Returns the hash code for this instance.</summary>
-            public override int GetHashCode() => Internal.BuildHashCode(_owner, _key.GetHashCode(), 0);
+            public override int GetHashCode()
+                => Internal.BuildHashCode(_owner, _key.GetHashCode(), 0);
 
             /// <summary>Returns a value indicating whether two <see cref="Key"/> values are equal.</summary>
-            public static bool operator ==(Key lhs, Key rhs) => lhs._owner == rhs._owner & lhs._key == rhs._key;
+            public static bool operator ==(Key lhs, Key rhs)
+                => lhs._owner == rhs._owner & lhs._key == rhs._key;
 
             /// <summary>Returns a value indicating whether two <see cref="Key"/> values are not equal.</summary>
-            public static bool operator !=(Key lhs, Key rhs) => !(lhs == rhs);
+            public static bool operator !=(Key lhs, Key rhs)
+                => !(lhs == rhs);
         }
     } // class AsyncLock
 

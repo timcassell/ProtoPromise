@@ -41,11 +41,11 @@ namespace Proto.Promises
     public enum CompletedContinuationBehavior : byte
     {
         /// <summary>
-        /// The continuation will be executed synchronously if the provided context is the same as the current context. Otherwise, the continuation will be executed asynchronously.
+        /// The continuation may be executed synchronously if the provided context is the same as the current context.
         /// </summary>
-        SynchronousIfSameContext,
+        AllowSynchronous,
         /// <summary>
-        /// The continuation will be executed synchronously.
+        /// The continuation will be executed synchronously, ignoring the provided context.
         /// </summary>
         Synchronous,
         /// <summary>
@@ -88,7 +88,7 @@ namespace Proto.Promises
         public static ContinuationOptions Foreground
         {
             [MethodImpl(Internal.InlineOption)]
-            get => new ContinuationOptions(SynchronizationOption.Foreground, CompletedContinuationBehavior.SynchronousIfSameContext);
+            get => new ContinuationOptions(SynchronizationOption.Foreground, CompletedContinuationBehavior.AllowSynchronous);
         }
 
         /// <summary>
@@ -97,7 +97,7 @@ namespace Proto.Promises
         public static ContinuationOptions Background
         {
             [MethodImpl(Internal.InlineOption)]
-            get => new ContinuationOptions(SynchronizationOption.Background, CompletedContinuationBehavior.SynchronousIfSameContext);
+            get => new ContinuationOptions(SynchronizationOption.Background, CompletedContinuationBehavior.AllowSynchronous);
         }
 
         /// <summary>
@@ -132,7 +132,7 @@ namespace Proto.Promises
             _option = (Option) continuationOption;
             _completedBehavior = continuationOption == SynchronizationOption.Synchronous || continuationOption == SynchronizationOption.CapturedContext
                 ? CompletedContinuationBehavior.Synchronous
-                : CompletedContinuationBehavior.SynchronousIfSameContext;
+                : CompletedContinuationBehavior.AllowSynchronous;
         }
 
         /// <summary>
@@ -144,7 +144,7 @@ namespace Proto.Promises
         {
             _continuationContext = continuationContext;
             _option = Option.Explicit;
-            _completedBehavior = CompletedContinuationBehavior.SynchronousIfSameContext;
+            _completedBehavior = CompletedContinuationBehavior.AllowSynchronous;
         }
 
         /// <summary>
@@ -182,7 +182,7 @@ namespace Proto.Promises
         {
             _continuationContext = null;
             _option = (Option) continuationOption;
-            _completedBehavior = forceAsync ? CompletedContinuationBehavior.Asynchronous : CompletedContinuationBehavior.SynchronousIfSameContext;
+            _completedBehavior = forceAsync ? CompletedContinuationBehavior.Asynchronous : CompletedContinuationBehavior.AllowSynchronous;
         }
 
         [MethodImpl(Internal.InlineOption)]
@@ -190,7 +190,7 @@ namespace Proto.Promises
         {
             _continuationContext = continuationContext;
             _option = Option.Explicit;
-            _completedBehavior = forceAsync ? CompletedContinuationBehavior.Asynchronous : CompletedContinuationBehavior.SynchronousIfSameContext;
+            _completedBehavior = forceAsync ? CompletedContinuationBehavior.Asynchronous : CompletedContinuationBehavior.AllowSynchronous;
         }
 
         internal SynchronizationContext GetContinuationContext()
@@ -299,7 +299,7 @@ namespace Proto.Promises
             return context;
         }
 
-        internal static SynchronizationContext CaptureContext()
+        private static SynchronizationContext CaptureContext()
         {
             // Capture the current context. If it's null, use the background context.
             return Promise.Manager.ThreadStaticSynchronizationContext
@@ -312,5 +312,12 @@ namespace Proto.Promises
                 ?? Promise.Config.BackgroundContext
                 ?? Internal.BackgroundSynchronizationContextSentinel.s_instance;
         }
+
+        // If this is configured with foreground, and the foreground context is null, GetForegroundContext will throw.
+        // We do this before starting actual work to prevent deadlocks in case of an exception.
+        internal ContinuationOptions GetValidated()
+            => _option == Option.Foreground
+            ? new ContinuationOptions(GetForegroundContext(), _completedBehavior)
+            : this;
     }
 }

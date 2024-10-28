@@ -30,10 +30,10 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static AsyncAutoResetEventPromise GetOrCreate(Threading.AsyncAutoResetEvent owner, SynchronizationContext callerContext)
+            internal static AsyncAutoResetEventPromise GetOrCreate(Threading.AsyncAutoResetEvent owner, ContinuationOptions continuationOptions)
             {
                 var promise = GetOrCreate();
-                promise.Reset(callerContext);
+                promise.Reset(continuationOptions);
                 promise._owner = owner;
                 return promise;
             }
@@ -108,7 +108,7 @@ namespace Proto.Promises
             }
 #endif // PROMISE_DEBUG
 
-            private Promise WaitAsyncImpl()
+            private Promise WaitAsyncImpl(ContinuationOptions continuationOptions)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 Internal.AsyncAutoResetEventPromise promise;
@@ -118,17 +118,18 @@ namespace Proto.Promises
                     {
                         _isSet = false;
                         _locker.Exit();
-                        return Promise.Resolved();
+                        return Promise.Resolved()
+                            .ConfigureContinuation(continuationOptions);
                     }
 
-                    promise = Internal.AsyncAutoResetEventPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
+                    promise = Internal.AsyncAutoResetEventPromise.GetOrCreate(this, continuationOptions);
                     _waiterQueue.Enqueue(promise);
                 }
                 _locker.Exit();
                 return new Promise(promise, promise.Id);
             }
 
-            private Promise<bool> TryWaitAsyncImpl(CancelationToken cancelationToken)
+            private Promise<bool> TryWaitAsyncImpl(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
 
@@ -143,16 +144,18 @@ namespace Proto.Promises
                     {
                         _isSet = false;
                         _locker.Exit();
-                        return Promise.Resolved(isSet);
+                        return Promise.Resolved(isSet)
+                            .ConfigureContinuation(continuationOptions);
                     }
 
-                    promise = Internal.AsyncAutoResetEventPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
+                    promise = Internal.AsyncAutoResetEventPromise.GetOrCreate(this, continuationOptions);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _isSet = false;
                         _locker.Exit();
                         promise.DisposeImmediate();
-                        return Promise.Resolved(isSet);
+                        return Promise.Resolved(isSet)
+                            .ConfigureContinuation(continuationOptions);
                     }
                     _waiterQueue.Enqueue(promise);
                 }
@@ -169,59 +172,19 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                Internal.AsyncAutoResetEventPromise promise;
-                _locker.Enter();
-                {
-                    if (_isSet)
-                    {
-                        _isSet = false;
-                        _locker.Exit();
-                        return;
-                    }
-                    promise = Internal.AsyncAutoResetEventPromise.GetOrCreate(this, null);
-                    _waiterQueue.Enqueue(promise);
-                }
-                _locker.Exit();
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
-                resultContainer.RethrowIfRejected();
+                WaitAsyncImpl(ContinuationOptions.Synchronous).Wait();
             }
 
             private bool TryWaitImpl(CancelationToken cancelationToken)
             {
                 // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
-                bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (!_isSet & !isCanceled & !spinner.NextSpinWillYield)
+                while (!_isSet & !spinner.NextSpinWillYield & !cancelationToken.IsCancelationRequested)
                 {
                     spinner.SpinOnce();
-                    isCanceled = cancelationToken.IsCancelationRequested;
                 }
 
-                Internal.AsyncAutoResetEventPromise promise;
-                _locker.Enter();
-                {
-                    bool isSet = _isSet;
-                    if (isSet | isCanceled)
-                    {
-                        _isSet = false;
-                        _locker.Exit();
-                        return isSet;
-                    }
-
-                    promise = Internal.AsyncAutoResetEventPromise.GetOrCreate(this, null);
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        _isSet = false;
-                        _locker.Exit();
-                        promise.DisposeImmediate();
-                        return isSet;
-                    }
-                    _waiterQueue.Enqueue(promise);
-                }
-                _locker.Exit();
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
-                resultContainer.RethrowIfRejected();
-                return resultContainer.Value;
+                return TryWaitAsyncImpl(cancelationToken, ContinuationOptions.Synchronous).WaitForResult();
             }
 
             private void SetImpl()

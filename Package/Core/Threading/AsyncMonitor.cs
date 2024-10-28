@@ -92,7 +92,25 @@ namespace Proto.Promises.Threading
         /// </remarks>
         [MethodImpl(Internal.InlineOption)]
         public static Promise<(bool didEnter, AsyncLock.Key key)> TryEnterAsync(AsyncLock asyncLock, CancelationToken cancelationToken)
-            => asyncLock.TryEnterAsyncImpl(cancelationToken);
+            => asyncLock.TryEnterAsyncImpl(cancelationToken, ContinuationOptions.CapturedContext);
+
+        /// <summary>
+        /// Asynchronously try to acquire the lock on the specified <see cref="AsyncLock"/>, while observing a <see cref="CancelationToken"/>.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired, or the <paramref name="cancelationToken"/> has been canceled, with the success state and key.
+        /// If successful, the key will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="asyncLock">The async lock instance that is being entered.</param>
+        /// <param name="cancelationToken">
+        /// The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the success state of the returned <see cref="Promise{T}"/> will be <see langword="false"/>.
+        /// </param>
+        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <remarks>
+        /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
+        /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
+        /// </remarks>
+        [MethodImpl(Internal.InlineOption)]
+        public static Promise<(bool didEnter, AsyncLock.Key key)> TryEnterAsync(AsyncLock asyncLock, CancelationToken cancelationToken, ContinuationOptions continuationOptions)
+            => asyncLock.TryEnterAsyncImpl(cancelationToken, continuationOptions.GetValidated());
 
         /// <summary>
         /// Synchronously try to acquire the lock on the specified <see cref="AsyncLock"/>, while observing a <see cref="CancelationToken"/>.

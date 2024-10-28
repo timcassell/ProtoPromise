@@ -143,7 +143,15 @@ namespace Proto.Promises.Threading
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public Promise WaitAsync()
-            => WaitAsyncImpl();
+            => WaitAsyncImpl(ContinuationOptions.CapturedContext);
+
+        /// <summary>
+        /// Asynchronously wait for this event to be set.
+        /// </summary>
+        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise"/>.</param>
+        [MethodImpl(Internal.InlineOption)]
+        public Promise WaitAsync(ContinuationOptions continuationOptions)
+            => WaitAsyncImpl(continuationOptions.GetValidated());
 
         /// <summary>
         /// Asynchronously wait for this event to be set, or for the <paramref name="cancelationToken"/> to be canceled.
@@ -155,7 +163,20 @@ namespace Proto.Promises.Threading
         /// </remarks>
         [MethodImpl(Internal.InlineOption)]
         public Promise<bool> TryWaitAsync(CancelationToken cancelationToken)
-            => TryWaitAsyncImpl(cancelationToken);
+            => TryWaitAsyncImpl(cancelationToken, ContinuationOptions.CapturedContext);
+
+        /// <summary>
+        /// Asynchronously wait for this event to be set, or for the <paramref name="cancelationToken"/> to be canceled.
+        /// </summary>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the wait.</param>
+        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <remarks>
+        /// The result of the returned <see cref="Promise{T}"/> will be <see langword="true"/> if this is set before the <paramref name="cancelationToken"/> was canceled, otherwise it will be <see langword="false"/>.
+        /// If this is already set, the result will be <see langword="true"/>, even if the <paramref name="cancelationToken"/> is already canceled.
+        /// </remarks>
+        [MethodImpl(Internal.InlineOption)]
+        public Promise<bool> TryWaitAsync(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
+            => TryWaitAsyncImpl(cancelationToken, continuationOptions.GetValidated());
 
         /// <summary>
         /// Synchronously wait for this event to be set.

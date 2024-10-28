@@ -86,7 +86,16 @@ namespace Proto.Promises.Threading
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
         public Promise<ReaderKey> ReaderLockAsync()
-            => ReaderLockAsyncImpl();
+            => ReaderLockAsyncImpl(ContinuationOptions.CapturedContext);
+
+        /// <summary>
+        /// Asynchronously acquire the lock as a reader.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
+        /// The result of the promise is the key that will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        public Promise<ReaderKey> ReaderLockAsync(ContinuationOptions continuationOptions)
+            => ReaderLockAsyncImpl(continuationOptions.GetValidated());
 
         /// <summary>
         /// Asynchronously acquire the lock as a reader, while observing a <see cref="CancelationToken"/>.
@@ -95,7 +104,17 @@ namespace Proto.Promises.Threading
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
         public Promise<ReaderKey> ReaderLockAsync(CancelationToken cancelationToken)
-            => ReaderLockAsyncImpl(cancelationToken);
+            => ReaderLockAsyncImpl(cancelationToken, ContinuationOptions.CapturedContext);
+
+        /// <summary>
+        /// Asynchronously acquire the lock as a reader, while observing a <see cref="CancelationToken"/>.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
+        /// The result of the promise is the key that will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
+        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        public Promise<ReaderKey> ReaderLockAsync(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
+            => ReaderLockAsyncImpl(cancelationToken, continuationOptions.GetValidated());
 
         /// <summary>
         /// Synchronously acquire the lock as a reader.
@@ -134,7 +153,23 @@ namespace Proto.Promises.Threading
         /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
         /// </remarks>
         public Promise<(bool didEnter, ReaderKey readerKey)> TryEnterReaderLockAsync(CancelationToken cancelationToken)
-            => TryEnterReaderLockAsyncImpl(cancelationToken);
+            => TryEnterReaderLockAsyncImpl(cancelationToken, ContinuationOptions.CapturedContext);
+
+        /// <summary>
+        /// Asynchronously try to acquire the lock as a reader, while observing a <see cref="CancelationToken"/>.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired, or the <paramref name="cancelationToken"/> has been canceled, with the success state and key.
+        /// If successful, the key will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="cancelationToken">
+        /// The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the success state of the returned <see cref="Promise{T}"/> will be <see langword="false"/>.
+        /// </param>
+        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <remarks>
+        /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
+        /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
+        /// </remarks>
+        public Promise<(bool didEnter, ReaderKey readerKey)> TryEnterReaderLockAsync(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
+            => TryEnterReaderLockAsyncImpl(cancelationToken, continuationOptions.GetValidated());
 
         /// <summary>
         /// Synchronously try to acquire the lock as a reader, while observing a <see cref="CancelationToken"/>.
@@ -156,7 +191,16 @@ namespace Proto.Promises.Threading
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
         public Promise<WriterKey> WriterLockAsync()
-            => WriterLockAsyncImpl();
+            => WriterLockAsyncImpl(ContinuationOptions.CapturedContext);
+
+        /// <summary>
+        /// Asynchronously acquire the lock as a writer.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
+        /// The result of the promise is the key that will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        public Promise<WriterKey> WriterLockAsync(ContinuationOptions continuationOptions)
+            => WriterLockAsyncImpl(continuationOptions.GetValidated());
 
         /// <summary>
         /// Asynchronously acquire the lock as a writer, while observing a <see cref="CancelationToken"/>.
@@ -165,7 +209,17 @@ namespace Proto.Promises.Threading
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
         public Promise<WriterKey> WriterLockAsync(CancelationToken cancelationToken)
-            => WriterLockAsyncImpl(cancelationToken);
+            => WriterLockAsyncImpl(cancelationToken, ContinuationOptions.CapturedContext);
+
+        /// <summary>
+        /// Asynchronously acquire the lock as a writer, while observing a <see cref="CancelationToken"/>.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
+        /// The result of the promise is the key that will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
+        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        public Promise<WriterKey> WriterLockAsync(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
+            => WriterLockAsyncImpl(cancelationToken, continuationOptions.GetValidated());
 
         /// <summary>
         /// Synchronously acquire the lock as a writer.
@@ -204,7 +258,23 @@ namespace Proto.Promises.Threading
         /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
         /// </remarks>
         public Promise<(bool didEnter, WriterKey writerKey)> TryEnterWriterLockAsync(CancelationToken cancelationToken)
-            => TryEnterWriterLockAsyncImpl(cancelationToken);
+            => TryEnterWriterLockAsyncImpl(cancelationToken, ContinuationOptions.CapturedContext);
+
+        /// <summary>
+        /// Asynchronously try to acquire the lock as a writer, while observing a <see cref="CancelationToken"/>.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired, or the <paramref name="cancelationToken"/> has been canceled, with the success state and key.
+        /// If successful, the key will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="cancelationToken">
+        /// The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the success state of the returned <see cref="Promise{T}"/> will be <see langword="false"/>.
+        /// </param>
+        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <remarks>
+        /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
+        /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
+        /// </remarks>
+        public Promise<(bool didEnter, WriterKey writerKey)> TryEnterWriterLockAsync(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
+            => TryEnterWriterLockAsyncImpl(cancelationToken, continuationOptions.GetValidated());
 
         /// <summary>
         /// Synchronously try to acquire the lock as a writer, while observing a <see cref="CancelationToken"/>.
@@ -230,7 +300,20 @@ namespace Proto.Promises.Threading
         /// Only 1 upgradeable reader lock may be entered at a time.
         /// </remarks>
         public Promise<UpgradeableReaderKey> UpgradeableReaderLockAsync()
-            => UpgradeableReaderLockAsyncImpl();
+            => UpgradeableReaderLockAsyncImpl(ContinuationOptions.CapturedContext);
+
+        /// <summary>
+        /// Asynchronously acquire the lock as an upgradeable reader.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
+        /// The result of the promise is the key that will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <remarks>
+        /// Upgradeable reader locks may be entered concurrently with normal reader locks, but they are mutually exclusive with respect to other upgradeable reader locks and writer locks.
+        /// Only 1 upgradeable reader lock may be entered at a time.
+        /// </remarks>
+        public Promise<UpgradeableReaderKey> UpgradeableReaderLockAsync(ContinuationOptions continuationOptions)
+            => UpgradeableReaderLockAsyncImpl(continuationOptions.GetValidated());
 
         /// <summary>
         /// Asynchronously acquire the lock as an upgradeable reader, while observing a <see cref="CancelationToken"/>.
@@ -243,7 +326,21 @@ namespace Proto.Promises.Threading
         /// Only 1 upgradeable reader lock may be entered at a time.
         /// </remarks>
         public Promise<UpgradeableReaderKey> UpgradeableReaderLockAsync(CancelationToken cancelationToken)
-            => UpgradeableReaderLockAsyncImpl(cancelationToken);
+            => UpgradeableReaderLockAsyncImpl(cancelationToken, ContinuationOptions.CapturedContext);
+
+        /// <summary>
+        /// Asynchronously acquire the lock as an upgradeable reader, while observing a <see cref="CancelationToken"/>.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
+        /// The result of the promise is the key that will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
+        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <remarks>
+        /// Upgradeable reader locks may be entered concurrently with normal reader locks, but they are mutually exclusive with respect to other upgradeable reader locks and writer locks.
+        /// Only 1 upgradeable reader lock may be entered at a time.
+        /// </remarks>
+        public Promise<UpgradeableReaderKey> UpgradeableReaderLockAsync(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
+            => UpgradeableReaderLockAsyncImpl(cancelationToken, continuationOptions.GetValidated());
 
         /// <summary>
         /// Synchronously acquire the lock as an upgradeable reader.
@@ -294,7 +391,23 @@ namespace Proto.Promises.Threading
         /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
         /// </remarks>
         public Promise<(bool didEnter, UpgradeableReaderKey readerKey)> TryEnterUpgradeableReaderLockAsync(CancelationToken cancelationToken)
-            => TryEnterUpgradeableReaderLockAsyncImpl(cancelationToken);
+            => TryEnterUpgradeableReaderLockAsyncImpl(cancelationToken, ContinuationOptions.CapturedContext);
+
+        /// <summary>
+        /// Asynchronously try to acquire the lock as an upgradeable reader, while observing a <see cref="CancelationToken"/>.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired, or the <paramref name="cancelationToken"/> has been canceled, with the success state and key.
+        /// If successful, the key will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="cancelationToken">
+        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the success state of the returned <see cref="Promise{T}"/> will be <see langword="false"/>.
+        /// </param>
+        /// <remarks>
+        /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
+        /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
+        /// </remarks>
+        public Promise<(bool didEnter, UpgradeableReaderKey readerKey)> TryEnterUpgradeableReaderLockAsync(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
+            => TryEnterUpgradeableReaderLockAsyncImpl(cancelationToken, continuationOptions.GetValidated());
 
         /// <summary>
         /// Synchronously try to acquire the lock as an upgradeable reader, while observing a <see cref="CancelationToken"/>.
@@ -317,7 +430,17 @@ namespace Proto.Promises.Threading
         /// </summary>
         /// <param name="readerKey">The key required to upgrade the lock.</param>
         public Promise<UpgradedWriterKey> UpgradeToWriterLockAsync(UpgradeableReaderKey readerKey)
-            => UpgradeToWriterLockAsyncImpl(readerKey);
+            => UpgradeToWriterLockAsyncImpl(readerKey, ContinuationOptions.CapturedContext);
+
+        /// <summary>
+        /// Asynchronously upgrade the lock from an upgradeable reader lock to a writer lock.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been upgraded.
+        /// The result of the promise is the key that will downgrade the lock to an upgradeable reader lock when it is disposed.
+        /// </summary>
+        /// <param name="readerKey">The key required to upgrade the lock.</param>
+        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        public Promise<UpgradedWriterKey> UpgradeToWriterLockAsync(UpgradeableReaderKey readerKey, ContinuationOptions continuationOptions)
+            => UpgradeToWriterLockAsyncImpl(readerKey, continuationOptions.GetValidated());
 
         /// <summary>
         /// Asynchronously upgrade the lock from an upgradeable reader lock to a writer lock, while observing a <see cref="CancelationToken"/>.
@@ -327,7 +450,18 @@ namespace Proto.Promises.Threading
         /// <param name="readerKey">The key required to upgrade the lock.</param>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the upgrade. If the token is canceled before the lock has been upgraded, the returned <see cref="Promise{T}"/> will be canceled.</param>
         public Promise<UpgradedWriterKey> UpgradeToWriterLockAsync(UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
-            => UpgradeToWriterLockAsyncImpl(readerKey, cancelationToken);
+            => UpgradeToWriterLockAsyncImpl(readerKey, cancelationToken, ContinuationOptions.CapturedContext);
+
+        /// <summary>
+        /// Asynchronously upgrade the lock from an upgradeable reader lock to a writer lock, while observing a <see cref="CancelationToken"/>.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been upgraded.
+        /// The result of the promise is the key that will downgrade the lock to an upgradeable reader lock when it is disposed.
+        /// </summary>
+        /// <param name="readerKey">The key required to upgrade the lock.</param>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the upgrade. If the token is canceled before the lock has been upgraded, the returned <see cref="Promise{T}"/> will be canceled.</param>
+        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        public Promise<UpgradedWriterKey> UpgradeToWriterLockAsync(UpgradeableReaderKey readerKey, CancelationToken cancelationToken, ContinuationOptions continuationOptions)
+            => UpgradeToWriterLockAsyncImpl(readerKey, cancelationToken, continuationOptions.GetValidated());
 
         /// <summary>
         /// Synchronously upgrade the lock from an upgradeable reader lock to a writer lock.
@@ -370,7 +504,24 @@ namespace Proto.Promises.Threading
         /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
         /// </remarks>
         public Promise<(bool didEnter, UpgradedWriterKey upgradedWriterKey)> TryUpgradeToWriterLockAsync(UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
-            => TryUpgradeToWriterLockAsyncImpl(readerKey, cancelationToken);
+            => TryUpgradeToWriterLockAsyncImpl(readerKey, cancelationToken, ContinuationOptions.CapturedContext);
+
+        /// <summary>
+        /// Asynchronously try to upgrade the lock from an upgradeable reader lock to a writer lock, while observing a <see cref="CancelationToken"/>.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired, or the <paramref name="cancelationToken"/> has been canceled, with the success state and key.
+        /// If successful, the key will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="readerKey">The key required to upgrade the lock.</param>
+        /// <param name="cancelationToken">
+        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the success state of the returned <see cref="Promise{T}"/> will be <see langword="false"/>.
+        /// </param>
+        /// <remarks>
+        /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
+        /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
+        /// </remarks>
+        public Promise<(bool didEnter, UpgradedWriterKey upgradedWriterKey)> TryUpgradeToWriterLockAsync(UpgradeableReaderKey readerKey, CancelationToken cancelationToken, ContinuationOptions continuationOptions)
+            => TryUpgradeToWriterLockAsyncImpl(readerKey, cancelationToken, continuationOptions.GetValidated());
 
         /// <summary>
         /// Synchronously try to upgrade the lock from an upgradeable reader lock to a writer lock, while observing a <see cref="CancelationToken"/>.
@@ -398,22 +549,28 @@ namespace Proto.Promises.Threading
             /// <summary>
             /// Release the reader lock on the associated <see cref="AsyncReaderWriterLock"/>.
             /// </summary>
-            public void Dispose() => _impl.ReleaseReaderLock();
+            public void Dispose()
+                => _impl.ReleaseReaderLock();
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="ReaderKey"/>.</summary>
-            public bool Equals(ReaderKey other) => this == other;
+            public bool Equals(ReaderKey other)
+                => this == other;
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
-            public override bool Equals(object obj) => obj is ReaderKey token && Equals(token);
+            public override bool Equals(object obj)
+                => obj is ReaderKey token && Equals(token);
 
             /// <summary>Returns the hash code for this instance.</summary>
-            public override int GetHashCode() => _impl.GetHashCode();
+            public override int GetHashCode()
+                => _impl.GetHashCode();
 
             /// <summary>Returns a value indicating whether two <see cref="ReaderKey"/> values are equal.</summary>
-            public static bool operator ==(ReaderKey lhs, ReaderKey rhs) => lhs._impl == rhs._impl;
+            public static bool operator ==(ReaderKey lhs, ReaderKey rhs)
+                => lhs._impl == rhs._impl;
 
             /// <summary>Returns a value indicating whether two <see cref="ReaderKey"/> values are not equal.</summary>
-            public static bool operator !=(ReaderKey lhs, ReaderKey rhs) => lhs._impl != rhs._impl;
+            public static bool operator !=(ReaderKey lhs, ReaderKey rhs)
+                => lhs._impl != rhs._impl;
         }
 
         /// <summary>
@@ -427,22 +584,28 @@ namespace Proto.Promises.Threading
             /// <summary>
             /// Release the writer lock on the associated <see cref="AsyncReaderWriterLock"/>.
             /// </summary>
-            public void Dispose() => _impl.ReleaseWriterLock();
+            public void Dispose()
+                => _impl.ReleaseWriterLock();
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="WriterKey"/>.</summary>
-            public bool Equals(WriterKey other) => this == other;
+            public bool Equals(WriterKey other)
+                => this == other;
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
-            public override bool Equals(object obj) => obj is WriterKey token && Equals(token);
+            public override bool Equals(object obj)
+                => obj is WriterKey token && Equals(token);
 
             /// <summary>Returns the hash code for this instance.</summary>
-            public override int GetHashCode() => _impl.GetHashCode();
+            public override int GetHashCode()
+                => _impl.GetHashCode();
 
             /// <summary>Returns a value indicating whether two <see cref="WriterKey"/> values are equal.</summary>
-            public static bool operator ==(WriterKey lhs, WriterKey rhs) => lhs._impl == rhs._impl;
+            public static bool operator ==(WriterKey lhs, WriterKey rhs)
+                => lhs._impl == rhs._impl;
 
             /// <summary>Returns a value indicating whether two <see cref="WriterKey"/> values are not equal.</summary>
-            public static bool operator !=(WriterKey lhs, WriterKey rhs) => lhs._impl != rhs._impl;
+            public static bool operator !=(WriterKey lhs, WriterKey rhs)
+                => lhs._impl != rhs._impl;
         }
 
         /// <summary>
@@ -456,22 +619,28 @@ namespace Proto.Promises.Threading
             /// <summary>
             /// Release the upgradeable reader lock on the associated <see cref="AsyncReaderWriterLock"/>.
             /// </summary>
-            public void Dispose() => _impl.ReleaseUpgradeableReaderLock();
+            public void Dispose()
+                => _impl.ReleaseUpgradeableReaderLock();
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="UpgradeableReaderKey"/>.</summary>
-            public bool Equals(UpgradeableReaderKey other) => this == other;
+            public bool Equals(UpgradeableReaderKey other)
+                => this == other;
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
-            public override bool Equals(object obj) => obj is UpgradeableReaderKey token && Equals(token);
+            public override bool Equals(object obj)
+                => obj is UpgradeableReaderKey token && Equals(token);
 
             /// <summary>Returns the hash code for this instance.</summary>
-            public override int GetHashCode() => _impl.GetHashCode();
+            public override int GetHashCode()
+                => _impl.GetHashCode();
 
             /// <summary>Returns a value indicating whether two <see cref="UpgradeableReaderKey"/> values are equal.</summary>
-            public static bool operator ==(UpgradeableReaderKey lhs, UpgradeableReaderKey rhs) => lhs._impl == rhs._impl;
+            public static bool operator ==(UpgradeableReaderKey lhs, UpgradeableReaderKey rhs)
+                => lhs._impl == rhs._impl;
 
             /// <summary>Returns a value indicating whether two <see cref="UpgradeableReaderKey"/> values are not equal.</summary>
-            public static bool operator !=(UpgradeableReaderKey lhs, UpgradeableReaderKey rhs) => lhs._impl != rhs._impl;
+            public static bool operator !=(UpgradeableReaderKey lhs, UpgradeableReaderKey rhs)
+                => lhs._impl != rhs._impl;
         }
 
         /// <summary>
@@ -485,22 +654,28 @@ namespace Proto.Promises.Threading
             /// <summary>
             /// Release the upgraded writer lock and downgrade back to an upgradeable reader lock on the associated <see cref="AsyncReaderWriterLock"/>.
             /// </summary>
-            public void Dispose() => _impl.ReleaseUpgradedWriterLock();
+            public void Dispose()
+                => _impl.ReleaseUpgradedWriterLock();
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="WriterKey"/>.</summary>
-            public bool Equals(UpgradedWriterKey other) => this == other;
+            public bool Equals(UpgradedWriterKey other)
+                => this == other;
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
-            public override bool Equals(object obj) => obj is UpgradedWriterKey token && Equals(token);
+            public override bool Equals(object obj)
+                => obj is UpgradedWriterKey token && Equals(token);
 
             /// <summary>Returns the hash code for this instance.</summary>
-            public override int GetHashCode() => _impl.GetHashCode();
+            public override int GetHashCode()
+                => _impl.GetHashCode();
 
             /// <summary>Returns a value indicating whether two <see cref="UpgradedWriterKey"/> values are equal.</summary>
-            public static bool operator ==(UpgradedWriterKey lhs, UpgradedWriterKey rhs) => lhs._impl == rhs._impl;
+            public static bool operator ==(UpgradedWriterKey lhs, UpgradedWriterKey rhs)
+                => lhs._impl == rhs._impl;
 
             /// <summary>Returns a value indicating whether two <see cref="UpgradedWriterKey"/> values are not equal.</summary>
-            public static bool operator !=(UpgradedWriterKey lhs, UpgradedWriterKey rhs) => lhs._impl != rhs._impl;
+            public static bool operator !=(UpgradedWriterKey lhs, UpgradedWriterKey rhs)
+                => lhs._impl != rhs._impl;
         }
     } // class AsyncReaderWriterLock
 

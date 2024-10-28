@@ -22,17 +22,16 @@ namespace Proto.Promises
 #endif
             internal abstract class AsyncSynchronizationPromiseBase<TResult> : PromiseSingleAwait<TResult>, ICancelable
             {
-                // We post continuations to the caller's context to prevent blocking the thread that released the lock (and to avoid StackOverflowException).
-                private SynchronizationContext _callerContext;
+                private SynchronizationContext _continuationContext;
                 protected CancelationRegistration _cancelationRegistration;
                 // We have to store the state in a separate field until the next awaiter is ready to be invoked on the proper context.
                 protected Promise.State _tempState;
 
                 [MethodImpl(InlineOption)]
-                protected void Reset(SynchronizationContext callerContext)
+                protected void Reset(ContinuationOptions continuationOptions)
                 {
                     Reset();
-                    _callerContext = callerContext;
+                    _continuationContext = continuationOptions.GetContinuationContext();
                     // Assume the resolved state will occur. If this is actually canceled or rejected, the state will be set at that time.
                     _tempState = Promise.State.Resolved;
                 }
@@ -40,20 +39,20 @@ namespace Proto.Promises
                 new protected void Dispose()
                 {
                     base.Dispose();
-                    _callerContext = null;
+                    _continuationContext = null;
                     _cancelationRegistration = default;
                 }
 
                 protected void Continue()
                 {
-                    if (_callerContext == null)
+                    if (_continuationContext == null)
                     {
-                        // It was a synchronous lock or wait, handle next continuation synchronously so that the PromiseSynchronousWaiter will be pulsed to wake the waiting thread.
+                        // This was configured to continue synchronously.
                         HandleNextInternal(_tempState);
                         return;
                     }
-                    // Post the continuation to the caller's context. This prevents blocking the current thread and avoids StackOverflowException.
-                    ScheduleContextCallback(_callerContext, this,
+                    // This was configured to continuation on the context.
+                    ScheduleContextCallback(_continuationContext, this,
                         obj => obj.UnsafeAs<AsyncSynchronizationPromiseBase<TResult>>().HandleFromContext(),
                         obj => obj.UnsafeAs<AsyncSynchronizationPromiseBase<TResult>>().HandleFromContext()
                     );

@@ -224,14 +224,15 @@ namespace Proto.Promises
                 }
             }
 
-            internal override Promise<ChannelReadResult<T>> ReadAsync(int id, CancelationToken cancelationToken)
+            internal override Promise<ChannelReadResult<T>> ReadAsync(int id, CancelationToken cancelationToken, ContinuationOptions continuationOptions)
             {
                 Validate(id);
 
                 // Quick cancelation check before we perform the operation.
                 if (cancelationToken.IsCancelationRequested)
                 {
-                    return Promise<ChannelReadResult<T>>.Canceled();
+                    return Promise<ChannelReadResult<T>>.Canceled()
+                        .ConfigureContinuation(continuationOptions);
                 }
 
                 _smallFields._locker.Enter();
@@ -254,7 +255,8 @@ namespace Proto.Promises
                         writer.Resolve(new ChannelWriteResult<T>(default, ChannelWriteResult.Success));
 
                     ReturnSuccess:
-                        return Promise.Resolved(new ChannelReadResult<T>(item, ChannelReadResult.Success));
+                        return Promise.Resolved(new ChannelReadResult<T>(item, ChannelReadResult.Success))
+                            .ConfigureContinuation(continuationOptions);
                     }
 
                     var closedReason = _closedReason;
@@ -266,12 +268,13 @@ namespace Proto.Promises
                             : Promise<ChannelReadResult<T>>.Rejected(closedReason);
                     }
 
-                    var promise = ChannelReadPromise<T>.GetOrCreate(this, ContinuationOptions.CaptureContext());
+                    var promise = ChannelReadPromise<T>.GetOrCreate(this, continuationOptions);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
                         promise.DisposeImmediate();
-                        return Promise<ChannelReadResult<T>>.Canceled();
+                        return Promise<ChannelReadResult<T>>.Canceled()
+                            .ConfigureContinuation(continuationOptions);
                     }
 
                     _readers.Enqueue(promise);
@@ -280,14 +283,15 @@ namespace Proto.Promises
                 }
             }
 
-            internal override Promise<ChannelWriteResult<T>> WriteAsync(in T item, int id, CancelationToken cancelationToken)
+            internal override Promise<ChannelWriteResult<T>> WriteAsync(in T item, int id, CancelationToken cancelationToken, ContinuationOptions continuationOptions)
             {
                 Validate(id);
 
                 // Quick cancelation check before we perform the operation.
                 if (cancelationToken.IsCancelationRequested)
                 {
-                    return Promise<ChannelWriteResult<T>>.Canceled();
+                    return Promise<ChannelWriteResult<T>>.Canceled()
+                        .ConfigureContinuation(continuationOptions);
                 }
 
                 _smallFields._locker.Enter();
@@ -298,9 +302,10 @@ namespace Proto.Promises
                     if (closedReason != null)
                     {
                         _smallFields._locker.Exit();
-                        return closedReason == ChannelSmallFields.ClosedResolvedReason ? Promise.Resolved(new ChannelWriteResult<T>(item, ChannelWriteResult.Closed))
+                        var returnPromise = closedReason == ChannelSmallFields.ClosedResolvedReason ? Promise.Resolved(new ChannelWriteResult<T>(item, ChannelWriteResult.Closed))
                             : closedReason == ChannelSmallFields.ClosedCanceledReason ? Promise<ChannelWriteResult<T>>.Canceled()
                             : Promise<ChannelWriteResult<T>>.Rejected(closedReason);
+                        return returnPromise.ConfigureContinuation(continuationOptions);
                     }
 
                     // If there is at least 1 reader, we grab one and complete it outside of the lock.
@@ -309,7 +314,8 @@ namespace Proto.Promises
                         var reader = _readers.Dequeue();
                         _smallFields._locker.Exit();
                         reader.Resolve(new ChannelReadResult<T>(item, ChannelReadResult.Success));
-                        return Promise.Resolved(new ChannelWriteResult<T>(default, ChannelWriteResult.Success));
+                        return Promise.Resolved(new ChannelWriteResult<T>(default, ChannelWriteResult.Success))
+                            .ConfigureContinuation(continuationOptions);
                     }
 
                     // Otherwise, we attempt to add the item to the queue.
@@ -324,18 +330,20 @@ namespace Proto.Promises
                         {
                             waitToReaders.Pop().Resolve(true);
                         }
-                        return Promise.Resolved(new ChannelWriteResult<T>(default, ChannelWriteResult.Success));
+                        return Promise.Resolved(new ChannelWriteResult<T>(default, ChannelWriteResult.Success))
+                            .ConfigureContinuation(continuationOptions);
                     }
 
                     // The queue is at max capacity. Either drop an item, or wait for an item to be read, depending on the full mode.
                     if (_fullMode == BoundedChannelFullMode.Wait)
                     {
-                        var promise = ChannelWritePromise<T>.GetOrCreate(item, this, ContinuationOptions.CaptureContext());
+                        var promise = ChannelWritePromise<T>.GetOrCreate(item, this, continuationOptions);
                         if (promise.HookupAndGetIsCanceled(cancelationToken))
                         {
                             _smallFields._locker.Exit();
                             promise.DisposeImmediate();
-                            return Promise<ChannelWriteResult<T>>.Canceled();
+                            return Promise<ChannelWriteResult<T>>.Canceled()
+                                .ConfigureContinuation(continuationOptions);
                         }
 
                         _writers.Enqueue(promise);
@@ -346,7 +354,8 @@ namespace Proto.Promises
                     if (_fullMode == BoundedChannelFullMode.DropWrite)
                     {
                         _smallFields._locker.Exit();
-                        return Promise.Resolved(new ChannelWriteResult<T>(item, ChannelWriteResult.DroppedItem));
+                        return Promise.Resolved(new ChannelWriteResult<T>(item, ChannelWriteResult.DroppedItem))
+                            .ConfigureContinuation(continuationOptions);
                     }
 
                     T droppedItem = _fullMode == BoundedChannelFullMode.DropNewest
@@ -354,18 +363,20 @@ namespace Proto.Promises
                         : _queue.DequeueHead();
                     _queue.EnqueueTail(item);
                     _smallFields._locker.Exit();
-                    return Promise.Resolved(new ChannelWriteResult<T>(droppedItem, ChannelWriteResult.DroppedItem));
+                    return Promise.Resolved(new ChannelWriteResult<T>(droppedItem, ChannelWriteResult.DroppedItem))
+                        .ConfigureContinuation(continuationOptions);
                 }
             }
 
-            internal override Promise<bool> WaitToReadAsync(int id, CancelationToken cancelationToken)
+            internal override Promise<bool> WaitToReadAsync(int id, CancelationToken cancelationToken, ContinuationOptions continuationOptions)
             {
                 Validate(id);
 
                 // Quick cancelation check before we perform the operation.
                 if (cancelationToken.IsCancelationRequested)
                 {
-                    return Promise<bool>.Canceled();
+                    return Promise<bool>.Canceled()
+                        .ConfigureContinuation(continuationOptions);
                 }
 
                 _smallFields._locker.Enter();
@@ -375,24 +386,27 @@ namespace Proto.Promises
                     if (!_queue.IsEmpty)
                     {
                         _smallFields._locker.Exit();
-                        return Promise.Resolved(true);
+                        return Promise.Resolved(true)
+                            .ConfigureContinuation(continuationOptions);
                     }
 
                     var closedReason = _closedReason;
                     if (closedReason != null)
                     {
                         _smallFields._locker.Exit();
-                        return closedReason == ChannelSmallFields.ClosedResolvedReason ? Promise.Resolved(false)
+                        var returnPromise = closedReason == ChannelSmallFields.ClosedResolvedReason ? Promise.Resolved(false)
                             : closedReason == ChannelSmallFields.ClosedCanceledReason ? Promise<bool>.Canceled()
                             : Promise<bool>.Rejected(closedReason);
+                        return returnPromise.ConfigureContinuation(continuationOptions);
                     }
 
-                    var promise = ChannelWaitToReadPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
+                    var promise = ChannelWaitToReadPromise.GetOrCreate(this, continuationOptions);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
                         promise.DisposeImmediate();
-                        return Promise<bool>.Canceled();
+                        return Promise<bool>.Canceled()
+                            .ConfigureContinuation(continuationOptions);
                     }
 
                     _waitToReaders.Enqueue(promise);
@@ -401,14 +415,15 @@ namespace Proto.Promises
                 }
             }
 
-            internal override Promise<bool> WaitToWriteAsync(int id, CancelationToken cancelationToken)
+            internal override Promise<bool> WaitToWriteAsync(int id, CancelationToken cancelationToken, ContinuationOptions continuationOptions)
             {
                 Validate(id);
 
                 // Quick cancelation check before we perform the operation.
                 if (cancelationToken.IsCancelationRequested)
                 {
-                    return Promise<bool>.Canceled();
+                    return Promise<bool>.Canceled()
+                        .ConfigureContinuation(continuationOptions);
                 }
 
                 _smallFields._locker.Enter();
@@ -419,23 +434,26 @@ namespace Proto.Promises
                     if (closedReason != null)
                     {
                         _smallFields._locker.Exit();
-                        return closedReason == ChannelSmallFields.ClosedResolvedReason ? Promise.Resolved(false)
+                        var returnPromise = closedReason == ChannelSmallFields.ClosedResolvedReason ? Promise.Resolved(false)
                             : closedReason == ChannelSmallFields.ClosedCanceledReason ? Promise<bool>.Canceled()
                             : Promise<bool>.Rejected(closedReason);
+                        return returnPromise.ConfigureContinuation(continuationOptions);
                     }
 
                     if (_queue.Count < _capacity)
                     {
                         _smallFields._locker.Exit();
-                        return Promise.Resolved(true);
+                        return Promise.Resolved(true)
+                            .ConfigureContinuation(continuationOptions);
                     }
 
-                    var promise = ChannelWaitToWritePromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
+                    var promise = ChannelWaitToWritePromise.GetOrCreate(this, continuationOptions);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
                         promise.DisposeImmediate();
-                        return Promise<bool>.Canceled();
+                        return Promise<bool>.Canceled()
+                            .ConfigureContinuation(continuationOptions);
                     }
 
                     _waitToWriters.Enqueue(promise);

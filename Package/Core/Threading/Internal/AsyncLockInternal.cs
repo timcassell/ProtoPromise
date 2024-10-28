@@ -57,10 +57,10 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static AsyncLockPromise GetOrCreate(AsyncLock owner, SynchronizationContext callerContext)
+                internal static AsyncLockPromise GetOrCreate(AsyncLock owner, ContinuationOptions continuationOptions)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset(callerContext);
+                    promise.Reset(continuationOptions);
                     promise._result = new AsyncLock.Key(owner); // This will be overwritten when this is resolved, we just store the owner here for cancelation.
                     return promise;
                 }
@@ -134,10 +134,10 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static AsyncLockWaitPromise GetOrCreate(AsyncConditionVariable owner, long key, SynchronizationContext callerContext)
+                internal static AsyncLockWaitPromise GetOrCreate(AsyncConditionVariable owner, long key, ContinuationOptions continuationOptions)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset(callerContext);
+                    promise.Reset(continuationOptions);
                     promise._owner = owner;
                     promise._lock = owner._lock;
                     promise._key = key;
@@ -236,7 +236,7 @@ namespace Proto.Promises
             private void SetNextKey()
                 => _currentKey = Internal.KeyGenerator<AsyncLock>.Next();
 
-            private Promise<Key> LockAsyncImpl()
+            private Promise<Key> LockAsyncImpl(ContinuationOptions continuationOptions)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
 
@@ -250,17 +250,18 @@ namespace Proto.Promises
                     {
                         SetNextKey();
                         _locker.Exit();
-                        return Promise.Resolved(new Key(this, _currentKey, null));
+                        return Promise.Resolved(new Key(this, _currentKey, null))
+                            .ConfigureContinuation(continuationOptions);
                     }
 
-                    promise = Internal.PromiseRefBase.AsyncLockPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
+                    promise = Internal.PromiseRefBase.AsyncLockPromise.GetOrCreate(this, continuationOptions);
                     _queue.Enqueue(promise);
                 }
                 _locker.Exit();
                 return new Promise<Key>(promise, promise.Id);
             }
 
-            private Promise<Key> LockAsyncImpl(CancelationToken cancelationToken)
+            private Promise<Key> LockAsyncImpl(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
 
@@ -269,7 +270,8 @@ namespace Proto.Promises
                 {
                     ValidateNotAbandoned();
 
-                    return Promise<Key>.Canceled();
+                    return Promise<Key>.Canceled()
+                        .ConfigureContinuation(continuationOptions);
                 }
 
                 // Unfortunately, there is no way to detect async recursive lock enter. A deadlock will occur, instead of throw.
@@ -282,15 +284,17 @@ namespace Proto.Promises
                     {
                         SetNextKey();
                         _locker.Exit();
-                        return Promise.Resolved(new Key(this, _currentKey, null));
+                        return Promise.Resolved(new Key(this, _currentKey, null))
+                            .ConfigureContinuation(continuationOptions);
                     }
 
-                    promise = Internal.PromiseRefBase.AsyncLockPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
+                    promise = Internal.PromiseRefBase.AsyncLockPromise.GetOrCreate(this, continuationOptions);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _locker.Exit();
                         promise.DisposeImmediate();
-                        return Promise<Key>.Canceled();
+                        return Promise<Key>.Canceled()
+                            .ConfigureContinuation(continuationOptions);
                     }
                     _queue.Enqueue(promise);
                 }
@@ -307,73 +311,19 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                // Unfortunately, there is no way to detect async recursive lock enter. A deadlock will occur, instead of throw.
-                Internal.PromiseRefBase.AsyncLockPromise promise;
-                _locker.Enter();
-                {
-                    ValidateNotAbandoned();
-
-                    if (_currentKey == 0)
-                    {
-                        SetNextKey();
-                        _locker.Exit();
-                        return new Key(this, _currentKey, null);
-                    }
-
-                    promise = Internal.PromiseRefBase.AsyncLockPromise.GetOrCreate(this, null);
-                    _queue.Enqueue(promise);
-                }
-                _locker.Exit();
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
-                resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Value;
+                return LockAsyncImpl(ContinuationOptions.Synchronous).WaitForResult();
             }
 
             private Key LockImpl(CancelationToken cancelationToken)
             {
                 // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
-                bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (Volatile.Read(ref _currentKey) != 0 & !isCanceled & !spinner.NextSpinWillYield)
+                while (Volatile.Read(ref _currentKey) != 0 & !spinner.NextSpinWillYield & !cancelationToken.IsCancelationRequested)
                 {
                     spinner.SpinOnce();
-                    isCanceled = cancelationToken.IsCancelationRequested;
                 }
 
-                // Quick check to see if the token is already canceled before entering.
-                if (isCanceled)
-                {
-                    ValidateNotAbandoned();
-
-                    throw Promise.CancelException();
-                }
-
-                // Unfortunately, there is no way to detect async recursive lock enter. A deadlock will occur, instead of throw.
-                Internal.PromiseRefBase.AsyncLockPromise promise;
-                _locker.Enter();
-                {
-                    ValidateNotAbandoned();
-
-                    if (_currentKey == 0)
-                    {
-                        SetNextKey();
-                        _locker.Exit();
-                        return new Key(this, _currentKey, null);
-                    }
-
-                    promise = Internal.PromiseRefBase.AsyncLockPromise.GetOrCreate(this, null);
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        _locker.Exit();
-                        promise.DisposeImmediate();
-                        throw Promise.CancelException();
-                    }
-                    _queue.Enqueue(promise);
-                }
-                _locker.Exit();
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
-                resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Value;
+                return LockAsyncImpl(cancelationToken, ContinuationOptions.Synchronous).WaitForResult();
             }
 
             internal bool TryEnterImpl(out Key key)
@@ -395,7 +345,7 @@ namespace Proto.Promises
                 return false;
             }
 
-            internal Promise<(bool didEnter, Key key)> TryEnterAsyncImpl(CancelationToken cancelationToken)
+            internal Promise<(bool didEnter, Key key)> TryEnterAsyncImpl(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
             {
                 Internal.PromiseRefBase.AsyncLockPromise promise;
                 _locker.Enter();
@@ -406,21 +356,24 @@ namespace Proto.Promises
                     {
                         SetNextKey();
                         _locker.Exit();
-                        return Promise.Resolved((true, new Key(this, _currentKey, null)));
+                        return Promise.Resolved((true, new Key(this, _currentKey, null)))
+                            .ConfigureContinuation(continuationOptions);
                     }
                     // Quick check to see if the token is already canceled before waiting.
                     if (cancelationToken.IsCancelationRequested)
                     {
                         _locker.Exit();
-                        return Promise.Resolved((false, default(Key)));
+                        return Promise.Resolved((false, default(Key)))
+                            .ConfigureContinuation(continuationOptions);
                     }
 
-                    promise = Internal.PromiseRefBase.AsyncLockPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
+                    promise = Internal.PromiseRefBase.AsyncLockPromise.GetOrCreate(this, continuationOptions);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _locker.Exit();
                         promise.DisposeImmediate();
-                        return Promise.Resolved((false, default(Key)));
+                        return Promise.Resolved((false, default(Key)))
+                            .ConfigureContinuation(continuationOptions);
                     }
                     _queue.Enqueue(promise);
                 }
@@ -437,49 +390,14 @@ namespace Proto.Promises
             {
                 // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
-                bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (Volatile.Read(ref _currentKey) != 0 & !isCanceled & !spinner.NextSpinWillYield)
+                while (Volatile.Read(ref _currentKey) != 0 & !spinner.NextSpinWillYield & !cancelationToken.IsCancelationRequested)
                 {
                     spinner.SpinOnce();
-                    isCanceled = cancelationToken.IsCancelationRequested;
                 }
 
-                // Unfortunately, there is no way to detect async recursive lock enter. A deadlock will occur, instead of throw.
-                Internal.PromiseRefBase.AsyncLockPromise promise;
-                _locker.Enter();
-                {
-                    ValidateNotAbandoned();
-
-                    if (_currentKey == 0)
-                    {
-                        SetNextKey();
-                        _locker.Exit();
-                        key = new Key(this, _currentKey, null);
-                        return true;
-                    }
-                    // Quick check to see if the token is already canceled before waiting.
-                    if (isCanceled)
-                    {
-                        _locker.Exit();
-                        key = default;
-                        return false;
-                    }
-
-                    promise = Internal.PromiseRefBase.AsyncLockPromise.GetOrCreate(this, null);
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        _locker.Exit();
-                        promise.DisposeImmediate();
-                        key = default;
-                        return false;
-                    }
-                    _queue.Enqueue(promise);
-                }
-                _locker.Exit();
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
-                resultContainer.RethrowIfRejected();
-                key = resultContainer.Value;
-                return resultContainer.State == Promise.State.Resolved;
+                var (success, k) = TryEnterAsyncImpl(cancelationToken, ContinuationOptions.Synchronous).WaitForResult();
+                key = k;
+                return success;
             }
 
             private void ReleaseLock(long key)
@@ -507,7 +425,7 @@ namespace Proto.Promises
                 next.Resolve(ref _currentKey);
             }
 
-            private Promise WaitAsyncImpl(AsyncConditionVariable condVar, long key, SynchronizationContext callerContext)
+            private Promise WaitAsyncImpl(AsyncConditionVariable condVar, long key, ContinuationOptions continuationOptions)
             {
                 Internal.PromiseRefBase.AsyncLockWaitPromise promise;
                 _locker.Enter();
@@ -525,14 +443,14 @@ namespace Proto.Promises
                         ThrowConditionVariableAlreadyInUse(3);
                     }
 
-                    promise = Internal.PromiseRefBase.AsyncLockWaitPromise.GetOrCreate(condVar, key, callerContext);
+                    promise = Internal.PromiseRefBase.AsyncLockWaitPromise.GetOrCreate(condVar, key, continuationOptions);
                     condVar._queue.Enqueue(promise);
                 }
                 _locker.Exit();
                 return new Promise(promise, promise.Id);
             }
 
-            private Promise<bool> TryWaitAsyncImpl(AsyncConditionVariable condVar, long key, CancelationToken cancelationToken, SynchronizationContext callerContext)
+            private Promise<bool> TryWaitAsyncImpl(AsyncConditionVariable condVar, long key, CancelationToken cancelationToken, ContinuationOptions continuationOptions)
             {
                 Internal.PromiseRefBase.AsyncLockWaitPromise promise;
                 _locker.Enter();
@@ -560,10 +478,11 @@ namespace Proto.Promises
                             condVar._lock = null;
                         }
                         _locker.Exit();
-                        return Promise.Resolved(false);
+                        return Promise.Resolved(false)
+                            .ConfigureContinuation(continuationOptions);
                     }
 
-                    promise = Internal.PromiseRefBase.AsyncLockWaitPromise.GetOrCreate(condVar, key, callerContext);
+                    promise = Internal.PromiseRefBase.AsyncLockWaitPromise.GetOrCreate(condVar, key, continuationOptions);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         if (condVar._queue.IsEmpty)
@@ -573,7 +492,8 @@ namespace Proto.Promises
                         }
                         _locker.Exit();
                         promise.DisposeImmediate();
-                        return Promise.Resolved(false);
+                        return Promise.Resolved(false)
+                            .ConfigureContinuation(continuationOptions);
                     }
                     condVar._queue.Enqueue(promise);
                 }
@@ -809,11 +729,11 @@ namespace Proto.Promises
                         _owner.NotifyAbandoned("An AsyncLock.Key was never disposed.", this);
                     }
 
-                    internal Promise<bool> TryWaitAsync(AsyncConditionVariable condVar, long key, CancelationToken cancelationToken, SynchronizationContext callerContext)
+                    internal Promise<bool> TryWaitAsync(AsyncConditionVariable condVar, long key, CancelationToken cancelationToken, ContinuationOptions continuationOptions)
                     {
                         ValidateCall();
 
-                        var promise = _owner.TryWaitAsyncImpl(condVar, key, cancelationToken, callerContext);
+                        var promise = _owner.TryWaitAsyncImpl(condVar, key, cancelationToken, continuationOptions);
                         _waitPromise = promise._ref;
                         return promise
                             .Finally(this, _this => _this._waitPromise = null);
@@ -870,23 +790,23 @@ namespace Proto.Promises
                     }
                 }
 
-                internal Promise WaitAsync(AsyncConditionVariable condVar)
+                internal Promise WaitAsync(AsyncConditionVariable condVar, ContinuationOptions continuationOptions)
                 {
                     var copy = this;
                     copy.ValidateOwnerAndDisposedChecker();
                     lock (copy._disposedChecker)
                     {
-                        return copy._disposedChecker.TryWaitAsync(condVar, copy._key, default, ContinuationOptions.CaptureContext());
+                        return copy._disposedChecker.TryWaitAsync(condVar, copy._key, default, continuationOptions);
                     }
                 }
 
-                internal Promise<bool> TryWaitAsync(AsyncConditionVariable condVar, CancelationToken cancelationToken)
+                internal Promise<bool> TryWaitAsync(AsyncConditionVariable condVar, CancelationToken cancelationToken, ContinuationOptions continuationOptions)
                 {
                     var copy = this;
                     copy.ValidateOwnerAndDisposedChecker();
                     lock (copy._disposedChecker)
                     {
-                        return copy._disposedChecker.TryWaitAsync(condVar, copy._key, cancelationToken, ContinuationOptions.CaptureContext());
+                        return copy._disposedChecker.TryWaitAsync(condVar, copy._key, cancelationToken, continuationOptions);
                     }
                 }
 
@@ -896,7 +816,7 @@ namespace Proto.Promises
                     copy.ValidateOwnerAndDisposedChecker();
                     lock (copy._disposedChecker)
                     {
-                        copy._disposedChecker.TryWaitAsync(condVar, copy._key, default, null).WaitForResult();
+                        copy._disposedChecker.TryWaitAsync(condVar, copy._key, default, ContinuationOptions.Synchronous).WaitForResult();
                     }
                 }
 
@@ -906,7 +826,7 @@ namespace Proto.Promises
                     copy.ValidateOwnerAndDisposedChecker();
                     lock (copy._disposedChecker)
                     {
-                        return copy._disposedChecker.TryWaitAsync(condVar, copy._key, cancelationToken, null).WaitForResult();
+                        return copy._disposedChecker.TryWaitAsync(condVar, copy._key, cancelationToken, ContinuationOptions.Synchronous).WaitForResult();
                     }
                 }
 
@@ -970,17 +890,17 @@ namespace Proto.Promises
                     ValidateAndGetOwner().ReleaseLock(_key);
                 }
 
-                internal Promise WaitAsync(AsyncConditionVariable condVar)
-                    => ValidateAndGetOwner().WaitAsyncImpl(condVar, _key, ContinuationOptions.CaptureContext());
+                internal Promise WaitAsync(AsyncConditionVariable condVar, ContinuationOptions continuationOptions)
+                    => ValidateAndGetOwner().WaitAsyncImpl(condVar, _key, continuationOptions);
 
-                internal Promise<bool> TryWaitAsync(AsyncConditionVariable condVar, CancelationToken cancelationToken)
-                    => ValidateAndGetOwner().TryWaitAsyncImpl(condVar, _key, cancelationToken, ContinuationOptions.CaptureContext());
+                internal Promise<bool> TryWaitAsync(AsyncConditionVariable condVar, CancelationToken cancelationToken, ContinuationOptions continuationOptions)
+                    => ValidateAndGetOwner().TryWaitAsyncImpl(condVar, _key, cancelationToken, continuationOptions);
 
                 internal void Wait(AsyncConditionVariable condVar)
-                    => ValidateAndGetOwner().WaitAsyncImpl(condVar, _key, null).Wait();
+                    => ValidateAndGetOwner().WaitAsyncImpl(condVar, _key, ContinuationOptions.Synchronous).Wait();
 
                 internal bool TryWait(AsyncConditionVariable condVar, CancelationToken cancelationToken)
-                    => ValidateAndGetOwner().TryWaitAsyncImpl(condVar, _key, cancelationToken, null).WaitForResult();
+                    => ValidateAndGetOwner().TryWaitAsyncImpl(condVar, _key, cancelationToken, ContinuationOptions.Synchronous).WaitForResult();
 
                 internal void Pulse(AsyncConditionVariable condVar)
                     => ValidateAndGetOwner().Pulse(condVar, _key);

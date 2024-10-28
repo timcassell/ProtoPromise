@@ -30,10 +30,10 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static AsyncCountdownEventPromise GetOrCreate(Threading.AsyncCountdownEvent owner, SynchronizationContext callerContext)
+            internal static AsyncCountdownEventPromise GetOrCreate(Threading.AsyncCountdownEvent owner, ContinuationOptions continuationOptions)
             {
                 var promise = GetOrCreate();
-                promise.Reset(callerContext);
+                promise.Reset(continuationOptions);
                 promise._owner = owner;
                 return promise;
             }
@@ -108,12 +108,13 @@ namespace Proto.Promises
             }
 #endif // PROMISE_DEBUG
 
-            private Promise WaitAsyncImpl()
+            private Promise WaitAsyncImpl(ContinuationOptions continuationOptions)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 if (_currentCount == 0)
                 {
-                    return Promise.Resolved();
+                    return Promise.Resolved()
+                        .ConfigureContinuation(continuationOptions);
                 }
 
                 Internal.AsyncCountdownEventPromise promise;
@@ -123,22 +124,24 @@ namespace Proto.Promises
                     if (_currentCount == 0)
                     {
                         _locker.Exit();
-                        return Promise.Resolved();
+                        return Promise.Resolved()
+                            .ConfigureContinuation(continuationOptions);
                     }
-                    promise = Internal.AsyncCountdownEventPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
+                    promise = Internal.AsyncCountdownEventPromise.GetOrCreate(this, continuationOptions);
                     _waiters.Enqueue(promise);
                 }
                 _locker.Exit();
                 return new Promise(promise, promise.Id);
             }
 
-            private Promise<bool> TryWaitAsyncImpl(CancelationToken cancelationToken)
+            private Promise<bool> TryWaitAsyncImpl(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 bool isSet = _currentCount == 0;
                 if (isSet | cancelationToken.IsCancelationRequested)
                 {
-                    return Promise.Resolved(isSet);
+                    return Promise.Resolved(isSet)
+                        .ConfigureContinuation(continuationOptions);
                 }
 
                 Internal.AsyncCountdownEventPromise promise;
@@ -148,14 +151,16 @@ namespace Proto.Promises
                     if (_currentCount == 0)
                     {
                         _locker.Exit();
-                        return Promise.Resolved(true);
+                        return Promise.Resolved(true)
+                            .ConfigureContinuation(continuationOptions);
                     }
-                    promise = Internal.AsyncCountdownEventPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
+                    promise = Internal.AsyncCountdownEventPromise.GetOrCreate(this, continuationOptions);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _locker.Exit();
                         promise.DisposeImmediate();
-                        return Promise.Resolved(false);
+                        return Promise.Resolved(false)
+                            .ConfigureContinuation(continuationOptions);
                     }
                     _waiters.Enqueue(promise);
                 }
@@ -167,75 +172,24 @@ namespace Proto.Promises
             {
                 // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
-                bool isSet = _currentCount == 0;
-                while (!isSet & !spinner.NextSpinWillYield)
+                while (_currentCount != 0 & !spinner.NextSpinWillYield)
                 {
                     spinner.SpinOnce();
-                    isSet = _currentCount == 0;
                 }
 
-                if (isSet)
-                {
-                    return;
-                }
-
-                Internal.AsyncCountdownEventPromise promise;
-                _locker.Enter();
-                {
-                    // Check the count again inside the lock to resolve race condition with Signal().
-                    if (_currentCount == 0)
-                    {
-                        _locker.Exit();
-                        return;
-                    }
-                    promise = Internal.AsyncCountdownEventPromise.GetOrCreate(this, null);
-                    _waiters.Enqueue(promise);
-                }
-                _locker.Exit();
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
-                resultContainer.RethrowIfRejected();
+                WaitAsyncImpl(ContinuationOptions.Synchronous).Wait();
             }
 
             private bool TryWaitImpl(CancelationToken cancelationToken)
             {
                 // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
-                bool isSet = _currentCount == 0;
-                bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (!isSet & !isCanceled & !spinner.NextSpinWillYield)
+                while (_currentCount != 0 & !spinner.NextSpinWillYield & !cancelationToken.IsCancelationRequested)
                 {
                     spinner.SpinOnce();
-                    isSet = _currentCount == 0;
-                    isCanceled = cancelationToken.IsCancelationRequested;
                 }
 
-                if (isSet | isCanceled)
-                {
-                    return isSet;
-                }
-
-                Internal.AsyncCountdownEventPromise promise;
-                _locker.Enter();
-                {
-                    // Check the count again inside the lock to resolve race condition with Signal().
-                    if (_currentCount == 0)
-                    {
-                        _locker.Exit();
-                        return true;
-                    }
-                    promise = Internal.AsyncCountdownEventPromise.GetOrCreate(this, null);
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        _locker.Exit();
-                        promise.DisposeImmediate();
-                        return false;
-                    }
-                    _waiters.Enqueue(promise);
-                }
-                _locker.Exit();
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
-                resultContainer.RethrowIfRejected();
-                return resultContainer.Value;
+                return TryWaitAsyncImpl(cancelationToken, ContinuationOptions.Synchronous).WaitForResult();
             }
 
             private bool SignalImpl(int signalCount)
