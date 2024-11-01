@@ -7,6 +7,7 @@
 using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Threading;
+using ProtoPromiseTests.Concurrency;
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -761,6 +762,144 @@ namespace ProtoPromiseTests.APIs.Threading
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 #endif // !UNITY_WEBGL
+
+        [Test]
+        public void AsyncConditionVariable_WaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_Then(
+            [Values] SynchronizationType continuationContext,
+            [Values] CompletedContinuationBehavior completedBehavior,
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var mutex = new AsyncLock();
+            var condVar = new AsyncConditionVariable();
+
+            var promise = mutex.LockAsync(ContinuationOptions.Synchronous)
+                .Then(key =>
+                {
+                    return condVar.WaitAsync(key, TestHelper.GetContinuationOptions(continuationContext, completedBehavior))
+                        .Then(() =>
+                        {
+                            TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                        });
+                });
+
+            new ThreadHelper().ExecuteSynchronousOrOnThread(
+                () =>
+                {
+                    using (var key = mutex.Lock())
+                    {
+                        condVar.Notify(key);
+                    }
+                },
+                invokeContext == SynchronizationType.Foreground
+            );
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncConditionVariable_TryWaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_Then(
+            [Values] SynchronizationType continuationContext,
+            [Values] CompletedContinuationBehavior completedBehavior,
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var mutex = new AsyncLock();
+            var condVar = new AsyncConditionVariable();
+            var cancelationSource = CancelationSource.New();
+
+            var promise = mutex.LockAsync(ContinuationOptions.Synchronous)
+                .Then(key =>
+                {
+                    return condVar.TryWaitAsync(key, cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior))
+                        .Then(success =>
+                        {
+                            Assert.True(success);
+                            TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                        });
+                });
+
+            new ThreadHelper().ExecuteSynchronousOrOnThread(
+                () =>
+                {
+                    using (var key = mutex.Lock())
+                    {
+                        condVar.Notify(key);
+                    }
+                },
+                invokeContext == SynchronizationType.Foreground
+            );
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncConditionVariable_WaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_await(
+            [Values] SynchronizationType continuationContext,
+            [Values] CompletedContinuationBehavior completedBehavior,
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var mutex = new AsyncLock();
+            var condVar = new AsyncConditionVariable();
+
+            var promise = Promise.Run(async () =>
+            {
+                using (var key = await mutex.LockAsync(ContinuationOptions.Synchronous))
+                {
+                    await condVar.WaitAsync(key, TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
+                    TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                }
+            }, SynchronizationOption.Synchronous);
+
+            new ThreadHelper().ExecuteSynchronousOrOnThread(
+                () =>
+                {
+                    using (var key = mutex.Lock())
+                    {
+                        condVar.Notify(key);
+                    }
+                },
+                invokeContext == SynchronizationType.Foreground
+            );
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncConditionVariable_TryWaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_await(
+            [Values] SynchronizationType continuationContext,
+            [Values] CompletedContinuationBehavior completedBehavior,
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var mutex = new AsyncLock();
+            var condVar = new AsyncConditionVariable();
+            var cancelationSource = CancelationSource.New();
+
+            var promise = Promise.Run(async () =>
+            {
+                using (var key = await mutex.LockAsync(ContinuationOptions.Synchronous))
+                {
+                    var success = await condVar.TryWaitAsync(key, cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
+                    Assert.True(success);
+                    TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                }
+            }, SynchronizationOption.Synchronous);
+
+            new ThreadHelper().ExecuteSynchronousOrOnThread(
+                () =>
+                {
+                    using (var key = mutex.Lock())
+                    {
+                        condVar.Notify(key);
+                    }
+                },
+                invokeContext == SynchronizationType.Foreground
+            );
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            cancelationSource.Dispose();
+        }
 
 #if PROMISE_DEBUG
         [Test]

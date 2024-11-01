@@ -7,6 +7,7 @@
 using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Threading;
+using ProtoPromiseTests.Concurrency;
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -555,6 +556,102 @@ namespace ProtoPromiseTests.APIs.Threading
             cancelationSource.Dispose();
         }
 #endif
+
+        [Test]
+        public void AsyncSemaphore_WaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_Then(
+            [Values] SynchronizationType continuationContext,
+            [Values] CompletedContinuationBehavior completedBehavior,
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var semaphore = new AsyncSemaphore(0);
+
+            var promise = semaphore.WaitAsync(TestHelper.GetContinuationOptions(continuationContext, completedBehavior))
+                .Then(() =>
+                {
+                    TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                });
+
+            new ThreadHelper().ExecuteSynchronousOrOnThread(
+                () => semaphore.Release(),
+                invokeContext == SynchronizationType.Foreground
+            );
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncSemaphore_TryWaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_Then(
+            [Values] SynchronizationType continuationContext,
+            [Values] CompletedContinuationBehavior completedBehavior,
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var semaphore = new AsyncSemaphore(0);
+            var cancelationSource = CancelationSource.New();
+
+            var promise = semaphore.TryWaitAsync(cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior))
+                .Then(success =>
+                {
+                    Assert.True(success);
+                    TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                });
+
+            new ThreadHelper().ExecuteSynchronousOrOnThread(
+                () => semaphore.Release(),
+                invokeContext == SynchronizationType.Foreground
+            );
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncSemaphore_WaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_await(
+            [Values] SynchronizationType continuationContext,
+            [Values] CompletedContinuationBehavior completedBehavior,
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var semaphore = new AsyncSemaphore(0);
+
+            var promise = Promise.Run(async () =>
+            {
+                await semaphore.WaitAsync(TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
+                TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+            }, SynchronizationOption.Synchronous);
+
+            new ThreadHelper().ExecuteSynchronousOrOnThread(
+                () => semaphore.Release(),
+                invokeContext == SynchronizationType.Foreground
+            );
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncSemaphore_TryWaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_await(
+            [Values] SynchronizationType continuationContext,
+            [Values] CompletedContinuationBehavior completedBehavior,
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var semaphore = new AsyncSemaphore(0);
+            var cancelationSource = CancelationSource.New();
+
+            var promise = Promise.Run(async () =>
+            {
+                var success = await semaphore.TryWaitAsync(cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
+                Assert.True(success);
+                TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+            }, SynchronizationOption.Synchronous);
+
+            new ThreadHelper().ExecuteSynchronousOrOnThread(
+                () => semaphore.Release(),
+                invokeContext == SynchronizationType.Foreground
+            );
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            cancelationSource.Dispose();
+        }
 
         private static void AsyncSemaphore_ReleaseTooMany_Throws_Helper(int initialCount, int maxCount, int releaseCount)
         {

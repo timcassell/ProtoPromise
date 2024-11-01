@@ -2,6 +2,7 @@
 using Proto.Promises;
 using Proto.Promises.Channels;
 using Proto.Promises.Linq;
+using ProtoPromiseTests.Concurrency;
 using System;
 using System.Threading;
 
@@ -585,6 +586,150 @@ namespace ProtoPromiseTests.APIs.Channels
                 channel.Dispose();
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void WriteAsync_ContinuesOnConfiguredContext_await(
+            [Values] SynchronizationType continuationContext,
+            [Values] CompletedContinuationBehavior completedBehavior,
+            [Values] bool withCancelationToken)
+        {
+            var foregroundThread = Thread.CurrentThread;
+
+            var channel = Channel<int>.NewUnbounded();
+            var cancelationSource = CancelationSource.New();
+
+            Promise.Run(async () =>
+            {
+                var currentThread = Thread.CurrentThread;
+
+                if (withCancelationToken)
+                {
+                    var writeResult = await channel.Writer.WriteAsync(2, cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
+                    Assert.AreEqual(ChannelWriteResult.Success, writeResult.Result);
+                }
+                else
+                {
+                    var writeResult = await channel.Writer.WriteAsync(2, TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
+                    Assert.AreEqual(ChannelWriteResult.Success, writeResult.Result);
+                }
+                if (completedBehavior != CompletedContinuationBehavior.Synchronous)
+                {
+                    TestHelper.AssertCallbackContext(continuationContext, SynchronizationType.Synchronous, foregroundThread);
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+            channel.Dispose();
+        }
+
+        [Test]
+        public void WaitToWriteAsync_ContinuesOnConfiguredContext_await(
+            [Values] SynchronizationType continuationContext,
+            [Values] CompletedContinuationBehavior completedBehavior,
+            [Values] bool withCancelationToken)
+        {
+            var foregroundThread = Thread.CurrentThread;
+
+            var channel = Channel<int>.NewUnbounded();
+            var cancelationSource = CancelationSource.New();
+
+            Promise.Run(async () =>
+            {
+                var currentThread = Thread.CurrentThread;
+
+                if (withCancelationToken)
+                {
+                    var canWrite = await channel.Writer.WaitToWriteAsync(cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
+                    Assert.True(canWrite);
+                }
+                else
+                {
+                    var canWrite = await channel.Writer.WaitToWriteAsync(TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
+                    Assert.True(canWrite);
+                }
+                if (completedBehavior != CompletedContinuationBehavior.Synchronous)
+                {
+                    TestHelper.AssertCallbackContext(continuationContext, SynchronizationType.Synchronous, foregroundThread);
+                }
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+            channel.Dispose();
+        }
+
+        [Test]
+        public void ReadAsync_ContinuesOnConfiguredContext_await(
+            [Values] SynchronizationType continuationContext,
+            [Values] CompletedContinuationBehavior completedBehavior,
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext,
+            [Values] bool withCancelationToken)
+        {
+            var foregroundThread = Thread.CurrentThread;
+
+            var channel = Channel<int>.NewUnbounded();
+            var cancelationSource = CancelationSource.New();
+
+            var promise = Promise.Run(async () =>
+            {
+                if (withCancelationToken)
+                {
+                    var readResult = await channel.Reader.ReadAsync(cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
+                    Assert.True(readResult.TryGetItem(out var item));
+                    Assert.AreEqual(1, item);
+                }
+                else
+                {
+                    var readResult = await channel.Reader.ReadAsync(TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
+                    Assert.True(readResult.TryGetItem(out var item));
+                    Assert.AreEqual(1, item);
+                }
+                TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+            }, SynchronizationOption.Synchronous);
+
+            new ThreadHelper().ExecuteSynchronousOrOnThread(
+                () => channel.Writer.TryWrite(1),
+                invokeContext == SynchronizationType.Foreground
+            );
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+            channel.Dispose();
+        }
+
+        [Test]
+        public void WaitToReadAsync_ContinuesOnConfiguredContext_await(
+            [Values] SynchronizationType continuationContext,
+            [Values] CompletedContinuationBehavior completedBehavior,
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext,
+            [Values] bool withCancelationToken)
+        {
+            var foregroundThread = Thread.CurrentThread;
+
+            var channel = Channel<int>.NewUnbounded();
+            var cancelationSource = CancelationSource.New();
+
+            var promise = Promise.Run(async () =>
+            {
+                if (withCancelationToken)
+                {
+                    var canRead = await channel.Reader.WaitToReadAsync(cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
+                    Assert.True(canRead);
+                }
+                else
+                {
+                    var canRead = await channel.Reader.WaitToReadAsync(TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
+                    Assert.True(canRead);
+                }
+                TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+            }, SynchronizationOption.Synchronous);
+
+            new ThreadHelper().ExecuteSynchronousOrOnThread(
+                () => channel.Writer.TryWrite(1),
+                invokeContext == SynchronizationType.Foreground
+            );
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+            channel.Dispose();
         }
     }
 }

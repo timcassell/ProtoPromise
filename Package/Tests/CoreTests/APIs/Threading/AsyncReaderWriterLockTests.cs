@@ -7,6 +7,7 @@
 using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Threading;
+using ProtoPromiseTests.Concurrency;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -2885,6 +2886,274 @@ namespace ProtoPromiseTests.APIs.Threading
             upgradeableReaderKey.Dispose();
             TestHelper.ExecuteForegroundCallbacks();
             Assert.True(enteredWriterLock);
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_WriterLockAsync_ContinuesOnConfiguredContext_await(
+            [Values] SynchronizationType continuationContext,
+            [Values] CompletedContinuationBehavior completedBehavior,
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext,
+            [Values] bool withCancelationToken)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
+            var cancelationSource = CancelationSource.New();
+
+            var initialKey = rwl.WriterLock();
+
+            var promise = Promise.Run(async () =>
+            {
+                if (withCancelationToken)
+                {
+                    using (var key = await rwl.WriterLockAsync(cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior)))
+                    {
+                        TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                    }
+                }
+                else
+                {
+                    using (var key = await rwl.WriterLockAsync(TestHelper.GetContinuationOptions(continuationContext, completedBehavior)))
+                    {
+                        TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                    }
+                }
+            }, SynchronizationOption.Synchronous);
+
+            new ThreadHelper().ExecuteSynchronousOrOnThread(
+                () => initialKey.Dispose(),
+                invokeContext == SynchronizationType.Foreground
+            );
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryEnterWriterLockAsync_ContinuesOnConfiguredContext_await(
+            [Values] SynchronizationType continuationContext,
+            [Values] CompletedContinuationBehavior completedBehavior,
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
+            var cancelationSource = CancelationSource.New();
+
+            var initialKey = rwl.WriterLock();
+
+            var promise = Promise.Run(async () =>
+            {
+                var (success, key) = await rwl.TryEnterWriterLockAsync(cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
+                TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                key.Dispose();
+            }, SynchronizationOption.Synchronous);
+
+            new ThreadHelper().ExecuteSynchronousOrOnThread(
+                () => initialKey.Dispose(),
+                invokeContext == SynchronizationType.Foreground
+            );
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_ReaderLockAsync_ContinuesOnConfiguredContext_await(
+            [Values] SynchronizationType continuationContext,
+            [Values] CompletedContinuationBehavior completedBehavior,
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext,
+            [Values] bool withCancelationToken)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
+            var cancelationSource = CancelationSource.New();
+
+            var initialKey = rwl.WriterLock();
+
+            var promise = Promise.Run(async () =>
+            {
+                if (withCancelationToken)
+                {
+                    using (var key = await rwl.ReaderLockAsync(cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior)))
+                    {
+                        TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                    }
+                }
+                else
+                {
+                    using (var key = await rwl.ReaderLockAsync(TestHelper.GetContinuationOptions(continuationContext, completedBehavior)))
+                    {
+                        TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                    }
+                }
+            }, SynchronizationOption.Synchronous);
+
+            new ThreadHelper().ExecuteSynchronousOrOnThread(
+                () => initialKey.Dispose(),
+                invokeContext == SynchronizationType.Foreground
+            );
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryEnterReaderLockAsync_ContinuesOnConfiguredContext_await(
+            [Values] SynchronizationType continuationContext,
+            [Values] CompletedContinuationBehavior completedBehavior,
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
+            var cancelationSource = CancelationSource.New();
+
+            var initialKey = rwl.WriterLock();
+
+            var promise = Promise.Run(async () =>
+            {
+                var (success, key) = await rwl.TryEnterReaderLockAsync(cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
+                TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                key.Dispose();
+            }, SynchronizationOption.Synchronous);
+
+            new ThreadHelper().ExecuteSynchronousOrOnThread(
+                () => initialKey.Dispose(),
+                invokeContext == SynchronizationType.Foreground
+            );
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_UpgradeableReaderLockAsync_ContinuesOnConfiguredContext_await(
+            [Values] SynchronizationType continuationContext,
+            [Values] CompletedContinuationBehavior completedBehavior,
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext,
+            [Values] bool withCancelationToken)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
+            var cancelationSource = CancelationSource.New();
+
+            var initialKey = rwl.WriterLock();
+
+            var promise = Promise.Run(async () =>
+            {
+                if (withCancelationToken)
+                {
+                    using (var key = await rwl.UpgradeableReaderLockAsync(cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior)))
+                    {
+                        TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                    }
+                }
+                else
+                {
+                    using (var key = await rwl.UpgradeableReaderLockAsync(TestHelper.GetContinuationOptions(continuationContext, completedBehavior)))
+                    {
+                        TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                    }
+                }
+            }, SynchronizationOption.Synchronous);
+
+            new ThreadHelper().ExecuteSynchronousOrOnThread(
+                () => initialKey.Dispose(),
+                invokeContext == SynchronizationType.Foreground
+            );
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryEnterUpgradeableReaderLockAsync_ContinuesOnConfiguredContext_await(
+            [Values] SynchronizationType continuationContext,
+            [Values] CompletedContinuationBehavior completedBehavior,
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
+            var cancelationSource = CancelationSource.New();
+
+            var initialKey = rwl.WriterLock();
+
+            var promise = Promise.Run(async () =>
+            {
+                var (success, key) = await rwl.TryEnterUpgradeableReaderLockAsync(cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
+                TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                key.Dispose();
+            }, SynchronizationOption.Synchronous);
+
+            new ThreadHelper().ExecuteSynchronousOrOnThread(
+                () => initialKey.Dispose(),
+                invokeContext == SynchronizationType.Foreground
+            );
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_UpgradeToWriterLockAsync_ContinuesOnConfiguredContext_await(
+            [Values] SynchronizationType continuationContext,
+            [Values] CompletedContinuationBehavior completedBehavior,
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext,
+            [Values] bool withCancelationToken)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
+            var cancelationSource = CancelationSource.New();
+
+            var upgradeableKey = rwl.UpgradeableReaderLock();
+            var readerKey = rwl.ReaderLock();
+
+            var promise = Promise.Run(async () =>
+            {
+                if (withCancelationToken)
+                {
+                    using (var key = await rwl.UpgradeToWriterLockAsync(upgradeableKey, cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior)))
+                    {
+                        TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                    }
+                }
+                else
+                {
+                    using (var key = await rwl.UpgradeToWriterLockAsync(upgradeableKey, TestHelper.GetContinuationOptions(continuationContext, completedBehavior)))
+                    {
+                        TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                    }
+                }
+                upgradeableKey.Dispose();
+            }, SynchronizationOption.Synchronous);
+
+            new ThreadHelper().ExecuteSynchronousOrOnThread(
+                () => readerKey.Dispose(),
+                invokeContext == SynchronizationType.Foreground
+            );
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryUpgradeToWriterLockAsync_ContinuesOnConfiguredContext_await(
+            [Values] SynchronizationType continuationContext,
+            [Values] CompletedContinuationBehavior completedBehavior,
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
+            var cancelationSource = CancelationSource.New();
+
+            var upgradeableKey = rwl.UpgradeableReaderLock();
+            var readerKey = rwl.ReaderLock();
+
+            var promise = Promise.Run(async () =>
+            {
+                var (success, key) = await rwl.TryUpgradeToWriterLockAsync(upgradeableKey, cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
+                TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                key.Dispose();
+                upgradeableKey.Dispose();
+            }, SynchronizationOption.Synchronous);
+
+            new ThreadHelper().ExecuteSynchronousOrOnThread(
+                () => readerKey.Dispose(),
+                invokeContext == SynchronizationType.Foreground
+            );
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
         }
 
 #if PROTO_PROMISE_TEST_GC_ENABLED

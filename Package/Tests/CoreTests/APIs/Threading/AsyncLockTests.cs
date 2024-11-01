@@ -7,6 +7,7 @@
 using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Threading;
+using ProtoPromiseTests.Concurrency;
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -555,6 +556,57 @@ namespace ProtoPromiseTests.APIs.Threading
             cancelationSource.Dispose();
         }
 #endif // !UNITY_WEBGL
+
+        [Test]
+        public void AsyncLock_LockAsync_ContinuesOnConfiguredContext_Then(
+            [Values] SynchronizationType continuationContext,
+            [Values] CompletedContinuationBehavior completedBehavior,
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var asyncLock = new AsyncLock();
+
+            var initialKey = asyncLock.Lock();
+
+            var promise = asyncLock.LockAsync(TestHelper.GetContinuationOptions(continuationContext, completedBehavior))
+                .Then(key =>
+                {
+                    TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                    key.Dispose();
+                });
+
+            new ThreadHelper().ExecuteSynchronousOrOnThread(
+                () => initialKey.Dispose(),
+                invokeContext == SynchronizationType.Foreground
+            );
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncLock_LockAsync_ContinuesOnConfiguredContext_await(
+            [Values] SynchronizationType continuationContext,
+            [Values] CompletedContinuationBehavior completedBehavior,
+            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var asyncLock = new AsyncLock();
+            
+            var initialKey = asyncLock.Lock();
+
+            var promise = Promise.Run(async () =>
+            {
+                using (await asyncLock.LockAsync(TestHelper.GetContinuationOptions(continuationContext, completedBehavior)))
+                {
+                    TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                }
+            }, SynchronizationOption.Synchronous);
+
+            new ThreadHelper().ExecuteSynchronousOrOnThread(
+                () => initialKey.Dispose(),
+                invokeContext == SynchronizationType.Foreground
+            );
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
 
 #if PROTO_PROMISE_TEST_GC_ENABLED
         [Test]

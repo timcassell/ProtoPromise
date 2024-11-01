@@ -66,6 +66,16 @@ namespace Proto.Promises.Threading
             => LockAsyncImpl(ContinuationOptions.CapturedContext);
 
         /// <summary>
+        /// Asynchronously acquire the lock.
+        /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
+        /// The result of the promise is the key that will release the lock when it is disposed.
+        /// </summary>
+        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        [MethodImpl(Internal.InlineOption)]
+        public Promise<Key> LockAsync(ContinuationOptions continuationOptions)
+            => LockAsyncImpl(continuationOptions.GetValidated());
+
+        /// <summary>
         /// Asynchronously acquire the lock, while observing a <see cref="CancelationToken"/>.
         /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
         /// The result of the promise is the key that will release the lock when it is disposed.
