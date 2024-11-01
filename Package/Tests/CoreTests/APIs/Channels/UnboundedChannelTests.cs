@@ -662,7 +662,11 @@ namespace ProtoPromiseTests.APIs.Channels
         public void ReadAsync_ContinuesOnConfiguredContext_await(
             [Values] SynchronizationType continuationContext,
             [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext,
+            [Values(SynchronizationType.Foreground
+#if !UNITY_WEBGL
+            , SynchronizationType.Background
+#endif
+            )] SynchronizationType invokeContext,
             [Values] bool withCancelationToken)
         {
             var foregroundThread = Thread.CurrentThread;
@@ -700,7 +704,11 @@ namespace ProtoPromiseTests.APIs.Channels
         public void WaitToReadAsync_ContinuesOnConfiguredContext_await(
             [Values] SynchronizationType continuationContext,
             [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext,
+            [Values(SynchronizationType.Foreground
+#if !UNITY_WEBGL
+            , SynchronizationType.Background
+#endif
+            )] SynchronizationType invokeContext,
             [Values] bool withCancelationToken)
         {
             var foregroundThread = Thread.CurrentThread;

@@ -2892,7 +2892,11 @@ namespace ProtoPromiseTests.APIs.Threading
         public void AsyncReaderWriterLock_WriterLockAsync_ContinuesOnConfiguredContext_await(
             [Values] SynchronizationType continuationContext,
             [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext,
+            [Values(SynchronizationType.Foreground
+#if !UNITY_WEBGL
+            , SynchronizationType.Background
+#endif
+            )] SynchronizationType invokeContext,
             [Values] bool withCancelationToken)
         {
             var foregroundThread = Thread.CurrentThread;
@@ -2931,7 +2935,11 @@ namespace ProtoPromiseTests.APIs.Threading
         public void AsyncReaderWriterLock_TryEnterWriterLockAsync_ContinuesOnConfiguredContext_await(
             [Values] SynchronizationType continuationContext,
             [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+            [Values(SynchronizationType.Foreground
+#if !UNITY_WEBGL
+            , SynchronizationType.Background
+#endif
+            )] SynchronizationType invokeContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
@@ -2958,7 +2966,11 @@ namespace ProtoPromiseTests.APIs.Threading
         public void AsyncReaderWriterLock_ReaderLockAsync_ContinuesOnConfiguredContext_await(
             [Values] SynchronizationType continuationContext,
             [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext,
+            [Values(SynchronizationType.Foreground
+#if !UNITY_WEBGL
+            , SynchronizationType.Background
+#endif
+            )] SynchronizationType invokeContext,
             [Values] bool withCancelationToken)
         {
             var foregroundThread = Thread.CurrentThread;
@@ -2997,7 +3009,11 @@ namespace ProtoPromiseTests.APIs.Threading
         public void AsyncReaderWriterLock_TryEnterReaderLockAsync_ContinuesOnConfiguredContext_await(
             [Values] SynchronizationType continuationContext,
             [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+            [Values(SynchronizationType.Foreground
+#if !UNITY_WEBGL
+            , SynchronizationType.Background
+#endif
+            )] SynchronizationType invokeContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
@@ -3024,7 +3040,11 @@ namespace ProtoPromiseTests.APIs.Threading
         public void AsyncReaderWriterLock_UpgradeableReaderLockAsync_ContinuesOnConfiguredContext_await(
             [Values] SynchronizationType continuationContext,
             [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext,
+            [Values(SynchronizationType.Foreground
+#if !UNITY_WEBGL
+            , SynchronizationType.Background
+#endif
+            )] SynchronizationType invokeContext,
             [Values] bool withCancelationToken)
         {
             var foregroundThread = Thread.CurrentThread;
@@ -3063,7 +3083,11 @@ namespace ProtoPromiseTests.APIs.Threading
         public void AsyncReaderWriterLock_TryEnterUpgradeableReaderLockAsync_ContinuesOnConfiguredContext_await(
             [Values] SynchronizationType continuationContext,
             [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+            [Values(SynchronizationType.Foreground
+#if !UNITY_WEBGL
+            , SynchronizationType.Background
+#endif
+            )] SynchronizationType invokeContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
@@ -3090,7 +3114,11 @@ namespace ProtoPromiseTests.APIs.Threading
         public void AsyncReaderWriterLock_UpgradeToWriterLockAsync_ContinuesOnConfiguredContext_await(
             [Values] SynchronizationType continuationContext,
             [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext,
+            [Values(SynchronizationType.Foreground
+#if !UNITY_WEBGL
+            , SynchronizationType.Background
+#endif
+            )] SynchronizationType invokeContext,
             [Values] bool withCancelationToken)
         {
             var foregroundThread = Thread.CurrentThread;
@@ -3131,7 +3159,11 @@ namespace ProtoPromiseTests.APIs.Threading
         public void AsyncReaderWriterLock_TryUpgradeToWriterLockAsync_ContinuesOnConfiguredContext_await(
             [Values] SynchronizationType continuationContext,
             [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+            [Values(SynchronizationType.Foreground
+#if !UNITY_WEBGL
+            , SynchronizationType.Background
+#endif
+            )] SynchronizationType invokeContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);

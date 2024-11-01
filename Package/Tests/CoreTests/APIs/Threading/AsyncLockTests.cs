@@ -561,7 +561,11 @@ namespace ProtoPromiseTests.APIs.Threading
         public void AsyncLock_LockAsync_ContinuesOnConfiguredContext_Then(
             [Values] SynchronizationType continuationContext,
             [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+            [Values(SynchronizationType.Foreground
+#if !UNITY_WEBGL
+            , SynchronizationType.Background
+#endif
+            )] SynchronizationType invokeContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var asyncLock = new AsyncLock();
@@ -586,7 +590,11 @@ namespace ProtoPromiseTests.APIs.Threading
         public void AsyncLock_LockAsync_ContinuesOnConfiguredContext_await(
             [Values] SynchronizationType continuationContext,
             [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+            [Values(SynchronizationType.Foreground
+#if !UNITY_WEBGL
+            , SynchronizationType.Background
+#endif
+            )] SynchronizationType invokeContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var asyncLock = new AsyncLock();

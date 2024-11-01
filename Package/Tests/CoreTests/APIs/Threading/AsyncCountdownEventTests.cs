@@ -273,7 +273,11 @@ namespace ProtoPromiseTests.APIs.Threading
         public void AsyncCountdownEvent_WaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_Then(
             [Values] SynchronizationType continuationContext,
             [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+            [Values(SynchronizationType.Foreground
+#if !UNITY_WEBGL
+            , SynchronizationType.Background
+#endif
+            )] SynchronizationType invokeContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var ce = new AsyncCountdownEvent(1);
@@ -295,7 +299,11 @@ namespace ProtoPromiseTests.APIs.Threading
         public void AsyncCountdownEvent_TryWaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_Then(
             [Values] SynchronizationType continuationContext,
             [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+            [Values(SynchronizationType.Foreground
+#if !UNITY_WEBGL
+            , SynchronizationType.Background
+#endif
+            )] SynchronizationType invokeContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var ce = new AsyncCountdownEvent(1);
@@ -321,7 +329,11 @@ namespace ProtoPromiseTests.APIs.Threading
         public void AsyncCountdownEvent_WaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_await(
             [Values] SynchronizationType continuationContext,
             [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+            [Values(SynchronizationType.Foreground
+#if !UNITY_WEBGL
+            , SynchronizationType.Background
+#endif
+            )] SynchronizationType invokeContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var ce = new AsyncCountdownEvent(1);
@@ -343,7 +355,11 @@ namespace ProtoPromiseTests.APIs.Threading
         public void AsyncCountdownEvent_TryWaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_await(
             [Values] SynchronizationType continuationContext,
             [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground, SynchronizationType.Background)] SynchronizationType invokeContext)
+            [Values(SynchronizationType.Foreground
+#if !UNITY_WEBGL
+            , SynchronizationType.Background
+#endif
+            )] SynchronizationType invokeContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var ce = new AsyncCountdownEvent(1);
