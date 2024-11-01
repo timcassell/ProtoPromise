@@ -784,6 +784,7 @@ namespace ProtoPromiseTests.APIs.Threading
                         .Then(() =>
                         {
                             TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                            key.Dispose();
                         });
                 });
 
@@ -823,6 +824,7 @@ namespace ProtoPromiseTests.APIs.Threading
                         {
                             Assert.True(success);
                             TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                            key.Dispose();
                         });
                 });
 
