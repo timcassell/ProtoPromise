@@ -7,7 +7,6 @@
 using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Threading;
-using ProtoPromiseTests.Concurrency;
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -559,60 +558,48 @@ namespace ProtoPromiseTests.APIs.Threading
 
         [Test]
         public void AsyncLock_LockAsync_ContinuesOnConfiguredContext_Then(
-            [Values] SynchronizationType continuationContext,
-            [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground
-#if !UNITY_WEBGL
-            , SynchronizationType.Background
-#endif
-            )] SynchronizationType invokeContext)
+            [Values] bool continueOnCapturedContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var asyncLock = new AsyncLock();
 
             var initialKey = asyncLock.Lock();
 
-            var promise = asyncLock.LockAsync(TestHelper.GetContinuationOptions(continuationContext, completedBehavior))
+            bool isExecuting = false;
+            var promise = asyncLock.LockAsync(continueOnCapturedContext)
                 .Then(key =>
                 {
-                    TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                    Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
                     key.Dispose();
                 });
 
-            new ThreadHelper().ExecuteSynchronousOrOnThread(
-                () => initialKey.Dispose(),
-                invokeContext == SynchronizationType.Foreground
-            );
+            isExecuting = true;
+            initialKey.Dispose();
+            isExecuting = false;
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         [Test]
         public void AsyncLock_LockAsync_ContinuesOnConfiguredContext_await(
-            [Values] SynchronizationType continuationContext,
-            [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground
-#if !UNITY_WEBGL
-            , SynchronizationType.Background
-#endif
-            )] SynchronizationType invokeContext)
+            [Values] bool continueOnCapturedContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var asyncLock = new AsyncLock();
             
             var initialKey = asyncLock.Lock();
 
+            bool isExecuting = false;
             var promise = Promise.Run(async () =>
             {
-                using (await asyncLock.LockAsync(TestHelper.GetContinuationOptions(continuationContext, completedBehavior)))
+                using (await asyncLock.LockAsync(continueOnCapturedContext))
                 {
-                    TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                    Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
                 }
             }, SynchronizationOption.Synchronous);
 
-            new ThreadHelper().ExecuteSynchronousOrOnThread(
-                () => initialKey.Dispose(),
-                invokeContext == SynchronizationType.Foreground
-            );
+            isExecuting = true;
+            initialKey.Dispose();
+            isExecuting = false;
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 

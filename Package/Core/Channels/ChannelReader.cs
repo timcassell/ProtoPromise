@@ -43,18 +43,18 @@ namespace Proto.Promises.Channels
         /// or <see langword="false"/> when the channel is closed.
         /// </returns>
         public Promise<bool> WaitToReadAsync()
-            => WaitToReadAsync(CancelationToken.None);
+            => WaitToReadAsync(CancelationToken.None, true);
 
         /// <summary>
         /// Asynchronously waits for data to be available to be read.
         /// </summary>
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and data is not immediately available, the async continuation will be executed on the captured context.</param>
         /// <returns>
         /// A <see cref="Promise{T}"/> that will resolve with <see langword="true"/> when data is available to be read,
         /// or <see langword="false"/> when the channel is closed.
         /// </returns>
-        public Promise<bool> WaitToReadAsync(ContinuationOptions continuationOptions)
-            => _channel.ValidateAndGetRef().WaitToReadAsync(_channel._id, default, continuationOptions.GetValidated());
+        public Promise<bool> WaitToReadAsync(bool continueOnCapturedContext)
+            => WaitToReadAsync(CancelationToken.None, continueOnCapturedContext);
 
         /// <summary>
         /// Asynchronously waits for data to be available to be read.
@@ -65,19 +65,19 @@ namespace Proto.Promises.Channels
         /// or <see langword="false"/> when the channel is closed.
         /// </returns>
         public Promise<bool> WaitToReadAsync(CancelationToken cancelationToken)
-            => _channel.ValidateAndGetRef().WaitToReadAsync(_channel._id, cancelationToken, ContinuationOptions.CapturedContext);
+            => WaitToReadAsync(cancelationToken, true);
 
         /// <summary>
         /// Asynchronously waits for data to be available to be read.
         /// </summary>
         /// <param name="cancelationToken">A <see cref="CancelationToken"/> used to cancel the wait operation.</param>
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and data is not immediately available, the async continuation will be executed on the captured context.</param>
         /// <returns>
         /// A <see cref="Promise{T}"/> that will resolve with <see langword="true"/> when data is available to be read,
         /// or <see langword="false"/> when the channel is closed.
         /// </returns>
-        public Promise<bool> WaitToReadAsync(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
-            => _channel.ValidateAndGetRef().WaitToReadAsync(_channel._id, cancelationToken, continuationOptions.GetValidated());
+        public Promise<bool> WaitToReadAsync(CancelationToken cancelationToken, bool continueOnCapturedContext)
+            => _channel.ValidateAndGetRef().WaitToReadAsync(_channel._id, cancelationToken, continueOnCapturedContext);
 
         /// <summary>
         /// Attempts to peek at an item from the channel in a non-blocking manner.
@@ -98,15 +98,15 @@ namespace Proto.Promises.Channels
         /// </summary>
         /// <returns>A <see cref="Promise{T}"/> that yields the result of the read operation.</returns>
         public Promise<ChannelReadResult<T>> ReadAsync()
-            => ReadAsync(CancelationToken.None);
+            => ReadAsync(CancelationToken.None, true);
 
         /// <summary>
         /// Asynchronously reads an item from the channel.
         /// </summary>
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and data is not immediately available, the async continuation will be executed on the captured context.</param>
         /// <returns>A <see cref="Promise{T}"/> that yields the result of the read operation.</returns>
-        public Promise<ChannelReadResult<T>> ReadAsync(ContinuationOptions continuationOptions)
-            => _channel.ValidateAndGetRef().ReadAsync(_channel._id, default, continuationOptions.GetValidated());
+        public Promise<ChannelReadResult<T>> ReadAsync(bool continueOnCapturedContext)
+            => ReadAsync(CancelationToken.None, continueOnCapturedContext);
 
         /// <summary>
         /// Asynchronously reads an item from the channel.
@@ -114,16 +114,16 @@ namespace Proto.Promises.Channels
         /// <param name="cancelationToken">A <see cref="CancelationToken"/> used to cancel the read operation.</param>
         /// <returns>A <see cref="Promise{T}"/> that yields the result of the read operation.</returns>
         public Promise<ChannelReadResult<T>> ReadAsync(CancelationToken cancelationToken)
-            => _channel.ValidateAndGetRef().ReadAsync(_channel._id, cancelationToken, ContinuationOptions.CapturedContext);
+            => ReadAsync(cancelationToken, true);
 
         /// <summary>
         /// Asynchronously reads an item from the channel.
         /// </summary>
         /// <param name="cancelationToken">A <see cref="CancelationToken"/> used to cancel the read operation.</param>
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and data is not immediately available, the async continuation will be executed on the captured context.</param>
         /// <returns>A <see cref="Promise{T}"/> that yields the result of the read operation.</returns>
-        public Promise<ChannelReadResult<T>> ReadAsync(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
-            => _channel.ValidateAndGetRef().ReadAsync(_channel._id, cancelationToken, continuationOptions.GetValidated());
+        public Promise<ChannelReadResult<T>> ReadAsync(CancelationToken cancelationToken, bool continueOnCapturedContext)
+            => _channel.ValidateAndGetRef().ReadAsync(_channel._id, cancelationToken, continueOnCapturedContext);
 
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that enables reading all of the data from the channel.

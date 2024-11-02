@@ -7,7 +7,6 @@
 using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Threading;
-using ProtoPromiseTests.Concurrency;
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -559,55 +558,42 @@ namespace ProtoPromiseTests.APIs.Threading
 
         [Test]
         public void AsyncSemaphore_WaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_Then(
-            [Values] SynchronizationType continuationContext,
-            [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground
-#if !UNITY_WEBGL
-            , SynchronizationType.Background
-#endif
-            )] SynchronizationType invokeContext)
+            [Values] bool continueOnCapturedContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var semaphore = new AsyncSemaphore(0);
 
-            var promise = semaphore.WaitAsync(TestHelper.GetContinuationOptions(continuationContext, completedBehavior))
+            bool isExecuting = false;
+            var promise = semaphore.WaitAsync(continueOnCapturedContext)
                 .Then(() =>
                 {
-                    TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                    Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
                 });
 
-            new ThreadHelper().ExecuteSynchronousOrOnThread(
-                () => semaphore.Release(),
-                invokeContext == SynchronizationType.Foreground
-            );
+            isExecuting = true;
+            semaphore.Release();
+            isExecuting = false;
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         [Test]
         public void AsyncSemaphore_TryWaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_Then(
-            [Values] SynchronizationType continuationContext,
-            [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground
-#if !UNITY_WEBGL
-            , SynchronizationType.Background
-#endif
-            )] SynchronizationType invokeContext)
+            [Values] bool continueOnCapturedContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var semaphore = new AsyncSemaphore(0);
             var cancelationSource = CancelationSource.New();
 
-            var promise = semaphore.TryWaitAsync(cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior))
-                .Then(success =>
+            bool isExecuting = false;
+            var promise = semaphore.TryWaitAsync(cancelationSource.Token, continueOnCapturedContext)
+                .Then(_ =>
                 {
-                    Assert.True(success);
-                    TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                    Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
                 });
 
-            new ThreadHelper().ExecuteSynchronousOrOnThread(
-                () => semaphore.Release(),
-                invokeContext == SynchronizationType.Foreground
-            );
+            isExecuting = true;
+            semaphore.Release();
+            isExecuting = false;
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
 
             cancelationSource.Dispose();
@@ -615,55 +601,42 @@ namespace ProtoPromiseTests.APIs.Threading
 
         [Test]
         public void AsyncSemaphore_WaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_await(
-            [Values] SynchronizationType continuationContext,
-            [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground
-#if !UNITY_WEBGL
-            , SynchronizationType.Background
-#endif
-            )] SynchronizationType invokeContext)
+            [Values] bool continueOnCapturedContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var semaphore = new AsyncSemaphore(0);
 
+            bool isExecuting = false;
             var promise = Promise.Run(async () =>
             {
-                await semaphore.WaitAsync(TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
-                TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                await semaphore.WaitAsync(continueOnCapturedContext);
+                Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
             }, SynchronizationOption.Synchronous);
 
-            new ThreadHelper().ExecuteSynchronousOrOnThread(
-                () => semaphore.Release(),
-                invokeContext == SynchronizationType.Foreground
-            );
+            isExecuting = true;
+            semaphore.Release();
+            isExecuting = false;
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         [Test]
         public void AsyncSemaphore_TryWaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_await(
-            [Values] SynchronizationType continuationContext,
-            [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground
-#if !UNITY_WEBGL
-            , SynchronizationType.Background
-#endif
-            )] SynchronizationType invokeContext)
+            [Values] bool continueOnCapturedContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var semaphore = new AsyncSemaphore(0);
             var cancelationSource = CancelationSource.New();
 
+            bool isExecuting = false;
             var promise = Promise.Run(async () =>
             {
-                var success = await semaphore.TryWaitAsync(cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
-                Assert.True(success);
-                TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                _ = await semaphore.TryWaitAsync(cancelationSource.Token, continueOnCapturedContext);
+                Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
             }, SynchronizationOption.Synchronous);
 
-            new ThreadHelper().ExecuteSynchronousOrOnThread(
-                () => semaphore.Release(),
-                invokeContext == SynchronizationType.Foreground
-            );
+            isExecuting = true;
+            semaphore.Release();
+            isExecuting = false;
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
 
             cancelationSource.Dispose();

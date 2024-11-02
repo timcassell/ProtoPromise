@@ -86,16 +86,16 @@ namespace Proto.Promises.Threading
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
         public Promise<ReaderKey> ReaderLockAsync()
-            => ReaderLockAsyncImpl(ContinuationOptions.CapturedContext);
+            => ReaderLockAsync(true);
 
         /// <summary>
         /// Asynchronously acquire the lock as a reader.
         /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
-        public Promise<ReaderKey> ReaderLockAsync(ContinuationOptions continuationOptions)
-            => ReaderLockAsyncImpl(continuationOptions.GetValidated());
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and the lock is not acquired immediately, the async continuation will be executed on the captured context.</param>
+        public Promise<ReaderKey> ReaderLockAsync(bool continueOnCapturedContext)
+            => ReaderLockAsyncImpl(continueOnCapturedContext);
 
         /// <summary>
         /// Asynchronously acquire the lock as a reader, while observing a <see cref="CancelationToken"/>.
@@ -104,7 +104,7 @@ namespace Proto.Promises.Threading
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
         public Promise<ReaderKey> ReaderLockAsync(CancelationToken cancelationToken)
-            => ReaderLockAsyncImpl(cancelationToken, ContinuationOptions.CapturedContext);
+            => ReaderLockAsync(cancelationToken, true);
 
         /// <summary>
         /// Asynchronously acquire the lock as a reader, while observing a <see cref="CancelationToken"/>.
@@ -112,9 +112,9 @@ namespace Proto.Promises.Threading
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
-        public Promise<ReaderKey> ReaderLockAsync(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
-            => ReaderLockAsyncImpl(cancelationToken, continuationOptions.GetValidated());
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and the lock is not acquired immediately, the async continuation will be executed on the captured context.</param>
+        public Promise<ReaderKey> ReaderLockAsync(CancelationToken cancelationToken, bool continueOnCapturedContext)
+            => ReaderLockAsyncImpl(cancelationToken, continueOnCapturedContext);
 
         /// <summary>
         /// Synchronously acquire the lock as a reader.
@@ -153,7 +153,7 @@ namespace Proto.Promises.Threading
         /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
         /// </remarks>
         public Promise<(bool didEnter, ReaderKey readerKey)> TryEnterReaderLockAsync(CancelationToken cancelationToken)
-            => TryEnterReaderLockAsyncImpl(cancelationToken, ContinuationOptions.CapturedContext);
+            => TryEnterReaderLockAsync(cancelationToken, true);
 
         /// <summary>
         /// Asynchronously try to acquire the lock as a reader, while observing a <see cref="CancelationToken"/>.
@@ -163,13 +163,13 @@ namespace Proto.Promises.Threading
         /// <param name="cancelationToken">
         /// The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the success state of the returned <see cref="Promise{T}"/> will be <see langword="false"/>.
         /// </param>
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and the lock is not acquired immediately, the async continuation will be executed on the captured context.</param>
         /// <remarks>
         /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
         /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
         /// </remarks>
-        public Promise<(bool didEnter, ReaderKey readerKey)> TryEnterReaderLockAsync(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
-            => TryEnterReaderLockAsyncImpl(cancelationToken, continuationOptions.GetValidated());
+        public Promise<(bool didEnter, ReaderKey readerKey)> TryEnterReaderLockAsync(CancelationToken cancelationToken, bool continueOnCapturedContext)
+            => TryEnterReaderLockAsyncImpl(cancelationToken, continueOnCapturedContext);
 
         /// <summary>
         /// Synchronously try to acquire the lock as a reader, while observing a <see cref="CancelationToken"/>.
@@ -191,16 +191,16 @@ namespace Proto.Promises.Threading
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
         public Promise<WriterKey> WriterLockAsync()
-            => WriterLockAsyncImpl(ContinuationOptions.CapturedContext);
+            => WriterLockAsync(true);
 
         /// <summary>
         /// Asynchronously acquire the lock as a writer.
         /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
-        public Promise<WriterKey> WriterLockAsync(ContinuationOptions continuationOptions)
-            => WriterLockAsyncImpl(continuationOptions.GetValidated());
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and the lock is not acquired immediately, the async continuation will be executed on the captured context.</param>
+        public Promise<WriterKey> WriterLockAsync(bool continueOnCapturedContext)
+            => WriterLockAsyncImpl(continueOnCapturedContext);
 
         /// <summary>
         /// Asynchronously acquire the lock as a writer, while observing a <see cref="CancelationToken"/>.
@@ -209,7 +209,7 @@ namespace Proto.Promises.Threading
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
         public Promise<WriterKey> WriterLockAsync(CancelationToken cancelationToken)
-            => WriterLockAsyncImpl(cancelationToken, ContinuationOptions.CapturedContext);
+            => WriterLockAsync(cancelationToken, true);
 
         /// <summary>
         /// Asynchronously acquire the lock as a writer, while observing a <see cref="CancelationToken"/>.
@@ -217,9 +217,9 @@ namespace Proto.Promises.Threading
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
-        public Promise<WriterKey> WriterLockAsync(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
-            => WriterLockAsyncImpl(cancelationToken, continuationOptions.GetValidated());
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and the lock is not acquired immediately, the async continuation will be executed on the captured context.</param>
+        public Promise<WriterKey> WriterLockAsync(CancelationToken cancelationToken, bool continueOnCapturedContext)
+            => WriterLockAsyncImpl(cancelationToken, continueOnCapturedContext);
 
         /// <summary>
         /// Synchronously acquire the lock as a writer.
@@ -258,7 +258,7 @@ namespace Proto.Promises.Threading
         /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
         /// </remarks>
         public Promise<(bool didEnter, WriterKey writerKey)> TryEnterWriterLockAsync(CancelationToken cancelationToken)
-            => TryEnterWriterLockAsyncImpl(cancelationToken, ContinuationOptions.CapturedContext);
+            => TryEnterWriterLockAsync(cancelationToken, true);
 
         /// <summary>
         /// Asynchronously try to acquire the lock as a writer, while observing a <see cref="CancelationToken"/>.
@@ -268,13 +268,13 @@ namespace Proto.Promises.Threading
         /// <param name="cancelationToken">
         /// The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the success state of the returned <see cref="Promise{T}"/> will be <see langword="false"/>.
         /// </param>
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and the lock is not acquired immediately, the async continuation will be executed on the captured context.</param>
         /// <remarks>
         /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
         /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
         /// </remarks>
-        public Promise<(bool didEnter, WriterKey writerKey)> TryEnterWriterLockAsync(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
-            => TryEnterWriterLockAsyncImpl(cancelationToken, continuationOptions.GetValidated());
+        public Promise<(bool didEnter, WriterKey writerKey)> TryEnterWriterLockAsync(CancelationToken cancelationToken, bool continueOnCapturedContext)
+            => TryEnterWriterLockAsyncImpl(cancelationToken, continueOnCapturedContext);
 
         /// <summary>
         /// Synchronously try to acquire the lock as a writer, while observing a <see cref="CancelationToken"/>.
@@ -300,20 +300,20 @@ namespace Proto.Promises.Threading
         /// Only 1 upgradeable reader lock may be entered at a time.
         /// </remarks>
         public Promise<UpgradeableReaderKey> UpgradeableReaderLockAsync()
-            => UpgradeableReaderLockAsyncImpl(ContinuationOptions.CapturedContext);
+            => UpgradeableReaderLockAsync(true);
 
         /// <summary>
         /// Asynchronously acquire the lock as an upgradeable reader.
         /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and the lock is not acquired immediately, the async continuation will be executed on the captured context.</param>
         /// <remarks>
         /// Upgradeable reader locks may be entered concurrently with normal reader locks, but they are mutually exclusive with respect to other upgradeable reader locks and writer locks.
         /// Only 1 upgradeable reader lock may be entered at a time.
         /// </remarks>
-        public Promise<UpgradeableReaderKey> UpgradeableReaderLockAsync(ContinuationOptions continuationOptions)
-            => UpgradeableReaderLockAsyncImpl(continuationOptions.GetValidated());
+        public Promise<UpgradeableReaderKey> UpgradeableReaderLockAsync(bool continueOnCapturedContext)
+            => UpgradeableReaderLockAsyncImpl(continueOnCapturedContext);
 
         /// <summary>
         /// Asynchronously acquire the lock as an upgradeable reader, while observing a <see cref="CancelationToken"/>.
@@ -326,7 +326,7 @@ namespace Proto.Promises.Threading
         /// Only 1 upgradeable reader lock may be entered at a time.
         /// </remarks>
         public Promise<UpgradeableReaderKey> UpgradeableReaderLockAsync(CancelationToken cancelationToken)
-            => UpgradeableReaderLockAsyncImpl(cancelationToken, ContinuationOptions.CapturedContext);
+            => UpgradeableReaderLockAsync(cancelationToken, true);
 
         /// <summary>
         /// Asynchronously acquire the lock as an upgradeable reader, while observing a <see cref="CancelationToken"/>.
@@ -334,13 +334,13 @@ namespace Proto.Promises.Threading
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and the lock is not acquired immediately, the async continuation will be executed on the captured context.</param>
         /// <remarks>
         /// Upgradeable reader locks may be entered concurrently with normal reader locks, but they are mutually exclusive with respect to other upgradeable reader locks and writer locks.
         /// Only 1 upgradeable reader lock may be entered at a time.
         /// </remarks>
-        public Promise<UpgradeableReaderKey> UpgradeableReaderLockAsync(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
-            => UpgradeableReaderLockAsyncImpl(cancelationToken, continuationOptions.GetValidated());
+        public Promise<UpgradeableReaderKey> UpgradeableReaderLockAsync(CancelationToken cancelationToken, bool continueOnCapturedContext)
+            => UpgradeableReaderLockAsyncImpl(cancelationToken, continueOnCapturedContext);
 
         /// <summary>
         /// Synchronously acquire the lock as an upgradeable reader.
@@ -391,7 +391,7 @@ namespace Proto.Promises.Threading
         /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
         /// </remarks>
         public Promise<(bool didEnter, UpgradeableReaderKey readerKey)> TryEnterUpgradeableReaderLockAsync(CancelationToken cancelationToken)
-            => TryEnterUpgradeableReaderLockAsyncImpl(cancelationToken, ContinuationOptions.CapturedContext);
+            => TryEnterUpgradeableReaderLockAsync(cancelationToken, true);
 
         /// <summary>
         /// Asynchronously try to acquire the lock as an upgradeable reader, while observing a <see cref="CancelationToken"/>.
@@ -399,15 +399,15 @@ namespace Proto.Promises.Threading
         /// If successful, the key will release the lock when it is disposed.
         /// </summary>
         /// <param name="cancelationToken">
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and the lock is not acquired immediately, the async continuation will be executed on the captured context.</param>
         /// The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the success state of the returned <see cref="Promise{T}"/> will be <see langword="false"/>.
         /// </param>
         /// <remarks>
         /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
         /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
         /// </remarks>
-        public Promise<(bool didEnter, UpgradeableReaderKey readerKey)> TryEnterUpgradeableReaderLockAsync(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
-            => TryEnterUpgradeableReaderLockAsyncImpl(cancelationToken, continuationOptions.GetValidated());
+        public Promise<(bool didEnter, UpgradeableReaderKey readerKey)> TryEnterUpgradeableReaderLockAsync(CancelationToken cancelationToken, bool continueOnCapturedContext)
+            => TryEnterUpgradeableReaderLockAsyncImpl(cancelationToken, continueOnCapturedContext);
 
         /// <summary>
         /// Synchronously try to acquire the lock as an upgradeable reader, while observing a <see cref="CancelationToken"/>.
@@ -430,7 +430,7 @@ namespace Proto.Promises.Threading
         /// </summary>
         /// <param name="readerKey">The key required to upgrade the lock.</param>
         public Promise<UpgradedWriterKey> UpgradeToWriterLockAsync(UpgradeableReaderKey readerKey)
-            => UpgradeToWriterLockAsyncImpl(readerKey, ContinuationOptions.CapturedContext);
+            => UpgradeToWriterLockAsync(readerKey, true);
 
         /// <summary>
         /// Asynchronously upgrade the lock from an upgradeable reader lock to a writer lock.
@@ -438,9 +438,9 @@ namespace Proto.Promises.Threading
         /// The result of the promise is the key that will downgrade the lock to an upgradeable reader lock when it is disposed.
         /// </summary>
         /// <param name="readerKey">The key required to upgrade the lock.</param>
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
-        public Promise<UpgradedWriterKey> UpgradeToWriterLockAsync(UpgradeableReaderKey readerKey, ContinuationOptions continuationOptions)
-            => UpgradeToWriterLockAsyncImpl(readerKey, continuationOptions.GetValidated());
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and the lock is not acquired immediately, the async continuation will be executed on the captured context.</param>
+        public Promise<UpgradedWriterKey> UpgradeToWriterLockAsync(UpgradeableReaderKey readerKey, bool continueOnCapturedContext)
+            => UpgradeToWriterLockAsyncImpl(readerKey, continueOnCapturedContext);
 
         /// <summary>
         /// Asynchronously upgrade the lock from an upgradeable reader lock to a writer lock, while observing a <see cref="CancelationToken"/>.
@@ -450,7 +450,7 @@ namespace Proto.Promises.Threading
         /// <param name="readerKey">The key required to upgrade the lock.</param>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the upgrade. If the token is canceled before the lock has been upgraded, the returned <see cref="Promise{T}"/> will be canceled.</param>
         public Promise<UpgradedWriterKey> UpgradeToWriterLockAsync(UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
-            => UpgradeToWriterLockAsyncImpl(readerKey, cancelationToken, ContinuationOptions.CapturedContext);
+            => UpgradeToWriterLockAsync(readerKey, cancelationToken, true);
 
         /// <summary>
         /// Asynchronously upgrade the lock from an upgradeable reader lock to a writer lock, while observing a <see cref="CancelationToken"/>.
@@ -459,9 +459,9 @@ namespace Proto.Promises.Threading
         /// </summary>
         /// <param name="readerKey">The key required to upgrade the lock.</param>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the upgrade. If the token is canceled before the lock has been upgraded, the returned <see cref="Promise{T}"/> will be canceled.</param>
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
-        public Promise<UpgradedWriterKey> UpgradeToWriterLockAsync(UpgradeableReaderKey readerKey, CancelationToken cancelationToken, ContinuationOptions continuationOptions)
-            => UpgradeToWriterLockAsyncImpl(readerKey, cancelationToken, continuationOptions.GetValidated());
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and the lock is not acquired immediately, the async continuation will be executed on the captured context.</param>
+        public Promise<UpgradedWriterKey> UpgradeToWriterLockAsync(UpgradeableReaderKey readerKey, CancelationToken cancelationToken, bool continueOnCapturedContext)
+            => UpgradeToWriterLockAsyncImpl(readerKey, cancelationToken, continueOnCapturedContext);
 
         /// <summary>
         /// Synchronously upgrade the lock from an upgradeable reader lock to a writer lock.
@@ -504,7 +504,7 @@ namespace Proto.Promises.Threading
         /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
         /// </remarks>
         public Promise<(bool didEnter, UpgradedWriterKey upgradedWriterKey)> TryUpgradeToWriterLockAsync(UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
-            => TryUpgradeToWriterLockAsyncImpl(readerKey, cancelationToken, ContinuationOptions.CapturedContext);
+            => TryUpgradeToWriterLockAsync(readerKey, cancelationToken, true);
 
         /// <summary>
         /// Asynchronously try to upgrade the lock from an upgradeable reader lock to a writer lock, while observing a <see cref="CancelationToken"/>.
@@ -513,15 +513,15 @@ namespace Proto.Promises.Threading
         /// </summary>
         /// <param name="readerKey">The key required to upgrade the lock.</param>
         /// <param name="cancelationToken">
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and the lock is not acquired immediately, the async continuation will be executed on the captured context.</param>
         /// The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the success state of the returned <see cref="Promise{T}"/> will be <see langword="false"/>.
         /// </param>
         /// <remarks>
         /// This first tries to take the lock before checking the <paramref name="cancelationToken"/>>.
         /// If the lock is available, the result will be (<see langword="true"/>, key), even if the <paramref name="cancelationToken"/> is already canceled.
         /// </remarks>
-        public Promise<(bool didEnter, UpgradedWriterKey upgradedWriterKey)> TryUpgradeToWriterLockAsync(UpgradeableReaderKey readerKey, CancelationToken cancelationToken, ContinuationOptions continuationOptions)
-            => TryUpgradeToWriterLockAsyncImpl(readerKey, cancelationToken, continuationOptions.GetValidated());
+        public Promise<(bool didEnter, UpgradedWriterKey upgradedWriterKey)> TryUpgradeToWriterLockAsync(UpgradeableReaderKey readerKey, CancelationToken cancelationToken, bool continueOnCapturedContext)
+            => TryUpgradeToWriterLockAsyncImpl(readerKey, cancelationToken, continueOnCapturedContext);
 
         /// <summary>
         /// Synchronously try to upgrade the lock from an upgradeable reader lock to a writer lock, while observing a <see cref="CancelationToken"/>.

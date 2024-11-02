@@ -82,20 +82,20 @@ namespace Proto.Promises.Threading
         /// </returns>
         [MethodImpl(Internal.InlineOption)]
         public Promise WaitAsync(AsyncLock.Key asyncLockKey)
-            => asyncLockKey.WaitAsync(this, ContinuationOptions.CapturedContext);
+            => WaitAsync(asyncLockKey, true);
 
         /// <summary>
         /// Release the lock and asynchronously wait for a notify signal on the <see cref="AsyncLock"/> associated with the <paramref name="asyncLockKey"/>.
         /// The lock will be re-acquired before the returned <see cref="Promise{T}"/> is resolved.
         /// </summary>
         /// <param name="asyncLockKey">The key to the <see cref="AsyncLock"/> that is currently acquired.</param>
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise"/>.</param>
+        /// <param name="continueOnCapturedContext">If <see langword="true"/>, the async continuation will be executed on the captured context.</param>
         /// <returns>
         /// A <see cref="Promise"/> that will be resolved when the lock is re-acquired.
         /// </returns>
         [MethodImpl(Internal.InlineOption)]
-        public Promise WaitAsync(AsyncLock.Key asyncLockKey, ContinuationOptions continuationOptions)
-            => asyncLockKey.WaitAsync(this, continuationOptions.GetValidated());
+        public Promise WaitAsync(AsyncLock.Key asyncLockKey, bool continueOnCapturedContext)
+            => asyncLockKey.WaitAsync(this, continueOnCapturedContext);
 
         /// <summary>
         /// Release the lock and asynchronously wait for a notify signal on the <see cref="AsyncLock"/> associated with the <paramref name="asyncLockKey"/>, while observing a <see cref="CancelationToken"/>.
@@ -110,7 +110,7 @@ namespace Proto.Promises.Threading
         /// </returns>
         [MethodImpl(Internal.InlineOption)]
         public Promise<bool> TryWaitAsync(AsyncLock.Key asyncLockKey, CancelationToken cancelationToken)
-            => asyncLockKey.TryWaitAsync(this, cancelationToken, ContinuationOptions.CapturedContext);
+            => TryWaitAsync(asyncLockKey, cancelationToken, true);
 
         /// <summary>
         /// Release the lock and asynchronously wait for a notify signal on the <see cref="AsyncLock"/> associated with the <paramref name="asyncLockKey"/>, while observing a <see cref="CancelationToken"/>.
@@ -118,15 +118,15 @@ namespace Proto.Promises.Threading
         /// </summary>
         /// <param name="asyncLockKey">The key to the <see cref="AsyncLock"/> that is currently acquired.</param>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the wait.</param>
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <param name="continueOnCapturedContext">If <see langword="true"/>, the async continuation will be executed on the captured context.</param>
         /// <returns>
         /// A <see cref="Promise{T}"/> that will be resolved when the lock is re-acquired.
         /// Its result will be <see langword="true"/> if the lock was re-acquired before the <paramref name="cancelationToken"/> was canceled,
         /// <see langword="false"/> if the lock was re-acquired after the <paramref name="cancelationToken"/> was canceled
         /// </returns>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<bool> TryWaitAsync(AsyncLock.Key asyncLockKey, CancelationToken cancelationToken, ContinuationOptions continuationOptions)
-            => asyncLockKey.TryWaitAsync(this, cancelationToken, continuationOptions.GetValidated());
+        public Promise<bool> TryWaitAsync(AsyncLock.Key asyncLockKey, CancelationToken cancelationToken, bool continueOnCapturedContext)
+            => asyncLockKey.TryWaitAsync(this, cancelationToken, continueOnCapturedContext);
 
         /// <summary>
         /// Release the lock and synchronously wait for a notify signal on the <see cref="AsyncLock"/> associated with the <paramref name="asyncLockKey"/>.

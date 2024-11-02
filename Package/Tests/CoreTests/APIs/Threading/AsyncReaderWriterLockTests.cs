@@ -7,7 +7,6 @@
 using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Threading;
-using ProtoPromiseTests.Concurrency;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -2890,13 +2889,7 @@ namespace ProtoPromiseTests.APIs.Threading
 
         [Test]
         public void AsyncReaderWriterLock_WriterLockAsync_ContinuesOnConfiguredContext_await(
-            [Values] SynchronizationType continuationContext,
-            [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground
-#if !UNITY_WEBGL
-            , SynchronizationType.Background
-#endif
-            )] SynchronizationType invokeContext,
+            [Values] bool continueOnCapturedContext,
             [Values] bool withCancelationToken)
         {
             var foregroundThread = Thread.CurrentThread;
@@ -2905,41 +2898,35 @@ namespace ProtoPromiseTests.APIs.Threading
 
             var initialKey = rwl.WriterLock();
 
+            bool isExecuting = false;
             var promise = Promise.Run(async () =>
             {
                 if (withCancelationToken)
                 {
-                    using (var key = await rwl.WriterLockAsync(cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior)))
+                    using (var key = await rwl.WriterLockAsync(cancelationSource.Token, continueOnCapturedContext))
                     {
-                        TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                        Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
                     }
                 }
                 else
                 {
-                    using (var key = await rwl.WriterLockAsync(TestHelper.GetContinuationOptions(continuationContext, completedBehavior)))
+                    using (var key = await rwl.WriterLockAsync(continueOnCapturedContext))
                     {
-                        TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                        Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
                     }
                 }
             }, SynchronizationOption.Synchronous);
 
-            new ThreadHelper().ExecuteSynchronousOrOnThread(
-                () => initialKey.Dispose(),
-                invokeContext == SynchronizationType.Foreground
-            );
+            isExecuting = true;
+            initialKey.Dispose();
+            isExecuting = false;
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
             cancelationSource.Dispose();
         }
 
         [Test]
         public void AsyncReaderWriterLock_TryEnterWriterLockAsync_ContinuesOnConfiguredContext_await(
-            [Values] SynchronizationType continuationContext,
-            [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground
-#if !UNITY_WEBGL
-            , SynchronizationType.Background
-#endif
-            )] SynchronizationType invokeContext)
+            [Values] bool continueOnCapturedContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
@@ -2947,30 +2934,24 @@ namespace ProtoPromiseTests.APIs.Threading
 
             var initialKey = rwl.WriterLock();
 
+            bool isExecuting = false;
             var promise = Promise.Run(async () =>
             {
-                var (success, key) = await rwl.TryEnterWriterLockAsync(cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
-                TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                var (success, key) = await rwl.TryEnterWriterLockAsync(cancelationSource.Token, continueOnCapturedContext);
+                Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
                 key.Dispose();
             }, SynchronizationOption.Synchronous);
 
-            new ThreadHelper().ExecuteSynchronousOrOnThread(
-                () => initialKey.Dispose(),
-                invokeContext == SynchronizationType.Foreground
-            );
+            isExecuting = true;
+            initialKey.Dispose();
+            isExecuting = false;
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
             cancelationSource.Dispose();
         }
 
         [Test]
         public void AsyncReaderWriterLock_ReaderLockAsync_ContinuesOnConfiguredContext_await(
-            [Values] SynchronizationType continuationContext,
-            [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground
-#if !UNITY_WEBGL
-            , SynchronizationType.Background
-#endif
-            )] SynchronizationType invokeContext,
+            [Values] bool continueOnCapturedContext,
             [Values] bool withCancelationToken)
         {
             var foregroundThread = Thread.CurrentThread;
@@ -2979,41 +2960,35 @@ namespace ProtoPromiseTests.APIs.Threading
 
             var initialKey = rwl.WriterLock();
 
+            bool isExecuting = false;
             var promise = Promise.Run(async () =>
             {
                 if (withCancelationToken)
                 {
-                    using (var key = await rwl.ReaderLockAsync(cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior)))
+                    using (var key = await rwl.ReaderLockAsync(cancelationSource.Token, continueOnCapturedContext))
                     {
-                        TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                        Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
                     }
                 }
                 else
                 {
-                    using (var key = await rwl.ReaderLockAsync(TestHelper.GetContinuationOptions(continuationContext, completedBehavior)))
+                    using (var key = await rwl.ReaderLockAsync(continueOnCapturedContext))
                     {
-                        TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                        Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
                     }
                 }
             }, SynchronizationOption.Synchronous);
 
-            new ThreadHelper().ExecuteSynchronousOrOnThread(
-                () => initialKey.Dispose(),
-                invokeContext == SynchronizationType.Foreground
-            );
+            isExecuting = true;
+            initialKey.Dispose();
+            isExecuting = false;
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
             cancelationSource.Dispose();
         }
 
         [Test]
         public void AsyncReaderWriterLock_TryEnterReaderLockAsync_ContinuesOnConfiguredContext_await(
-            [Values] SynchronizationType continuationContext,
-            [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground
-#if !UNITY_WEBGL
-            , SynchronizationType.Background
-#endif
-            )] SynchronizationType invokeContext)
+            [Values] bool continueOnCapturedContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
@@ -3021,30 +2996,24 @@ namespace ProtoPromiseTests.APIs.Threading
 
             var initialKey = rwl.WriterLock();
 
+            bool isExecuting = false;
             var promise = Promise.Run(async () =>
             {
-                var (success, key) = await rwl.TryEnterReaderLockAsync(cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
-                TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                var (success, key) = await rwl.TryEnterReaderLockAsync(cancelationSource.Token, continueOnCapturedContext);
+                Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
                 key.Dispose();
             }, SynchronizationOption.Synchronous);
 
-            new ThreadHelper().ExecuteSynchronousOrOnThread(
-                () => initialKey.Dispose(),
-                invokeContext == SynchronizationType.Foreground
-            );
+            isExecuting = true;
+            initialKey.Dispose();
+            isExecuting = false;
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
             cancelationSource.Dispose();
         }
 
         [Test]
         public void AsyncReaderWriterLock_UpgradeableReaderLockAsync_ContinuesOnConfiguredContext_await(
-            [Values] SynchronizationType continuationContext,
-            [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground
-#if !UNITY_WEBGL
-            , SynchronizationType.Background
-#endif
-            )] SynchronizationType invokeContext,
+            [Values] bool continueOnCapturedContext,
             [Values] bool withCancelationToken)
         {
             var foregroundThread = Thread.CurrentThread;
@@ -3053,41 +3022,35 @@ namespace ProtoPromiseTests.APIs.Threading
 
             var initialKey = rwl.WriterLock();
 
+            bool isExecuting = false;
             var promise = Promise.Run(async () =>
             {
                 if (withCancelationToken)
                 {
-                    using (var key = await rwl.UpgradeableReaderLockAsync(cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior)))
+                    using (var key = await rwl.UpgradeableReaderLockAsync(cancelationSource.Token, continueOnCapturedContext))
                     {
-                        TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                        Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
                     }
                 }
                 else
                 {
-                    using (var key = await rwl.UpgradeableReaderLockAsync(TestHelper.GetContinuationOptions(continuationContext, completedBehavior)))
+                    using (var key = await rwl.UpgradeableReaderLockAsync(continueOnCapturedContext))
                     {
-                        TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                        Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
                     }
                 }
             }, SynchronizationOption.Synchronous);
 
-            new ThreadHelper().ExecuteSynchronousOrOnThread(
-                () => initialKey.Dispose(),
-                invokeContext == SynchronizationType.Foreground
-            );
+            isExecuting = true;
+            initialKey.Dispose();
+            isExecuting = false;
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
             cancelationSource.Dispose();
         }
 
         [Test]
         public void AsyncReaderWriterLock_TryEnterUpgradeableReaderLockAsync_ContinuesOnConfiguredContext_await(
-            [Values] SynchronizationType continuationContext,
-            [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground
-#if !UNITY_WEBGL
-            , SynchronizationType.Background
-#endif
-            )] SynchronizationType invokeContext)
+            [Values] bool continueOnCapturedContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
@@ -3095,30 +3058,24 @@ namespace ProtoPromiseTests.APIs.Threading
 
             var initialKey = rwl.WriterLock();
 
+            bool isExecuting = false;
             var promise = Promise.Run(async () =>
             {
-                var (success, key) = await rwl.TryEnterUpgradeableReaderLockAsync(cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
-                TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                var (success, key) = await rwl.TryEnterUpgradeableReaderLockAsync(cancelationSource.Token, continueOnCapturedContext);
+                Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
                 key.Dispose();
             }, SynchronizationOption.Synchronous);
 
-            new ThreadHelper().ExecuteSynchronousOrOnThread(
-                () => initialKey.Dispose(),
-                invokeContext == SynchronizationType.Foreground
-            );
+            isExecuting = true;
+            initialKey.Dispose();
+            isExecuting = false;
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
             cancelationSource.Dispose();
         }
 
         [Test]
         public void AsyncReaderWriterLock_UpgradeToWriterLockAsync_ContinuesOnConfiguredContext_await(
-            [Values] SynchronizationType continuationContext,
-            [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground
-#if !UNITY_WEBGL
-            , SynchronizationType.Background
-#endif
-            )] SynchronizationType invokeContext,
+            [Values] bool continueOnCapturedContext,
             [Values] bool withCancelationToken)
         {
             var foregroundThread = Thread.CurrentThread;
@@ -3128,42 +3085,36 @@ namespace ProtoPromiseTests.APIs.Threading
             var upgradeableKey = rwl.UpgradeableReaderLock();
             var readerKey = rwl.ReaderLock();
 
+            bool isExecuting = false;
             var promise = Promise.Run(async () =>
             {
                 if (withCancelationToken)
                 {
-                    using (var key = await rwl.UpgradeToWriterLockAsync(upgradeableKey, cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior)))
+                    using (var key = await rwl.UpgradeToWriterLockAsync(upgradeableKey, cancelationSource.Token, continueOnCapturedContext))
                     {
-                        TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                        Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
                     }
                 }
                 else
                 {
-                    using (var key = await rwl.UpgradeToWriterLockAsync(upgradeableKey, TestHelper.GetContinuationOptions(continuationContext, completedBehavior)))
+                    using (var key = await rwl.UpgradeToWriterLockAsync(upgradeableKey, continueOnCapturedContext))
                     {
-                        TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                        Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
                     }
                 }
                 upgradeableKey.Dispose();
             }, SynchronizationOption.Synchronous);
 
-            new ThreadHelper().ExecuteSynchronousOrOnThread(
-                () => readerKey.Dispose(),
-                invokeContext == SynchronizationType.Foreground
-            );
+            isExecuting = true;
+            readerKey.Dispose();
+            isExecuting = false;
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
             cancelationSource.Dispose();
         }
 
         [Test]
         public void AsyncReaderWriterLock_TryUpgradeToWriterLockAsync_ContinuesOnConfiguredContext_await(
-            [Values] SynchronizationType continuationContext,
-            [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground
-#if !UNITY_WEBGL
-            , SynchronizationType.Background
-#endif
-            )] SynchronizationType invokeContext)
+            [Values] bool continueOnCapturedContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
@@ -3172,18 +3123,18 @@ namespace ProtoPromiseTests.APIs.Threading
             var upgradeableKey = rwl.UpgradeableReaderLock();
             var readerKey = rwl.ReaderLock();
 
+            bool isExecuting = false;
             var promise = Promise.Run(async () =>
             {
-                var (success, key) = await rwl.TryUpgradeToWriterLockAsync(upgradeableKey, cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
-                TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                var (success, key) = await rwl.TryUpgradeToWriterLockAsync(upgradeableKey, cancelationSource.Token, continueOnCapturedContext);
+                Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
                 key.Dispose();
                 upgradeableKey.Dispose();
             }, SynchronizationOption.Synchronous);
 
-            new ThreadHelper().ExecuteSynchronousOrOnThread(
-                () => readerKey.Dispose(),
-                invokeContext == SynchronizationType.Foreground
-            );
+            isExecuting = true;
+            readerKey.Dispose();
+            isExecuting = false;
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
             cancelationSource.Dispose();
         }

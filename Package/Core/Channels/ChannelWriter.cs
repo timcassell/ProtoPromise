@@ -35,18 +35,18 @@ namespace Proto.Promises.Channels
         /// or <see langword="false"/> when the channel is closed.
         /// </returns>
         public Promise<bool> WaitToWriteAsync()
-            => WaitToWriteAsync(CancelationToken.None);
+            => WaitToWriteAsync(CancelationToken.None, true);
 
         /// <summary>
         /// Asynchronously waits for space to be available to write an item.
         /// </summary>
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and space is not immediately available, the async continuation will be executed on the captured context.</param>
         /// <returns>
         /// A <see cref="Promise{T}"/> that will resolve with <see langword="true"/> when space is available to write an item,
         /// or <see langword="false"/> when the channel is closed.
         /// </returns>
-        public Promise<bool> WaitToWriteAsync(ContinuationOptions continuationOptions)
-            => _channel.ValidateAndGetRef().WaitToWriteAsync(_channel._id, default, continuationOptions.GetValidated());
+        public Promise<bool> WaitToWriteAsync(bool continueOnCapturedContext)
+            => WaitToWriteAsync(CancelationToken.None, continueOnCapturedContext);
 
         /// <summary>
         /// Asynchronously waits for space to be available to write an item.
@@ -57,19 +57,19 @@ namespace Proto.Promises.Channels
         /// or <see langword="false"/> when the channel is closed.
         /// </returns>
         public Promise<bool> WaitToWriteAsync(CancelationToken cancelationToken)
-            => _channel.ValidateAndGetRef().WaitToWriteAsync(_channel._id, cancelationToken, ContinuationOptions.CapturedContext);
+            => WaitToWriteAsync(cancelationToken, true);
 
         /// <summary>
         /// Asynchronously waits for space to be available to write an item.
         /// </summary>
         /// <param name="cancelationToken">A <see cref="CancelationToken"/> used to cancel the wait operation.</param>
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and space is not immediately available, the async continuation will be executed on the captured context.</param>
         /// <returns>
         /// A <see cref="Promise{T}"/> that will resolve with <see langword="true"/> when space is available to write an item,
         /// or <see langword="false"/> when the channel is closed.
         /// </returns>
-        public Promise<bool> WaitToWriteAsync(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
-            => _channel.ValidateAndGetRef().WaitToWriteAsync(_channel._id, cancelationToken, continuationOptions.GetValidated());
+        public Promise<bool> WaitToWriteAsync(CancelationToken cancelationToken, bool continueOnCapturedContext)
+            => _channel.ValidateAndGetRef().WaitToWriteAsync(_channel._id, cancelationToken, continueOnCapturedContext);
 
         /// <summary>
         /// Attempts to write an item to the channel in a non-blocking manner.
@@ -85,16 +85,16 @@ namespace Proto.Promises.Channels
         /// <param name="item">The value to write to the channel.</param>
         /// <returns>A <see cref="Promise{T}"/> that yields the result of the write operation.</returns>
         public Promise<ChannelWriteResult<T>> WriteAsync(T item)
-            => _channel.ValidateAndGetRef().WriteAsync(item, _channel._id, default, ContinuationOptions.CapturedContext);
+            => WriteAsync(item, CancelationToken.None, true);
 
         /// <summary>
         /// Asynchronously writes an item to the channel.
         /// </summary>
         /// <param name="item">The value to write to the channel.</param>
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and space is not immediately available, the async continuation will be executed on the captured context.</param>
         /// <returns>A <see cref="Promise{T}"/> that yields the result of the write operation.</returns>
-        public Promise<ChannelWriteResult<T>> WriteAsync(T item, ContinuationOptions continuationOptions)
-            => _channel.ValidateAndGetRef().WriteAsync(item, _channel._id, default, continuationOptions.GetValidated());
+        public Promise<ChannelWriteResult<T>> WriteAsync(T item, bool continueOnCapturedContext)
+            => WriteAsync(item, CancelationToken.None, continueOnCapturedContext);
 
         /// <summary>
         /// Asynchronously writes an item to the channel.
@@ -103,17 +103,17 @@ namespace Proto.Promises.Channels
         /// <param name="cancelationToken">A <see cref="CancelationToken"/> used to cancel the write operation.</param>
         /// <returns>A <see cref="Promise{T}"/> that yields the result of the write operation.</returns>
         public Promise<ChannelWriteResult<T>> WriteAsync(T item, CancelationToken cancelationToken)
-            => _channel.ValidateAndGetRef().WriteAsync(item, _channel._id, cancelationToken, ContinuationOptions.CapturedContext);
+            => WriteAsync(item, cancelationToken, true);
 
         /// <summary>
         /// Asynchronously writes an item to the channel.
         /// </summary>
         /// <param name="item">The value to write to the channel.</param>
         /// <param name="cancelationToken">A <see cref="CancelationToken"/> used to cancel the write operation.</param>
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and space is not immediately available, the async continuation will be executed on the captured context.</param>
         /// <returns>A <see cref="Promise{T}"/> that yields the result of the write operation.</returns>
-        public Promise<ChannelWriteResult<T>> WriteAsync(T item, CancelationToken cancelationToken, ContinuationOptions continuationOptions)
-            => _channel.ValidateAndGetRef().WriteAsync(item, _channel._id, cancelationToken, continuationOptions.GetValidated());
+        public Promise<ChannelWriteResult<T>> WriteAsync(T item, CancelationToken cancelationToken, bool continueOnCapturedContext)
+            => _channel.ValidateAndGetRef().WriteAsync(item, _channel._id, cancelationToken, continueOnCapturedContext);
 
         /// <summary>
         /// Attempts to close the channel in a rejected state.

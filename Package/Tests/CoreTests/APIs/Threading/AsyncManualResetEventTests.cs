@@ -7,7 +7,6 @@
 using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Threading;
-using ProtoPromiseTests.Concurrency;
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -410,57 +409,42 @@ namespace ProtoPromiseTests.APIs.Threading
 
         [Test]
         public void AsyncManualResetEvent_WaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_Then(
-            [Values] SynchronizationType continuationContext,
-            [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground
-#if !UNITY_WEBGL
-            , SynchronizationType.Background
-#endif
-            )] SynchronizationType invokeContext)
+            [Values] bool continueOnCapturedContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var mre = new AsyncManualResetEvent(false);
 
-            var promise = mre.WaitAsync(TestHelper.GetContinuationOptions(continuationContext, completedBehavior))
+            bool isExecuting = false;
+            var promise = mre.WaitAsync(continueOnCapturedContext)
                 .Then(() =>
                 {
-                    TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                    Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
                 });
 
-            Assert.False(mre.IsSet);
-            new ThreadHelper().ExecuteSynchronousOrOnThread(
-                () => mre.Set(),
-                invokeContext == SynchronizationType.Foreground
-            );
+            isExecuting = true;
+            mre.Set();
+            isExecuting = false;
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         [Test]
         public void AsyncManualResetEvent_TryWaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_Then(
-            [Values] SynchronizationType continuationContext,
-            [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground
-#if !UNITY_WEBGL
-            , SynchronizationType.Background
-#endif
-            )] SynchronizationType invokeContext)
+            [Values] bool continueOnCapturedContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var mre = new AsyncManualResetEvent(false);
             var cancelationSource = CancelationSource.New();
 
-            var promise = mre.TryWaitAsync(cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior))
-                .Then(success =>
+            bool isExecuting = false;
+            var promise = mre.TryWaitAsync(cancelationSource.Token, continueOnCapturedContext)
+                .Then(_ =>
                 {
-                    Assert.True(success);
-                    TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                    Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
                 });
 
-            Assert.False(mre.IsSet);
-            new ThreadHelper().ExecuteSynchronousOrOnThread(
-                () => mre.Set(),
-                invokeContext == SynchronizationType.Foreground
-            );
+            isExecuting = true;
+            mre.Set();
+            isExecuting = false;
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
 
             cancelationSource.Dispose();
@@ -468,57 +452,42 @@ namespace ProtoPromiseTests.APIs.Threading
 
         [Test]
         public void AsyncManualResetEvent_WaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_await(
-            [Values] SynchronizationType continuationContext,
-            [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground
-#if !UNITY_WEBGL
-            , SynchronizationType.Background
-#endif
-            )] SynchronizationType invokeContext)
+            [Values] bool continueOnCapturedContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var mre = new AsyncManualResetEvent(false);
 
+            bool isExecuting = false;
             var promise = Promise.Run(async () =>
             {
-                await mre.WaitAsync(TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
-                TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                await mre.WaitAsync(continueOnCapturedContext);
+                Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
             }, SynchronizationOption.Synchronous);
 
-            Assert.False(mre.IsSet);
-            new ThreadHelper().ExecuteSynchronousOrOnThread(
-                () => mre.Set(),
-                invokeContext == SynchronizationType.Foreground
-            );
+            isExecuting = true;
+            mre.Set();
+            isExecuting = false;
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         [Test]
         public void AsyncManualResetEvent_TryWaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_await(
-            [Values] SynchronizationType continuationContext,
-            [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground
-#if !UNITY_WEBGL
-            , SynchronizationType.Background
-#endif
-            )] SynchronizationType invokeContext)
+            [Values] bool continueOnCapturedContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var mre = new AsyncManualResetEvent(false);
             var cancelationSource = CancelationSource.New();
 
+            bool isExecuting = false;
             var promise = Promise.Run(async () =>
             {
-                var success = await mre.TryWaitAsync(cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
-                Assert.True(success);
-                TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                _ = await mre.TryWaitAsync(cancelationSource.Token, continueOnCapturedContext);
+                Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
             }, SynchronizationOption.Synchronous);
 
-            Assert.False(mre.IsSet);
-            new ThreadHelper().ExecuteSynchronousOrOnThread(
-                () => mre.Set(),
-                invokeContext == SynchronizationType.Foreground
-            );
+            isExecuting = true;
+            mre.Set();
+            isExecuting = false;
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
 
             cancelationSource.Dispose();

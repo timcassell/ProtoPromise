@@ -7,7 +7,6 @@
 using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Threading;
-using ProtoPromiseTests.Concurrency;
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -765,79 +764,62 @@ namespace ProtoPromiseTests.APIs.Threading
 
         [Test]
         public void AsyncConditionVariable_WaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_Then(
-            [Values] SynchronizationType continuationContext,
-            [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground
-#if !UNITY_WEBGL
-            , SynchronizationType.Background
-#endif
-            )] SynchronizationType invokeContext)
+            [Values] bool continueOnCapturedContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var mutex = new AsyncLock();
             var condVar = new AsyncConditionVariable();
 
-            var promise = mutex.LockAsync(ContinuationOptions.Synchronous)
+            bool isExecuting = false;
+            var promise = mutex.LockAsync()
                 .Then(key =>
                 {
-                    return condVar.WaitAsync(key, TestHelper.GetContinuationOptions(continuationContext, completedBehavior))
+                    return condVar.WaitAsync(key, continueOnCapturedContext)
                         .Then(() =>
                         {
-                            TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                            Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
                             key.Dispose();
                         });
                 });
 
-            new ThreadHelper().ExecuteSynchronousOrOnThread(
-                () =>
-                {
-                    using (var key = mutex.Lock())
-                    {
-                        condVar.Notify(key);
-                    }
-                },
-                invokeContext == SynchronizationType.Foreground
-            );
+            using (var key = mutex.Lock())
+            {
+                isExecuting = true;
+                condVar.Notify(key);
+            }
+            // The waiter continues after the lock is released.
+            isExecuting = false;
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         [Test]
         public void AsyncConditionVariable_TryWaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_Then(
-            [Values] SynchronizationType continuationContext,
-            [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground
-#if !UNITY_WEBGL
-            , SynchronizationType.Background
-#endif
-            )] SynchronizationType invokeContext)
+            [Values] bool continueOnCapturedContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var mutex = new AsyncLock();
             var condVar = new AsyncConditionVariable();
             var cancelationSource = CancelationSource.New();
 
-            var promise = mutex.LockAsync(ContinuationOptions.Synchronous)
+            bool isExecuting = false;
+            var promise = mutex.LockAsync()
                 .Then(key =>
                 {
-                    return condVar.TryWaitAsync(key, cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior))
-                        .Then(success =>
+                    return condVar.TryWaitAsync(key, cancelationSource.Token, continueOnCapturedContext)
+                        .Then(_ =>
                         {
-                            Assert.True(success);
-                            TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                            Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
                             key.Dispose();
                         });
                 });
 
-            new ThreadHelper().ExecuteSynchronousOrOnThread(
-                () =>
-                {
-                    using (var key = mutex.Lock())
-                    {
-                        condVar.Notify(key);
-                    }
-                },
-                invokeContext == SynchronizationType.Foreground
-            );
+            using (var key = mutex.Lock())
+            {
+                isExecuting = true;
+                condVar.Notify(key);
+            }
+            // The waiter continues after the lock is released.
+            isExecuting = false;
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
 
             cancelationSource.Dispose();
@@ -845,75 +827,58 @@ namespace ProtoPromiseTests.APIs.Threading
 
         [Test]
         public void AsyncConditionVariable_WaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_await(
-            [Values] SynchronizationType continuationContext,
-            [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground
-#if !UNITY_WEBGL
-            , SynchronizationType.Background
-#endif
-            )] SynchronizationType invokeContext)
+            [Values] bool continueOnCapturedContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var mutex = new AsyncLock();
             var condVar = new AsyncConditionVariable();
 
+            bool isExecuting = false;
             var promise = Promise.Run(async () =>
             {
-                using (var key = await mutex.LockAsync(ContinuationOptions.Synchronous))
+                using (var key = await mutex.LockAsync())
                 {
-                    await condVar.WaitAsync(key, TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
-                    TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                    await condVar.WaitAsync(key, continueOnCapturedContext);
+                    Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
                 }
             }, SynchronizationOption.Synchronous);
 
-            new ThreadHelper().ExecuteSynchronousOrOnThread(
-                () =>
-                {
-                    using (var key = mutex.Lock())
-                    {
-                        condVar.Notify(key);
-                    }
-                },
-                invokeContext == SynchronizationType.Foreground
-            );
+            using (var key = mutex.Lock())
+            {
+                isExecuting = true;
+                condVar.Notify(key);
+            }
+            // The waiter continues after the lock is released.
+            isExecuting = false;
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
 
         [Test]
         public void AsyncConditionVariable_TryWaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_await(
-            [Values] SynchronizationType continuationContext,
-            [Values] CompletedContinuationBehavior completedBehavior,
-            [Values(SynchronizationType.Foreground
-#if !UNITY_WEBGL
-            , SynchronizationType.Background
-#endif
-            )] SynchronizationType invokeContext)
+            [Values] bool continueOnCapturedContext)
         {
             var foregroundThread = Thread.CurrentThread;
             var mutex = new AsyncLock();
             var condVar = new AsyncConditionVariable();
             var cancelationSource = CancelationSource.New();
 
+            bool isExecuting = false;
             var promise = Promise.Run(async () =>
             {
-                using (var key = await mutex.LockAsync(ContinuationOptions.Synchronous))
+                using (var key = await mutex.LockAsync())
                 {
-                    var success = await condVar.TryWaitAsync(key, cancelationSource.Token, TestHelper.GetContinuationOptions(continuationContext, completedBehavior));
-                    Assert.True(success);
-                    TestHelper.AssertCallbackContext(continuationContext, invokeContext, foregroundThread);
+                    _ = await condVar.TryWaitAsync(key, cancelationSource.Token, continueOnCapturedContext);
+                    Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
                 }
             }, SynchronizationOption.Synchronous);
 
-            new ThreadHelper().ExecuteSynchronousOrOnThread(
-                () =>
-                {
-                    using (var key = mutex.Lock())
-                    {
-                        condVar.Notify(key);
-                    }
-                },
-                invokeContext == SynchronizationType.Foreground
-            );
+            using (var key = mutex.Lock())
+            {
+                isExecuting = true;
+                condVar.Notify(key);
+            }
+            // The waiter continues after the lock is released.
+            isExecuting = false;
             promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
 
             cancelationSource.Dispose();

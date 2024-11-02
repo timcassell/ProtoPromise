@@ -299,7 +299,7 @@ namespace Proto.Promises
             return context;
         }
 
-        private static SynchronizationContext CaptureContext()
+        internal static SynchronizationContext CaptureContext()
         {
             // Capture the current context. If it's null, use the background context.
             return Promise.Manager.ThreadStaticSynchronizationContext
@@ -312,12 +312,5 @@ namespace Proto.Promises
                 ?? Promise.Config.BackgroundContext
                 ?? Internal.BackgroundSynchronizationContextSentinel.s_instance;
         }
-
-        // If this is configured with foreground, and the foreground context is null, GetForegroundContext will throw.
-        // We do this before starting actual work to prevent deadlocks in case of an exception.
-        internal ContinuationOptions GetValidated()
-            => _option == Option.Foreground
-            ? new ContinuationOptions(GetForegroundContext(), _completedBehavior)
-            : this;
     }
 }

@@ -35,10 +35,10 @@ namespace Proto.Promises
                     : obj.UnsafeAs<AsyncReaderLockPromise>();
             }
 
-            internal static AsyncReaderLockPromise GetOrCreate(AsyncReaderWriterLock owner, ContinuationOptions continuationOptions)
+            internal static AsyncReaderLockPromise GetOrCreate(AsyncReaderWriterLock owner, bool continueOnCapturedContext)
             {
                 var promise = GetOrCreate();
-                promise.Reset(continuationOptions);
+                promise.Reset(continueOnCapturedContext);
                 promise._result = new AsyncReaderWriterLock.ReaderKey(owner); // This will be overwritten when this is resolved, we just store the key with the owner here for cancelation.
                 return promise;
             }
@@ -98,10 +98,10 @@ namespace Proto.Promises
                     : obj.UnsafeAs<AsyncWriterLockPromise>();
             }
 
-            internal static AsyncWriterLockPromise GetOrCreate(AsyncReaderWriterLock owner, ContinuationOptions continuationOptions)
+            internal static AsyncWriterLockPromise GetOrCreate(AsyncReaderWriterLock owner, bool continueOnCapturedContext)
             {
                 var promise = GetOrCreate();
-                promise.Reset(continuationOptions);
+                promise.Reset(continueOnCapturedContext);
                 promise._result = new AsyncReaderWriterLock.WriterKey(owner); // This will be overwritten when this is resolved, we just store the key with the owner here for cancelation.
                 return promise;
             }
@@ -161,10 +161,10 @@ namespace Proto.Promises
                     : obj.UnsafeAs<AsyncUpgradeableReaderLockPromise>();
             }
 
-            internal static AsyncUpgradeableReaderLockPromise GetOrCreate(AsyncReaderWriterLock owner, ContinuationOptions continuationOptions)
+            internal static AsyncUpgradeableReaderLockPromise GetOrCreate(AsyncReaderWriterLock owner, bool continueOnCapturedContext)
             {
                 var promise = GetOrCreate();
-                promise.Reset(continuationOptions);
+                promise.Reset(continueOnCapturedContext);
                 promise._result = new AsyncReaderWriterLock.UpgradeableReaderKey(owner); // This will be overwritten when this is resolved, we just store the key with the owner here for cancelation.
                 return promise;
             }
@@ -224,10 +224,10 @@ namespace Proto.Promises
                     : obj.UnsafeAs<AsyncUpgradedWriterLockPromise>();
             }
 
-            internal static AsyncUpgradedWriterLockPromise GetOrCreate(AsyncReaderWriterLock owner, ContinuationOptions continuationOptions)
+            internal static AsyncUpgradedWriterLockPromise GetOrCreate(AsyncReaderWriterLock owner, bool continueOnCapturedContext)
             {
                 var promise = GetOrCreate();
-                promise.Reset(continuationOptions);
+                promise.Reset(continueOnCapturedContext);
                 promise._result = new AsyncReaderWriterLock.UpgradedWriterKey(owner); // This will be overwritten when this is resolved, we just store the key with the owner here for cancelation.
                 return promise;
             }
@@ -628,7 +628,7 @@ namespace Proto.Promises
                 return noWriters | prioritizedEntrance;
             }
 
-            private Promise<ReaderKey> ReaderLockAsyncImpl(ContinuationOptions continuationOptions)
+            private Promise<ReaderKey> ReaderLockAsyncImpl(bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
 
@@ -651,8 +651,7 @@ namespace Proto.Promises
                         _smallFields._lockType = lockType | AsyncReaderWriterLockType.Reader;
                         var key = _currentKey;
                         _smallFields._locker.Exit();
-                        return Promise.Resolved(new ReaderKey(this, key, null))
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved(new ReaderKey(this, key, null));
                     }
 
                     // Unchecked context since we're manually checking overflow.
@@ -660,14 +659,14 @@ namespace Proto.Promises
                     {
                         ++_readerWaitCount;
                     }
-                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, continuationOptions);
+                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     _readerQueue.Enqueue(promise);
                 }
                 _smallFields._locker.Exit();
                 return new Promise<ReaderKey>(promise, promise.Id);
             }
 
-            private Promise<ReaderKey> ReaderLockAsyncImpl(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
+            private Promise<ReaderKey> ReaderLockAsyncImpl(CancelationToken cancelationToken, bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
 
@@ -676,8 +675,7 @@ namespace Proto.Promises
                 {
                     ValidateNotAbandoned();
 
-                    return Promise<ReaderKey>.Canceled()
-                        .ConfigureContinuation(continuationOptions);
+                    return Promise<ReaderKey>.Canceled();
                 }
 
                 Internal.AsyncReaderLockPromise promise;
@@ -699,8 +697,7 @@ namespace Proto.Promises
                         _smallFields._lockType = lockType | AsyncReaderWriterLockType.Reader;
                         var key = _currentKey;
                         _smallFields._locker.Exit();
-                        return Promise.Resolved(new ReaderKey(this, key, null))
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved(new ReaderKey(this, key, null));
                     }
 
                     // Unchecked context since we're manually checking overflow.
@@ -708,13 +705,12 @@ namespace Proto.Promises
                     {
                         ++_readerWaitCount;
                     }
-                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, continuationOptions);
+                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
                         promise.DisposeImmediate();
-                        return Promise<ReaderKey>.Canceled()
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise<ReaderKey>.Canceled();
                     }
                     _readerQueue.Enqueue(promise);
                 }
@@ -731,7 +727,7 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                return ReaderLockAsyncImpl(ContinuationOptions.Synchronous).WaitForResult();
+                return ReaderLockAsyncImpl(false).WaitForResult();
             }
 
             private ReaderKey ReaderLockImpl(CancelationToken cancelationToken)
@@ -743,7 +739,7 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                return ReaderLockAsyncImpl(cancelationToken, ContinuationOptions.Synchronous).WaitForResult();
+                return ReaderLockAsyncImpl(cancelationToken, false).WaitForResult();
             }
 
             private bool TryEnterReaderLockImpl(out ReaderKey readerKey)
@@ -776,7 +772,7 @@ namespace Proto.Promises
                 return false;
             }
 
-            private Promise<(bool didEnter, ReaderKey readerKey)> TryEnterReaderLockAsyncImpl(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
+            private Promise<(bool didEnter, ReaderKey readerKey)> TryEnterReaderLockAsyncImpl(CancelationToken cancelationToken, bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
 
@@ -799,15 +795,13 @@ namespace Proto.Promises
                         _smallFields._lockType = lockType | AsyncReaderWriterLockType.Reader;
                         var key = _currentKey;
                         _smallFields._locker.Exit();
-                        return Promise.Resolved((true, new ReaderKey(this, key, null)))
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved((true, new ReaderKey(this, key, null)));
                     }
                     // Quick check to see if the token is already canceled before waiting.
                     if (cancelationToken.IsCancelationRequested)
                     {
                         _smallFields._locker.Exit();
-                        return Promise.Resolved((false, default(ReaderKey)))
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved((false, default(ReaderKey)));
                     }
 
                     // Unchecked context since we're manually checking overflow.
@@ -815,13 +809,12 @@ namespace Proto.Promises
                     {
                         ++_readerWaitCount;
                     }
-                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, continuationOptions);
+                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
                         promise.DisposeImmediate();
-                        return Promise.Resolved((false, default(ReaderKey)))
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved((false, default(ReaderKey)));
                     }
                     _readerQueue.Enqueue(promise);
                 }
@@ -843,12 +836,12 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                var (success, key) = TryEnterReaderLockAsyncImpl(cancelationToken, ContinuationOptions.Synchronous).WaitForResult();
+                var (success, key) = TryEnterReaderLockAsyncImpl(cancelationToken, false).WaitForResult();
                 readerKey = key;
                 return success;
             }
 
-            private Promise<WriterKey> WriterLockAsyncImpl(ContinuationOptions continuationOptions)
+            private Promise<WriterKey> WriterLockAsyncImpl(bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 Internal.AsyncWriterLockPromise promise;
@@ -865,18 +858,17 @@ namespace Proto.Promises
                         SetNextKey();
                         var key = _currentKey;
                         _smallFields._locker.Exit();
-                        return Promise.Resolved(new WriterKey(this, key, null))
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved(new WriterKey(this, key, null));
                     }
 
-                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, continuationOptions);
+                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     _writerQueue.Enqueue(promise);
                 }
                 _smallFields._locker.Exit();
                 return new Promise<WriterKey>(promise, promise.Id);
             }
 
-            private Promise<WriterKey> WriterLockAsyncImpl(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
+            private Promise<WriterKey> WriterLockAsyncImpl(CancelationToken cancelationToken, bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
 
@@ -885,8 +877,7 @@ namespace Proto.Promises
                 {
                     ValidateNotAbandoned();
 
-                    return Promise<WriterKey>.Canceled()
-                        .ConfigureContinuation(continuationOptions);
+                    return Promise<WriterKey>.Canceled();
                 }
 
                 Internal.AsyncWriterLockPromise promise;
@@ -903,17 +894,15 @@ namespace Proto.Promises
                         SetNextKey();
                         var key = _currentKey;
                         _smallFields._locker.Exit();
-                        return Promise.Resolved(new WriterKey(this, key, null))
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved(new WriterKey(this, key, null));
                     }
 
-                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, continuationOptions);
+                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
                         promise.DisposeImmediate();
-                        return Promise<WriterKey>.Canceled()
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise<WriterKey>.Canceled();
                     }
                     _writerQueue.Enqueue(promise);
                 }
@@ -930,7 +919,7 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                return WriterLockAsyncImpl(ContinuationOptions.Synchronous).WaitForResult();
+                return WriterLockAsyncImpl(false).WaitForResult();
             }
 
             private WriterKey WriterLockImpl(CancelationToken cancelationToken)
@@ -942,7 +931,7 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                return WriterLockAsyncImpl(cancelationToken, ContinuationOptions.Synchronous).WaitForResult();
+                return WriterLockAsyncImpl(cancelationToken, false).WaitForResult();
             }
 
             private bool TryEnterWriterLockImpl(out WriterKey writerKey)
@@ -970,7 +959,7 @@ namespace Proto.Promises
                 return false;
             }
 
-            private Promise<(bool didEnter, WriterKey writerKey)> TryEnterWriterLockAsyncImpl(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
+            private Promise<(bool didEnter, WriterKey writerKey)> TryEnterWriterLockAsyncImpl(CancelationToken cancelationToken, bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 Internal.AsyncWriterLockPromise promise;
@@ -987,25 +976,22 @@ namespace Proto.Promises
                         SetNextKey();
                         var key = _currentKey;
                         _smallFields._locker.Exit();
-                        return Promise.Resolved((true, new WriterKey(this, key, null)))
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved((true, new WriterKey(this, key, null)));
                     }
                     // Quick check to see if the token is already canceled before waiting.
                     if (cancelationToken.IsCancelationRequested)
                     {
                         _smallFields._locker.Exit();
-                        return Promise.Resolved((false, default(WriterKey)))
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved((false, default(WriterKey)));
                     }
 
                     _smallFields._lockType = lockType | AsyncReaderWriterLockType.Writer;
-                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, continuationOptions);
+                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
                         promise.DisposeImmediate();
-                        return Promise.Resolved((false, default(WriterKey)))
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved((false, default(WriterKey)));
                     }
                     _writerQueue.Enqueue(promise);
                 }
@@ -1027,7 +1013,7 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                var (success, key) = TryEnterWriterLockAsyncImpl(cancelationToken, ContinuationOptions.Synchronous).WaitForResult();
+                var (success, key) = TryEnterWriterLockAsyncImpl(cancelationToken, false).WaitForResult();
                 writerKey = key;
                 return success;
             }
@@ -1046,7 +1032,7 @@ namespace Proto.Promises
                 return noWritersOrUpgradeableReaders | prioritizedEntrance;
             }
 
-            private Promise<UpgradeableReaderKey> UpgradeableReaderLockAsyncImpl(ContinuationOptions continuationOptions)
+            private Promise<UpgradeableReaderKey> UpgradeableReaderLockAsyncImpl(bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 Internal.AsyncUpgradeableReaderLockPromise promise;
@@ -1067,18 +1053,17 @@ namespace Proto.Promises
                         _smallFields._lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
                         var key = _currentKey;
                         _smallFields._locker.Exit();
-                        return Promise.Resolved(new UpgradeableReaderKey(this, key, null))
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved(new UpgradeableReaderKey(this, key, null));
                     }
 
-                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, continuationOptions);
+                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     _upgradeQueue.Enqueue(promise);
                 }
                 _smallFields._locker.Exit();
                 return new Promise<UpgradeableReaderKey>(promise, promise.Id);
             }
 
-            private Promise<UpgradeableReaderKey> UpgradeableReaderLockAsyncImpl(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
+            private Promise<UpgradeableReaderKey> UpgradeableReaderLockAsyncImpl(CancelationToken cancelationToken, bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
 
@@ -1087,8 +1072,7 @@ namespace Proto.Promises
                 {
                     ValidateNotAbandoned();
 
-                    return Promise<UpgradeableReaderKey>.Canceled()
-                        .ConfigureContinuation(continuationOptions);
+                    return Promise<UpgradeableReaderKey>.Canceled();
                 }
 
                 Internal.AsyncUpgradeableReaderLockPromise promise;
@@ -1109,17 +1093,15 @@ namespace Proto.Promises
                         _smallFields._lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
                         var key = _currentKey;
                         _smallFields._locker.Exit();
-                        return Promise.Resolved(new UpgradeableReaderKey(this, key, null))
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved(new UpgradeableReaderKey(this, key, null));
                     }
 
-                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, continuationOptions);
+                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
                         promise.DisposeImmediate();
-                        return Promise<UpgradeableReaderKey>.Canceled()
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise<UpgradeableReaderKey>.Canceled();
                     }
                     _upgradeQueue.Enqueue(promise);
                 }
@@ -1136,7 +1118,7 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                return UpgradeableReaderLockAsyncImpl(ContinuationOptions.Synchronous).WaitForResult();
+                return UpgradeableReaderLockAsyncImpl(false).WaitForResult();
             }
 
             private UpgradeableReaderKey UpgradeableReaderLockImpl(CancelationToken cancelationToken)
@@ -1148,7 +1130,7 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                return UpgradeableReaderLockAsyncImpl(cancelationToken, ContinuationOptions.Synchronous).WaitForResult();
+                return UpgradeableReaderLockAsyncImpl(cancelationToken, false).WaitForResult();
             }
 
             private bool TryEnterUpgradeableReaderLockImpl(out UpgradeableReaderKey readerKey)
@@ -1180,7 +1162,7 @@ namespace Proto.Promises
                 return false;
             }
 
-            private Promise<(bool didEnter, UpgradeableReaderKey readerKey)> TryEnterUpgradeableReaderLockAsyncImpl(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
+            private Promise<(bool didEnter, UpgradeableReaderKey readerKey)> TryEnterUpgradeableReaderLockAsyncImpl(CancelationToken cancelationToken, bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 Internal.AsyncUpgradeableReaderLockPromise promise;
@@ -1201,24 +1183,21 @@ namespace Proto.Promises
                         _smallFields._lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
                         var key = _currentKey;
                         _smallFields._locker.Exit();
-                        return Promise.Resolved((true, new UpgradeableReaderKey(this, key, null)))
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved((true, new UpgradeableReaderKey(this, key, null)));
                     }
                     // Quick check to see if the token is already canceled before waiting.
                     if (cancelationToken.IsCancelationRequested)
                     {
                         _smallFields._locker.Exit();
-                        return Promise.Resolved((false, default(UpgradeableReaderKey)))
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved((false, default(UpgradeableReaderKey)));
                     }
 
-                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, continuationOptions);
+                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
                         promise.DisposeImmediate();
-                        return Promise.Resolved((false, default(UpgradeableReaderKey)))
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved((false, default(UpgradeableReaderKey)));
                     }
                     _upgradeQueue.Enqueue(promise);
                 }
@@ -1240,12 +1219,12 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                var (success, key) = TryEnterUpgradeableReaderLockAsyncImpl(cancelationToken, ContinuationOptions.Synchronous).WaitForResult();
+                var (success, key) = TryEnterUpgradeableReaderLockAsyncImpl(cancelationToken, false).WaitForResult();
                 readerKey = key;
                 return success;
             }
 
-            private Promise<UpgradedWriterKey> UpgradeToWriterLockAsyncImpl(UpgradeableReaderKey readerKey, ContinuationOptions continuationOptions)
+            private Promise<UpgradedWriterKey> UpgradeToWriterLockAsyncImpl(UpgradeableReaderKey readerKey, bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 Internal.AsyncUpgradedWriterLockPromise promise;
@@ -1268,18 +1247,17 @@ namespace Proto.Promises
                         SetNextAndPreviousKeys();
                         var key = _currentKey;
                         _smallFields._locker.Exit();
-                        return Promise.Resolved(new UpgradedWriterKey(this, key, null))
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved(new UpgradedWriterKey(this, key, null));
                     }
 
-                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, continuationOptions);
+                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     _upgradeWaiter = promise;
                 }
                 _smallFields._locker.Exit();
                 return new Promise<UpgradedWriterKey>(promise, promise.Id);
             }
 
-            private Promise<UpgradedWriterKey> UpgradeToWriterLockAsyncImpl(UpgradeableReaderKey readerKey, CancelationToken cancelationToken, ContinuationOptions continuationOptions)
+            private Promise<UpgradedWriterKey> UpgradeToWriterLockAsyncImpl(UpgradeableReaderKey readerKey, CancelationToken cancelationToken, bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
 
@@ -1288,8 +1266,7 @@ namespace Proto.Promises
                 {
                     ValidateNotAbandoned();
 
-                    return Promise<UpgradedWriterKey>.Canceled()
-                        .ConfigureContinuation(continuationOptions);
+                    return Promise<UpgradedWriterKey>.Canceled();
                 }
 
                 Internal.AsyncUpgradedWriterLockPromise promise;
@@ -1312,17 +1289,15 @@ namespace Proto.Promises
                         SetNextAndPreviousKeys();
                         var key = _currentKey;
                         _smallFields._locker.Exit();
-                        return Promise.Resolved(new UpgradedWriterKey(this, key, null))
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved(new UpgradedWriterKey(this, key, null));
                     }
 
-                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, continuationOptions);
+                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
                         promise.DisposeImmediate();
-                        return Promise<UpgradedWriterKey>.Canceled()
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise<UpgradedWriterKey>.Canceled();
                     }
                     _upgradeWaiter = promise;
                 }
@@ -1339,7 +1314,7 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                return UpgradeToWriterLockAsyncImpl(readerKey, ContinuationOptions.Synchronous).WaitForResult();
+                return UpgradeToWriterLockAsyncImpl(readerKey, false).WaitForResult();
             }
 
             private UpgradedWriterKey UpgradeToWriterLockImpl(UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
@@ -1351,7 +1326,7 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                return UpgradeToWriterLockAsyncImpl(readerKey, cancelationToken, ContinuationOptions.Synchronous).WaitForResult();
+                return UpgradeToWriterLockAsyncImpl(readerKey, cancelationToken, false).WaitForResult();
             }
 
             private bool TryUpgradeToWriterLockImpl(UpgradeableReaderKey readerKey, out UpgradedWriterKey writerKey)
@@ -1386,7 +1361,7 @@ namespace Proto.Promises
             }
 
             private Promise<(bool didEnter, UpgradedWriterKey writerKey)> TryUpgradeToWriterLockAsyncImpl(
-                UpgradeableReaderKey readerKey, CancelationToken cancelationToken, ContinuationOptions continuationOptions)
+                UpgradeableReaderKey readerKey, CancelationToken cancelationToken, bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 Internal.AsyncUpgradedWriterLockPromise promise;
@@ -1409,26 +1384,23 @@ namespace Proto.Promises
                         SetNextAndPreviousKeys();
                         var key = _currentKey;
                         _smallFields._locker.Exit();
-                        return Promise.Resolved((true, new UpgradedWriterKey(this, key, null)))
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved((true, new UpgradedWriterKey(this, key, null)));
                     }
                     // Quick check to see if the token is already canceled before waiting.
                     if (cancelationToken.IsCancelationRequested)
                     {
                         _smallFields._locker.Exit();
-                        return Promise.Resolved((false, default(UpgradedWriterKey)))
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved((false, default(UpgradedWriterKey)));
                     }
 
                     DecrementReaderLockCount();
                     _smallFields._lockType |= AsyncReaderWriterLockType.Writer;
-                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, continuationOptions);
+                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
                         promise.DisposeImmediate();
-                        return Promise.Resolved((true, new UpgradedWriterKey(this, _currentKey, null)))
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved((true, new UpgradedWriterKey(this, _currentKey, null)));
                     }
                     _upgradeWaiter = promise;
                 }
@@ -1450,7 +1422,7 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                var (success, key) = TryUpgradeToWriterLockAsyncImpl(readerKey, cancelationToken, ContinuationOptions.Synchronous).WaitForResult();
+                var (success, key) = TryUpgradeToWriterLockAsyncImpl(readerKey, cancelationToken, false).WaitForResult();
                 writerKey = key;
                 return success;
             }

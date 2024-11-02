@@ -63,17 +63,17 @@ namespace Proto.Promises.Threading
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public Promise<Key> LockAsync()
-            => LockAsyncImpl(ContinuationOptions.CapturedContext);
+            => LockAsync(true);
 
         /// <summary>
         /// Asynchronously acquire the lock.
         /// Returns a <see cref="Promise{T}"/> that will be resolved when the lock has been acquired.
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and the lock is already acquired, the async continuation will be executed on the captured context.</param>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<Key> LockAsync(ContinuationOptions continuationOptions)
-            => LockAsyncImpl(continuationOptions.GetValidated());
+        public Promise<Key> LockAsync(bool continueOnCapturedContext)
+            => LockAsyncImpl(continueOnCapturedContext);
 
         /// <summary>
         /// Asynchronously acquire the lock, while observing a <see cref="CancelationToken"/>.
@@ -83,7 +83,7 @@ namespace Proto.Promises.Threading
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
         [MethodImpl(Internal.InlineOption)]
         public Promise<Key> LockAsync(CancelationToken cancelationToken)
-            => LockAsyncImpl(cancelationToken, ContinuationOptions.CapturedContext);
+            => LockAsync(cancelationToken, true);
 
         /// <summary>
         /// Asynchronously acquire the lock, while observing a <see cref="CancelationToken"/>.
@@ -91,10 +91,10 @@ namespace Proto.Promises.Threading
         /// The result of the promise is the key that will release the lock when it is disposed.
         /// </summary>
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the lock. If the token is canceled before the lock has been acquired, the returned <see cref="Promise{T}"/> will be canceled.</param>
-        /// <param name="continuationOptions">The options used to configure the continuation behavior of the returned <see cref="Promise{T}"/>.</param>
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and the lock is already acquired, the async continuation will be executed on the captured context.</param>
         [MethodImpl(Internal.InlineOption)]
-        public Promise<Key> LockAsync(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
-            => LockAsyncImpl(cancelationToken, continuationOptions.GetValidated());
+        public Promise<Key> LockAsync(CancelationToken cancelationToken, bool continueOnCapturedContext)
+            => LockAsyncImpl(cancelationToken, continueOnCapturedContext);
 
         /// <summary>
         /// Synchronously acquire the lock. Returns the key that will release the lock when it is disposed.

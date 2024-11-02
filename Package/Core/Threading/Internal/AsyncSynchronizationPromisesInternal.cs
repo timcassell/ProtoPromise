@@ -28,10 +28,10 @@ namespace Proto.Promises
                 protected Promise.State _tempState;
 
                 [MethodImpl(InlineOption)]
-                protected void Reset(ContinuationOptions continuationOptions)
+                protected void Reset(bool continueOnCapturedContext)
                 {
                     Reset();
-                    _continuationContext = continuationOptions.GetContinuationContext();
+                    _continuationContext = continueOnCapturedContext ? ContinuationOptions.CaptureContext() : null;
                     // Assume the resolved state will occur. If this is actually canceled or rejected, the state will be set at that time.
                     _tempState = Promise.State.Resolved;
                 }
@@ -45,14 +45,15 @@ namespace Proto.Promises
 
                 protected void Continue()
                 {
-                    if (_continuationContext == null)
+                    var context = _continuationContext;
+                    if (context == null)
                     {
                         // This was configured to continue synchronously.
                         HandleNextInternal(_tempState);
                         return;
                     }
                     // This was configured to continuation on the context.
-                    ScheduleContextCallback(_continuationContext, this,
+                    ScheduleContextCallback(context, this,
                         obj => obj.UnsafeAs<AsyncSynchronizationPromiseBase<TResult>>().HandleFromContext(),
                         obj => obj.UnsafeAs<AsyncSynchronizationPromiseBase<TResult>>().HandleFromContext()
                     );

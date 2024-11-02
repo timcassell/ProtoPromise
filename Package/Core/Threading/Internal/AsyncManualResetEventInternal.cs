@@ -30,10 +30,10 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static AsyncManualResetEventPromise GetOrCreate(Threading.AsyncManualResetEvent owner, ContinuationOptions continuationOptions)
+            internal static AsyncManualResetEventPromise GetOrCreate(Threading.AsyncManualResetEvent owner, bool continueOnCapturedContext)
             {
                 var promise = GetOrCreate();
-                promise.Reset(continuationOptions);
+                promise.Reset(continueOnCapturedContext);
                 promise._owner = owner;
                 return promise;
             }
@@ -108,13 +108,12 @@ namespace Proto.Promises
             }
 #endif // PROMISE_DEBUG
 
-            private Promise WaitAsyncImpl(ContinuationOptions continuationOptions)
+            private Promise WaitAsyncImpl(bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 if (_isSet)
                 {
-                    return Promise.Resolved()
-                        .ConfigureContinuation(continuationOptions);
+                    return Promise.Resolved();
                 }
 
                 Internal.AsyncManualResetEventPromise promise;
@@ -124,24 +123,22 @@ namespace Proto.Promises
                     if (_isSet)
                     {
                         _locker.Exit();
-                        return Promise.Resolved()
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved();
                     }
-                    promise = Internal.AsyncManualResetEventPromise.GetOrCreate(this, continuationOptions);
+                    promise = Internal.AsyncManualResetEventPromise.GetOrCreate(this, continueOnCapturedContext);
                     _waiters.Enqueue(promise);
                 }
                 _locker.Exit();
                 return new Promise(promise, promise.Id);
             }
 
-            private Promise<bool> TryWaitAsyncImpl(CancelationToken cancelationToken, ContinuationOptions continuationOptions)
+            private Promise<bool> TryWaitAsyncImpl(CancelationToken cancelationToken, bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 bool isSet = _isSet;
                 if (isSet | cancelationToken.IsCancelationRequested)
                 {
-                    return Promise.Resolved(isSet)
-                        .ConfigureContinuation(continuationOptions);
+                    return Promise.Resolved(isSet);
                 }
 
                 Internal.AsyncManualResetEventPromise promise;
@@ -151,16 +148,14 @@ namespace Proto.Promises
                     if (_isSet)
                     {
                         _locker.Exit();
-                        return Promise.Resolved(true)
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved(true);
                     }
-                    promise = Internal.AsyncManualResetEventPromise.GetOrCreate(this, continuationOptions);
+                    promise = Internal.AsyncManualResetEventPromise.GetOrCreate(this, continueOnCapturedContext);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _locker.Exit();
                         promise.DisposeImmediate();
-                        return Promise.Resolved(false)
-                            .ConfigureContinuation(continuationOptions);
+                        return Promise.Resolved(false);
                     }
                     _waiters.Enqueue(promise);
                 }
@@ -177,7 +172,7 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                WaitAsyncImpl(ContinuationOptions.Synchronous).Wait();
+                WaitAsyncImpl(false).Wait();
             }
 
             private bool TryWaitImpl(CancelationToken cancelationToken)
@@ -189,7 +184,7 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                return TryWaitAsyncImpl(cancelationToken, ContinuationOptions.Synchronous).WaitForResult();
+                return TryWaitAsyncImpl(cancelationToken, false).WaitForResult();
             }
 
             private void SetImpl()
