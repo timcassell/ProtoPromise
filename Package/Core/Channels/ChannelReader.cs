@@ -130,8 +130,15 @@ namespace Proto.Promises.Channels
         /// </summary>
         /// <returns>The created <see cref="AsyncEnumerable{T}"/>.</returns>
         public AsyncEnumerable<T> ReadAllAsync()
-            // We add a reader in case this is disposed before the channel is completed.
-            => AsyncEnumerable<T>.Create(new AsyncIterator(this));
+            => ReadAllAsync(true);
+
+        /// <summary>
+        /// Creates an <see cref="AsyncEnumerable{T}"/> that enables reading all of the data from the channel.
+        /// </summary>
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and data is not immediately available, the async continuations will be executed on the captured context.</param>
+        /// <returns>The created <see cref="AsyncEnumerable{T}"/>.</returns>
+        public AsyncEnumerable<T> ReadAllAsync(bool continueOnCapturedContext)
+            => AsyncEnumerable<T>.Create(new AsyncIterator(this, continueOnCapturedContext));
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
@@ -139,11 +146,13 @@ namespace Proto.Promises.Channels
         private readonly struct AsyncIterator : IAsyncIterator<T>
         {
             private readonly ChannelReader<T> _channelReader;
+            private readonly bool _continueOnCapturedContext;
 
             [MethodImpl(Internal.InlineOption)]
-            public AsyncIterator(ChannelReader<T> channelReader)
+            internal AsyncIterator(ChannelReader<T> channelReader, bool continueOnCapturedContext)
             {
                 _channelReader = channelReader;
+                _continueOnCapturedContext = continueOnCapturedContext;
             }
 
             [MethodImpl(Internal.InlineOption)]
@@ -152,7 +161,7 @@ namespace Proto.Promises.Channels
 
             public async AsyncIteratorMethod Start(AsyncStreamWriter<T> streamWriter, CancelationToken cancelationToken)
             {
-                while ((await _channelReader.ReadAsync(cancelationToken)).TryGetItem(out T item))
+                while ((await _channelReader.ReadAsync(cancelationToken, _continueOnCapturedContext)).TryGetItem(out T item))
                 {
                     await streamWriter.YieldAsync(item);
                 }
