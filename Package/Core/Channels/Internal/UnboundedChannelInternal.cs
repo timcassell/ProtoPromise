@@ -240,7 +240,7 @@ namespace Proto.Promises
                 }
             }
 
-            internal override Promise<ChannelReadResult<T>> ReadAsync(int id, CancelationToken cancelationToken)
+            internal override Promise<ChannelReadResult<T>> ReadAsync(int id, CancelationToken cancelationToken, bool continueOnCapturedContext)
             {
                 ValidateAndRetain(id);
 
@@ -278,7 +278,7 @@ namespace Proto.Promises
                             : Promise<ChannelReadResult<T>>.Rejected(closedReason);
                     }
 
-                    var promise = ChannelReadPromise<T>.GetOrCreate(this, ContinuationOptions.CaptureContext());
+                    var promise = ChannelReadPromise<T>.GetOrCreate(this, continueOnCapturedContext);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
@@ -293,7 +293,7 @@ namespace Proto.Promises
                 }
             }
 
-            internal override Promise<ChannelWriteResult<T>> WriteAsync(in T item, int id, CancelationToken cancelationToken)
+            internal override Promise<ChannelWriteResult<T>> WriteAsync(in T item, int id, CancelationToken cancelationToken, bool continueOnCapturedContext)
             {
                 ValidateAndRetain(id);
 
@@ -342,7 +342,7 @@ namespace Proto.Promises
                 }
             }
 
-            internal override Promise<bool> WaitToReadAsync(int id, CancelationToken cancelationToken)
+            internal override Promise<bool> WaitToReadAsync(int id, CancelationToken cancelationToken, bool continueOnCapturedContext)
             {
                 ValidateAndRetain(id);
 
@@ -380,7 +380,7 @@ namespace Proto.Promises
                             : Promise<bool>.Rejected(closedReason);
                     }
 
-                    var promise = ChannelWaitToReadPromise.GetOrCreate(this, ContinuationOptions.CaptureContext());
+                    var promise = ChannelWaitToReadPromise.GetOrCreate(this, continueOnCapturedContext);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
@@ -395,7 +395,7 @@ namespace Proto.Promises
                 }
             }
 
-            internal override Promise<bool> WaitToWriteAsync(int id, CancelationToken cancelationToken)
+            internal override Promise<bool> WaitToWriteAsync(int id, CancelationToken cancelationToken, bool continueOnCapturedContext)
             {
                 var closedReason = _closedReason;
                 if (id != Id | closedReason == ChannelSmallFields.DisposedReason)

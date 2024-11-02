@@ -268,6 +268,92 @@ namespace ProtoPromiseTests.APIs.Threading
         }
 #endif
 
+        [Test]
+        public void AsyncCountdownEvent_WaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_Then(
+            [Values] bool continueOnCapturedContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var ce = new AsyncCountdownEvent(1);
+
+            bool isExecuting = false;
+            var promise = ce.WaitAsync(continueOnCapturedContext)
+                .Then(() =>
+                {
+                    Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+                });
+
+            isExecuting = true;
+            ce.Signal();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncCountdownEvent_TryWaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_Then(
+            [Values] bool continueOnCapturedContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var ce = new AsyncCountdownEvent(1);
+            var cancelationSource = CancelationSource.New();
+
+            bool isExecuting = false;
+            var promise = ce.TryWaitAsync(cancelationSource.Token, continueOnCapturedContext)
+                .Then(_ =>
+                {
+                    Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+                });
+
+            isExecuting = true;
+            ce.Signal();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncCountdownEvent_WaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_await(
+            [Values] bool continueOnCapturedContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var ce = new AsyncCountdownEvent(1);
+
+            bool isExecuting = false;
+            var promise = Promise.Run(async () =>
+            {
+                await ce.WaitAsync(continueOnCapturedContext);
+                Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+            }, SynchronizationOption.Synchronous);
+
+            isExecuting = true;
+            ce.Signal();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncCountdownEvent_TryWaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_await(
+            [Values] bool continueOnCapturedContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var ce = new AsyncCountdownEvent(1);
+            var cancelationSource = CancelationSource.New();
+
+            bool isExecuting = false;
+            var promise = Promise.Run(async () =>
+            {
+                _ = await ce.TryWaitAsync(cancelationSource.Token, continueOnCapturedContext);
+                Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+            }, SynchronizationOption.Synchronous);
+
+            isExecuting = true;
+            ce.Signal();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            cancelationSource.Dispose();
+        }
+
 #if PROTO_PROMISE_TEST_GC_ENABLED
         [Test]
         public void AsyncCountdownEvent_AbandonedResetEventReported()

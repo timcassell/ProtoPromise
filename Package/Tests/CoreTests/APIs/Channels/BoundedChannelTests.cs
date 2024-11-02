@@ -733,5 +733,151 @@ namespace ProtoPromiseTests.APIs.Channels
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
+
+        [Test]
+        public void WriteAsync_ContinuesOnConfiguredContext_await(
+            [Values] bool continueOnCapturedContext,
+            [Values] bool withCancelationToken)
+        {
+            var foregroundThread = Thread.CurrentThread;
+
+            var options = new BoundedChannelOptions<int>() { Capacity = 1, FullMode = BoundedChannelFullMode.Wait };
+            var channel = Channel<int>.NewBounded(options);
+            var cancelationSource = CancelationSource.New();
+
+            Assert.AreEqual(ChannelWriteResult.Success, channel.Writer.TryWrite(1).Result);
+
+            bool isExecuting = false;
+            var promise = Promise.Run(async () =>
+            {
+                if (withCancelationToken)
+                {
+                    var writeResult = await channel.Writer.WriteAsync(2, cancelationSource.Token, continueOnCapturedContext);
+                    Assert.AreEqual(ChannelWriteResult.Success, writeResult.Result);
+                }
+                else
+                {
+                    var writeResult = await channel.Writer.WriteAsync(2, continueOnCapturedContext);
+                    Assert.AreEqual(ChannelWriteResult.Success, writeResult.Result);
+                }
+                Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+            }, SynchronizationOption.Synchronous);
+
+            isExecuting = true;
+            channel.Reader.TryRead();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+            channel.Dispose();
+        }
+
+        [Test]
+        public void WaitToWriteAsync_ContinuesOnConfiguredContext_await(
+            [Values] bool continueOnCapturedContext,
+            [Values] bool withCancelationToken)
+        {
+            var foregroundThread = Thread.CurrentThread;
+
+            var options = new BoundedChannelOptions<int>() { Capacity = 1, FullMode = BoundedChannelFullMode.Wait };
+            var channel = Channel<int>.NewBounded(options);
+            var cancelationSource = CancelationSource.New();
+
+            Assert.AreEqual(ChannelWriteResult.Success, channel.Writer.TryWrite(1).Result);
+
+            bool isExecuting = false;
+            var promise = Promise.Run(async () =>
+            {
+                if (withCancelationToken)
+                {
+                    var canWrite = await channel.Writer.WaitToWriteAsync(cancelationSource.Token, continueOnCapturedContext);
+                    Assert.True(canWrite);
+                }
+                else
+                {
+                    var canWrite = await channel.Writer.WaitToWriteAsync(continueOnCapturedContext);
+                    Assert.True(canWrite);
+                }
+                Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+            }, SynchronizationOption.Synchronous);
+
+            isExecuting = true;
+            channel.Reader.TryRead();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+            channel.Dispose();
+        }
+
+        [Test]
+        public void ReadAsync_ContinuesOnConfiguredContext_await(
+            [Values] bool continueOnCapturedContext,
+            [Values] bool withCancelationToken)
+        {
+            var foregroundThread = Thread.CurrentThread;
+
+            var options = new BoundedChannelOptions<int>() { Capacity = 1, FullMode = BoundedChannelFullMode.Wait };
+            var channel = Channel<int>.NewBounded(options);
+            var cancelationSource = CancelationSource.New();
+
+            bool isExecuting = false;
+            var promise = Promise.Run(async () =>
+            {
+                if (withCancelationToken)
+                {
+                    var readResult = await channel.Reader.ReadAsync(cancelationSource.Token, continueOnCapturedContext);
+                    Assert.True(readResult.TryGetItem(out var item));
+                    Assert.AreEqual(1, item);
+                }
+                else
+                {
+                    var readResult = await channel.Reader.ReadAsync(continueOnCapturedContext);
+                    Assert.True(readResult.TryGetItem(out var item));
+                    Assert.AreEqual(1, item);
+                }
+                Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+            }, SynchronizationOption.Synchronous);
+
+            isExecuting = true;
+            channel.Writer.TryWrite(1);
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+            channel.Dispose();
+        }
+
+        [Test]
+        public void WaitToReadAsync_ContinuesOnConfiguredContext_await(
+            [Values] bool continueOnCapturedContext,
+            [Values] bool withCancelationToken)
+        {
+            var foregroundThread = Thread.CurrentThread;
+
+            var options = new BoundedChannelOptions<int>() { Capacity = 1, FullMode = BoundedChannelFullMode.Wait };
+            var channel = Channel<int>.NewBounded(options);
+            var cancelationSource = CancelationSource.New();
+
+            bool isExecuting = false;
+            var promise = Promise.Run(async () =>
+            {
+                if (withCancelationToken)
+                {
+                    var canRead = await channel.Reader.WaitToReadAsync(cancelationSource.Token, continueOnCapturedContext);
+                    Assert.True(canRead);
+                }
+                else
+                {
+                    var canRead = await channel.Reader.WaitToReadAsync(continueOnCapturedContext);
+                    Assert.True(canRead);
+                }
+                Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+            }, SynchronizationOption.Synchronous);
+
+            isExecuting = true;
+            channel.Writer.TryWrite(1);
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+            channel.Dispose();
+        }
     }
 }

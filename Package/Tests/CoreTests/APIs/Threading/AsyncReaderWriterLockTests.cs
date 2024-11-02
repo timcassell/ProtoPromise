@@ -2887,6 +2887,258 @@ namespace ProtoPromiseTests.APIs.Threading
             Assert.True(enteredWriterLock);
         }
 
+        [Test]
+        public void AsyncReaderWriterLock_WriterLockAsync_ContinuesOnConfiguredContext_await(
+            [Values] bool continueOnCapturedContext,
+            [Values] bool withCancelationToken)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
+            var cancelationSource = CancelationSource.New();
+
+            var initialKey = rwl.WriterLock();
+
+            bool isExecuting = false;
+            var promise = Promise.Run(async () =>
+            {
+                if (withCancelationToken)
+                {
+                    using (var key = await rwl.WriterLockAsync(cancelationSource.Token, continueOnCapturedContext))
+                    {
+                        Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+                    }
+                }
+                else
+                {
+                    using (var key = await rwl.WriterLockAsync(continueOnCapturedContext))
+                    {
+                        Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+                    }
+                }
+            }, SynchronizationOption.Synchronous);
+
+            isExecuting = true;
+            initialKey.Dispose();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryEnterWriterLockAsync_ContinuesOnConfiguredContext_await(
+            [Values] bool continueOnCapturedContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
+            var cancelationSource = CancelationSource.New();
+
+            var initialKey = rwl.WriterLock();
+
+            bool isExecuting = false;
+            var promise = Promise.Run(async () =>
+            {
+                var (success, key) = await rwl.TryEnterWriterLockAsync(cancelationSource.Token, continueOnCapturedContext);
+                Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+                key.Dispose();
+            }, SynchronizationOption.Synchronous);
+
+            isExecuting = true;
+            initialKey.Dispose();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_ReaderLockAsync_ContinuesOnConfiguredContext_await(
+            [Values] bool continueOnCapturedContext,
+            [Values] bool withCancelationToken)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
+            var cancelationSource = CancelationSource.New();
+
+            var initialKey = rwl.WriterLock();
+
+            bool isExecuting = false;
+            var promise = Promise.Run(async () =>
+            {
+                if (withCancelationToken)
+                {
+                    using (var key = await rwl.ReaderLockAsync(cancelationSource.Token, continueOnCapturedContext))
+                    {
+                        Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+                    }
+                }
+                else
+                {
+                    using (var key = await rwl.ReaderLockAsync(continueOnCapturedContext))
+                    {
+                        Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+                    }
+                }
+            }, SynchronizationOption.Synchronous);
+
+            isExecuting = true;
+            initialKey.Dispose();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryEnterReaderLockAsync_ContinuesOnConfiguredContext_await(
+            [Values] bool continueOnCapturedContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
+            var cancelationSource = CancelationSource.New();
+
+            var initialKey = rwl.WriterLock();
+
+            bool isExecuting = false;
+            var promise = Promise.Run(async () =>
+            {
+                var (success, key) = await rwl.TryEnterReaderLockAsync(cancelationSource.Token, continueOnCapturedContext);
+                Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+                key.Dispose();
+            }, SynchronizationOption.Synchronous);
+
+            isExecuting = true;
+            initialKey.Dispose();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_UpgradeableReaderLockAsync_ContinuesOnConfiguredContext_await(
+            [Values] bool continueOnCapturedContext,
+            [Values] bool withCancelationToken)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
+            var cancelationSource = CancelationSource.New();
+
+            var initialKey = rwl.WriterLock();
+
+            bool isExecuting = false;
+            var promise = Promise.Run(async () =>
+            {
+                if (withCancelationToken)
+                {
+                    using (var key = await rwl.UpgradeableReaderLockAsync(cancelationSource.Token, continueOnCapturedContext))
+                    {
+                        Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+                    }
+                }
+                else
+                {
+                    using (var key = await rwl.UpgradeableReaderLockAsync(continueOnCapturedContext))
+                    {
+                        Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+                    }
+                }
+            }, SynchronizationOption.Synchronous);
+
+            isExecuting = true;
+            initialKey.Dispose();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryEnterUpgradeableReaderLockAsync_ContinuesOnConfiguredContext_await(
+            [Values] bool continueOnCapturedContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
+            var cancelationSource = CancelationSource.New();
+
+            var initialKey = rwl.WriterLock();
+
+            bool isExecuting = false;
+            var promise = Promise.Run(async () =>
+            {
+                var (success, key) = await rwl.TryEnterUpgradeableReaderLockAsync(cancelationSource.Token, continueOnCapturedContext);
+                Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+                key.Dispose();
+            }, SynchronizationOption.Synchronous);
+
+            isExecuting = true;
+            initialKey.Dispose();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_UpgradeToWriterLockAsync_ContinuesOnConfiguredContext_await(
+            [Values] bool continueOnCapturedContext,
+            [Values] bool withCancelationToken)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
+            var cancelationSource = CancelationSource.New();
+
+            var upgradeableKey = rwl.UpgradeableReaderLock();
+            var readerKey = rwl.ReaderLock();
+
+            bool isExecuting = false;
+            var promise = Promise.Run(async () =>
+            {
+                if (withCancelationToken)
+                {
+                    using (var key = await rwl.UpgradeToWriterLockAsync(upgradeableKey, cancelationSource.Token, continueOnCapturedContext))
+                    {
+                        Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+                    }
+                }
+                else
+                {
+                    using (var key = await rwl.UpgradeToWriterLockAsync(upgradeableKey, continueOnCapturedContext))
+                    {
+                        Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+                    }
+                }
+                upgradeableKey.Dispose();
+            }, SynchronizationOption.Synchronous);
+
+            isExecuting = true;
+            readerKey.Dispose();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncReaderWriterLock_TryUpgradeToWriterLockAsync_ContinuesOnConfiguredContext_await(
+            [Values] bool continueOnCapturedContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var rwl = new AsyncReaderWriterLock(AsyncReaderWriterLock.ContentionStrategy.PrioritizeUpgradeableReaders);
+            var cancelationSource = CancelationSource.New();
+
+            var upgradeableKey = rwl.UpgradeableReaderLock();
+            var readerKey = rwl.ReaderLock();
+
+            bool isExecuting = false;
+            var promise = Promise.Run(async () =>
+            {
+                var (success, key) = await rwl.TryUpgradeToWriterLockAsync(upgradeableKey, cancelationSource.Token, continueOnCapturedContext);
+                Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+                key.Dispose();
+                upgradeableKey.Dispose();
+            }, SynchronizationOption.Synchronous);
+
+            isExecuting = true;
+            readerKey.Dispose();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            cancelationSource.Dispose();
+        }
+
 #if PROTO_PROMISE_TEST_GC_ENABLED
         [Test]
         public void AsyncReaderWriterLock_AbandonedLockIsReported()

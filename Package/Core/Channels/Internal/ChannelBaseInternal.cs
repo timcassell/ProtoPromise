@@ -105,10 +105,10 @@ namespace Proto.Promises
             internal abstract ChannelPeekResult<T> TryPeek(int id);
             internal abstract ChannelReadResult<T> TryRead(int id);
             internal abstract ChannelWriteResult<T> TryWrite(in T item, int id);
-            internal abstract Promise<ChannelReadResult<T>> ReadAsync(int id, CancelationToken cancelationToken);
-            internal abstract Promise<ChannelWriteResult<T>> WriteAsync(in T item, int id, CancelationToken cancelationToken);
-            internal abstract Promise<bool> WaitToReadAsync(int id, CancelationToken cancelationToken);
-            internal abstract Promise<bool> WaitToWriteAsync(int id, CancelationToken cancelationToken);
+            internal abstract Promise<ChannelReadResult<T>> ReadAsync(int id, CancelationToken cancelationToken, bool continueOnCapturedContext);
+            internal abstract Promise<ChannelWriteResult<T>> WriteAsync(in T item, int id, CancelationToken cancelationToken, bool continueOnCapturedContext);
+            internal abstract Promise<bool> WaitToReadAsync(int id, CancelationToken cancelationToken, bool continueOnCapturedContext);
+            internal abstract Promise<bool> WaitToWriteAsync(int id, CancelationToken cancelationToken, bool continueOnCapturedContext);
             internal abstract bool TryReject(object reason, int id);
             internal abstract bool TryCancel(int id);
             internal abstract bool TryClose(int id);

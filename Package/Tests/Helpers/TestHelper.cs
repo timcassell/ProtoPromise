@@ -552,7 +552,9 @@ namespace ProtoPromiseTests
                 }
                 case SynchronizationType.Synchronous:
                 {
-                    if (invokeContext == SynchronizationType.Foreground || invokeContext == SynchronizationType.Explicit)
+                    if (invokeContext == SynchronizationType.CapturedContext
+                        || invokeContext == SynchronizationType.Foreground
+                        || invokeContext == SynchronizationType.Explicit)
                     {
                         goto case SynchronizationType.Foreground;
                     }

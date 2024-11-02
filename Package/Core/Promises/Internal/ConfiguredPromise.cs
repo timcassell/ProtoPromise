@@ -127,7 +127,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 private bool GetShouldContinueImmediately()
                     => _completedBehavior == CompletedContinuationBehavior.Synchronous
-                    || (_completedBehavior == CompletedContinuationBehavior.SynchronousIfSameContext
+                    || (_completedBehavior == CompletedContinuationBehavior.AllowSynchronous
                         && _synchronizationContext == Promise.Manager.ThreadStaticSynchronizationContext);
 
                 // This is unusual, only happens when the promise already completed, or if a promise is incorrectly awaited twice.

@@ -556,6 +556,92 @@ namespace ProtoPromiseTests.APIs.Threading
         }
 #endif
 
+        [Test]
+        public void AsyncSemaphore_WaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_Then(
+            [Values] bool continueOnCapturedContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var semaphore = new AsyncSemaphore(0);
+
+            bool isExecuting = false;
+            var promise = semaphore.WaitAsync(continueOnCapturedContext)
+                .Then(() =>
+                {
+                    Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+                });
+
+            isExecuting = true;
+            semaphore.Release();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncSemaphore_TryWaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_Then(
+            [Values] bool continueOnCapturedContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var semaphore = new AsyncSemaphore(0);
+            var cancelationSource = CancelationSource.New();
+
+            bool isExecuting = false;
+            var promise = semaphore.TryWaitAsync(cancelationSource.Token, continueOnCapturedContext)
+                .Then(_ =>
+                {
+                    Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+                });
+
+            isExecuting = true;
+            semaphore.Release();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncSemaphore_WaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_await(
+            [Values] bool continueOnCapturedContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var semaphore = new AsyncSemaphore(0);
+
+            bool isExecuting = false;
+            var promise = Promise.Run(async () =>
+            {
+                await semaphore.WaitAsync(continueOnCapturedContext);
+                Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+            }, SynchronizationOption.Synchronous);
+
+            isExecuting = true;
+            semaphore.Release();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncSemaphore_TryWaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_await(
+            [Values] bool continueOnCapturedContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var semaphore = new AsyncSemaphore(0);
+            var cancelationSource = CancelationSource.New();
+
+            bool isExecuting = false;
+            var promise = Promise.Run(async () =>
+            {
+                _ = await semaphore.TryWaitAsync(cancelationSource.Token, continueOnCapturedContext);
+                Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+            }, SynchronizationOption.Synchronous);
+
+            isExecuting = true;
+            semaphore.Release();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            cancelationSource.Dispose();
+        }
+
         private static void AsyncSemaphore_ReleaseTooMany_Throws_Helper(int initialCount, int maxCount, int releaseCount)
         {
             var semaphore = maxCount > 0

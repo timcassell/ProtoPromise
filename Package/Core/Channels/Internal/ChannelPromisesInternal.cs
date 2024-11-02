@@ -68,10 +68,10 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static ChannelWritePromise<T> GetOrCreate(in T item, BoundedChannel<T> owner, SynchronizationContext callerContext)
+            internal static ChannelWritePromise<T> GetOrCreate(in T item, BoundedChannel<T> owner, bool continueOnCapturedContext)
             {
                 var promise = GetOrCreate();
-                promise.Reset(callerContext);
+                promise.Reset(continueOnCapturedContext);
                 promise._owner = owner;
                 // We store the item in the result so it can be added to the buffer when this is resolved.
                 promise._result = new ChannelWriteResult<T>(item, ChannelWriteResult.Success);
@@ -134,10 +134,10 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static ChannelReadPromise<T> GetOrCreate(ChannelBase<T> owner, SynchronizationContext callerContext)
+            internal static ChannelReadPromise<T> GetOrCreate(ChannelBase<T> owner, bool continueOnCapturedContext)
             {
                 var promise = GetOrCreate();
-                promise.Reset(callerContext);
+                promise.Reset(continueOnCapturedContext);
                 promise._owner = owner;
                 return promise;
             }
@@ -191,10 +191,10 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static ChannelWaitToWritePromise GetOrCreate(ChannelBase owner, SynchronizationContext callerContext)
+            internal static ChannelWaitToWritePromise GetOrCreate(ChannelBase owner, bool continueOnCapturedContext)
             {
                 var promise = GetOrCreate();
-                promise.Reset(callerContext);
+                promise.Reset(continueOnCapturedContext);
                 promise._owner = owner;
                 return promise;
             }
@@ -248,10 +248,10 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static ChannelWaitToReadPromise GetOrCreate(ChannelBase owner, SynchronizationContext callerContext)
+            internal static ChannelWaitToReadPromise GetOrCreate(ChannelBase owner, bool continueOnCapturedContext)
             {
                 var promise = GetOrCreate();
-                promise.Reset(callerContext);
+                promise.Reset(continueOnCapturedContext);
                 promise._owner = owner;
                 return promise;
             }
