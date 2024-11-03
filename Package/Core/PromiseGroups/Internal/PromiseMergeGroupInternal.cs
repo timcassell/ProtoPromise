@@ -61,9 +61,6 @@ namespace Proto.Promises
                     passThrough._next = target;
                     passThrough._index = index;
                     passThrough._owner = owner;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    passThrough._disposed = false;
-#endif
                     return passThrough;
                 }
 
@@ -77,9 +74,6 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     _owner.MaybeDispose();
                     _owner = null;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    _disposed = true;
-#endif
                     ObjectPool.MaybeRepool(this);
                 }
             }

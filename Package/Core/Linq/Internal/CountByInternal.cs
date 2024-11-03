@@ -139,18 +139,6 @@ namespace Proto.Promises
                 internal TKey _key;
                 internal TValue _value;
                 internal int _hashCode;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                private bool _disposed;
-
-                ~Node()
-                {
-                    if (!_disposed)
-                    {
-                        // For debugging. This should never happen.
-                        ReportRejection(new UnreleasedObjectException("A PreservedEnumerationDictionary<,,>.Node was garbage collected without it being disposed."), null);
-                    }
-                }
-#endif
 
                 private Node() { }
 
@@ -169,17 +157,11 @@ namespace Proto.Promises
                     node._key = key;
                     node._hashCode = hashCode;
                     node._hashNext = hashNext;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    node._disposed = false;
-#endif
                     return node;
                 }
 
                 public void Dispose()
                 {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    _disposed = true;
-#endif
                     _hashNext = null;
                     _nextNode = null;
                     _key = default;
@@ -436,9 +418,8 @@ namespace Proto.Promises
                         dict = new LookupSingleValue<TKey, int, TEqualityComparer>(_comparer);
                         do
                         {
-                            var key = await _keySelector.Invoke(_configuredAsyncEnumerator.Current);
                             // The async selector function could have switched context, make sure we're on the configured context before invoking the comparer.
-                            await _configuredAsyncEnumerator.SwitchToContext();
+                            var key = await _keySelector.Invoke(_configuredAsyncEnumerator.Current).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                             ++dict.GetOrCreateNode(key, out _)._value;
                         } while (await _configuredAsyncEnumerator.MoveNextAsync());
 

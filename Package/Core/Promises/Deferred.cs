@@ -63,7 +63,7 @@ namespace Proto.Promises
             public bool IsValidAndPending
             {
                 [MethodImpl(Internal.InlineOption)]
-                get => Internal.DeferredPromiseHelper.GetIsValidAndPending(_ref, _deferredId);
+                get => _ref?.DeferredId == _deferredId;
             }
 
             /// <summary>
@@ -119,10 +119,12 @@ namespace Proto.Promises
             /// <exception cref="InvalidOperationException"/>
             public void Reject<TReject>(TReject reason)
             {
-                if (!TryReject(reason))
+                var _this = _ref;
+                if (_this?.TryIncrementDeferredId(_deferredId) != true)
                 {
                     throw new InvalidOperationException("DeferredBase.Reject: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
+                _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
             }
 
             /// <summary>
@@ -132,7 +134,7 @@ namespace Proto.Promises
             public bool TryReject<TReject>(TReject reason)
             {
                 var _this = _ref;
-                if (Internal.DeferredPromiseHelper.TryIncrementDeferredId(_this, _deferredId))
+                if (_this?.TryIncrementDeferredId(_deferredId) == true)
                 {
                     _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
                     return true;
@@ -148,11 +150,7 @@ namespace Proto.Promises
             public void Cancel()
             {
                 var _this = _ref;
-                if (
-#if PROMISE_DEBUG // We can skip the null check in RELEASE, the runtime will just throw NullReferenceException if it's null.
-                    _this == null ||
-#endif
-                    !_this.TryIncrementDeferredId(_deferredId))
+                if (_this?.TryIncrementDeferredId(_deferredId) != true)
                 {
                     throw new InvalidOperationException("DeferredBase.Cancel: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
@@ -167,7 +165,7 @@ namespace Proto.Promises
             public bool TryCancel()
             {
                 var _this = _ref;
-                if (Internal.DeferredPromiseHelper.TryIncrementDeferredId(_this, _deferredId))
+                if (_this?.TryIncrementDeferredId(_deferredId) == true)
                 {
                     _this.CancelDirect();
                     return true;
@@ -277,11 +275,7 @@ namespace Proto.Promises
             public void Resolve()
             {
                 var _this = _ref;
-                if (
-#if PROMISE_DEBUG // We can skip the null check in RELEASE, the runtime will just throw NullReferenceException if it's null.
-                    _this == null ||
-#endif
-                    !_this.TryIncrementDeferredId(_deferredId))
+                if (_this?.TryIncrementDeferredId(_deferredId) != true)
                 {
                     throw new InvalidOperationException("Deferred.Resolve: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
@@ -302,10 +296,12 @@ namespace Proto.Promises
             /// <exception cref="InvalidOperationException"/>
             public void Reject<TReject>(TReject reason)
             {
-                if (!TryReject(reason))
+                var _this = _ref;
+                if (_this?.TryIncrementDeferredId(_deferredId) != true)
                 {
                     throw new InvalidOperationException("Deferred.Reject: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
+                _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
             }
 
             /// <summary>
@@ -315,7 +311,7 @@ namespace Proto.Promises
             public bool TryReject<TReject>(TReject reason)
             {
                 var _this = _ref;
-                if (_this != null && _this.TryIncrementDeferredId(_deferredId))
+                if (_this?.TryIncrementDeferredId(_deferredId) == true)
                 {
                     _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
                     return true;
@@ -331,11 +327,7 @@ namespace Proto.Promises
             public void Cancel()
             {
                 var _this = _ref;
-                if (
-#if PROMISE_DEBUG // We can skip the null check in RELEASE, the runtime will just throw NullReferenceException if it's null.
-                    _this == null ||
-#endif
-                    !_this.TryIncrementDeferredId(_deferredId))
+                if (_this?.TryIncrementDeferredId(_deferredId) != true)
                 {
                     throw new InvalidOperationException("Deferred.Cancel: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
@@ -350,7 +342,7 @@ namespace Proto.Promises
             public bool TryCancel()
             {
                 var _this = _ref;
-                if (_this != null && _this.TryIncrementDeferredId(_deferredId))
+                if (_this?.TryIncrementDeferredId(_deferredId) == true)
                 {
                     _this.CancelDirect();
                     return true;
@@ -477,11 +469,7 @@ namespace Proto.Promises
             public void Resolve(T value)
             {
                 var _this = _ref;
-                if (
-#if PROMISE_DEBUG // We can skip the null check in RELEASE, the runtime will just throw NullReferenceException if it's null.
-                    _this == null ||
-#endif
-                    !_this.TryIncrementDeferredId(_deferredId))
+                if (_this?.TryIncrementDeferredId(_deferredId) != true)
                 {
                     throw new InvalidOperationException("Deferred.Resolve: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
@@ -502,10 +490,12 @@ namespace Proto.Promises
             /// <exception cref="InvalidOperationException"/>
             public void Reject<TReject>(TReject reason)
             {
-                if (!TryReject(reason))
+                var _this = _ref;
+                if (_this?.TryIncrementDeferredId(_deferredId) != true)
                 {
                     throw new InvalidOperationException("Deferred.Reject: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
+                _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
             }
 
             /// <summary>
@@ -515,7 +505,7 @@ namespace Proto.Promises
             public bool TryReject<TReject>(TReject reason)
             {
                 var _this = _ref;
-                if (_this != null && _this.TryIncrementDeferredId(_deferredId))
+                if (_this?.TryIncrementDeferredId(_deferredId) == true)
                 {
                     _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
                     return true;
@@ -531,11 +521,7 @@ namespace Proto.Promises
             public void Cancel()
             {
                 var _this = _ref;
-                if (
-#if PROMISE_DEBUG // We can skip the null check in RELEASE, the runtime will just throw NullReferenceException if it's null.
-                    _this == null ||
-#endif
-                    !_this.TryIncrementDeferredId(_deferredId))
+                if (_this?.TryIncrementDeferredId(_deferredId) != true)
                 {
                     throw new InvalidOperationException("Deferred.Cancel: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
                 }
@@ -550,7 +536,7 @@ namespace Proto.Promises
             public bool TryCancel()
             {
                 var _this = _ref;
-                if (_this != null && _this.TryIncrementDeferredId(_deferredId))
+                if (_this?.TryIncrementDeferredId(_deferredId) == true)
                 {
                     _this.CancelDirect();
                     return true;

@@ -4,8 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0074 // Use compound assignment
-
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -319,26 +317,10 @@ namespace Proto.Promises
 
             (ResultContainer, ResultContainer)
                 value = default;
-            ref (ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled2();
-            Internal.PromiseRefBase.MergeSettledPromise<(ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled2());
+            merger.Prepare(promise1, value, 0);
+            merger.Prepare(promise2, value, 1);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -388,26 +370,10 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled1<T1>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled1<T1>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, value, 1);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -458,26 +424,10 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled0<T1, T2>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled0<T1, T2>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            return merger.ToPromise(value);
         }
 
         #endregion // 2Args
@@ -536,28 +486,11 @@ namespace Proto.Promises
 
             (ResultContainer, ResultContainer, ResultContainer)
                 value = default;
-            ref (ResultContainer, ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled3();
-            Internal.PromiseRefBase.MergeSettledPromise<(ResultContainer, ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(ResultContainer, ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled3());
+            merger.Prepare(promise1, value, 0);
+            merger.Prepare(promise2, value, 1);
+            merger.Prepare(promise3, value, 2);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -612,28 +545,11 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, ResultContainer, ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled2<T1>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled2<T1>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, value, 1);
+            merger.Prepare(promise3, value, 2);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -688,28 +604,11 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled1<T1, T2>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled1<T1, T2>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, value, 2);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -764,28 +663,11 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled0<T1, T2, T3>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled0<T1, T2, T3>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            return merger.ToPromise(value);
         }
 
         #endregion // 3Args
@@ -848,30 +730,12 @@ namespace Proto.Promises
 
             (ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
-            ref (ResultContainer, ResultContainer, ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled4();
-            Internal.PromiseRefBase.MergeSettledPromise<(ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(ResultContainer, ResultContainer, ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled4());
+            merger.Prepare(promise1, value, 0);
+            merger.Prepare(promise2, value, 1);
+            merger.Prepare(promise3, value, 2);
+            merger.Prepare(promise4, value, 3);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -930,30 +794,12 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled3<T1>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled3<T1>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, value, 1);
+            merger.Prepare(promise3, value, 2);
+            merger.Prepare(promise4, value, 3);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -1012,30 +858,12 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled2<T1, T2>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled2<T1, T2>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, value, 2);
+            merger.Prepare(promise4, value, 3);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -1095,30 +923,12 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled1<T1, T2, T3>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled1<T1, T2, T3>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, value, 3);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -1178,30 +988,12 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled0<T1, T2, T3, T4>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled0<T1, T2, T3, T4>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, ref merger.GetResultRef(ref value).Item4, value, 3);
+            return merger.ToPromise(value);
         }
 
         #endregion // 4Args
@@ -1268,32 +1060,13 @@ namespace Proto.Promises
 
             (ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
-            ref (ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled5();
-            Internal.PromiseRefBase.MergeSettledPromise<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled5());
+            merger.Prepare(promise1, value, 0);
+            merger.Prepare(promise2, value, 1);
+            merger.Prepare(promise3, value, 2);
+            merger.Prepare(promise4, value, 3);
+            merger.Prepare(promise5, value, 4);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -1356,32 +1129,13 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled4<T1>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled4<T1>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, value, 1);
+            merger.Prepare(promise3, value, 2);
+            merger.Prepare(promise4, value, 3);
+            merger.Prepare(promise5, value, 4);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -1444,32 +1198,13 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled3<T1, T2>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled3<T1, T2>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, value, 2);
+            merger.Prepare(promise4, value, 3);
+            merger.Prepare(promise5, value, 4);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -1533,32 +1268,13 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled2<T1, T2, T3>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled2<T1, T2, T3>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, value, 3);
+            merger.Prepare(promise5, value, 4);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -1622,32 +1338,13 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled1<T1, T2, T3, T4>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled1<T1, T2, T3, T4>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, ref merger.GetResultRef(ref value).Item4, value, 3);
+            merger.Prepare(promise5, value, 4);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -1711,32 +1408,13 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled0<T1, T2, T3, T4, T5>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise5, ref valueRef.Item5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled0<T1, T2, T3, T4, T5>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, ref merger.GetResultRef(ref value).Item4, value, 3);
+            merger.Prepare(promise5, ref merger.GetResultRef(ref value).Item5, value, 4);
+            return merger.ToPromise(value);
         }
 
         #endregion // 5Args
@@ -1808,34 +1486,14 @@ namespace Proto.Promises
 
             (ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
-            ref (ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled6();
-            Internal.PromiseRefBase.MergeSettledPromise<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled6());
+            merger.Prepare(promise1, value, 0);
+            merger.Prepare(promise2, value, 1);
+            merger.Prepare(promise3, value, 2);
+            merger.Prepare(promise4, value, 3);
+            merger.Prepare(promise5, value, 4);
+            merger.Prepare(promise6, value, 5);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -1903,34 +1561,14 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled5<T1>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled5<T1>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, value, 1);
+            merger.Prepare(promise3, value, 2);
+            merger.Prepare(promise4, value, 3);
+            merger.Prepare(promise5, value, 4);
+            merger.Prepare(promise6, value, 5);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -1998,34 +1636,14 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled4<T1, T2>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled4<T1, T2>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, value, 2);
+            merger.Prepare(promise4, value, 3);
+            merger.Prepare(promise5, value, 4);
+            merger.Prepare(promise6, value, 5);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -2093,34 +1711,14 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled3<T1, T2, T3>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled3<T1, T2, T3>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, value, 3);
+            merger.Prepare(promise5, value, 4);
+            merger.Prepare(promise6, value, 5);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -2188,34 +1786,14 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled2<T1, T2, T3, T4>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled2<T1, T2, T3, T4>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, ref merger.GetResultRef(ref value).Item4, value, 3);
+            merger.Prepare(promise5, value, 4);
+            merger.Prepare(promise6, value, 5);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -2283,34 +1861,14 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled1<T1, T2, T3, T4, T5>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise5, ref valueRef.Item5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled1<T1, T2, T3, T4, T5>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, ref merger.GetResultRef(ref value).Item4, value, 3);
+            merger.Prepare(promise5, ref merger.GetResultRef(ref value).Item5, value, 4);
+            merger.Prepare(promise6, value, 5);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -2378,34 +1936,14 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled0<T1, T2, T3, T4, T5, T6>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise5, ref valueRef.Item5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise6, ref valueRef.Item6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled0<T1, T2, T3, T4, T5, T6>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, ref merger.GetResultRef(ref value).Item4, value, 3);
+            merger.Prepare(promise5, ref merger.GetResultRef(ref value).Item5, value, 4);
+            merger.Prepare(promise6, ref merger.GetResultRef(ref value).Item6, value, 5);
+            return merger.ToPromise(value);
         }
 
         #endregion // 6Args
@@ -2481,36 +2019,15 @@ namespace Proto.Promises
 
             (ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
-            ref (ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled7();
-            Internal.PromiseRefBase.MergeSettledPromise<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise7, valueRef, ref pendingCount, 6, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled7());
+            merger.Prepare(promise1, value, 0);
+            merger.Prepare(promise2, value, 1);
+            merger.Prepare(promise3, value, 2);
+            merger.Prepare(promise4, value, 3);
+            merger.Prepare(promise5, value, 4);
+            merger.Prepare(promise6, value, 5);
+            merger.Prepare(promise7, value, 6);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -2582,36 +2099,15 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled6<T1>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise7, valueRef, ref pendingCount, 6, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled6<T1>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, value, 1);
+            merger.Prepare(promise3, value, 2);
+            merger.Prepare(promise4, value, 3);
+            merger.Prepare(promise5, value, 4);
+            merger.Prepare(promise6, value, 5);
+            merger.Prepare(promise7, value, 6);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -2683,36 +2179,15 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled5<T1, T2>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise7, valueRef, ref pendingCount, 6, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled5<T1, T2>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, value, 2);
+            merger.Prepare(promise4, value, 3);
+            merger.Prepare(promise5, value, 4);
+            merger.Prepare(promise6, value, 5);
+            merger.Prepare(promise7, value, 6);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -2784,36 +2259,15 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled4<T1, T2, T3>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise7, valueRef, ref pendingCount, 6, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled4<T1, T2, T3>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, value, 3);
+            merger.Prepare(promise5, value, 4);
+            merger.Prepare(promise6, value, 5);
+            merger.Prepare(promise7, value, 6);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -2885,36 +2339,15 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled3<T1, T2, T3, T4>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise7, valueRef, ref pendingCount, 6, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled3<T1, T2, T3, T4>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, ref merger.GetResultRef(ref value).Item4, value, 3);
+            merger.Prepare(promise5, value, 4);
+            merger.Prepare(promise6, value, 5);
+            merger.Prepare(promise7, value, 6);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -2986,36 +2419,15 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled2<T1, T2, T3, T4, T5>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise5, ref valueRef.Item5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise7, valueRef, ref pendingCount, 6, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled2<T1, T2, T3, T4, T5>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, ref merger.GetResultRef(ref value).Item4, value, 3);
+            merger.Prepare(promise5, ref merger.GetResultRef(ref value).Item5, value, 4);
+            merger.Prepare(promise6, value, 5);
+            merger.Prepare(promise7, value, 6);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -3087,36 +2499,15 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled1<T1, T2, T3, T4, T5, T6>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise5, ref valueRef.Item5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise6, ref valueRef.Item6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise7, valueRef, ref pendingCount, 6, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled1<T1, T2, T3, T4, T5, T6>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, ref merger.GetResultRef(ref value).Item4, value, 3);
+            merger.Prepare(promise5, ref merger.GetResultRef(ref value).Item5, value, 4);
+            merger.Prepare(promise6, ref merger.GetResultRef(ref value).Item6, value, 5);
+            merger.Prepare(promise7, value, 6);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -3188,36 +2579,15 @@ namespace Proto.Promises
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer)
                 value = default;
-            ref (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer)
-                valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSettled0<T1, T2, T3, T4, T5, T6, T7>();
-            Internal.PromiseRefBase.MergeSettledPromise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer)>
-                promise = null;
-
-            Internal.PrepareForMergeSettled(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMergeSettled helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise5, ref valueRef.Item5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise6, ref valueRef.Item6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMergeSettled(promise7, ref valueRef.Item7, valueRef, ref pendingCount, 6, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer)>(
-                promise, promise.Id);
+            var merger = Internal.CreateMergeSettledPreparer(ref value, MergeResultFuncs.GetSettled0<T1, T2, T3, T4, T5, T6, T7>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, ref merger.GetResultRef(ref value).Item4, value, 3);
+            merger.Prepare(promise5, ref merger.GetResultRef(ref value).Item5, value, 4);
+            merger.Prepare(promise6, ref merger.GetResultRef(ref value).Item6, value, 5);
+            merger.Prepare(promise7, ref merger.GetResultRef(ref value).Item7, value, 6);
+            return merger.ToPromise(value);
         }
 
         #endregion // 7Args

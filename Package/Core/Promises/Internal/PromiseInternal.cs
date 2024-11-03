@@ -210,6 +210,7 @@ namespace Proto.Promises
 
                 internal abstract PromiseRef<TResult> GetDuplicateT(short promiseId);
 
+                [MethodImpl(InlineOption)]
                 new protected void Dispose()
                 {
                     base.Dispose();
@@ -283,6 +284,9 @@ namespace Proto.Promises
                 _state = Promise.State.Pending;
                 _wasAwaitedorForgotten = false;
                 _suppressRejection = false;
+#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
+                _ignoreValueTaskContextScheduling = false;
+#endif
             }
 
             [MethodImpl(InlineOption)]
@@ -292,6 +296,19 @@ namespace Proto.Promises
                 SetCreatedStacktrace(this, 3);
             }
 
+            [MethodImpl(InlineOption)]
+            protected void PrepareEarlyDispose()
+            {
+                // Dispose validates the state is not pending in Debug or Developer mode,
+                // so we only set the state for early dispose in those modes.
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                SetCompletionState(Promise.State.Resolved);
+#endif
+                // Suppress the UnobservedPromiseException from the finalizer.
+                WasAwaitedOrForgotten = true;
+            }
+
+            [MethodImpl(InlineOption)]
             private void Dispose()
             {
                 ThrowIfInPool(this);
@@ -413,6 +430,7 @@ namespace Proto.Promises
                     ? default
                     : this.UnsafeAs<PromiseRef<TResult>>()._result;
 
+            [MethodImpl(InlineOption)]
             protected void HandleNextInternal(Promise.State state)
             {
                 // We pass the state to the waiter instead of setting it here, because we check the state for completion, and we must have already swapped the _next field before setting the state.
@@ -468,9 +486,9 @@ namespace Proto.Promises
                 {
                     ValidateId(promiseId, this, 2);
                     ThrowIfInPool(this);
-                    WasAwaitedOrForgotten = true;
                     if (CompareExchangeWaiter(InvalidAwaitSentinel.s_instance, PromiseCompletionSentinel.s_instance) == PromiseCompletionSentinel.s_instance)
                     {
+                        WasAwaitedOrForgotten = true;
                         WaitUntilStateIsNotPending();
                         return true;
                     }
@@ -504,7 +522,7 @@ namespace Proto.Promises
                     return promiseId == Id & (waiter == PendingAwaitSentinel.s_instance | waiter == PromiseCompletionSentinel.s_instance);
                 }
 
-                protected PromiseRefBase AddWaiterImpl(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter)
+                internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter)
                 {
                     if (promiseId != Id)
                     {
@@ -516,9 +534,6 @@ namespace Proto.Promises
                     previousWaiter = CompareExchangeWaiter(waiter, PendingAwaitSentinel.s_instance);
                     return this;
                 }
-
-                internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter)
-                    => AddWaiterImpl(promiseId, waiter, out previousWaiter);
 
                 internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
@@ -837,224 +852,6 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class PromiseConfigured<TResult> : PromiseSingleAwait<TResult>, ICancelable
-            {
-                private PromiseConfigured() { }
-
-                internal override void MaybeDispose()
-                {
-                    if (_cancelationHelper.TryRelease())
-                    {
-                        Dispose();
-                        _synchronizationContext = null;
-                        _cancelationHelper = default;
-                        ObjectPool.MaybeRepool(this);
-                    }
-                }
-
-                [MethodImpl(InlineOption)]
-                private static PromiseConfigured<TResult> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<PromiseConfigured<TResult>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new PromiseConfigured<TResult>()
-                        : obj.UnsafeAs<PromiseConfigured<TResult>>();
-                }
-
-                private static PromiseConfigured<TResult> GetOrCreateBase(SynchronizationContext synchronizationContext, bool forceAsync)
-                {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    if (synchronizationContext == null)
-                    {
-                        throw new InvalidOperationException("synchronizationContext cannot be null");
-                    }
-#endif
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    promise._synchronizationContext = synchronizationContext;
-                    promise._wasCanceled = false;
-                    promise._forceAsync = forceAsync;
-                    promise._cancelationHelper.Reset();
-                    return promise;
-                }
-
-                internal static PromiseConfigured<TResult> GetOrCreate(SynchronizationContext synchronizationContext, bool forceAsync)
-                {
-                    var promise = GetOrCreateBase(synchronizationContext, forceAsync);
-                    promise._isScheduling = 0;
-                    return promise;
-                }
-
-                internal static PromiseConfigured<TResult> GetOrCreateFromResolved(SynchronizationContext synchronizationContext, in TResult result, bool forceAsync)
-                {
-                    var promise = GetOrCreateBase(synchronizationContext, forceAsync);
-                    promise._isScheduling = 1;
-                    promise._result = result;
-                    promise._tempState = Promise.State.Resolved;
-                    promise._next = PromiseCompletionSentinel.s_instance;
-                    return promise;
-                }
-
-                [MethodImpl(InlineOption)]
-                private bool ShouldContinueSynchronous()
-                    => !_forceAsync & _synchronizationContext == Promise.Manager.ThreadStaticSynchronizationContext;
-
-                internal override void Handle(PromiseRefBase handler, Promise.State state)
-                {
-                    ThrowIfInPool(this);
-                    handler.SetCompletionState(state);
-
-                    if (Interlocked.Exchange(ref _isScheduling, 1) != 0)
-                    {
-                        MaybeDispose();
-                        handler.MaybeReportUnhandledAndDispose(state);
-                        return;
-                    }
-
-                    _rejectContainer = handler._rejectContainer;
-                    handler.SuppressRejection = true;
-                    _result = handler.GetResult<TResult>();
-                    _tempState = state;
-                    handler.MaybeDispose();
-
-                    // Leave pending until this is awaited.
-                    if (ReadNextWaiterAndMaybeSetCompleted() == PendingAwaitSentinel.s_instance)
-                    {
-                        return;
-                    }
-
-                    if (ShouldContinueSynchronous())
-                    {
-                        TryUnregisterCancelationAndSetTempState();
-                        _next.Handle(this, state);
-                        return;
-                    }
-
-                    ScheduleContinuationOnContext();
-                }
-
-                private void ScheduleContinuationOnContext()
-                {
-                    ScheduleContextCallback(_synchronizationContext, this,
-                        obj => obj.UnsafeAs<PromiseConfigured<TResult>>().HandleFromContext(),
-                        obj => obj.UnsafeAs<PromiseConfigured<TResult>>().HandleFromContext()
-                    );
-                }
-
-                private void HandleFromContext()
-                {
-                    ThrowIfInPool(this);
-
-                    TryUnregisterCancelationAndSetTempState();
-                    // We don't need to synchronize access here because this is only called when the previous promise completed or the token canceled, and the waiter has already been added, so there are no race conditions.
-                    _next.Handle(this, _tempState);
-                }
-
-                void ICancelable.Cancel()
-                {
-                    _wasCanceled = true;
-                    if (Interlocked.Exchange(ref _isScheduling, 1) != 0)
-                    {
-                        MaybeDispose();
-                        return;
-                    }
-
-                    _tempState = Promise.State.Canceled;
-
-                    // Leave pending until this is awaited.
-                    if (ReadNextWaiterAndMaybeSetCompleted() == PendingAwaitSentinel.s_instance)
-                    {
-                        return;
-                    }
-
-                    if (ShouldContinueSynchronous())
-                    {
-                        _next.Handle(this, _tempState);
-                        return;
-                    }
-
-                    ScheduleContinuationOnContext();
-                }
-
-                private void TryUnregisterCancelationAndSetTempState()
-                {
-                    if (_cancelationHelper.TryUnregister(this) & !_wasCanceled)
-                    {
-                        _cancelationHelper.TryRelease();
-                    }
-                    else
-                    {
-                        _rejectContainer?.ReportUnhandled();
-                        _rejectContainer = null;
-                        _tempState = Promise.State.Canceled;
-                    }
-                }
-
-                internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter)
-                {
-                    if (promiseId != Id)
-                    {
-                        previousWaiter = InvalidAwaitSentinel.s_instance;
-                        return InvalidAwaitSentinel.s_instance;
-                    }
-                    ThrowIfInPool(this);
-                    WasAwaitedOrForgotten = true;
-
-                    var previous = CompareExchangeWaiter(waiter, PendingAwaitSentinel.s_instance);
-                    if (previous != PendingAwaitSentinel.s_instance)
-                    {
-                        return VerifyAndHandleWaiter(waiter, out previousWaiter);
-                    }
-                    previousWaiter = PendingAwaitSentinel.s_instance;
-                    return null; // It doesn't matter what we return since previousWaiter is set to PendingAwaitSentinel.s_instance.
-                }
-
-                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                private PromiseRefBase VerifyAndHandleWaiter(HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter)
-                {
-                    // We do the verification process here instead of in the caller, because we need to handle continuations on the synchronization context.
-                    bool shouldContinueSynchronous = ShouldContinueSynchronous();
-                    var setWaiter = shouldContinueSynchronous ? InvalidAwaitSentinel.s_instance : waiter;
-                    if (CompareExchangeWaiter(setWaiter, PromiseCompletionSentinel.s_instance) != PromiseCompletionSentinel.s_instance)
-                    {
-                        previousWaiter = InvalidAwaitSentinel.s_instance;
-                        return InvalidAwaitSentinel.s_instance;
-                    }
-
-                    if (shouldContinueSynchronous)
-                    {
-                        TryUnregisterCancelationAndSetTempState();
-                        SetCompletionState(_tempState);
-                        previousWaiter = waiter;
-                        return null;
-                    }
-
-                    ScheduleContinuationOnContext();
-                    previousWaiter = PendingAwaitSentinel.s_instance;
-                    return null; // It doesn't matter what we return since previousWaiter is set to PendingAwaitSentinel.s_instance.
-                }
-
-                internal override bool GetIsCompleted(short promiseId)
-                {
-                    ValidateId(promiseId, this, 2);
-                    ThrowIfInPool(this);
-                    // Make sure the continuation happens on the synchronization context.
-                    if (ShouldContinueSynchronous()
-                        && CompareExchangeWaiter(InvalidAwaitSentinel.s_instance, PromiseCompletionSentinel.s_instance) == PromiseCompletionSentinel.s_instance)
-                    {
-                        WasAwaitedOrForgotten = true;
-                        TryUnregisterCancelationAndSetTempState();
-                        SetCompletionState(_tempState);
-                        return true;
-                    }
-                    return false;
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
             internal sealed partial class RunPromise<TResult, TDelegate> : PromiseSingleAwait<TResult>
                 where TDelegate : IDelegateRun
             {
@@ -1086,12 +883,10 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal void ScheduleOnContext(SynchronizationContext context)
-                {
-                    ScheduleContextCallback(context, this,
+                    => ScheduleContextCallback(context, this,
                         obj => obj.UnsafeAs<RunPromise<TResult, TDelegate>>().Run(),
                         obj => obj.UnsafeAs<RunPromise<TResult, TDelegate>>().Run()
                     );
-                }
 
                 private void Run()
                 {
@@ -1152,12 +947,10 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal void ScheduleOnContext(SynchronizationContext context)
-                {
-                    ScheduleContextCallback(context, this,
+                    => ScheduleContextCallback(context, this,
                         obj => obj.UnsafeAs<RunWaitPromise<TResult, TDelegate>>().Run(),
                         obj => obj.UnsafeAs<RunWaitPromise<TResult, TDelegate>>().Run()
                     );
-                }
 
                 private void Run()
                 {
@@ -1896,18 +1689,6 @@ namespace Proto.Promises
 #endif
             internal partial class PromisePassThrough : HandleablePromiseBase
             {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                ~PromisePassThrough()
-                {
-                    if (!_disposed)
-                    {
-                        // For debugging. This should never happen.
-                        string message = $"A {GetType()} was garbage collected without it being released. _index: {_index}, _owner: {_owner}, _next: {_next}";
-                        ReportRejection(new UnreleasedObjectException(message), _owner);
-                    }
-                }
-#endif
-
                 protected PromisePassThrough() { }
 
                 [MethodImpl(InlineOption)]
@@ -1927,7 +1708,6 @@ namespace Proto.Promises
                     passThrough._index = index;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     passThrough._owner = owner;
-                    passThrough._disposed = false;
 #endif
                     return passThrough;
                 }
@@ -1945,7 +1725,6 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     _owner = null;
-                    _disposed = true;
 #endif
                     ObjectPool.MaybeRepool(this);
                 }

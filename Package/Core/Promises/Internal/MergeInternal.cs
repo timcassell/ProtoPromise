@@ -10,7 +10,8 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-#pragma warning disable IDE0074 // Use compound assignment
+#pragma warning disable IDE0090 // Use 'new(...)'
+#pragma warning disable IDE0251 // Make member 'readonly'
 
 namespace Proto.Promises
 {
@@ -32,73 +33,193 @@ namespace Proto.Promises
         internal delegate void GetResultDelegate<TResult>(PromiseRefBase handler, int index, ref TResult result);
 #endif
 
-        [MethodImpl(InlineOption)]
-        internal static void PrepareForMerge<TResult>(Promise promise, in TResult result, ref uint pendingCount,
-            ref PromiseRefBase.MergePromise<TResult> mergePromise, GetResultDelegate<TResult> getResultDelegate)
+        internal ref struct MergePreparer<TResult>
         {
-            if (promise._ref != null)
+            private PromiseRefBase.MergePromise<TResult> _promise;
+            // ref fields are only supported in .Net 7 or later.
+            // We can fake it by using a Span<T> in .Net Standard 2.1 or later.
+            // The Span nuget package for .Net Standard 2.0 doesn't include MemoryMarshal, so we can't use it, unfortunately.
+            // TODO: update compilation symbol when Unity adopts .Net Core.
+#if NET7_0_OR_GREATER
+            private ref TResult _resultRef;
+#elif NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NETCOREAPP
+            private Span<TResult> _resultRef;
+#endif
+            private readonly GetResultDelegate<TResult> _getResultDelegate;
+            private uint _pendingCount;
+
+            // Annoyingly, we can't return struct fields by reference, or assign struct field reference to a ref field, so we have to pass in the initial result.
+            [MethodImpl(InlineOption)]
+            internal MergePreparer(ref TResult initialResult, GetResultDelegate<TResult> getResultDelegate)
             {
-                checked { ++pendingCount; }
-                if (mergePromise == null)
+                _promise = null;
+#if NET7_0_OR_GREATER
+                _resultRef = ref initialResult;
+#elif NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NETCOREAPP
+                _resultRef = System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref initialResult, 1);
+#endif
+                _getResultDelegate = getResultDelegate;
+                _pendingCount = 0;
+            }
+
+            [MethodImpl(InlineOption)]
+            internal ref TResult GetResultRef(ref TResult initialResultRef)
+#if NET7_0_OR_GREATER
+                => ref _resultRef;
+#elif NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NETCOREAPP
+                => ref _resultRef[0];
+#else
+                => ref _promise == null ? ref initialResultRef : ref _promise._result;
+#endif
+
+            [MethodImpl(InlineOption)]
+            private void PreparePending(in TResult initialResult)
+            {
+                checked { ++_pendingCount; }
+                if (_promise == null)
                 {
-                    mergePromise = PromiseRefBase.GetOrCreateMergePromise(result, getResultDelegate);
+                    _promise = PromiseRefBase.GetOrCreateMergePromise(initialResult, _getResultDelegate);
+#if NET7_0_OR_GREATER
+                    _resultRef = ref _promise._result;
+#elif NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NETCOREAPP
+                    _resultRef = System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref _promise._result, 1);
+#endif
                 }
-                mergePromise.AddWaiter(promise._ref, promise._id);
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void Prepare(Promise promise, in TResult initialResult)
+            {
+                if (promise._ref != null)
+                {
+                    PreparePending(initialResult);
+                    _promise.AddWaiter(promise._ref, promise._id);
+                }
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void Prepare<T>(Promise<T> promise, ref T value, in TResult initialResult, int index)
+            {
+                if (promise._ref == null)
+                {
+                    value = promise._result;
+                }
+                else
+                {
+                    PreparePending(initialResult);
+                    _promise.AddWaiterWithIndex(promise._ref, promise._id, index);
+                }
+            }
+
+            [MethodImpl(InlineOption)]
+            internal Promise<TResult> ToPromise(in TResult initialResult)
+            {
+                if (_promise == null)
+                {
+                    return Promise.Resolved(initialResult);
+                }
+                _promise.MarkReady(_pendingCount);
+                return new Promise<TResult>(_promise, _promise.Id);
+            }
+        }
+
+        internal ref struct MergeSettledPreparer<TResult>
+        {
+            private PromiseRefBase.MergeSettledPromise<TResult> _promise;
+            // ref fields are only supported in .Net 7 or later.
+            // We can fake it by using a Span<T> in .Net Standard 2.1 or later.
+            // The Span nuget package for .Net Standard 2.0 doesn't include MemoryMarshal, so we can't use it, unfortunately.
+            // TODO: update compilation symbol when Unity adopts .Net Core.
+#if NET7_0_OR_GREATER
+            private ref TResult _resultRef;
+#elif NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NETCOREAPP
+            private Span<TResult> _resultRef;
+#endif
+            private readonly GetResultDelegate<TResult> _getResultDelegate;
+            private uint _pendingCount;
+
+            // Annoyingly, we can't return struct fields by reference, or assign struct field reference to a ref field, so we have to pass in the initial result.
+            [MethodImpl(InlineOption)]
+            internal MergeSettledPreparer(ref TResult initialResult, GetResultDelegate<TResult> getResultDelegate)
+            {
+                _promise = null;
+#if NET7_0_OR_GREATER
+                _resultRef = ref initialResult;
+#elif NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NETCOREAPP
+                _resultRef = System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref initialResult, 1);
+#endif
+                _getResultDelegate = getResultDelegate;
+                _pendingCount = 0;
+            }
+
+            [MethodImpl(InlineOption)]
+            internal ref TResult GetResultRef(ref TResult initialResultRef)
+#if NET7_0_OR_GREATER
+                => ref _resultRef;
+#elif NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NETCOREAPP
+                => ref _resultRef[0];
+#else
+                => ref _promise == null ? ref initialResultRef : ref _promise._result;
+#endif
+
+            [MethodImpl(InlineOption)]
+            private void PreparePending(in TResult initialResult)
+            {
+                checked { ++_pendingCount; }
+                if (_promise == null)
+                {
+                    _promise = PromiseRefBase.GetOrCreateMergeSettledPromise(initialResult, _getResultDelegate);
+#if NET7_0_OR_GREATER
+                    _resultRef = ref _promise._result;
+#elif NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NETCOREAPP
+                    _resultRef = System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref _promise._result, 1);
+#endif
+                }
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void Prepare(Promise promise, in TResult initialResult, int index)
+            {
+                if (promise._ref != null)
+                {
+                    PreparePending(initialResult);
+                    _promise.AddWaiterWithIndex(promise._ref, promise._id, index);
+                }
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void Prepare<T>(Promise<T> promise, ref Promise<T>.ResultContainer value, in TResult initialResult, int index)
+            {
+                if (promise._ref == null)
+                {
+                    value = promise._result;
+                }
+                else
+                {
+                    PreparePending(initialResult);
+                    _promise.AddWaiterWithIndex(promise._ref, promise._id, index);
+                }
+            }
+
+            [MethodImpl(InlineOption)]
+            internal Promise<TResult> ToPromise(in TResult initialResult)
+            {
+                if (_promise == null)
+                {
+                    return Promise.Resolved(initialResult);
+                }
+                _promise.MarkReady(_pendingCount);
+                return new Promise<TResult>(_promise, _promise.Id);
             }
         }
 
         [MethodImpl(InlineOption)]
-        internal static void PrepareForMerge<T, TResult>(Promise<T> promise, ref T value, in TResult result, ref uint pendingCount, int index,
-            ref PromiseRefBase.MergePromise<TResult> mergePromise, GetResultDelegate<TResult> getResultDelegate)
-        {
-            if (promise._ref == null)
-            {
-                value = promise._result;
-            }
-            else
-            {
-                checked { ++pendingCount; }
-                if (mergePromise == null)
-                {
-                    mergePromise = PromiseRefBase.GetOrCreateMergePromise(result, getResultDelegate);
-                }
-                mergePromise.AddWaiterWithIndex(promise._ref, promise._id, index);
-            }
-        }
+        internal static MergePreparer<TResult> CreateMergePreparer<TResult>(ref TResult initialResult, GetResultDelegate<TResult> getResultDelegate)
+            => new MergePreparer<TResult>(ref initialResult, getResultDelegate);
 
         [MethodImpl(InlineOption)]
-        internal static void PrepareForMergeSettled<TResult>(Promise promise, in TResult result, ref uint pendingCount, int index,
-            ref PromiseRefBase.MergeSettledPromise<TResult> mergePromise, GetResultDelegate<TResult> getResultDelegate)
-        {
-            if (promise._ref != null)
-            {
-                checked { ++pendingCount; }
-                if (mergePromise == null)
-                {
-                    mergePromise = PromiseRefBase.GetOrCreateMergeSettledPromise(result, getResultDelegate);
-                }
-                mergePromise.AddWaiterWithIndex(promise._ref, promise._id, index);
-            }
-        }
-
-        [MethodImpl(InlineOption)]
-        internal static void PrepareForMergeSettled<T, TResult>(Promise<T> promise, ref Promise<T>.ResultContainer value, in TResult result, ref uint pendingCount, int index,
-            ref PromiseRefBase.MergeSettledPromise<TResult> mergePromise, GetResultDelegate<TResult> getResultDelegate)
-        {
-            if (promise._ref == null)
-            {
-                value = promise._result;
-            }
-            else
-            {
-                checked { ++pendingCount; }
-                if (mergePromise == null)
-                {
-                    mergePromise = PromiseRefBase.GetOrCreateMergeSettledPromise(result, getResultDelegate);
-                }
-                mergePromise.AddWaiterWithIndex(promise._ref, promise._id, index);
-            }
-        }
+        internal static MergeSettledPreparer<TResult> CreateMergeSettledPreparer<TResult>(ref TResult initialResult, GetResultDelegate<TResult> getResultDelegate)
+            => new MergeSettledPreparer<TResult>(ref initialResult, getResultDelegate);
 
         partial class PromiseRefBase
         {
@@ -138,9 +259,6 @@ namespace Proto.Promises
                     passThrough._index = index;
                     passThrough._owner = owner;
                     passThrough._id = id;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    passThrough._disposed = false;
-#endif
                     return passThrough;
                 }
 
@@ -163,9 +281,6 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     _owner = null;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    _disposed = true;
-#endif
                     ObjectPool.MaybeRepool(this);
                 }
             }

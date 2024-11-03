@@ -306,23 +306,10 @@ namespace Proto.Promises
             ValidateArgument(promise2, nameof(promise2), 1);
 
             (T1, T2) value = default;
-            ref (T1, T2) valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetTwo<T1, T2>();
-            Internal.PromiseRefBase.MergePromise<(T1, T2)> promise = null;
-
-            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid an extra branch,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(T1, T2)>(promise, promise.Id);
+            var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetTwo<T1, T2>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            return merger.ToPromise(value);
         }
 
         /// <summary>
@@ -336,24 +323,11 @@ namespace Proto.Promises
             ValidateArgument(promise3, nameof(promise3), 1);
 
             (T1, T2) value = default;
-            ref (T1, T2) valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetTwo<T1, T2>();
-            Internal.PromiseRefBase.MergePromise<(T1, T2)> promise = null;
-
-            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid an extra branch,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            Internal.PrepareForMerge(promise3, valueRef, ref pendingCount, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(T1, T2)>(promise, promise.Id);
+            var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetTwo<T1, T2>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, value);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -406,25 +380,11 @@ namespace Proto.Promises
             ValidateArgument(promise3, nameof(promise3), 1);
 
             (T1, T2, T3) value = default;
-            ref (T1, T2, T3) valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetThree<T1, T2, T3>();
-            Internal.PromiseRefBase.MergePromise<(T1, T2, T3)> promise = null;
-
-            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(T1, T2, T3)>(promise, promise.Id);
+            var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetThree<T1, T2, T3>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            return merger.ToPromise(value);
         }
 
         /// <summary>
@@ -439,26 +399,12 @@ namespace Proto.Promises
             ValidateArgument(promise4, nameof(promise4), 1);
 
             (T1, T2, T3) value = default;
-            ref (T1, T2, T3) valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetThree<T1, T2, T3>();
-            Internal.PromiseRefBase.MergePromise<(T1, T2, T3)> promise = null;
-
-            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            Internal.PrepareForMerge(promise4, valueRef, ref pendingCount, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(T1, T2, T3)>(promise, promise.Id);
+            var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetThree<T1, T2, T3>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, value);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -515,27 +461,12 @@ namespace Proto.Promises
             ValidateArgument(promise4, nameof(promise4), 1);
 
             (T1, T2, T3, T4) value = default;
-            ref (T1, T2, T3, T4) valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetFour<T1, T2, T3, T4>();
-            Internal.PromiseRefBase.MergePromise<(T1, T2, T3, T4)> promise = null;
-
-            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(T1, T2, T3, T4)>(promise, promise.Id);
+            var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetFour<T1, T2, T3, T4>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, ref merger.GetResultRef(ref value).Item4, value, 3);
+            return merger.ToPromise(value);
         }
 
         /// <summary>
@@ -551,28 +482,13 @@ namespace Proto.Promises
             ValidateArgument(promise5, nameof(promise5), 1);
 
             (T1, T2, T3, T4) value = default;
-            ref (T1, T2, T3, T4) valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetFour<T1, T2, T3, T4>();
-            Internal.PromiseRefBase.MergePromise<(T1, T2, T3, T4)> promise = null;
-
-            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            Internal.PrepareForMerge(promise5, valueRef, ref pendingCount, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(T1, T2, T3, T4)>(promise, promise.Id);
+            var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetFour<T1, T2, T3, T4>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, ref merger.GetResultRef(ref value).Item4, value, 3);
+            merger.Prepare(promise5, value);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -633,29 +549,13 @@ namespace Proto.Promises
             ValidateArgument(promise5, nameof(promise5), 1);
 
             (T1, T2, T3, T4, T5) value = default;
-            ref (T1, T2, T3, T4, T5) valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>();
-            Internal.PromiseRefBase.MergePromise<(T1, T2, T3, T4, T5)> promise = null;
-
-            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise5, ref valueRef.Item5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(T1, T2, T3, T4, T5)>(promise, promise.Id);
+            var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, ref merger.GetResultRef(ref value).Item4, value, 3);
+            merger.Prepare(promise5, ref merger.GetResultRef(ref value).Item5, value, 4);
+            return merger.ToPromise(value);
         }
 
         /// <summary>
@@ -672,30 +572,14 @@ namespace Proto.Promises
             ValidateArgument(promise6, nameof(promise6), 1);
 
             (T1, T2, T3, T4, T5) value = default;
-            ref (T1, T2, T3, T4, T5) valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>();
-            Internal.PromiseRefBase.MergePromise<(T1, T2, T3, T4, T5)> promise = null;
-
-            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise5, ref valueRef.Item5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-            Internal.PrepareForMerge(promise6, valueRef, ref pendingCount, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(T1, T2, T3, T4, T5)>(promise, promise.Id);
+            var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, ref merger.GetResultRef(ref value).Item4, value, 3);
+            merger.Prepare(promise5, ref merger.GetResultRef(ref value).Item5, value, 4);
+            merger.Prepare(promise6, value);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -760,31 +644,14 @@ namespace Proto.Promises
             ValidateArgument(promise6, nameof(promise6), 1);
 
             (T1, T2, T3, T4, T5, T6) value = default;
-            ref (T1, T2, T3, T4, T5, T6) valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>();
-            Internal.PromiseRefBase.MergePromise<(T1, T2, T3, T4, T5, T6)> promise = null;
-
-            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise5, ref valueRef.Item5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise6, ref valueRef.Item6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(T1, T2, T3, T4, T5, T6)>(promise, promise.Id);
+            var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, ref merger.GetResultRef(ref value).Item4, value, 3);
+            merger.Prepare(promise5, ref merger.GetResultRef(ref value).Item5, value, 4);
+            merger.Prepare(promise6, ref merger.GetResultRef(ref value).Item6, value, 5);
+            return merger.ToPromise(value);
         }
 
         /// <summary>
@@ -802,32 +669,15 @@ namespace Proto.Promises
             ValidateArgument(promise7, nameof(promise7), 1);
 
             (T1, T2, T3, T4, T5, T6) value = default;
-            ref (T1, T2, T3, T4, T5, T6) valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>();
-            Internal.PromiseRefBase.MergePromise<(T1, T2, T3, T4, T5, T6)> promise = null;
-
-            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise5, ref valueRef.Item5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise6, ref valueRef.Item6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
-            Internal.PrepareForMerge(promise7, valueRef, ref pendingCount, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(T1, T2, T3, T4, T5, T6)>(promise, promise.Id);
+            var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, ref merger.GetResultRef(ref value).Item4, value, 3);
+            merger.Prepare(promise5, ref merger.GetResultRef(ref value).Item5, value, 4);
+            merger.Prepare(promise6, ref merger.GetResultRef(ref value).Item6, value, 5);
+            merger.Prepare(promise7, value);
+            return merger.ToPromise(value);
         }
 
         static partial class MergeResultFuncs
@@ -896,33 +746,15 @@ namespace Proto.Promises
             ValidateArgument(promise7, nameof(promise7), 1);
 
             (T1, T2, T3, T4, T5, T6, T7) value = default;
-            ref (T1, T2, T3, T4, T5, T6, T7) valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>();
-            Internal.PromiseRefBase.MergePromise<(T1, T2, T3, T4, T5, T6, T7)> promise = null;
-
-            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise5, ref valueRef.Item5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise6, ref valueRef.Item6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise7, ref valueRef.Item7, valueRef, ref pendingCount, 6, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(T1, T2, T3, T4, T5, T6, T7)>(promise, promise.Id);
+            var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, ref merger.GetResultRef(ref value).Item4, value, 3);
+            merger.Prepare(promise5, ref merger.GetResultRef(ref value).Item5, value, 4);
+            merger.Prepare(promise6, ref merger.GetResultRef(ref value).Item6, value, 5);
+            merger.Prepare(promise7, ref merger.GetResultRef(ref value).Item7, value, 6);
+            return merger.ToPromise(value);
         }
 
         /// <summary>
@@ -941,34 +773,16 @@ namespace Proto.Promises
             ValidateArgument(promise8, nameof(promise8), 1);
 
             (T1, T2, T3, T4, T5, T6, T7) value = default;
-            ref (T1, T2, T3, T4, T5, T6, T7) valueRef = ref value;
-            uint pendingCount = 0;
-            var mergeResultFunc = MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>();
-            Internal.PromiseRefBase.MergePromise<(T1, T2, T3, T4, T5, T6, T7)> promise = null;
-
-            Internal.PrepareForMerge(promise1, ref valueRef.Item1, valueRef, ref pendingCount, 0, ref promise, mergeResultFunc);
-            // It would be nice to be able to ref-reassign inside the PrepareForMerge helper to avoid extra branches,
-            // but unfortunately C# doesn't support ref to ref parameters (or ref fields in ref structs yet).
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise2, ref valueRef.Item2, valueRef, ref pendingCount, 1, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise3, ref valueRef.Item3, valueRef, ref pendingCount, 2, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise4, ref valueRef.Item4, valueRef, ref pendingCount, 3, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise5, ref valueRef.Item5, valueRef, ref pendingCount, 4, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise6, ref valueRef.Item6, valueRef, ref pendingCount, 5, ref promise, mergeResultFunc);
-            valueRef = promise == null ? ref value : ref promise._result;
-            Internal.PrepareForMerge(promise7, ref valueRef.Item7, valueRef, ref pendingCount, 6, ref promise, mergeResultFunc);
-            Internal.PrepareForMerge(promise8, valueRef, ref pendingCount, ref promise, mergeResultFunc);
-
-            if (pendingCount == 0)
-            {
-                return Resolved(value);
-            }
-            promise.MarkReady(pendingCount);
-            return new Promise<(T1, T2, T3, T4, T5, T6, T7)>(promise, promise.Id);
+            var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>());
+            merger.Prepare(promise1, ref merger.GetResultRef(ref value).Item1, value, 0);
+            merger.Prepare(promise2, ref merger.GetResultRef(ref value).Item2, value, 1);
+            merger.Prepare(promise3, ref merger.GetResultRef(ref value).Item3, value, 2);
+            merger.Prepare(promise4, ref merger.GetResultRef(ref value).Item4, value, 3);
+            merger.Prepare(promise5, ref merger.GetResultRef(ref value).Item5, value, 4);
+            merger.Prepare(promise6, ref merger.GetResultRef(ref value).Item6, value, 5);
+            merger.Prepare(promise7, ref merger.GetResultRef(ref value).Item7, value, 6);
+            merger.Prepare(promise8, value);
+            return merger.ToPromise(value);
         }
     }
 }

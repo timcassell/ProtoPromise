@@ -41,7 +41,7 @@ namespace Proto.Promises.Linq
 #endif
     public static partial class AsyncEnumerable
     {
-        // We use AsyncEnumerableMethod instead of Promise so it can specially handle early-exits (`break` keyword).
+        // We use AsyncIteratorMethod instead of Promise so it can specially handle early-exits (`break` keyword).
 
         /// <summary>
         /// Create a new <see cref="AsyncEnumerable{T}"/> async stream from the specified <paramref name="asyncIterator"/> function.

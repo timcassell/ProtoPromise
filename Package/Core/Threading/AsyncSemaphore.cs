@@ -73,7 +73,15 @@ namespace Proto.Promises.Threading
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public Promise WaitAsync()
-            => WaitAsyncImpl();
+            => WaitAsync(true);
+
+        /// <summary>
+        /// Asynchronously wait to enter this <see cref="AsyncSemaphore"/>.
+        /// </summary>
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and this does not have capacity, the async continuation will be executed on the captured context.</param>
+        [MethodImpl(Internal.InlineOption)]
+        public Promise WaitAsync(bool continueOnCapturedContext)
+            => WaitAsyncImpl(continueOnCapturedContext);
 
         /// <summary>
         /// Asynchronously wait to enter this <see cref="AsyncSemaphore"/>, or for the <paramref name="cancelationToken"/> to be canceled.
@@ -85,7 +93,20 @@ namespace Proto.Promises.Threading
         /// </remarks>
         [MethodImpl(Internal.InlineOption)]
         public Promise<bool> TryWaitAsync(CancelationToken cancelationToken)
-            => TryWaitAsyncImpl(cancelationToken);
+            => TryWaitAsync(cancelationToken, true);
+
+        /// <summary>
+        /// Asynchronously wait to enter this <see cref="AsyncSemaphore"/>, or for the <paramref name="cancelationToken"/> to be canceled.
+        /// </summary>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the wait.</param>
+        /// <param name="continueOnCapturedContext">If <see langword="true"/> and this does not have capacity, the async continuation will be executed on the captured context.</param>
+        /// <remarks>
+        /// The result of the returned <see cref="Promise{T}"/> will be <see langword="true"/> if this is entered before the <paramref name="cancelationToken"/> was canceled, otherwise it will be <see langword="false"/>.
+        /// If this is available to be entered, the result will be <see langword="true"/>, even if the <paramref name="cancelationToken"/> is already canceled.
+        /// </remarks>
+        [MethodImpl(Internal.InlineOption)]
+        public Promise<bool> TryWaitAsync(CancelationToken cancelationToken, bool continueOnCapturedContext)
+            => TryWaitAsyncImpl(cancelationToken, continueOnCapturedContext);
 
         /// <summary>
         /// Synchronously wait to enter this <see cref="AsyncSemaphore"/>.

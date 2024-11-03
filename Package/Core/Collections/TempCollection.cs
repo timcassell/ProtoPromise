@@ -40,7 +40,7 @@ namespace Proto.Promises.Collections
         /// </summary>
         /// <param name="index">The zero-based index of the element to get.</param>
         /// <returns>The element at the specified index.</returns>
-        /// <exception cref="IndexOutOfRangeException">The index is less than 0 or greater than <see cref="Count"/>.</exception>
+        /// <exception cref="IndexOutOfRangeException">The index is less than 0 or greater than or equal to <see cref="Count"/>.</exception>
         /// <exception cref="InvalidOperationException">This instance is no longer valid.</exception>
         public T this[int index]
         {

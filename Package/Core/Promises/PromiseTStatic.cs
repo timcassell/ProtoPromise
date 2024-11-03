@@ -805,7 +805,7 @@ namespace Proto.Promises
         {
             ValidateArgument(resolver, nameof(resolver), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<T>.New(Internal.PromiseRefBase.DelegateWrapper.Create<T>(resolver), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.New(Internal.PromiseRefBase.DelegateWrapper.Create<T>(resolver), new ContinuationOptions(synchronizationOption, forceAsync));
         }
 
         /// <summary>
@@ -822,7 +822,7 @@ namespace Proto.Promises
         {
             ValidateArgument(resolver, nameof(resolver), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<T>.New(Internal.PromiseRefBase.DelegateWrapper.Create<TCapture, T>(captureValue, resolver), (Internal.SynchronizationOption) synchronizationOption, null, forceAsync);
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.New(Internal.PromiseRefBase.DelegateWrapper.Create<TCapture, T>(captureValue, resolver), new ContinuationOptions(synchronizationOption, forceAsync));
         }
 
         /// <summary>
@@ -837,7 +837,7 @@ namespace Proto.Promises
         {
             ValidateArgument(resolver, nameof(resolver), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<T>.New(Internal.PromiseRefBase.DelegateWrapper.Create<T>(resolver), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.New(Internal.PromiseRefBase.DelegateWrapper.Create<T>(resolver), new ContinuationOptions(synchronizationContext, forceAsync));
         }
 
         /// <summary>
@@ -853,7 +853,7 @@ namespace Proto.Promises
         {
             ValidateArgument(resolver, nameof(resolver), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<T>.New(Internal.PromiseRefBase.DelegateWrapper.Create<TCapture, T>(captureValue, resolver), Internal.SynchronizationOption.Explicit, synchronizationContext, forceAsync);
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.New(Internal.PromiseRefBase.DelegateWrapper.Create<TCapture, T>(captureValue, resolver), new ContinuationOptions(synchronizationContext, forceAsync));
         }
 
         /// <summary>
@@ -879,6 +879,13 @@ namespace Proto.Promises
         [MethodImpl(Internal.InlineOption)]
         public static Promise<T> Canceled()
             => Internal.CreateCanceled<T>();
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> that is either canceled or rejected with the provided <paramref name="exception"/>.
+        /// </summary>
+        /// <param name="exception">If an <see cref="OperationCanceledException"/>, the returned promise will be canceled, otherwise it will be rejected.</param>
+        public static Promise<T> FromException(Exception exception)
+            => exception is OperationCanceledException ? Canceled() : Rejected(exception);
 
         /// <summary>
         /// Returns a <see cref="Promise{T}.Deferred"/> object that is linked to and controls the state of a new <see cref="Promise{T}"/>.

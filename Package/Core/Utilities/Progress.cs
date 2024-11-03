@@ -26,41 +26,12 @@ namespace Proto.Promises
         private readonly int _id;
 
         [MethodImpl(Internal.InlineOption)]
-        private Progress(Internal.ProgressListener impl)
+        internal Progress(Internal.ProgressListener impl)
         {
             _impl = impl;
             _id = impl.Id;
         }
 
-        private static SynchronizationContext GetInvokeContext(SynchronizationOption invokeOption)
-        {
-            switch (invokeOption)
-            {
-                case SynchronizationOption.Synchronous:
-                {
-                    return null;
-                }
-                case SynchronizationOption.Foreground:
-                {
-                    var invokeContext = Promise.Config.ForegroundContext;
-                    if (invokeContext == null)
-                    {
-                        throw new InvalidOperationException(
-                            "SynchronizationOption.Foreground was provided, but Promise.Config.ForegroundContext was null. " +
-                            "You should set Promise.Config.ForegroundContext at the start of your application (which may be as simple as 'Promise.Config.ForegroundContext = SynchronizationContext.Current;').",
-                            Internal.GetFormattedStacktrace(2));
-                    }
-                    return invokeContext;
-                }
-                case SynchronizationOption.Background:
-                {
-                    return Promise.Config.BackgroundContext
-                        ?? Internal.BackgroundSynchronizationContextSentinel.s_instance;
-                }
-            }
-            throw new ArgumentException("Unexpected invokeOption: " + invokeOption, nameof(invokeOption));
-        }
-
         /// <summary>
         /// Create a new progress object using the specified handler and invoke options.
         /// </summary>
@@ -71,18 +42,17 @@ namespace Proto.Promises
         /// <returns>A new progress object.</returns>
         /// <remarks>Depending on the invoke option, the <paramref name="handler"/> may be invoked concurrently with itself.</remarks>
         public static Progress New(Action<double> handler,
-            SynchronizationOption invokeOption = SynchronizationOption.Foreground,
+            SynchronizationOption invokeOption = SynchronizationOption.CapturedContext,
             bool forceAsync = false,
             CancelationToken cancelationToken = default)
         {
             // Quick check to see if the token is already canceled.
             return cancelationToken.IsCancelationRequested
                 ? default
-                : new Progress(Internal.GetOrCreateProgress(
+                : Internal.NewProgress(
                     new Internal.DelegateProgress(handler),
-                    GetInvokeContext(invokeOption),
-                    forceAsync,
-                    cancelationToken)
+                    new ContinuationOptions(invokeOption, forceAsync),
+                    cancelationToken
                 );
         }
 
@@ -98,18 +68,17 @@ namespace Proto.Promises
         /// <returns>A new progress object.</returns>
         /// <remarks>Depending on the invoke option, the <paramref name="handler"/> may be invoked concurrently with itself.</remarks>
         public static Progress New<TCapture>(TCapture captureValue, Action<TCapture, double> handler,
-            SynchronizationOption invokeOption = SynchronizationOption.Foreground,
+            SynchronizationOption invokeOption = SynchronizationOption.CapturedContext,
             bool forceAsync = false,
             CancelationToken cancelationToken = default)
         {
             // Quick check to see if the token is already canceled.
             return cancelationToken.IsCancelationRequested
                 ? default
-                : new Progress(Internal.GetOrCreateProgress(
+                : Internal.NewProgress(
                     new Internal.DelegateCaptureProgress<TCapture>(captureValue, handler),
-                    GetInvokeContext(invokeOption),
-                    forceAsync,
-                    cancelationToken)
+                    new ContinuationOptions(invokeOption, forceAsync),
+                    cancelationToken
                 );
         }
 
@@ -125,7 +94,7 @@ namespace Proto.Promises
         /// <remarks>Depending on the invoke option, the <paramref name="handler"/> may be invoked concurrently with itself.</remarks>
 
         public static Progress New<TProgress>(TProgress handler,
-            SynchronizationOption invokeOption = SynchronizationOption.Foreground,
+            SynchronizationOption invokeOption = SynchronizationOption.CapturedContext,
             bool forceAsync = false,
             CancelationToken cancelationToken = default)
             where TProgress : IProgress<double>
@@ -133,11 +102,10 @@ namespace Proto.Promises
             // Quick check to see if the token is already canceled.
             return cancelationToken.IsCancelationRequested
                 ? default
-                : new Progress(Internal.GetOrCreateProgress(
+                : Internal.NewProgress(
                     handler,
-                    GetInvokeContext(invokeOption),
-                    forceAsync,
-                    cancelationToken)
+                    new ContinuationOptions(invokeOption, forceAsync),
+                    cancelationToken
                 );
         }
 
@@ -158,11 +126,10 @@ namespace Proto.Promises
             // Quick check to see if the token is already canceled.
             return cancelationToken.IsCancelationRequested
                 ? default
-                : new Progress(Internal.GetOrCreateProgress(
+                : Internal.NewProgress(
                     new Internal.DelegateProgress(handler),
-                    invokeContext ?? Internal.BackgroundSynchronizationContextSentinel.s_instance,
-                    forceAsync,
-                    cancelationToken)
+                    new ContinuationOptions(invokeContext, forceAsync),
+                    cancelationToken
                 );
         }
 
@@ -185,11 +152,10 @@ namespace Proto.Promises
             // Quick check to see if the token is already canceled.
             return cancelationToken.IsCancelationRequested
                 ? default
-                : new Progress(Internal.GetOrCreateProgress(
+                : Internal.NewProgress(
                     new Internal.DelegateCaptureProgress<TCapture>(captureValue, handler),
-                    invokeContext ?? Internal.BackgroundSynchronizationContextSentinel.s_instance,
-                    forceAsync,
-                    cancelationToken)
+                    new ContinuationOptions(invokeContext, forceAsync),
+                    cancelationToken
                 );
         }
 
@@ -212,11 +178,10 @@ namespace Proto.Promises
             // Quick check to see if the token is already canceled.
             return cancelationToken.IsCancelationRequested
                 ? default
-                : new Progress(Internal.GetOrCreateProgress(
+                : Internal.NewProgress(
                     handler,
-                    invokeContext ?? Internal.BackgroundSynchronizationContextSentinel.s_instance,
-                    forceAsync,
-                    cancelationToken)
+                    new ContinuationOptions(invokeContext, forceAsync),
+                    cancelationToken
                 );
         }
 

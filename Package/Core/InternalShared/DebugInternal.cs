@@ -139,7 +139,13 @@ namespace Proto.Promises
             => ts_currentTrace = ts_traces.Pop();
 
         private static StackTrace GetStackTrace(int skipFrames)
+#if PROTO_PROMISE_DEVELOPER_MODE // Don't skip frames in developer mode.
+            => new StackTrace(1, true);
+#elif NET6_0_OR_GREATER // Internal frames are already hidden in .Net 6+.
+            => new StackTrace(true);
+#else
             => new StackTrace(skipFrames + 1, true);
+#endif
 
         internal static string GetFormattedStacktrace(ITraceable traceable)
             => traceable?.Trace.ToString();

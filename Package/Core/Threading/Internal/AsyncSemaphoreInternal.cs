@@ -30,10 +30,10 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static AsyncSemaphorePromise GetOrCreate(Threading.AsyncSemaphore owner, SynchronizationContext callerContext)
+            internal static AsyncSemaphorePromise GetOrCreate(Threading.AsyncSemaphore owner, bool continueOnCapturedContext)
             {
                 var promise = GetOrCreate();
-                promise.Reset(callerContext);
+                promise.Reset(continueOnCapturedContext);
                 promise._owner = owner;
                 return promise;
             }
@@ -48,7 +48,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void DisposeImmediate()
             {
-                SetCompletionState(Promise.State.Resolved);
+                PrepareEarlyDispose();
                 MaybeDispose();
             }
 
@@ -108,7 +108,7 @@ namespace Proto.Promises
             }
 #endif // PROMISE_DEBUG
 
-            private Promise WaitAsyncImpl()
+            private Promise WaitAsyncImpl(bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 Internal.AsyncSemaphorePromise promise;
@@ -122,14 +122,14 @@ namespace Proto.Promises
                         _locker.Exit();
                         return Promise.Resolved();
                     }
-                    promise = Internal.AsyncSemaphorePromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncSemaphorePromise.GetOrCreate(this, continueOnCapturedContext);
                     _waiters.Enqueue(promise);
                 }
                 _locker.Exit();
                 return new Promise(promise, promise.Id);
             }
 
-            private Promise<bool> TryWaitAsyncImpl(CancelationToken cancelationToken)
+            private Promise<bool> TryWaitAsyncImpl(CancelationToken cancelationToken, bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
 
@@ -152,7 +152,7 @@ namespace Proto.Promises
                         _locker.Exit();
                         return Promise.Resolved(false);
                     }
-                    promise = Internal.AsyncSemaphorePromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncSemaphorePromise.GetOrCreate(this, continueOnCapturedContext);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _locker.Exit();
@@ -174,65 +174,19 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                Internal.AsyncSemaphorePromise promise;
-                _locker.Enter();
-                {
-                    // Read the _currentCount into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                    int current = _currentCount;
-                    if (current != 0)
-                    {
-                        _currentCount = current - 1;
-                        _locker.Exit();
-                        return;
-                    }
-                    promise = Internal.AsyncSemaphorePromise.GetOrCreate(this, null);
-                    _waiters.Enqueue(promise);
-                }
-                _locker.Exit();
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
-                resultContainer.RethrowIfRejected();
+                WaitAsyncImpl(false).Wait();
             }
 
             private bool TryWaitImpl(CancelationToken cancelationToken)
             {
                 // Because this is a synchronous wait, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
-                bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (_currentCount == 0 & !isCanceled & !spinner.NextSpinWillYield)
+                while (_currentCount == 0 & !spinner.NextSpinWillYield & !cancelationToken.IsCancelationRequested)
                 {
                     spinner.SpinOnce();
-                    isCanceled = cancelationToken.IsCancelationRequested;
                 }
 
-                Internal.AsyncSemaphorePromise promise;
-                _locker.Enter();
-                {
-                    // Read the _currentCount into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                    int current = _currentCount;
-                    if (current != 0)
-                    {
-                        _currentCount = current - 1;
-                        _locker.Exit();
-                        return true;
-                    }
-                    if (isCanceled)
-                    {
-                        _locker.Exit();
-                        return false;
-                    }
-                    promise = Internal.AsyncSemaphorePromise.GetOrCreate(this, null);
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        _locker.Exit();
-                        promise.DisposeImmediate();
-                        return false;
-                    }
-                    _waiters.Enqueue(promise);
-                }
-                _locker.Exit();
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
-                resultContainer.RethrowIfRejected();
-                return resultContainer.Value;
+                return TryWaitAsyncImpl(cancelationToken, false).WaitForResult();
             }
 
             private void ReleaseImpl()

@@ -22,17 +22,16 @@ namespace Proto.Promises
 #endif
             internal abstract class AsyncSynchronizationPromiseBase<TResult> : PromiseSingleAwait<TResult>, ICancelable
             {
-                // We post continuations to the caller's context to prevent blocking the thread that released the lock (and to avoid StackOverflowException).
-                private SynchronizationContext _callerContext;
+                private SynchronizationContext _continuationContext;
                 protected CancelationRegistration _cancelationRegistration;
                 // We have to store the state in a separate field until the next awaiter is ready to be invoked on the proper context.
                 protected Promise.State _tempState;
 
                 [MethodImpl(InlineOption)]
-                protected void Reset(SynchronizationContext callerContext)
+                protected void Reset(bool continueOnCapturedContext)
                 {
                     Reset();
-                    _callerContext = callerContext;
+                    _continuationContext = continueOnCapturedContext ? ContinuationOptions.CaptureContext() : null;
                     // Assume the resolved state will occur. If this is actually canceled or rejected, the state will be set at that time.
                     _tempState = Promise.State.Resolved;
                 }
@@ -40,29 +39,29 @@ namespace Proto.Promises
                 new protected void Dispose()
                 {
                     base.Dispose();
-                    _callerContext = null;
+                    _continuationContext = null;
                     _cancelationRegistration = default;
                 }
 
                 protected void Continue()
                 {
-                    if (_callerContext == null)
+                    var context = _continuationContext;
+                    if (context == null)
                     {
-                        // It was a synchronous lock or wait, handle next continuation synchronously so that the PromiseSynchronousWaiter will be pulsed to wake the waiting thread.
+                        // This was configured to continue synchronously.
                         HandleNextInternal(_tempState);
                         return;
                     }
-                    // Post the continuation to the caller's context. This prevents blocking the current thread and avoids StackOverflowException.
-                    ScheduleContextCallback(_callerContext, this,
+                    // This was configured to continuation on the context.
+                    ScheduleContextCallback(context, this,
                         obj => obj.UnsafeAs<AsyncSynchronizationPromiseBase<TResult>>().HandleFromContext(),
                         obj => obj.UnsafeAs<AsyncSynchronizationPromiseBase<TResult>>().HandleFromContext()
                     );
                 }
 
+                [MethodImpl(InlineOption)]
                 private void HandleFromContext()
-                {
-                    HandleNextInternal(_tempState);
-                }
+                    => HandleNextInternal(_tempState);
 
                 [MethodImpl(InlineOption)]
                 internal bool HookupAndGetIsCanceled(CancelationToken cancelationToken)
@@ -73,18 +72,10 @@ namespace Proto.Promises
                     return alreadyCanceled;
                 }
 
-                [MethodImpl(InlineOption)]
-                internal void SetCanceledImmediate()
-                {
-                    SetCompletionState(Promise.State.Canceled);
-                    _next = PromiseCompletionSentinel.s_instance;
-                }
-
                 public abstract void Cancel();
 
                 internal override sealed void Handle(PromiseRefBase handler, Promise.State state) => throw new System.InvalidOperationException();
 
-#if PROMISE_DEBUG
                 internal void Reject(IRejectContainer rejectContainer)
                 {
                     _cancelationRegistration.Dispose();
@@ -92,7 +83,13 @@ namespace Proto.Promises
                     _tempState = Promise.State.Rejected;
                     Continue();
                 }
-#endif
+
+                internal void CancelDirect()
+                {
+                    _cancelationRegistration.Dispose();
+                    _tempState = Promise.State.Canceled;
+                    Continue();
+                }
             }
         }
 

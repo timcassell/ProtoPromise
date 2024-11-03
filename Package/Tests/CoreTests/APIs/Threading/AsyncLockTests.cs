@@ -556,6 +556,53 @@ namespace ProtoPromiseTests.APIs.Threading
         }
 #endif // !UNITY_WEBGL
 
+        [Test]
+        public void AsyncLock_LockAsync_ContinuesOnConfiguredContext_Then(
+            [Values] bool continueOnCapturedContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var asyncLock = new AsyncLock();
+
+            var initialKey = asyncLock.Lock();
+
+            bool isExecuting = false;
+            var promise = asyncLock.LockAsync(continueOnCapturedContext)
+                .Then(key =>
+                {
+                    Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+                    key.Dispose();
+                });
+
+            isExecuting = true;
+            initialKey.Dispose();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncLock_LockAsync_ContinuesOnConfiguredContext_await(
+            [Values] bool continueOnCapturedContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var asyncLock = new AsyncLock();
+            
+            var initialKey = asyncLock.Lock();
+
+            bool isExecuting = false;
+            var promise = Promise.Run(async () =>
+            {
+                using (await asyncLock.LockAsync(continueOnCapturedContext))
+                {
+                    Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+                }
+            }, SynchronizationOption.Synchronous);
+
+            isExecuting = true;
+            initialKey.Dispose();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
 #if PROTO_PROMISE_TEST_GC_ENABLED
         [Test]
         public void AsyncMonitor_AbandonedLockIsReported()

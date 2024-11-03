@@ -19,7 +19,7 @@ namespace Proto.Promises
 #endif
     internal static partial class Internal
     {
-        private static void ScheduleContextCallback(SynchronizationContext context, object state, SendOrPostCallback contextCallback, WaitCallback threadpoolCallback)
+        internal static void ScheduleContextCallback(SynchronizationContext context, object state, SendOrPostCallback contextCallback, WaitCallback threadpoolCallback)
         {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             if (context == null)
@@ -71,7 +71,7 @@ namespace Proto.Promises
         }
 
         internal static IRejectContainer CreateRejectContainer(object reason, int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable)
-            => RejectContainer.Create(reason, rejectSkipFrames, exceptionWithStacktrace, traceable);
+            => RejectContainer.Create(reason, rejectSkipFrames + 1, exceptionWithStacktrace, traceable);
 
         internal static void ReportRejection(object unhandledValue, ITraceable traceable)
         {
@@ -120,7 +120,7 @@ namespace Proto.Promises
         }
 
         [MethodImpl(InlineOption)]
-        private static int InterlockedAddWithUnsignedOverflowCheck(ref int location, int value)
+        internal static int InterlockedAddWithUnsignedOverflowCheck(ref int location, int value)
         {
             // ints are treated as uints, we just use int because Interlocked does not support uint on old runtimes.
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -202,20 +202,6 @@ namespace Proto.Promises
         internal static bool Remove<TKey, TValue>(this Dictionary<TKey, TValue> dict, TKey key, out TValue value)
             => dict.TryGetValue(key, out value) && dict.Remove(key);
 #endif
-
-        internal static SynchronizationContext CaptureContext()
-        {
-            // We capture the current context to post the continuation. If it's null, we use the background context.
-            return Promise.Manager.ThreadStaticSynchronizationContext
-                // TODO: update compilation symbol when Unity adopts .Net Core.
-#if !NETCOREAPP
-                // Old .Net Framework/Mono includes `SynchronizationContext.Current` in the `ExecutionContext`, so it may not be null on a background thread.
-                // We check for that case to not unnecessarily invoke continuations on a foreground thread when they can continue on a background thread.
-                ?? (Thread.CurrentThread.IsBackground ? null : SynchronizationContext.Current)
-#endif
-                ?? Promise.Config.BackgroundContext
-                ?? BackgroundSynchronizationContextSentinel.s_instance;
-        }
 
         internal static CancelationSource MaybeJoinCancelationTokens(CancelationToken first, CancelationToken second, out CancelationToken maybeJoinedToken)
         {

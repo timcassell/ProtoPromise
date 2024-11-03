@@ -290,11 +290,9 @@ namespace Proto.Promises
                                 elements.Add(_source.Current);
                             } while (await _source.MoveNextAsync());
 
-                            var next = _next;
-                            while (next != null)
+                            for (var next = _next; next != null; next = next._next)
                             {
                                 await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements);
-                                next = next._next;
                             }
 
                             using (var indices = new TempCollectionBuilder<int>(elements._count, elements._count))
@@ -393,15 +391,10 @@ namespace Proto.Promises
                                 elements.Add(_configuredSource.Current);
                             } while (await _configuredSource.MoveNextAsync());
 
-                            var next = _next;
-                            if (next != null)
+                            
+                            for (var next = _next; next != null; next = next._next)
                             {
-                                var switchToConfiguredContextAwaiter = _configuredSource.SwitchToContextReusable();
-                                do
-                                {
-                                    await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements, switchToConfiguredContextAwaiter);
-                                    next = next._next;
-                                } while (next != null);
+                                await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements, _configuredSource.ContinuationOptions);
                             }
 
                             using (var indices = new TempCollectionBuilder<int>(elements._count, elements._count))
@@ -544,11 +537,9 @@ namespace Proto.Promises
                                 using (var keys = new TempCollectionBuilder<TKey>(elements._count, elements._count))
                                 {
                                     ComputeKeys(elements.ReadOnlySpan, keys.Span);
-                                    var next = _next;
-                                    while (next != null)
+                                    for (var next = _next; next != null; next = next._next)
                                     {
                                         await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements);
-                                        next = next._next;
                                     }
                                     indices.Span.Sort(new IndexComparer<TKey, TComparer>(this, keys._items, _comparer));
                                 }
@@ -663,15 +654,9 @@ namespace Proto.Promises
                                 using (var keys = new TempCollectionBuilder<TKey>(elements._count, elements._count))
                                 {
                                     ComputeKeys(elements.ReadOnlySpan, keys);
-                                    var next = _next;
-                                    if (next != null)
+                                    for (var next = _next; next != null; next = next._next)
                                     {
-                                        var switchToConfiguredContextAwaiter = _configuredSource.SwitchToContextReusable();
-                                        do
-                                        {
-                                            await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements, switchToConfiguredContextAwaiter);
-                                            next = next._next;
-                                        } while (next != null);
+                                        await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements, _configuredSource.ContinuationOptions);
                                     }
                                     indices.Span.Sort(new IndexComparer<TKey, TComparer>(this, keys._items, _comparer));
                                 }
@@ -780,11 +765,9 @@ namespace Proto.Promises
                                     {
                                         keys._items[i] = await _keySelector.Invoke(elements._items[i]);
                                     }
-                                    var next = _next;
-                                    while (next != null)
+                                    for (var next = _next; next != null; next = next._next)
                                     {
                                         await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements);
-                                        next = next._next;
                                     }
                                     indices.Span.Sort(new IndexComparer<TKey, TComparer>(this, keys._items, _comparer));
                                 }
@@ -889,17 +872,13 @@ namespace Proto.Promises
                                 }
                                 using (var keys = new TempCollectionBuilder<TKey>(elements._count, elements._count))
                                 {
-                                    var switchToConfiguredContextAwaiter = _configuredSource.SwitchToContextReusable();
                                     for (int i = 0; i < keys._count; ++i)
                                     {
-                                        await switchToConfiguredContextAwaiter;
-                                        keys._items[i] = await _keySelector.Invoke(elements._items[i]);
+                                        keys._items[i] = await _keySelector.Invoke(elements._items[i]).ConfigureAwait(_configuredSource.ContinuationOptions);
                                     }
-                                    var next = _next;
-                                    while (next != null)
+                                    for (var next = _next; next != null; next = next._next)
                                     {
-                                        await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements, switchToConfiguredContextAwaiter);
-                                        next = next._next;
+                                        await next.UnsafeAs<OrderedAsyncEnumerableThenBy<TSource>>().ComputeKeys(elements, _configuredSource.ContinuationOptions);
                                     }
                                     indices.Span.Sort(new IndexComparer<TKey, TComparer>(this, keys._items, _comparer));
                                 }
@@ -935,7 +914,7 @@ namespace Proto.Promises
         internal abstract class OrderedAsyncEnumerableThenBy<TSource> : OrderedAsyncEnumerableBase<TSource>
         {
             internal abstract Promise ComputeKeys(TempCollectionBuilder<TSource> elements);
-            internal abstract Promise ComputeKeys(TempCollectionBuilder<TSource> elements, SwitchToConfiguredContextReusableAwaiter switchToConfiguredContextAwaiter);
+            internal abstract Promise ComputeKeys(TempCollectionBuilder<TSource> elements, ContinuationOptions continuationOptions);
             internal abstract int Compare(int index1, int index2);
             internal abstract void Dispose();
 
@@ -1009,10 +988,10 @@ namespace Proto.Promises
                     return Promise.Resolved();
                 }
 
-                internal override async Promise ComputeKeys(TempCollectionBuilder<TSource> elements, SwitchToConfiguredContextReusableAwaiter switchToConfiguredContextAwaiter)
+                internal override Promise ComputeKeys(TempCollectionBuilder<TSource> elements, ContinuationOptions continuationOptions)
                 {
-                    await switchToConfiguredContextAwaiter;
                     ComputeKeysSync(elements);
+                    return Promise.Resolved();
                 }
 
                 internal override void Dispose()
@@ -1061,13 +1040,12 @@ namespace Proto.Promises
                     }
                 }
 
-                internal override async Promise ComputeKeys(TempCollectionBuilder<TSource> elements, SwitchToConfiguredContextReusableAwaiter switchToConfiguredContextAwaiter)
+                internal override async Promise ComputeKeys(TempCollectionBuilder<TSource> elements, ContinuationOptions continuationOptions)
                 {
                     _keys = new TempCollectionBuilder<TKey>(elements._count, elements._count);
                     for (int i = 0; i < _keys._count; ++i)
                     {
-                        await switchToConfiguredContextAwaiter;
-                        _keys._items[i] = await _keySelector.Invoke(elements._items[i]);
+                        _keys._items[i] = await _keySelector.Invoke(elements._items[i]).ConfigureAwait(continuationOptions);
                     }
                 }
 

@@ -73,13 +73,13 @@ namespace Proto.Promises
             internal override void Report(double value, int id)
             {
                 EnterLock();
-                var reportValues = new NewProgressReportValues(this, null, value, id);
+                var reportValues = new ProgressReportValues(this, null, value, id);
                 ReportCore(ref reportValues);
             }
 
             // ProgressMultiHandlers are reported recursively instead of iteratively, because it would be much more complex and expensive to make it iterative.
             // This type is expected to be used infrequently, so it shouldn't cause a StackOverflowException.
-            internal override void Report(ref NewProgressReportValues reportValues)
+            internal override void Report(ref ProgressReportValues reportValues)
             {
                 // Enter this lock before exiting previous lock.
                 // This prevents a race condition where another report on a separate thread could get ahead of this report.
@@ -90,7 +90,7 @@ namespace Proto.Promises
                 reportValues._next = null;
             }
 
-            private void ReportCore(ref NewProgressReportValues reportValues)
+            private void ReportCore(ref ProgressReportValues reportValues)
             {
                 // Lock is already entered from the caller.
                 if (reportValues._id != _smallFields._id)

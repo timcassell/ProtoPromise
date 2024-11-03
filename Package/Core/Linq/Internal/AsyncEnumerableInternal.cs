@@ -30,12 +30,6 @@ namespace Proto.Promises
         {
             private readonly Func<AsyncStreamWriter<T>, CancelationToken, AsyncIteratorMethod> _func;
 
-            public bool IsNull
-            {
-                [MethodImpl(InlineOption)]
-                get { return _func == null; }
-            }
-
             [MethodImpl(InlineOption)]
             internal AsyncIterator(Func<AsyncStreamWriter<T>, CancelationToken, AsyncIteratorMethod> func)
                 => _func = func;
@@ -56,12 +50,6 @@ namespace Proto.Promises
         {
             private readonly TCapture _capturedValue;
             private readonly Func<TCapture, AsyncStreamWriter<T>, CancelationToken, AsyncIteratorMethod> _func;
-
-            public bool IsNull
-            {
-                [MethodImpl(InlineOption)]
-                get { return _func == null; }
-            }
 
             [MethodImpl(InlineOption)]
             internal AsyncIterator(TCapture captureValue, Func<TCapture, AsyncStreamWriter<T>, CancelationToken, AsyncIteratorMethod> func)
@@ -159,17 +147,6 @@ namespace Proto.Promises
 
                 internal abstract Promise<bool> MoveNextAsync(int id);
                 internal abstract Promise DisposeAsync(int id);
-
-                [MethodImpl(InlineOption)]
-                protected void SetStateForDisposeWithoutStart()
-                {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    // Base Dispose checks the state in DEBUG mode.
-                    State = Promise.State.Resolved;
-#endif
-                    // This is never used as a backing reference for Promises, so we need to suppress the UnobservedPromiseException from the base finalizer.
-                    WasAwaitedOrForgotten = true;
-                }
 
                 protected void ResetForNextAwait()
                 {
@@ -428,7 +405,7 @@ namespace Proto.Promises
 
             protected override Promise DisposeAsyncWithoutStart()
             {
-                SetStateForDisposeWithoutStart();
+                PrepareEarlyDispose();
                 var iterator = _iterator;
                 DisposeAndReturnToPool();
                 return iterator.DisposeAsyncWithoutStart();

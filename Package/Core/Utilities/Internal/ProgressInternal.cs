@@ -10,6 +10,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 
 #pragma warning disable IDE0090 // Use 'new(...)'
+#pragma warning disable IDE0290 // Use primary constructor
 
 namespace Proto.Promises
 {
@@ -60,7 +61,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal ref struct NewProgressReportValues
+        internal ref struct ProgressReportValues
         {
             internal ProgressBase _reporter;
             internal ProgressBase _next;
@@ -68,7 +69,7 @@ namespace Proto.Promises
             internal int _id;
 
             [MethodImpl(InlineOption)]
-            internal NewProgressReportValues(ProgressBase reporter, ProgressBase next, double value, int id)
+            internal ProgressReportValues(ProgressBase reporter, ProgressBase next, double value, int id)
             {
                 _reporter = reporter;
                 _next = next;
@@ -118,7 +119,7 @@ namespace Proto.Promises
                 => _smallFields._locker.Exit();
 
             internal abstract void Report(double value, int id);
-            internal abstract void Report(ref NewProgressReportValues reportValues);
+            internal abstract void Report(ref ProgressReportValues reportValues);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -131,9 +132,9 @@ namespace Proto.Promises
 
         // Helper method to avoid typing out the TProgress.
         [MethodImpl(InlineOption)]
-        internal static ProgressListener GetOrCreateProgress<TProgress>(TProgress progress, SynchronizationContext invokeContext, bool forceAsync, CancelationToken cancelationToken)
+        internal static Progress NewProgress<TProgress>(TProgress progress, ContinuationOptions invokeOptions, CancelationToken cancelationToken)
             where TProgress : IProgress<double>
-            => Progress<TProgress>.GetOrCreate(progress, invokeContext, forceAsync, cancelationToken);
+            => new Progress(Progress<TProgress>.GetOrCreate(progress, invokeOptions, cancelationToken));
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
@@ -170,13 +171,13 @@ namespace Proto.Promises
                     : obj.UnsafeAs<Progress<TProgress>>();
             }
 
-            internal static Progress<TProgress> GetOrCreate(TProgress progress, SynchronizationContext invokeContext, bool forceAsync, CancelationToken cancelationToken)
+            internal static Progress<TProgress> GetOrCreate(TProgress progress, ContinuationOptions invokeOptions, CancelationToken cancelationToken)
             {
                 var instance = GetOrCreate();
                 instance._next = null;
                 instance._progress = progress;
-                instance._invokeContext = invokeContext;
-                instance._forceAsync = forceAsync;
+                instance._invokeContext = invokeOptions.GetContinuationContext();
+                instance._forceAsync = invokeOptions.CompletedBehavior == CompletedContinuationBehavior.Asynchronous;
                 // Set to nan so the first Report(0) will invoke.
                 instance._current = float.NaN;
                 instance._retainCounter = 1;
@@ -197,8 +198,21 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            private bool ShouldInvokeSynchronous()
-                => _invokeContext == null | (!_forceAsync & _invokeContext == Promise.Manager.ThreadStaticSynchronizationContext);
+            private bool GetShouldInvokeSynchronously()
+            {
+                var context = _invokeContext;
+                if (context == null)
+                {
+                    return true;
+                }
+                if (_forceAsync)
+                {
+                    return false;
+                }
+                return context == BackgroundSynchronizationContextSentinel.s_instance
+                    ? Thread.CurrentThread.IsThreadPoolThread
+                    : context == Promise.Manager.ThreadStaticSynchronizationContext;
+            }
 
             [MethodImpl(InlineOption)]
             private void Retain()
@@ -219,7 +233,7 @@ namespace Proto.Promises
                 ReportCore(value, id);
             }
 
-            internal override void Report(ref NewProgressReportValues reportValues)
+            internal override void Report(ref ProgressReportValues reportValues)
             {
                 // Enter this lock before exiting previous lock.
                 // This prevents a race condition where another report on a separate thread could get ahead of this report.
@@ -242,7 +256,7 @@ namespace Proto.Promises
 
                 _current = value;
 
-                if (ShouldInvokeSynchronous())
+                if (GetShouldInvokeSynchronously())
                 {
                     Retain();
                     // Exit the lock before invoking so we're not holding the lock while user code runs.
@@ -354,6 +368,11 @@ namespace Proto.Promises
 
                     // Not all invokes are complete yet, create a deferred promise that will be resolved when all invokes are complete.
                     var deferredPromise = PromiseRefBase.DeferredPromise<VoidResult>.GetOrCreate();
+#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
+                    // If the promise is converted to ValueTask, we ignore the context scheduling,
+                    // since we already resolve the promise on the same context that we report progress on.
+                    deferredPromise._ignoreValueTaskContextScheduling = true;
+#endif
                     // We store the deferred promise in _next to save memory.
                     _next = deferredPromise;
                     registration.Dispose();

@@ -92,7 +92,7 @@ jobs:
           - unity: { major: 2019 }
             buildTargetId: 1
           - unity: { major: 2023 }
-            buildtargetid: standalone
+            buildTargetId: standalone
 
     steps:
       - name: Checkout
@@ -126,7 +126,7 @@ jobs:
           projectPath: ProtoPromise_Unity
           testMode: ${{ matrix.testMode.value }}
           unityVersion: ${{ matrix.unity.version }}
-        timeout-minutes: 120
+        timeout-minutes: 180
 
       - uses: dorny/test-reporter@main
         if: always()

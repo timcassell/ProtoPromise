@@ -599,10 +599,9 @@ namespace Proto.Promises
                                 await writer.YieldAsync(element);
                             }
                         }
-                        while (await _second.MoveNextAsync())
+                        // We need to make sure we're on the configured context before invoking the comparer.
+                        while (await _second.MoveNextAsync().ConfigureAwait(_configuredFirst.ContinuationOptions))
                         {
-                            // We need to make sure we're on the configured context before invoking the comparer.
-                            await _configuredFirst.SwitchToContext();
                             var element = _second.Current;
                             if (set.Add(element))
                             {
@@ -618,10 +617,9 @@ namespace Proto.Promises
                             // The enumerators were retrieved without a cancelation token when the original function was called.
                             // We need to propagate the token that was passed in, so we assign it before starting iteration.
                             nextEnumerator._target._cancelationToken = cancelationToken;
-                            while (await nextEnumerator.MoveNextAsync())
+                            // We need to make sure we're on the configured context before invoking the comparer.
+                            while (await nextEnumerator.MoveNextAsync().ConfigureAwait(_configuredFirst.ContinuationOptions))
                             {
-                                // We need to make sure we're on the configured context before invoking the comparer.
-                                await _configuredFirst.SwitchToContext();
                                 var element = nextEnumerator.Current;
                                 if (set.Add(element))
                                 {

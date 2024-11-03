@@ -60,7 +60,7 @@ namespace Proto.Promises
                 return instance;
             }
 
-            internal override void Report(ref NewProgressReportValues reportValues)
+            internal override void Report(ref ProgressReportValues reportValues)
             {
                 // Enter this lock before exiting previous lock.
                 // This prevents a race condition where another report on a separate thread could get ahead of this report.
@@ -214,7 +214,7 @@ namespace Proto.Promises
                     _current = value;
                     // We report to the target iteratively instead of recursively to prevent StackOverflowException in the case of very deep call chains.
                     // _target.Report() exits this lock, so we don't do it here.
-                    var reportValues = new NewProgressReportValues(this, _target, diff, _targetId);
+                    var reportValues = new ProgressReportValues(this, _target, diff, _targetId);
                     // Call the target directly since we have the concrete sealed type.
                     _target.Report(ref reportValues);
                     while (reportValues._next != null)
@@ -237,7 +237,7 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                internal override void Report(ref NewProgressReportValues reportValues) => throw new System.InvalidOperationException();
+                internal override void Report(ref ProgressReportValues reportValues) => throw new System.InvalidOperationException();
             }
         }
 

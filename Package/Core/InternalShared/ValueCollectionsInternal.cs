@@ -164,6 +164,14 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
+            internal T Peek()
+                => _head;
+
+            [MethodImpl(InlineOption)]
+            internal void Clear()
+                => _head = null;
+
+            [MethodImpl(InlineOption)]
             internal void PushInterlocked(T item)
             {
                 AssertNotInCollection(item);
@@ -249,6 +257,7 @@ namespace Proto.Promises
         internal struct ValueLinkedQueue<T> where T : class, ILinked<T>
 #endif
         {
+            // TODO: only store the tail, form a circular linked list.
             private T _head;
             private T _tail;
 

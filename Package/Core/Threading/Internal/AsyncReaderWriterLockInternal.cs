@@ -35,11 +35,11 @@ namespace Proto.Promises
                     : obj.UnsafeAs<AsyncReaderLockPromise>();
             }
 
-            internal static AsyncReaderLockPromise GetOrCreate(AsyncReaderWriterLock owner, SynchronizationContext callerContext)
+            internal static AsyncReaderLockPromise GetOrCreate(AsyncReaderWriterLock owner, bool continueOnCapturedContext)
             {
                 var promise = GetOrCreate();
-                promise.Reset(callerContext);
-                promise._result = new AsyncReaderWriterLock.ReaderKey(owner); ; // This will be overwritten when this is resolved, we just store the key with the owner here for cancelation.
+                promise.Reset(continueOnCapturedContext);
+                promise._result = new AsyncReaderWriterLock.ReaderKey(owner); // This will be overwritten when this is resolved, we just store the key with the owner here for cancelation.
                 return promise;
             }
 
@@ -52,7 +52,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void DisposeImmediate()
             {
-                SetCompletionState(Promise.State.Resolved);
+                PrepareEarlyDispose();
                 MaybeDispose();
             }
 
@@ -98,10 +98,10 @@ namespace Proto.Promises
                     : obj.UnsafeAs<AsyncWriterLockPromise>();
             }
 
-            internal static AsyncWriterLockPromise GetOrCreate(AsyncReaderWriterLock owner, SynchronizationContext callerContext)
+            internal static AsyncWriterLockPromise GetOrCreate(AsyncReaderWriterLock owner, bool continueOnCapturedContext)
             {
                 var promise = GetOrCreate();
-                promise.Reset(callerContext);
+                promise.Reset(continueOnCapturedContext);
                 promise._result = new AsyncReaderWriterLock.WriterKey(owner); // This will be overwritten when this is resolved, we just store the key with the owner here for cancelation.
                 return promise;
             }
@@ -115,7 +115,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void DisposeImmediate()
             {
-                SetCompletionState(Promise.State.Resolved);
+                PrepareEarlyDispose();
                 MaybeDispose();
             }
 
@@ -161,10 +161,10 @@ namespace Proto.Promises
                     : obj.UnsafeAs<AsyncUpgradeableReaderLockPromise>();
             }
 
-            internal static AsyncUpgradeableReaderLockPromise GetOrCreate(AsyncReaderWriterLock owner, SynchronizationContext callerContext)
+            internal static AsyncUpgradeableReaderLockPromise GetOrCreate(AsyncReaderWriterLock owner, bool continueOnCapturedContext)
             {
                 var promise = GetOrCreate();
-                promise.Reset(callerContext);
+                promise.Reset(continueOnCapturedContext);
                 promise._result = new AsyncReaderWriterLock.UpgradeableReaderKey(owner); // This will be overwritten when this is resolved, we just store the key with the owner here for cancelation.
                 return promise;
             }
@@ -178,7 +178,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void DisposeImmediate()
             {
-                SetCompletionState(Promise.State.Resolved);
+                PrepareEarlyDispose();
                 MaybeDispose();
             }
 
@@ -224,10 +224,10 @@ namespace Proto.Promises
                     : obj.UnsafeAs<AsyncUpgradedWriterLockPromise>();
             }
 
-            internal static AsyncUpgradedWriterLockPromise GetOrCreate(AsyncReaderWriterLock owner, SynchronizationContext callerContext)
+            internal static AsyncUpgradedWriterLockPromise GetOrCreate(AsyncReaderWriterLock owner, bool continueOnCapturedContext)
             {
                 var promise = GetOrCreate();
-                promise.Reset(callerContext);
+                promise.Reset(continueOnCapturedContext);
                 promise._result = new AsyncReaderWriterLock.UpgradedWriterKey(owner); // This will be overwritten when this is resolved, we just store the key with the owner here for cancelation.
                 return promise;
             }
@@ -241,7 +241,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void DisposeImmediate()
             {
-                SetCompletionState(Promise.State.Resolved);
+                PrepareEarlyDispose();
                 MaybeDispose();
             }
 
@@ -628,7 +628,7 @@ namespace Proto.Promises
                 return noWriters | prioritizedEntrance;
             }
 
-            private Promise<ReaderKey> ReaderLockAsyncImpl()
+            private Promise<ReaderKey> ReaderLockAsyncImpl(bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
 
@@ -659,14 +659,14 @@ namespace Proto.Promises
                     {
                         ++_readerWaitCount;
                     }
-                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     _readerQueue.Enqueue(promise);
                 }
                 _smallFields._locker.Exit();
                 return new Promise<ReaderKey>(promise, promise.Id);
             }
 
-            private Promise<ReaderKey> ReaderLockAsyncImpl(CancelationToken cancelationToken)
+            private Promise<ReaderKey> ReaderLockAsyncImpl(CancelationToken cancelationToken, bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
 
@@ -705,15 +705,14 @@ namespace Proto.Promises
                     {
                         ++_readerWaitCount;
                     }
-                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
-                        promise.SetCanceledImmediate();
+                        _smallFields._locker.Exit();
+                        promise.DisposeImmediate();
+                        return Promise<ReaderKey>.Canceled();
                     }
-                    else
-                    {
-                        _readerQueue.Enqueue(promise);
-                    }
+                    _readerQueue.Enqueue(promise);
                 }
                 _smallFields._locker.Exit();
                 return new Promise<ReaderKey>(promise, promise.Id);
@@ -728,101 +727,19 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                Internal.AsyncReaderLockPromise promise;
-                _smallFields._locker.Enter();
-                {
-                    ValidateNotAbandoned();
-                    ValidateReaderCounts();
-
-                    // Read the _smallFields._lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                    var lockType = _smallFields._lockType;
-
-                    if (CanEnterReaderLock(lockType))
-                    {
-                        IncrementReaderLockCount();
-                        if (lockType == AsyncReaderWriterLockType.None)
-                        {
-                            SetNextKey();
-                        }
-                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Reader;
-                        var key = _currentKey;
-                        _smallFields._locker.Exit();
-                        return new ReaderKey(this, key, null);
-                    }
-
-                    // Unchecked context since we're manually checking overflow.
-                    unchecked
-                    {
-                        ++_readerWaitCount;
-                    }
-                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, null);
-                    _readerQueue.Enqueue(promise);
-                }
-                _smallFields._locker.Exit();
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
-                resultContainer.RethrowIfRejected();
-                return resultContainer.Value;
+                return ReaderLockAsyncImpl(false).WaitForResult();
             }
 
             private ReaderKey ReaderLockImpl(CancelationToken cancelationToken)
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
-                bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (!CanEnterReaderLock(_smallFields._lockType) & !isCanceled & !spinner.NextSpinWillYield)
+                while (!CanEnterReaderLock(_smallFields._lockType) & !spinner.NextSpinWillYield & !cancelationToken.IsCancelationRequested)
                 {
                     spinner.SpinOnce();
-                    isCanceled = cancelationToken.IsCancelationRequested;
                 }
 
-                // Quick check to see if the token is already canceled before entering.
-                if (isCanceled)
-                {
-                    ValidateNotAbandoned();
-
-                    throw Promise.CancelException();
-                }
-
-                Internal.AsyncReaderLockPromise promise;
-                _smallFields._locker.Enter();
-                {
-                    ValidateNotAbandoned();
-                    ValidateReaderCounts();
-
-                    // Read the _smallFields._lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                    var lockType = _smallFields._lockType;
-
-                    if (CanEnterReaderLock(lockType))
-                    {
-                        IncrementReaderLockCount();
-                        if (lockType == AsyncReaderWriterLockType.None)
-                        {
-                            SetNextKey();
-                        }
-                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Reader;
-                        var key = _currentKey;
-                        _smallFields._locker.Exit();
-                        return new ReaderKey(this, key, null);
-                    }
-
-                    // Unchecked context since we're manually checking overflow.
-                    unchecked
-                    {
-                        ++_readerWaitCount;
-                    }
-                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, null);
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        _smallFields._locker.Exit();
-                        promise.DisposeImmediate();
-                        throw Promise.CancelException();
-                    }
-                    _readerQueue.Enqueue(promise);
-                }
-                _smallFields._locker.Exit();
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
-                resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Value;
+                return ReaderLockAsyncImpl(cancelationToken, false).WaitForResult();
             }
 
             private bool TryEnterReaderLockImpl(out ReaderKey readerKey)
@@ -855,7 +772,7 @@ namespace Proto.Promises
                 return false;
             }
 
-            private Promise<(bool didEnter, ReaderKey readerKey)> TryEnterReaderLockAsyncImpl(CancelationToken cancelationToken)
+            private Promise<(bool didEnter, ReaderKey readerKey)> TryEnterReaderLockAsyncImpl(CancelationToken cancelationToken, bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
 
@@ -892,7 +809,7 @@ namespace Proto.Promises
                     {
                         ++_readerWaitCount;
                     }
-                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, null);
+                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
@@ -914,66 +831,17 @@ namespace Proto.Promises
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
-                bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (!CanEnterReaderLock(_smallFields._lockType) & !isCanceled & !spinner.NextSpinWillYield)
+                while (!CanEnterReaderLock(_smallFields._lockType) & !spinner.NextSpinWillYield & !cancelationToken.IsCancelationRequested)
                 {
                     spinner.SpinOnce();
-                    isCanceled = cancelationToken.IsCancelationRequested;
                 }
 
-                Internal.AsyncReaderLockPromise promise;
-                _smallFields._locker.Enter();
-                {
-                    ValidateNotAbandoned();
-                    ValidateReaderCounts();
-
-                    // Read the _smallFields._lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                    var lockType = _smallFields._lockType;
-
-                    if (CanEnterReaderLock(lockType))
-                    {
-                        IncrementReaderLockCount();
-                        if (lockType == AsyncReaderWriterLockType.None)
-                        {
-                            SetNextKey();
-                        }
-                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Reader;
-                        var key = _currentKey;
-                        _smallFields._locker.Exit();
-                        readerKey = new ReaderKey(this, key, null);
-                        return true;
-                    }
-                    // Quick check to see if the token is already canceled before waiting.
-                    if (isCanceled)
-                    {
-                        _smallFields._locker.Exit();
-                        readerKey = default;
-                        return false;
-                    }
-
-                    // Unchecked context since we're manually checking overflow.
-                    unchecked
-                    {
-                        ++_readerWaitCount;
-                    }
-                    promise = Internal.AsyncReaderLockPromise.GetOrCreate(this, null);
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        _smallFields._locker.Exit();
-                        promise.DisposeImmediate();
-                        readerKey = default;
-                        return false;
-                    }
-                    _readerQueue.Enqueue(promise);
-                }
-                _smallFields._locker.Exit();
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
-                resultContainer.RethrowIfRejected();
-                readerKey = resultContainer.Value;
-                return resultContainer.State == Promise.State.Resolved;
+                var (success, key) = TryEnterReaderLockAsyncImpl(cancelationToken, false).WaitForResult();
+                readerKey = key;
+                return success;
             }
 
-            private Promise<WriterKey> WriterLockAsyncImpl()
+            private Promise<WriterKey> WriterLockAsyncImpl(bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 Internal.AsyncWriterLockPromise promise;
@@ -993,14 +861,14 @@ namespace Proto.Promises
                         return Promise.Resolved(new WriterKey(this, key, null));
                     }
 
-                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     _writerQueue.Enqueue(promise);
                 }
                 _smallFields._locker.Exit();
                 return new Promise<WriterKey>(promise, promise.Id);
             }
 
-            private Promise<WriterKey> WriterLockAsyncImpl(CancelationToken cancelationToken)
+            private Promise<WriterKey> WriterLockAsyncImpl(CancelationToken cancelationToken, bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
 
@@ -1029,15 +897,14 @@ namespace Proto.Promises
                         return Promise.Resolved(new WriterKey(this, key, null));
                     }
 
-                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
-                        promise.SetCanceledImmediate();
+                        _smallFields._locker.Exit();
+                        promise.DisposeImmediate();
+                        return Promise<WriterKey>.Canceled();
                     }
-                    else
-                    {
-                        _writerQueue.Enqueue(promise);
-                    }
+                    _writerQueue.Enqueue(promise);
                 }
                 _smallFields._locker.Exit();
                 return new Promise<WriterKey>(promise, promise.Id);
@@ -1052,81 +919,19 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                Internal.AsyncWriterLockPromise promise;
-                _smallFields._locker.Enter();
-                {
-                    ValidateNotAbandoned();
-
-                    // Writer locks are mutually exclusive.
-                    var lockType = _smallFields._lockType;
-                    _smallFields._lockType = lockType | AsyncReaderWriterLockType.Writer;
-                    if (lockType == AsyncReaderWriterLockType.None)
-                    {
-                        _smallFields._writerType = AsyncReaderWriterLockType.Writer;
-                        SetNextKey();
-                        var key = _currentKey;
-                        _smallFields._locker.Exit();
-                        return new WriterKey(this, key, null);
-                    }
-
-                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, null);
-                    _writerQueue.Enqueue(promise);
-                }
-                _smallFields._locker.Exit();
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
-                resultContainer.RethrowIfRejected();
-                return resultContainer.Value;
+                return WriterLockAsyncImpl(false).WaitForResult();
             }
 
             private WriterKey WriterLockImpl(CancelationToken cancelationToken)
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
-                bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (_smallFields._lockType != AsyncReaderWriterLockType.None & !isCanceled & !spinner.NextSpinWillYield)
+                while (_smallFields._lockType != AsyncReaderWriterLockType.None & !spinner.NextSpinWillYield & !cancelationToken.IsCancelationRequested)
                 {
                     spinner.SpinOnce();
-                    isCanceled = cancelationToken.IsCancelationRequested;
                 }
 
-                // Quick check to see if the token is already canceled before entering.
-                if (isCanceled)
-                {
-                    ValidateNotAbandoned();
-
-                    throw Promise.CancelException();
-                }
-
-                Internal.AsyncWriterLockPromise promise;
-                _smallFields._locker.Enter();
-                {
-                    ValidateNotAbandoned();
-
-                    // Writer locks are mutually exclusive.
-                    var lockType = _smallFields._lockType;
-                    _smallFields._lockType = lockType | AsyncReaderWriterLockType.Writer;
-                    if (lockType == AsyncReaderWriterLockType.None)
-                    {
-                        _smallFields._writerType = AsyncReaderWriterLockType.Writer;
-                        SetNextKey();
-                        var key = _currentKey;
-                        _smallFields._locker.Exit();
-                        return new WriterKey(this, key, null);
-                    }
-
-                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, null);
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        _smallFields._locker.Exit();
-                        promise.DisposeImmediate();
-                        throw Promise.CancelException();
-                    }
-                    _writerQueue.Enqueue(promise);
-                }
-                _smallFields._locker.Exit();
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
-                resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Value;
+                return WriterLockAsyncImpl(cancelationToken, false).WaitForResult();
             }
 
             private bool TryEnterWriterLockImpl(out WriterKey writerKey)
@@ -1154,7 +959,7 @@ namespace Proto.Promises
                 return false;
             }
 
-            private Promise<(bool didEnter, WriterKey writerKey)> TryEnterWriterLockAsyncImpl(CancelationToken cancelationToken)
+            private Promise<(bool didEnter, WriterKey writerKey)> TryEnterWriterLockAsyncImpl(CancelationToken cancelationToken, bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 Internal.AsyncWriterLockPromise promise;
@@ -1181,7 +986,7 @@ namespace Proto.Promises
                     }
 
                     _smallFields._lockType = lockType | AsyncReaderWriterLockType.Writer;
-                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
@@ -1203,54 +1008,14 @@ namespace Proto.Promises
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
-                bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (_smallFields._lockType != AsyncReaderWriterLockType.None & !isCanceled & !spinner.NextSpinWillYield)
+                while (_smallFields._lockType != AsyncReaderWriterLockType.None & !spinner.NextSpinWillYield & !cancelationToken.IsCancelationRequested)
                 {
                     spinner.SpinOnce();
-                    isCanceled = cancelationToken.IsCancelationRequested;
                 }
 
-                Internal.AsyncWriterLockPromise promise;
-                _smallFields._locker.Enter();
-                {
-                    ValidateNotAbandoned();
-
-                    // Writer locks are mutually exclusive.
-                    var lockType = _smallFields._lockType;
-                    if (lockType == AsyncReaderWriterLockType.None)
-                    {
-                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Writer;
-                        _smallFields._writerType = AsyncReaderWriterLockType.Writer;
-                        SetNextKey();
-                        var key = _currentKey;
-                        _smallFields._locker.Exit();
-                        writerKey = new WriterKey(this, key, null);
-                        return true;
-                    }
-                    // Quick check to see if the token is already canceled before waiting.
-                    if (isCanceled)
-                    {
-                        _smallFields._locker.Exit();
-                        writerKey = default;
-                        return false;
-                    }
-
-                    _smallFields._lockType = lockType | AsyncReaderWriterLockType.Writer;
-                    promise = Internal.AsyncWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        _smallFields._locker.Exit();
-                        promise.DisposeImmediate();
-                        writerKey = default;
-                        return false;
-                    }
-                    _writerQueue.Enqueue(promise);
-                }
-                _smallFields._locker.Exit();
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
-                resultContainer.RethrowIfRejected();
-                writerKey = resultContainer.Value;
-                return resultContainer.State == Promise.State.Resolved;
+                var (success, key) = TryEnterWriterLockAsyncImpl(cancelationToken, false).WaitForResult();
+                writerKey = key;
+                return success;
             }
 
             [MethodImpl(Internal.InlineOption)]
@@ -1267,7 +1032,7 @@ namespace Proto.Promises
                 return noWritersOrUpgradeableReaders | prioritizedEntrance;
             }
 
-            private Promise<UpgradeableReaderKey> UpgradeableReaderLockAsyncImpl()
+            private Promise<UpgradeableReaderKey> UpgradeableReaderLockAsyncImpl(bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 Internal.AsyncUpgradeableReaderLockPromise promise;
@@ -1291,14 +1056,14 @@ namespace Proto.Promises
                         return Promise.Resolved(new UpgradeableReaderKey(this, key, null));
                     }
 
-                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     _upgradeQueue.Enqueue(promise);
                 }
                 _smallFields._locker.Exit();
                 return new Promise<UpgradeableReaderKey>(promise, promise.Id);
             }
 
-            private Promise<UpgradeableReaderKey> UpgradeableReaderLockAsyncImpl(CancelationToken cancelationToken)
+            private Promise<UpgradeableReaderKey> UpgradeableReaderLockAsyncImpl(CancelationToken cancelationToken, bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
 
@@ -1331,15 +1096,14 @@ namespace Proto.Promises
                         return Promise.Resolved(new UpgradeableReaderKey(this, key, null));
                     }
 
-                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
-                        promise.SetCanceledImmediate();
+                        _smallFields._locker.Exit();
+                        promise.DisposeImmediate();
+                        return Promise<UpgradeableReaderKey>.Canceled();
                     }
-                    else
-                    {
-                        _upgradeQueue.Enqueue(promise);
-                    }
+                    _upgradeQueue.Enqueue(promise);
                 }
                 _smallFields._locker.Exit();
                 return new Promise<UpgradeableReaderKey>(promise, promise.Id);
@@ -1354,89 +1118,19 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                Internal.AsyncUpgradeableReaderLockPromise promise;
-                _smallFields._locker.Enter();
-                {
-                    ValidateNotAbandoned();
-
-                    // Read the _smallFields._lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                    var lockType = _smallFields._lockType;
-
-                    if (CanEnterUpgradeableReaderLock(lockType))
-                    {
-                        IncrementReaderLockCount();
-                        if (lockType == AsyncReaderWriterLockType.None)
-                        {
-                            SetNextKey();
-                        }
-                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
-                        var key = _currentKey;
-                        _smallFields._locker.Exit();
-                        return new UpgradeableReaderKey(this, key, null);
-                    }
-
-                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, null);
-                    _upgradeQueue.Enqueue(promise);
-                }
-                _smallFields._locker.Exit();
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
-                resultContainer.RethrowIfRejected();
-                return resultContainer.Value;
+                return UpgradeableReaderLockAsyncImpl(false).WaitForResult();
             }
 
             private UpgradeableReaderKey UpgradeableReaderLockImpl(CancelationToken cancelationToken)
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
-                bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (!CanEnterUpgradeableReaderLock(_smallFields._lockType) & !isCanceled & !spinner.NextSpinWillYield)
+                while (!CanEnterUpgradeableReaderLock(_smallFields._lockType) & !spinner.NextSpinWillYield & !cancelationToken.IsCancelationRequested)
                 {
                     spinner.SpinOnce();
-                    isCanceled = cancelationToken.IsCancelationRequested;
                 }
 
-                // Quick check to see if the token is already canceled before entering.
-                if (isCanceled)
-                {
-                    ValidateNotAbandoned();
-
-                    throw Promise.CancelException();
-                }
-
-                Internal.AsyncUpgradeableReaderLockPromise promise;
-                _smallFields._locker.Enter();
-                {
-                    ValidateNotAbandoned();
-
-                    // Read the _smallFields._lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                    var lockType = _smallFields._lockType;
-
-                    if (CanEnterUpgradeableReaderLock(lockType))
-                    {
-                        IncrementReaderLockCount();
-                        if (lockType == AsyncReaderWriterLockType.None)
-                        {
-                            SetNextKey();
-                        }
-                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
-                        var key = _currentKey;
-                        _smallFields._locker.Exit();
-                        return new UpgradeableReaderKey(this, key, null);
-                    }
-
-                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, null);
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        _smallFields._locker.Exit();
-                        promise.DisposeImmediate();
-                        throw Promise.CancelException();
-                    }
-                    _upgradeQueue.Enqueue(promise);
-                }
-                _smallFields._locker.Exit();
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
-                resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Value;
+                return UpgradeableReaderLockAsyncImpl(cancelationToken, false).WaitForResult();
             }
 
             private bool TryEnterUpgradeableReaderLockImpl(out UpgradeableReaderKey readerKey)
@@ -1468,7 +1162,7 @@ namespace Proto.Promises
                 return false;
             }
 
-            private Promise<(bool didEnter, UpgradeableReaderKey readerKey)> TryEnterUpgradeableReaderLockAsyncImpl(CancelationToken cancelationToken)
+            private Promise<(bool didEnter, UpgradeableReaderKey readerKey)> TryEnterUpgradeableReaderLockAsyncImpl(CancelationToken cancelationToken, bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 Internal.AsyncUpgradeableReaderLockPromise promise;
@@ -1498,7 +1192,7 @@ namespace Proto.Promises
                         return Promise.Resolved((false, default(UpgradeableReaderKey)));
                     }
 
-                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
@@ -1520,60 +1214,17 @@ namespace Proto.Promises
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
-                bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (!CanEnterUpgradeableReaderLock(_smallFields._lockType) & !isCanceled & !spinner.NextSpinWillYield)
+                while (!CanEnterUpgradeableReaderLock(_smallFields._lockType) & !spinner.NextSpinWillYield & !cancelationToken.IsCancelationRequested)
                 {
                     spinner.SpinOnce();
-                    isCanceled = cancelationToken.IsCancelationRequested;
                 }
 
-                Internal.AsyncUpgradeableReaderLockPromise promise;
-                _smallFields._locker.Enter();
-                {
-                    ValidateNotAbandoned();
-
-                    // Read the _smallFields._lockType into a local variable to avoid extra unnecessary volatile accesses inside the lock.
-                    var lockType = _smallFields._lockType;
-
-                    if (CanEnterUpgradeableReaderLock(lockType))
-                    {
-                        IncrementReaderLockCount();
-                        if (lockType == AsyncReaderWriterLockType.None)
-                        {
-                            SetNextKey();
-                        }
-                        _smallFields._lockType = lockType | AsyncReaderWriterLockType.Upgradeable;
-                        var key = _currentKey;
-                        _smallFields._locker.Exit();
-                        readerKey = new UpgradeableReaderKey(this, key, null);
-                        return true;
-                    }
-                    // Quick check to see if the token is already canceled before waiting.
-                    if (isCanceled)
-                    {
-                        _smallFields._locker.Exit();
-                        readerKey = default;
-                        return false;
-                    }
-
-                    promise = Internal.AsyncUpgradeableReaderLockPromise.GetOrCreate(this, Internal.CaptureContext());
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        _smallFields._locker.Exit();
-                        promise.DisposeImmediate();
-                        readerKey = default;
-                        return false;
-                    }
-                    _upgradeQueue.Enqueue(promise);
-                }
-                _smallFields._locker.Exit();
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
-                resultContainer.RethrowIfRejected();
-                readerKey = resultContainer.Value;
-                return resultContainer.State == Promise.State.Resolved;
+                var (success, key) = TryEnterUpgradeableReaderLockAsyncImpl(cancelationToken, false).WaitForResult();
+                readerKey = key;
+                return success;
             }
 
-            private Promise<UpgradedWriterKey> UpgradeToWriterLockAsyncImpl(UpgradeableReaderKey readerKey)
+            private Promise<UpgradedWriterKey> UpgradeToWriterLockAsyncImpl(UpgradeableReaderKey readerKey, bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 Internal.AsyncUpgradedWriterLockPromise promise;
@@ -1599,14 +1250,14 @@ namespace Proto.Promises
                         return Promise.Resolved(new UpgradedWriterKey(this, key, null));
                     }
 
-                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     _upgradeWaiter = promise;
                 }
                 _smallFields._locker.Exit();
                 return new Promise<UpgradedWriterKey>(promise, promise.Id);
             }
 
-            private Promise<UpgradedWriterKey> UpgradeToWriterLockAsyncImpl(UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
+            private Promise<UpgradedWriterKey> UpgradeToWriterLockAsyncImpl(UpgradeableReaderKey readerKey, CancelationToken cancelationToken, bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
 
@@ -1641,15 +1292,14 @@ namespace Proto.Promises
                         return Promise.Resolved(new UpgradedWriterKey(this, key, null));
                     }
 
-                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
-                        promise.SetCanceledImmediate();
+                        _smallFields._locker.Exit();
+                        promise.DisposeImmediate();
+                        return Promise<UpgradedWriterKey>.Canceled();
                     }
-                    else
-                    {
-                        _upgradeWaiter = promise;
-                    }
+                    _upgradeWaiter = promise;
                 }
                 _smallFields._locker.Exit();
                 return new Promise<UpgradedWriterKey>(promise, promise.Id);
@@ -1664,93 +1314,19 @@ namespace Proto.Promises
                     spinner.SpinOnce();
                 }
 
-                Internal.AsyncUpgradedWriterLockPromise promise;
-                _smallFields._locker.Enter();
-                {
-                    ValidateNotAbandoned();
-
-                    if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
-                    {
-                        _smallFields._locker.Exit();
-                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
-                    }
-
-                    DecrementReaderLockCount();
-                    _smallFields._lockType |= AsyncReaderWriterLockType.Writer;
-                    if (_readerLockCount == 0)
-                    {
-                        _smallFields._writerType = AsyncReaderWriterLockType.Upgradeable;
-                        // We cache the previous key for when the lock gets downgraded.
-                        SetNextAndPreviousKeys();
-                        var key = _currentKey;
-                        _smallFields._locker.Exit();
-                        return new UpgradedWriterKey(this, key, null);
-                    }
-
-                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, null);
-                    _upgradeWaiter = promise;
-                }
-                _smallFields._locker.Exit();
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
-                resultContainer.RethrowIfRejected();
-                return resultContainer.Value;
+                return UpgradeToWriterLockAsyncImpl(readerKey, false).WaitForResult();
             }
 
             private UpgradedWriterKey UpgradeToWriterLockImpl(UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
-                bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (_readerLockCount != 1 & !isCanceled & !spinner.NextSpinWillYield)
+                while (_readerLockCount != 1 & !spinner.NextSpinWillYield & !cancelationToken.IsCancelationRequested)
                 {
                     spinner.SpinOnce();
-                    isCanceled = cancelationToken.IsCancelationRequested;
                 }
 
-                // Quick check to see if the token is already canceled before entering.
-                if (isCanceled)
-                {
-                    ValidateNotAbandoned();
-
-                    throw Promise.CancelException();
-                }
-
-                Internal.AsyncUpgradedWriterLockPromise promise;
-                _smallFields._locker.Enter();
-                {
-                    ValidateNotAbandoned();
-
-                    if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
-                    {
-                        _smallFields._locker.Exit();
-                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
-                    }
-
-                    DecrementReaderLockCount();
-                    _smallFields._lockType |= AsyncReaderWriterLockType.Writer;
-                    if (_readerLockCount == 0)
-                    {
-                        _smallFields._writerType = AsyncReaderWriterLockType.Upgradeable;
-                        // We cache the previous key for when the lock gets downgraded.
-                        SetNextAndPreviousKeys();
-                        var key = _currentKey;
-                        _smallFields._locker.Exit();
-                        return new UpgradedWriterKey(this, key, null);
-                    }
-
-                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, null);
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        _smallFields._locker.Exit();
-                        promise.DisposeImmediate();
-                        throw Promise.CancelException();
-                    }
-                    _upgradeWaiter = promise;
-                }
-                _smallFields._locker.Exit();
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, TimeSpan.FromMilliseconds(Timeout.Infinite), out var resultContainer);
-                resultContainer.RethrowIfRejectedOrCanceled();
-                return resultContainer.Value;
+                return UpgradeToWriterLockAsyncImpl(readerKey, cancelationToken, false).WaitForResult();
             }
 
             private bool TryUpgradeToWriterLockImpl(UpgradeableReaderKey readerKey, out UpgradedWriterKey writerKey)
@@ -1784,7 +1360,8 @@ namespace Proto.Promises
                 return false;
             }
 
-            private Promise<(bool didEnter, UpgradedWriterKey writerKey)> TryUpgradeToWriterLockAsyncImpl(UpgradeableReaderKey readerKey, CancelationToken cancelationToken)
+            private Promise<(bool didEnter, UpgradedWriterKey writerKey)> TryUpgradeToWriterLockAsyncImpl(
+                UpgradeableReaderKey readerKey, CancelationToken cancelationToken, bool continueOnCapturedContext)
             {
                 // We don't spinwait here because it's async; we want to return to caller as fast as possible.
                 Internal.AsyncUpgradedWriterLockPromise promise;
@@ -1818,7 +1395,7 @@ namespace Proto.Promises
 
                     DecrementReaderLockCount();
                     _smallFields._lockType |= AsyncReaderWriterLockType.Writer;
-                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
+                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, continueOnCapturedContext);
                     if (promise.HookupAndGetIsCanceled(cancelationToken))
                     {
                         _smallFields._locker.Exit();
@@ -1840,61 +1417,14 @@ namespace Proto.Promises
             {
                 // Since this is a synchronous lock, we do a short spinwait before yielding the thread.
                 var spinner = new SpinWait();
-                bool isCanceled = cancelationToken.IsCancelationRequested;
-                while (_readerLockCount != 1 & !isCanceled & !spinner.NextSpinWillYield)
+                while (_readerLockCount != 1 & !spinner.NextSpinWillYield & !cancelationToken.IsCancelationRequested)
                 {
                     spinner.SpinOnce();
-                    isCanceled = cancelationToken.IsCancelationRequested;
                 }
 
-                Internal.AsyncUpgradedWriterLockPromise promise;
-                _smallFields._locker.Enter();
-                {
-                    ValidateNotAbandoned();
-
-                    if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
-                    {
-                        _smallFields._locker.Exit();
-                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
-                    }
-
-                    if (_readerLockCount == 1)
-                    {
-                        DecrementReaderLockCount();
-                        _smallFields._lockType |= AsyncReaderWriterLockType.Writer;
-                        _smallFields._writerType = AsyncReaderWriterLockType.Upgradeable;
-                        // We cache the previous key for when the lock gets downgraded.
-                        SetNextAndPreviousKeys();
-                        var key = _currentKey;
-                        _smallFields._locker.Exit();
-                        writerKey = new UpgradedWriterKey(this, key, null);
-                        return true;
-                    }
-                    // Quick check to see if the token is already canceled before waiting.
-                    if (isCanceled)
-                    {
-                        _smallFields._locker.Exit();
-                        writerKey = default;
-                        return false;
-                    }
-
-                    DecrementReaderLockCount();
-                    _smallFields._lockType |= AsyncReaderWriterLockType.Writer;
-                    promise = Internal.AsyncUpgradedWriterLockPromise.GetOrCreate(this, Internal.CaptureContext());
-                    if (promise.HookupAndGetIsCanceled(cancelationToken))
-                    {
-                        _smallFields._locker.Exit();
-                        promise.DisposeImmediate();
-                        writerKey = default;
-                        return false;
-                    }
-                    _upgradeWaiter = promise;
-                }
-                _smallFields._locker.Exit();
-                Internal.PromiseSynchronousWaiter.TryWaitForResult(promise, promise.Id, Timeout.InfiniteTimeSpan, out var resultContainer);
-                resultContainer.RethrowIfRejected();
-                writerKey = resultContainer.Value;
-                return resultContainer.State == Promise.State.Resolved;
+                var (success, key) = TryUpgradeToWriterLockAsyncImpl(readerKey, cancelationToken, false).WaitForResult();
+                writerKey = key;
+                return success;
             }
 
             internal void ReleaseReaderLock(long key)

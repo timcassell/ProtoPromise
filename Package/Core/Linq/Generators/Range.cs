@@ -117,9 +117,7 @@ namespace Proto.Promises
 
             new private void Dispose()
             {
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                SetCompletionState(Promise.State.Resolved);
-#endif
+                PrepareEarlyDispose();
                 base.Dispose();
                 _disposed = true;
                 ObjectPool.MaybeRepool(this);

@@ -148,7 +148,6 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    [StructLayout(LayoutKind.Auto)]
     public readonly struct PromiseEachGroup<T>
     {
         private readonly Internal.CancelationRef _cancelationRef;

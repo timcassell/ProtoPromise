@@ -407,6 +407,92 @@ namespace ProtoPromiseTests.APIs.Threading
             mre.Wait();
         }
 
+        [Test]
+        public void AsyncManualResetEvent_WaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_Then(
+            [Values] bool continueOnCapturedContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var mre = new AsyncManualResetEvent(false);
+
+            bool isExecuting = false;
+            var promise = mre.WaitAsync(continueOnCapturedContext)
+                .Then(() =>
+                {
+                    Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+                });
+
+            isExecuting = true;
+            mre.Set();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncManualResetEvent_TryWaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_Then(
+            [Values] bool continueOnCapturedContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var mre = new AsyncManualResetEvent(false);
+            var cancelationSource = CancelationSource.New();
+
+            bool isExecuting = false;
+            var promise = mre.TryWaitAsync(cancelationSource.Token, continueOnCapturedContext)
+                .Then(_ =>
+                {
+                    Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+                });
+
+            isExecuting = true;
+            mre.Set();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            cancelationSource.Dispose();
+        }
+
+        [Test]
+        public void AsyncManualResetEvent_WaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_await(
+            [Values] bool continueOnCapturedContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var mre = new AsyncManualResetEvent(false);
+
+            bool isExecuting = false;
+            var promise = Promise.Run(async () =>
+            {
+                await mre.WaitAsync(continueOnCapturedContext);
+                Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+            }, SynchronizationOption.Synchronous);
+
+            isExecuting = true;
+            mre.Set();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void AsyncManualResetEvent_TryWaitAsyncWithContinuationOptions_ContinuesOnConfiguredContext_await(
+            [Values] bool continueOnCapturedContext)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var mre = new AsyncManualResetEvent(false);
+            var cancelationSource = CancelationSource.New();
+
+            bool isExecuting = false;
+            var promise = Promise.Run(async () =>
+            {
+                _ = await mre.TryWaitAsync(cancelationSource.Token, continueOnCapturedContext);
+                Assert.AreNotEqual(continueOnCapturedContext, isExecuting);
+            }, SynchronizationOption.Synchronous);
+
+            isExecuting = true;
+            mre.Set();
+            isExecuting = false;
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+            cancelationSource.Dispose();
+        }
+
 #if PROTO_PROMISE_TEST_GC_ENABLED
         [Test]
         public void AsyncManualResetEvent_AbandonedResetEventReported()

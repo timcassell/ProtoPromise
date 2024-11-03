@@ -23,15 +23,6 @@ namespace Proto.Promises
             void CancelDirect();
         }
 
-        internal static class DeferredPromiseHelper
-        {
-            internal static bool GetIsValidAndPending(IDeferredPromise _this, int deferredId)
-                => _this?.DeferredId == deferredId;
-
-            internal static bool TryIncrementDeferredId(IDeferredPromise _this, int deferredId)
-                => _this?.TryIncrementDeferredId(deferredId) == true;
-        }
-
         partial class PromiseRefBase
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -157,8 +148,14 @@ namespace Proto.Promises
 
                 internal override void MaybeDispose()
                 {
-                    Dispose();
-                    ObjectPool.MaybeRepool(this);
+                    // It is theoretically possible for this to be completed from the callback, and then the callback throws,
+                    // causing this to attempt to complete again. The thread could be starved while another thread
+                    // re-uses this object from the pool. This interlocked operation protects against that.
+                    if (InterlockedAddWithUnsignedOverflowCheck(ref _disposeCounter, -1) == 0)
+                    {
+                        Dispose();
+                        ObjectPool.MaybeRepool(this);
+                    }
                 }
 
                 [MethodImpl(InlineOption)]
@@ -175,48 +172,15 @@ namespace Proto.Promises
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
+                    promise._disposeCounter = 2;
                     promise._runner = runner;
                     return promise;
                 }
 
                 [MethodImpl(InlineOption)]
-                internal void RunOrScheduleOnContext(SynchronizationOption invokeOption, SynchronizationContext context, bool forceAsync)
+                internal void RunOrScheduleOnContext(ContinuationOptions invokeOptions)
                 {
-                    switch (invokeOption)
-                    {
-                        case SynchronizationOption.Synchronous:
-                        {
-                            Run();
-                            return;
-                        }
-                        case SynchronizationOption.Foreground:
-                        {
-                            context = Promise.Config.ForegroundContext;
-                            if (context == null)
-                            {
-                                throw new InvalidOperationException(
-                                    "SynchronizationOption.Foreground was provided, but Promise.Config.ForegroundContext was null. " +
-                                    "You should set Promise.Config.ForegroundContext at the start of your application (which may be as simple as 'Promise.Config.ForegroundContext = SynchronizationContext.Current;').",
-                                    GetFormattedStacktrace(2));
-                            }
-                            break;
-                        }
-                        case SynchronizationOption.Background:
-                        {
-                            context = Promise.Config.BackgroundContext;
-                            goto default;
-                        }
-                        default: // SynchronizationOption.Explicit
-                        {
-                            if (context == null)
-                            {
-                                context = BackgroundSynchronizationContextSentinel.s_instance;
-                            }
-                            break;
-                        }
-                    }
-
-                    if (!forceAsync & context == Promise.Manager.ThreadStaticSynchronizationContext)
+                    if (invokeOptions.GetShouldContinueImmediately(out var context))
                     {
                         Run();
                         return;
@@ -262,6 +226,7 @@ namespace Proto.Promises
                         }
                     }
                     ClearCurrentInvoker();
+                    MaybeDispose();
                 }
             }
         } // class PromiseRef

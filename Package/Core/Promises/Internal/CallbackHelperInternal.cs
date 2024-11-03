@@ -15,14 +15,6 @@ namespace Proto.Promises
 {
     partial class Internal
     {
-        internal enum SynchronizationOption : byte
-        {
-            Synchronous,
-            Foreground,
-            Background,
-            Explicit
-        }
-
         partial class PromiseRefBase
         {
             // These help reduce typed out generics.
@@ -43,7 +35,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return CallbackHelperVoid.FromException(e);
+                        return Promise.FromException(e);
                     }
                 }
 
@@ -59,7 +51,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return CallbackHelperVoid.FromException<TArg>(e);
+                        return Promise.FromException(e);
                     }
                 }
 
@@ -224,9 +216,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> Canceled(PromiseRefBase _ref, short promiseId)
                 {
                     _ref?.MaybeMarkAwaitedAndDispose(promiseId);
-                    var deferred = DeferredPromise<TResult>.GetOrCreate();
-                    deferred.CancelDirect();
-                    return new Promise<TResult>(deferred, deferred.Id);
+                    return Promise<TResult>.Canceled();
                 }
 
                 [MethodImpl(InlineOption)]
@@ -241,7 +231,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return CallbackHelperVoid.FromException<TResult>(e);
+                        return Promise<TResult>.FromException(e);
                     }
                 }
 
@@ -258,7 +248,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return CallbackHelperVoid.FromException<TResult>(e);
+                        return Promise<TResult>.FromException(e);
                     }
                 }
 
@@ -272,7 +262,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return CallbackHelperVoid.FromException<TResult>(e);
+                        return Promise<TResult>.FromException(e);
                     }
                 }
 
@@ -287,108 +277,100 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return CallbackHelperVoid.FromException<TResult>(e);
+                        return Promise<TResult>.FromException(e);
                     }
+                }
+
+                internal static Promise<TResult> Duplicate(Promise<TResult> _this)
+                {
+                    if (_this._ref == null)
+                    {
+                        return _this;
+                    }
+                    var newRef = _this._ref.GetDuplicateT(_this._id);
+                    return new Promise<TResult>(newRef, newRef.Id, _this._result);
+                }
+
+                internal static Promise<TResult> WaitAsync(Promise<TResult> _this, CancelationToken cancelationToken)
+                {
+                    if (_this._ref == null)
+                    {
+                        return cancelationToken.IsCancelationRequested
+                            ? Promise<TResult>.Canceled()
+                            : _this;
+                    }
+                    PromiseRef<TResult> promise;
+                    if (cancelationToken.CanBeCanceled)
+                    {
+                        var p = PromiseDuplicateCancel<TResult>.GetOrCreate();
+                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
+                    }
+                    else
+                    {
+                        promise = _this._ref.GetDuplicateT(_this._id);
+                    }
+                    return new Promise<TResult>(promise, promise.Id, _this._result);
+                }
+
+                internal static Promise<TResult> ConfigureContinuation(Promise<TResult> _this, ContinuationOptions continuationOptions)
+                {
+                    if (continuationOptions.IsSynchronous)
+                    {
+                        return Duplicate(_this);
+                    }
+
+                    if (continuationOptions.CompletedBehavior == CompletedContinuationBehavior.Synchronous
+                        && (_this._ref == null || _this._ref.State != Promise.State.Pending))
+                    {
+                        return Duplicate(_this);
+                    }
+
+                    var synchronizationContext = continuationOptions.GetContinuationContext();
+                    ConfiguredPromise<TResult> promise;
+                    if (_this._ref == null)
+                    {
+                        promise = ConfiguredPromise<TResult>.GetOrCreateFromResolved(synchronizationContext, _this._result, continuationOptions.CompletedBehavior);
+                    }
+                    else
+                    {
+                        promise = ConfiguredPromise<TResult>.GetOrCreate(synchronizationContext, continuationOptions.CompletedBehavior);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                    }
+                    return new Promise<TResult>(promise, promise.Id, _this._result);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> New<TDelegate>(TDelegate runner, SynchronizationOption invokeOption, SynchronizationContext synchronizationContext, bool forceAsync)
+                internal static Promise<TResult> New<TDelegate>(TDelegate runner, ContinuationOptions invokeOptions)
                     where TDelegate : IDelegateNew<TResult>
                 {
                     var promise = DeferredNewPromise<TResult, TDelegate>.GetOrCreate(runner);
-                    promise.RunOrScheduleOnContext(invokeOption, synchronizationContext, forceAsync);
+                    promise.RunOrScheduleOnContext(invokeOptions);
                     return new Promise<TResult>(promise, promise.Id);
                 }
 
-                internal static Promise<TResult> Run<TDelegate>(TDelegate runner, SynchronizationOption invokeOption, SynchronizationContext synchronizationContext, bool forceAsync)
+                internal static Promise<TResult> Run<TDelegate>(TDelegate runner, ContinuationOptions invokeOptions)
                     where TDelegate : IFunc<TResult>, IDelegateRun
                 {
-                    switch (invokeOption)
-                    {
-                        case SynchronizationOption.Synchronous:
-                        {
-                            return InvokeCallbackDirect(runner);
-                        }
-                        case SynchronizationOption.Foreground:
-                        {
-                            synchronizationContext = Promise.Config.ForegroundContext;
-                            if (synchronizationContext == null)
-                            {
-                                throw new InvalidOperationException(
-                                    "SynchronizationOption.Foreground was provided, but Promise.Config.ForegroundContext was null. " +
-                                    "You should set Promise.Config.ForegroundContext at the start of your application (which may be as simple as 'Promise.Config.ForegroundContext = SynchronizationContext.Current;').",
-                                    GetFormattedStacktrace(2));
-                            }
-                            break;
-                        }
-                        case SynchronizationOption.Background:
-                        {
-                            synchronizationContext = Promise.Config.BackgroundContext;
-                            goto default;
-                        }
-                        default: // SynchronizationOption.Explicit
-                        {
-                            if (synchronizationContext == null)
-                            {
-                                synchronizationContext = BackgroundSynchronizationContextSentinel.s_instance;
-                            }
-                            break;
-                        }
-                    }
-
-                    if (!forceAsync & synchronizationContext == Promise.Manager.ThreadStaticSynchronizationContext)
+                    if (invokeOptions.GetShouldContinueImmediately(out var context))
                     {
                         return InvokeCallbackDirect(runner);
                     }
 
                     var promise = RunPromise<TResult, TDelegate>.GetOrCreate(runner);
-                    promise.ScheduleOnContext(synchronizationContext);
+                    promise.ScheduleOnContext(context);
                     return new Promise<TResult>(promise, promise.Id);
                 }
 
-                internal static Promise<TResult> RunWait<TDelegate>(TDelegate runner, SynchronizationOption invokeOption, SynchronizationContext synchronizationContext, bool forceAsync)
+                internal static Promise<TResult> RunWait<TDelegate>(TDelegate runner, ContinuationOptions invokeOptions)
                     where TDelegate : IFunc<Promise<TResult>>, IDelegateRunPromise
                 {
-                    switch (invokeOption)
-                    {
-                        case SynchronizationOption.Synchronous:
-                        {
-                            return InvokeCallbackAndAdoptDirect(runner);
-                        }
-                        case SynchronizationOption.Foreground:
-                        {
-                            synchronizationContext = Promise.Config.ForegroundContext;
-                            if (synchronizationContext == null)
-                            {
-                                throw new InvalidOperationException(
-                                    "SynchronizationOption.Foreground was provided, but Promise.Config.ForegroundContext was null. " +
-                                    "You should set Promise.Config.ForegroundContext at the start of your application (which may be as simple as 'Promise.Config.ForegroundContext = SynchronizationContext.Current;').",
-                                    GetFormattedStacktrace(2));
-                            }
-                            break;
-                        }
-                        case SynchronizationOption.Background:
-                        {
-                            synchronizationContext = Promise.Config.BackgroundContext;
-                            goto default;
-                        }
-                        default: // SynchronizationOption.Explicit
-                        {
-                            if (synchronizationContext == null)
-                            {
-                                synchronizationContext = BackgroundSynchronizationContextSentinel.s_instance;
-                            }
-                            break;
-                        }
-                    }
-
-                    if (!forceAsync & synchronizationContext == Promise.Manager.ThreadStaticSynchronizationContext)
+                    if (invokeOptions.GetShouldContinueImmediately(out var context))
                     {
                         return InvokeCallbackAndAdoptDirect(runner);
                     }
 
                     var promise = RunWaitPromise<TResult, TDelegate>.GetOrCreate(runner);
-                    promise.ScheduleOnContext(synchronizationContext);
+                    promise.ScheduleOnContext(context);
                     return new Promise<TResult>(promise, promise.Id);
                 }
 
@@ -552,7 +534,7 @@ namespace Proto.Promises
                     {
                         return cancelationToken.IsCancelationRequested
                             ? Canceled(_this._ref, _this._id)
-                            : CallbackHelperVoid.Duplicate(_this);
+                            : Duplicate(_this);
                     }
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
@@ -609,7 +591,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return CallbackHelperVoid.FromException<TResult>(e);
+                        return Promise<TResult>.FromException(e);
                     }
                 }
 
@@ -625,7 +607,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return CallbackHelperVoid.FromException<TResult>(e);
+                        return Promise<TResult>.FromException(e);
                     }
                 }
 
@@ -787,34 +769,6 @@ namespace Proto.Promises
 #endif
             internal static class CallbackHelperVoid
             {
-                internal static Promise FromException(Exception e)
-                {
-                    if (e is OperationCanceledException)
-                    {
-                        var promise = Promise.Canceled();
-                        return new Promise(promise._ref, promise._id);
-                    }
-                    else
-                    {
-                        var promise = Promise.Rejected(e);
-                        return new Promise(promise._ref, promise._id);
-                    }
-                }
-
-                internal static Promise<TResult> FromException<TResult>(Exception e)
-                {
-                    if (e is OperationCanceledException)
-                    {
-                        var promise = Promise<TResult>.Canceled();
-                        return new Promise<TResult>(promise._ref, promise._id);
-                    }
-                    else
-                    {
-                        var promise = Promise<TResult>.Rejected(e);
-                        return new Promise<TResult>(promise._ref, promise._id);
-                    }
-                }
-
                 [MethodImpl(InlineOption)]
                 private static Promise InvokeCallbackDirect<TDelegate>(TDelegate resolver, in Promise resolved)
                     where TDelegate : IAction
@@ -827,7 +781,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return FromException(e);
+                        return Promise.FromException(e);
                     }
                 }
 
@@ -844,7 +798,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return FromException(e);
+                        return Promise.FromException(e);
                     }
                 }
 
@@ -858,7 +812,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return FromException(e);
+                        return Promise.FromException(e);
                     }
                 }
 
@@ -873,16 +827,14 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        return FromException(e);
+                        return Promise.FromException(e);
                     }
                 }
 
                 internal static Promise Canceled(PromiseRefBase _ref, short promiseId)
                 {
                     _ref?.MaybeMarkAwaitedAndDispose(promiseId);
-                    var deferred = DeferredPromise<VoidResult>.GetOrCreate();
-                    deferred.CancelDirect();
-                    return new Promise(deferred, deferred.Id);
+                    return Promise.Canceled();
                 }
 
                 [MethodImpl(InlineOption)]
@@ -907,22 +859,12 @@ namespace Proto.Promises
                     return new Promise(newRef, newRef.Id);
                 }
 
-                internal static Promise<TResult> Duplicate<TResult>(Promise<TResult> _this)
-                {
-                    if (_this._ref == null)
-                    {
-                        return _this;
-                    }
-                    var newRef = _this._ref.GetDuplicateT(_this._id);
-                    return new Promise<TResult>(newRef, newRef.Id, _this._result);
-                }
-
                 internal static Promise WaitAsync(Promise _this, CancelationToken cancelationToken)
                 {
                     if (_this._ref == null)
                     {
                         return cancelationToken.IsCancelationRequested
-                            ? Canceled(_this._ref, _this._id)
+                            ? Promise.Canceled()
                             : _this;
                     }
                     PromiseRefBase promise;
@@ -938,223 +880,65 @@ namespace Proto.Promises
                     return new Promise(promise, promise.Id);
                 }
 
-                internal static Promise<TResult> WaitAsync<TResult>(Promise<TResult> _this, CancelationToken cancelationToken)
+                internal static Promise ConfigureContinuation(Promise _this, ContinuationOptions continuationOptions)
                 {
+                    if (continuationOptions.IsSynchronous)
+                    {
+                        return Duplicate(_this);
+                    }
+
+                    if (continuationOptions.CompletedBehavior == CompletedContinuationBehavior.Synchronous
+                        && (_this._ref == null || _this._ref.State != Promise.State.Pending))
+                    {
+                        return Duplicate(_this);
+                    }
+
+                    var synchronizationContext = continuationOptions.GetContinuationContext();
+                    ConfiguredPromise<VoidResult> promise;
                     if (_this._ref == null)
                     {
-                        return cancelationToken.IsCancelationRequested
-                            ? CallbackHelperResult<TResult>.Canceled(_this._ref, _this._id)
-                            : _this;
-                    }
-                    PromiseRef<TResult> promise;
-                    if (cancelationToken.CanBeCanceled)
-                    {
-                        var p = PromiseDuplicateCancel<TResult>.GetOrCreate();
-                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
+                        promise = ConfiguredPromise<VoidResult>.GetOrCreateFromResolved(synchronizationContext, default, continuationOptions.CompletedBehavior);
                     }
                     else
                     {
-                        promise = _this._ref.GetDuplicateT(_this._id);
-                    }
-                    return new Promise<TResult>(promise, promise.Id, _this._result);
-                }
-
-                internal static Promise WaitAsync(Promise _this, SynchronizationOption continuationOption, SynchronizationContext synchronizationContext, bool forceAsync, CancelationToken cancelationToken)
-                {
-                    switch (continuationOption)
-                    {
-                        case SynchronizationOption.Synchronous:
-                        {
-                            return WaitAsync(_this, cancelationToken);
-                        }
-                        case SynchronizationOption.Foreground:
-                        {
-                            synchronizationContext = Promise.Config.ForegroundContext;
-                            if (synchronizationContext == null)
-                            {
-                                throw new InvalidOperationException(
-                                    "SynchronizationOption.Foreground was provided, but Promise.Config.ForegroundContext was null. " +
-                                    "You should set Promise.Config.ForegroundContext at the start of your application (which may be as simple as 'Promise.Config.ForegroundContext = SynchronizationContext.Current;').",
-                                    GetFormattedStacktrace(2));
-                            }
-                            break;
-                        }
-                        case SynchronizationOption.Background:
-                        {
-                            synchronizationContext = Promise.Config.BackgroundContext;
-                            goto default;
-                        }
-                        default: // SynchronizationOption.Explicit
-                        {
-                            if (synchronizationContext == null)
-                            {
-                                synchronizationContext = BackgroundSynchronizationContextSentinel.s_instance;
-                            }
-                            break;
-                        }
-                    }
-
-                    PromiseConfigured<VoidResult> promise;
-                    if (_this._ref == null)
-                    {
-                        promise = PromiseConfigured<VoidResult>.GetOrCreateFromResolved(synchronizationContext, new VoidResult(), forceAsync);
-                        promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
-                    }
-                    else
-                    {
-                        promise = PromiseConfigured<VoidResult>.GetOrCreate(synchronizationContext, forceAsync);
-                        _this._ref.HookupCancelablePromise(promise, _this._id, cancelationToken, ref promise._cancelationHelper);
+                        promise = ConfiguredPromise<VoidResult>.GetOrCreate(synchronizationContext, continuationOptions.CompletedBehavior);
+                        _this._ref.HookupNewPromise(_this._id, promise);
                     }
                     return new Promise(promise, promise.Id);
-                }
-
-                internal static Promise<TResult> WaitAsync<TResult>(Promise<TResult> _this, SynchronizationOption continuationOption, SynchronizationContext synchronizationContext, bool forceAsync, CancelationToken cancelationToken)
-                {
-                    switch (continuationOption)
-                    {
-                        case SynchronizationOption.Synchronous:
-                        {
-                            return WaitAsync(_this, cancelationToken);
-                        }
-                        case SynchronizationOption.Foreground:
-                        {
-                            synchronizationContext = Promise.Config.ForegroundContext;
-                            if (synchronizationContext == null)
-                            {
-                                throw new InvalidOperationException(
-                                    "SynchronizationOption.Foreground was provided, but Promise.Config.ForegroundContext was null. " +
-                                    "You should set Promise.Config.ForegroundContext at the start of your application (which may be as simple as 'Promise.Config.ForegroundContext = SynchronizationContext.Current;').",
-                                    GetFormattedStacktrace(2));
-                            }
-                            break;
-                        }
-                        case SynchronizationOption.Background:
-                        {
-                            synchronizationContext = Promise.Config.BackgroundContext;
-                            goto default;
-                        }
-                        default: // SynchronizationOption.Explicit
-                        {
-                            if (synchronizationContext == null)
-                            {
-                                synchronizationContext = BackgroundSynchronizationContextSentinel.s_instance;
-                            }
-                            break;
-                        }
-                    }
-
-                    PromiseConfigured<TResult> promise;
-                    if (_this._ref == null)
-                    {
-                        promise = PromiseConfigured<TResult>.GetOrCreateFromResolved(synchronizationContext, _this._result, forceAsync);
-                        promise._cancelationHelper.Register(cancelationToken, promise); // Very important, must register after promise is fully setup.
-                    }
-                    else
-                    {
-                        promise = PromiseConfigured<TResult>.GetOrCreate(synchronizationContext, forceAsync);
-                        _this._ref.HookupCancelablePromise(promise, _this._id, cancelationToken, ref promise._cancelationHelper);
-                    }
-                    return new Promise<TResult>(promise, promise.Id, _this._result);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise New<TDelegate>(TDelegate runner, SynchronizationOption invokeOption, SynchronizationContext synchronizationContext, bool forceAsync)
+                internal static Promise New<TDelegate>(TDelegate runner, ContinuationOptions invokeOptions)
                     where TDelegate : IDelegateNew<VoidResult>
                 {
                     var promise = DeferredNewPromise<VoidResult, TDelegate>.GetOrCreate(runner);
-                    promise.RunOrScheduleOnContext(invokeOption, synchronizationContext, forceAsync);
+                    promise.RunOrScheduleOnContext(invokeOptions);
                     return new Promise(promise, promise.Id);
                 }
 
-                internal static Promise Run<TDelegate>(TDelegate runner, SynchronizationOption invokeOption, SynchronizationContext synchronizationContext, bool forceAsync)
+                internal static Promise Run<TDelegate>(TDelegate runner, ContinuationOptions invokeOptions)
                     where TDelegate : IAction, IDelegateRun
                 {
-                    switch (invokeOption)
-                    {
-                        case SynchronizationOption.Synchronous:
-                        {
-                        return InvokeCallbackDirect(runner);
-                        }
-                        case SynchronizationOption.Foreground:
-                        {
-                            synchronizationContext = Promise.Config.ForegroundContext;
-                            if (synchronizationContext == null)
-                            {
-                                throw new InvalidOperationException(
-                                    "SynchronizationOption.Foreground was provided, but Promise.Config.ForegroundContext was null. " +
-                                    "You should set Promise.Config.ForegroundContext at the start of your application (which may be as simple as 'Promise.Config.ForegroundContext = SynchronizationContext.Current;').",
-                                    GetFormattedStacktrace(2));
-                            }
-                            break;
-                        }
-                        case SynchronizationOption.Background:
-                        {
-                            synchronizationContext = Promise.Config.BackgroundContext;
-                            goto default;
-                        }
-                        default: // SynchronizationOption.Explicit
-                        {
-                            if (synchronizationContext == null)
-                            {
-                                synchronizationContext = BackgroundSynchronizationContextSentinel.s_instance;
-                            }
-                            break;
-                        }
-                    }
-
-                    if (!forceAsync & synchronizationContext == Promise.Manager.ThreadStaticSynchronizationContext)
+                    if (invokeOptions.GetShouldContinueImmediately(out var context))
                     {
                         return InvokeCallbackDirect(runner);
                     }
 
                     var promise = RunPromise<VoidResult, TDelegate>.GetOrCreate(runner);
-                    promise.ScheduleOnContext(synchronizationContext);
+                    promise.ScheduleOnContext(context);
                     return new Promise(promise, promise.Id);
                 }
 
-                internal static Promise RunWait<TDelegate>(TDelegate runner, SynchronizationOption invokeOption, SynchronizationContext synchronizationContext, bool forceAsync)
+                internal static Promise RunWait<TDelegate>(TDelegate runner, ContinuationOptions invokeOptions)
                     where TDelegate : IFunc<Promise>, IDelegateRunPromise
                 {
-                    switch (invokeOption)
-                    {
-                        case SynchronizationOption.Synchronous:
-                        {
-                            return InvokeCallbackAndAdoptDirect(runner);
-                        }
-                        case SynchronizationOption.Foreground:
-                        {
-                            synchronizationContext = Promise.Config.ForegroundContext;
-                            if (synchronizationContext == null)
-                            {
-                                throw new InvalidOperationException(
-                                    "SynchronizationOption.Foreground was provided, but Promise.Config.ForegroundContext was null. " +
-                                    "You should set Promise.Config.ForegroundContext at the start of your application (which may be as simple as 'Promise.Config.ForegroundContext = SynchronizationContext.Current;').",
-                                    GetFormattedStacktrace(2));
-                            }
-                            break;
-                        }
-                        case SynchronizationOption.Background:
-                        {
-                            synchronizationContext = Promise.Config.BackgroundContext;
-                            goto default;
-                        }
-                        default: // SynchronizationOption.Explicit
-                        {
-                            if (synchronizationContext == null)
-                            {
-                                synchronizationContext = BackgroundSynchronizationContextSentinel.s_instance;
-                            }
-                            break;
-                        }
-                    }
-
-                    if (!forceAsync & synchronizationContext == Promise.Manager.ThreadStaticSynchronizationContext)
+                    if (invokeOptions.GetShouldContinueImmediately(out var context))
                     {
                         return InvokeCallbackAndAdoptDirect(runner);
                     }
 
                     var promise = RunWaitPromise<VoidResult, TDelegate>.GetOrCreate(runner);
-                    promise.ScheduleOnContext(synchronizationContext);
+                    promise.ScheduleOnContext(context);
                     return new Promise(promise, promise.Id);
                 }
 
@@ -1350,7 +1134,7 @@ namespace Proto.Promises
                         }
                         catch (Exception e)
                         {
-                            return FromException<TResult>(e);
+                            return Promise<TResult>.FromException(e);
                         }
                     }
                     var promise = PromiseFinally<TResult, TFinalizer>.GetOrCreate(finalizer);
@@ -1374,7 +1158,7 @@ namespace Proto.Promises
                         }
                         catch (Exception e)
                         {
-                            return FromException<TResult>(e);
+                            return Promise<TResult>.FromException(e);
                         }
                     }
                     var promise = PromiseFinallyWait<TResult, TFinalizer>.GetOrCreate(finalizer);
