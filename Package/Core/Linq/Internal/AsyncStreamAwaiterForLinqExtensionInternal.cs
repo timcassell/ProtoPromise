@@ -17,7 +17,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal readonly partial struct AsyncStreamAwaiterForLinqExtension<T> : ICriticalNotifyCompletion, IPromiseAwaiter
+            internal readonly partial struct AsyncStreamAwaiterForLinqExtension<T> : ICriticalNotifyCompletion, IPromiseAwareAwaiter
             {
                 private readonly AsyncEnumerableWithIterator<T> _target;
                 private readonly int _enumerableId;
@@ -63,7 +63,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                void IPromiseAwaiter.AwaitOnCompletedInternal(PromiseRefBase asyncPromiseRef)
+                void IPromiseAwareAwaiter.AwaitOnCompletedInternal(PromiseRefBase asyncPromiseRef, ref object continuationContext)
                     => _target.AwaitOnCompletedForAsyncStreamYielder(asyncPromiseRef, _enumerableId, hasValue: false);
 
                 void INotifyCompletion.OnCompleted(Action continuation) => throw new System.InvalidOperationException("Must only be used in async Linq extension methods.");

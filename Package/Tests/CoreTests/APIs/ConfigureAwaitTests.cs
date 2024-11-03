@@ -45,8 +45,9 @@ namespace ProtoPromiseTests.APIs
             foreach (CompletedContinuationBehavior completedBehavior in Enum.GetValues(typeof(CompletedContinuationBehavior)))
             foreach (bool alreadyComplete in new[] { true, false })
             foreach (SynchronizationType completeContext in alreadyComplete ? foregroundOnlyContext : completeContexts)
+            foreach (bool asyncFlowExecutionContext in new[] { true, false })
             {
-                yield return new TestCaseData(completeType, continuationContext, completedBehavior, alreadyComplete, completeContext);
+                yield return new TestCaseData(completeType, continuationContext, completedBehavior, alreadyComplete, completeContext, asyncFlowExecutionContext);
             }
         }
 
@@ -56,8 +57,12 @@ namespace ProtoPromiseTests.APIs
             SynchronizationType continuationContext,
             CompletedContinuationBehavior completedBehavior,
             bool alreadyComplete,
-            SynchronizationType completeContext)
+            SynchronizationType completeContext,
+            bool asyncFlowExecutionContext)
         {
+            // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
+            Promise.Config.s_asyncFlowExecutionContextEnabled = asyncFlowExecutionContext;
+
             var foregroundThread = Thread.CurrentThread;
             var threadHelper = new ThreadHelper();
 
@@ -108,8 +113,12 @@ namespace ProtoPromiseTests.APIs
             SynchronizationType continuationContext,
             CompletedContinuationBehavior completedBehavior,
             bool alreadyComplete,
-            SynchronizationType completeContext)
+            SynchronizationType completeContext,
+            bool asyncFlowExecutionContext)
         {
+            // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
+            Promise.Config.s_asyncFlowExecutionContextEnabled = asyncFlowExecutionContext;
+
             var foregroundThread = Thread.CurrentThread;
             var threadHelper = new ThreadHelper();
 
@@ -162,8 +171,12 @@ namespace ProtoPromiseTests.APIs
 #endif
             )] SynchronizationType continuationContext,
             [Values] CompletedContinuationBehavior completedBehavior,
-            [Values] bool alreadyComplete)
+            [Values] bool alreadyComplete,
+            [Values] bool asyncFlowExecutionContext)
         {
+            // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
+            Promise.Config.s_asyncFlowExecutionContextEnabled = asyncFlowExecutionContext;
+
             var foregroundThread = Thread.CurrentThread;
             var continuationOptions = TestHelper.GetContinuationOptions(continuationContext, completedBehavior);
 
@@ -219,8 +232,12 @@ namespace ProtoPromiseTests.APIs
 #endif
             )] SynchronizationType continuationContext,
             [Values] CompletedContinuationBehavior completedBehavior,
-            [Values] bool alreadyComplete)
+            [Values] bool alreadyComplete,
+            [Values] bool asyncFlowExecutionContext)
         {
+            // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
+            Promise.Config.s_asyncFlowExecutionContextEnabled = asyncFlowExecutionContext;
+
             var foregroundThread = Thread.CurrentThread;
             var continuationOptions = TestHelper.GetContinuationOptions(continuationContext, completedBehavior);
 

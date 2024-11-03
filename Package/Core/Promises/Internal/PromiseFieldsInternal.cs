@@ -434,11 +434,11 @@ namespace Proto.Promises
 
             partial class AsyncPromiseRef<TResult> : PromiseSingleAwait<TResult>
             {
-                // TODO: change this field to object. Either store ExecutionContext or SynchronizationContext.
-                // If both contexts need to be used, use ConfiguredAsyncPromiseContinuer to wrap them both.
-                // We already null-check it, so it won't cost anything in the common case. If it's not null, then we proceed to type-check.
-                // This should improve performance of Promise.ConfigureAwait so that it can avoid allocating ConfiguredAsyncPromiseContinuer in the common case.
-                private ExecutionContext _executionContext;
+                // TODO: Share the field with IRejectContainer on the base class. A promise will never have both a continuation context and a reject container.
+
+                // Common case this is null. If Promise.Config.AsyncFlowExecutionContextEnabled is true, this may be ExecutionContext.
+                // If an awaited Promise was configured, this may be SynchronizationContext. If both cases occurred, this will be ConfiguredAwaitDualContext.
+                private object _continuationContext;
 
 #if !OPTIMIZED_ASYNC_MODE
                 partial class PromiseMethodContinuer : HandleablePromiseBase

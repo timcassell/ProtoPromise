@@ -173,9 +173,9 @@ namespace Proto.Promises
             }
         }
 
-        internal interface IPromiseAwaiter
+        internal interface IPromiseAwareAwaiter
         {
-            void AwaitOnCompletedInternal(PromiseRefBase asyncPromiseRef);
+            void AwaitOnCompletedInternal(PromiseRefBase asyncPromiseRef, ref object continuationContext);
         }
 
 #if !NETCOREAPP
@@ -183,33 +183,33 @@ namespace Proto.Promises
 #if UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER // Even though CIL has always had function pointers, Unity did not properly support the CIL instructions until C# 9/ .Net Standard 2.1 support was added.
         internal unsafe static class AwaitOverrider<TAwaiter> where TAwaiter : INotifyCompletion
         {
-            internal static delegate*<ref TAwaiter, PromiseRefBase, Action, void> s_awaitFunc = &DefaultAwaitOnCompleted;
+            internal static delegate*<ref TAwaiter, PromiseRefBase, ref object, Action, void> s_awaitFunc = &DefaultAwaitOnCompleted;
 
             [MethodImpl(InlineOption)]
-            private static void DefaultAwaitOnCompleted(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, Action continuation)
+            private static void DefaultAwaitOnCompleted(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, ref object continuationContext, Action continuation)
                 => awaiter.OnCompleted(continuation);
 
             [MethodImpl(InlineOption)]
-            internal static void AwaitOnCompleted(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, Action continuation)
+            internal static void AwaitOnCompleted(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, ref object continuationContext, Action continuation)
                 // We call the function without a branch. If the awaiter is not a known awaiter type, the default function will be called.
-                => s_awaitFunc(ref awaiter, asyncPromiseRef, continuation);
+                => s_awaitFunc(ref awaiter, asyncPromiseRef, ref continuationContext, continuation);
         }
 
         internal unsafe static class CriticalAwaitOverrider<TAwaiter> where TAwaiter : ICriticalNotifyCompletion
         {
-            internal static delegate*<ref TAwaiter, PromiseRefBase, Action, void> s_awaitFunc = &DefaultAwaitOnCompleted;
+            internal static delegate*<ref TAwaiter, PromiseRefBase, ref object, Action, void> s_awaitFunc = &DefaultAwaitOnCompleted;
 
             [MethodImpl(InlineOption)]
-            private static void DefaultAwaitOnCompleted(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, Action continuation)
+            private static void DefaultAwaitOnCompleted(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, ref object continuationContext, Action continuation)
                 => awaiter.UnsafeOnCompleted(continuation);
 
             [MethodImpl(InlineOption)]
-            internal static void AwaitOnCompleted(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, Action continuation)
+            internal static void AwaitOnCompleted(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, ref object continuationContext, Action continuation)
                 // We call the function without a branch. If the awaiter is not a known awaiter type, the default function will be called.
-                => s_awaitFunc(ref awaiter, asyncPromiseRef, continuation);
+                => s_awaitFunc(ref awaiter, asyncPromiseRef, ref continuationContext, continuation);
         }
 
-        internal unsafe static class AwaitOverriderImpl<TAwaiter> where TAwaiter : struct, ICriticalNotifyCompletion, IPromiseAwaiter
+        internal unsafe static class AwaitOverriderImpl<TAwaiter> where TAwaiter : struct, ICriticalNotifyCompletion, IPromiseAwareAwaiter
         {
             [MethodImpl(InlineOption)]
             internal static void Create()
@@ -220,8 +220,8 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            private static void AwaitOnCompletedOverride(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, Action continuation)
-                => awaiter.AwaitOnCompletedInternal(asyncPromiseRef);
+            private static void AwaitOnCompletedOverride(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, ref object continuationContext, Action continuation)
+                => awaiter.AwaitOnCompletedInternal(asyncPromiseRef, ref continuationContext);
         }
 #else // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER
         internal abstract class AwaitOverrider<TAwaiter> where TAwaiter : INotifyCompletion
@@ -229,11 +229,11 @@ namespace Proto.Promises
             internal static AwaitOverrider<TAwaiter> s_awaitOverrider;
 
             [MethodImpl(InlineOption)]
-            internal static void AwaitOnCompleted(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, Action continuation)
+            internal static void AwaitOnCompleted(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, ref object continuationContext, Action continuation)
             {
                 if (s_awaitOverrider != null)
                 {
-                    s_awaitOverrider.AwaitOnCompletedVirt(ref awaiter, asyncPromiseRef);
+                    s_awaitOverrider.AwaitOnCompletedVirt(ref awaiter, asyncPromiseRef, ref continuationContext);
                 }
                 else
                 {
@@ -241,17 +241,17 @@ namespace Proto.Promises
                 }
             }
 
-            internal abstract void AwaitOnCompletedVirt(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef);
+            internal abstract void AwaitOnCompletedVirt(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, ref object continuationContext);
         }
 
         internal static class CriticalAwaitOverrider<TAwaiter> where TAwaiter : ICriticalNotifyCompletion
         {
             [MethodImpl(InlineOption)]
-            internal static void AwaitOnCompleted(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, Action continuation)
+            internal static void AwaitOnCompleted(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, ref object continuationContext, Action continuation)
             {
                 if (AwaitOverrider<TAwaiter>.s_awaitOverrider != null)
                 {
-                    AwaitOverrider<TAwaiter>.s_awaitOverrider.AwaitOnCompletedVirt(ref awaiter, asyncPromiseRef);
+                    AwaitOverrider<TAwaiter>.s_awaitOverrider.AwaitOnCompletedVirt(ref awaiter, asyncPromiseRef, ref continuationContext);
                 }
                 else
                 {
@@ -260,7 +260,7 @@ namespace Proto.Promises
             }
         }
 
-        internal sealed class AwaitOverriderImpl<TAwaiter> : AwaitOverrider<TAwaiter> where TAwaiter : struct, ICriticalNotifyCompletion, IPromiseAwaiter
+        internal sealed class AwaitOverriderImpl<TAwaiter> : AwaitOverrider<TAwaiter> where TAwaiter : struct, ICriticalNotifyCompletion, IPromiseAwareAwaiter
         {
             [MethodImpl(InlineOption)]
             internal static void Create()
@@ -274,9 +274,9 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal override void AwaitOnCompletedVirt(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef)
+            internal override void AwaitOnCompletedVirt(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef, ref object continuationContext)
             {
-                awaiter.AwaitOnCompletedInternal(asyncPromiseRef);
+                awaiter.AwaitOnCompletedInternal(asyncPromiseRef, ref continuationContext);
             }
         }
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER
