@@ -49,9 +49,11 @@ See the [C# Asynchronous Benchmarks Repo](https://github.com/timcassell/CSharpAs
 
 ## Latest Updates
 
-### v3.1.1 - August 16, 2024
+### v3.2.0 - November 3, 2024
 
-- Fixed a race condition with `Promise.AsValueTask()`.
+- Added Channels.
+- Added `Promise(<T>).{ConfigureAwait, ConfigureContinuation}` APIs.
+- Added `SynchronizationOption.CapturedContext` option.
 
 See [ChangeLog](https://github.com/timcassell/ProtoPromise/tree/master/Docs/Changelog) for the full changelog.
 
