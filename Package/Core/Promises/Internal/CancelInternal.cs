@@ -17,7 +17,7 @@ namespace Proto.Promises
             {
                 // PromiseSingleAwait
 
-                MaybeReportUnhandledRejection(_rejectContainer, state);
+                MaybeReportUnhandledRejection(state);
                 MaybeDispose();
             }
 
@@ -272,7 +272,7 @@ namespace Proto.Promises
                     }
                     else if (state == Promise.State.Rejected)
                     {
-                        var rejectContainer = handler._rejectContainer;
+                        var rejectContainer = handler.RejectContainer;
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
                         _cancelationHelper.TryRelease();
@@ -363,7 +363,7 @@ namespace Proto.Promises
                         handler.SuppressRejection = true;
                         _cancelationHelper.TryRelease();
                         invokingRejected = true;
-                        rejectCallback.InvokeRejecter(handler, handler._rejectContainer, this);
+                        rejectCallback.InvokeRejecter(handler, handler.RejectContainer, this);
                     }
                     else
                     {
@@ -424,7 +424,7 @@ namespace Proto.Promises
                     {
                         handler.SuppressRejection = true;
                         _cancelationHelper.TryRelease();
-                        _continuer.Invoke(handler, handler._rejectContainer, state, this);
+                        _continuer.Invoke(handler, handler.RejectContainer, state, this);
                     }
                     else
                     {
@@ -494,7 +494,7 @@ namespace Proto.Promises
                     {
                         handler.SuppressRejection = true;
                         _cancelationHelper.TryRelease();
-                        callback.Invoke(handler, handler._rejectContainer, state, this);
+                        callback.Invoke(handler, handler.RejectContainer, state, this);
                     }
                     else
                     {

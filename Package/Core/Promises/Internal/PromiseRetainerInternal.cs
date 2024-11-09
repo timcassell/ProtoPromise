@@ -85,7 +85,7 @@ namespace Proto.Promises
                     _nextBranches.Dispose();
                     // Rejection maybe wasn't caught.
                     // We handle this directly here because we don't add the PromiseForgetSentinel to this type when it is disposed.
-                    MaybeReportUnhandledRejection(_rejectContainer, State);
+                    MaybeReportUnhandledRejection(State);
                     Dispose();
                     ObjectPool.MaybeRepool(this);
                 }
@@ -166,7 +166,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     handler.SetCompletionState(state);
-                    _rejectContainer = handler._rejectContainer;
+                    RejectContainer = handler.RejectContainer;
                     handler.SuppressRejection = true;
                     _result = handler.GetResult<TResult>();
                     SetCompletionState(state);

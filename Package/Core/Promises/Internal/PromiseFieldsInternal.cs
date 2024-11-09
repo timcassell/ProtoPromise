@@ -21,6 +21,7 @@ using Proto.Promises.Collections;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace Proto.Promises
@@ -91,13 +92,27 @@ namespace Proto.Promises
             volatile private int _waitState; // int for Interlocked.
         }
 
+        // We union the fields together to save space.
+        // The field may contain the ExecutionContext or SynchronizationContext of the yielded `async Promise` while it is pending.
+        // When the promise is complete in a rejected state, it will contain the IRejectContainer.
+        [StructLayout(LayoutKind.Explicit)]
+        private struct ContextRejectUnion
+        {
+            // Common case this is null. If Promise.Config.AsyncFlowExecutionContextEnabled is true, this may be ExecutionContext.
+            // If an awaited Promise was configured, this may be SynchronizationContext. If both cases occurred, this will be ConfiguredAwaitDualContext.
+            [FieldOffset(0)]
+            internal object _continuationContext;
+            [FieldOffset(0)]
+            internal IRejectContainer _rejectContainer;
+        }
+
         partial class PromiseRefBase : HandleablePromiseBase
         {
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
             internal PromiseRefBase _previous; // Used to detect circular awaits.
 #endif
-            internal IRejectContainer _rejectContainer;
+            private ContextRejectUnion _contextOrRejection;
 
             private short _promiseId = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
             volatile private Promise.State _state;
@@ -434,12 +449,6 @@ namespace Proto.Promises
 
             partial class AsyncPromiseRef<TResult> : PromiseSingleAwait<TResult>
             {
-                // TODO: Share the field with IRejectContainer on the base class. A promise will never have both a continuation context and a reject container.
-
-                // Common case this is null. If Promise.Config.AsyncFlowExecutionContextEnabled is true, this may be ExecutionContext.
-                // If an awaited Promise was configured, this may be SynchronizationContext. If both cases occurred, this will be ConfiguredAwaitDualContext.
-                private object _continuationContext;
-
 #if !OPTIMIZED_ASYNC_MODE
                 partial class PromiseMethodContinuer : HandleablePromiseBase
                 {

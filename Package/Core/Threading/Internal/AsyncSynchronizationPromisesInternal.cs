@@ -79,7 +79,7 @@ namespace Proto.Promises
                 internal void Reject(IRejectContainer rejectContainer)
                 {
                     _cancelationRegistration.Dispose();
-                    _rejectContainer = rejectContainer;
+                    RejectContainer = rejectContainer;
                     _tempState = Promise.State.Rejected;
                     Continue();
                 }

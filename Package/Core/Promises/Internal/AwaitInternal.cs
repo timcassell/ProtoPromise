@@ -35,7 +35,7 @@ namespace Proto.Promises
                 if (state == Promise.State.Rejected)
                 {
                     SuppressRejection = true;
-                    var exceptionDispatchInfo = _rejectContainer.GetExceptionDispatchInfo();
+                    var exceptionDispatchInfo = RejectContainer.GetExceptionDispatchInfo();
                     MaybeDispose();
                     return exceptionDispatchInfo;
                 }
@@ -64,7 +64,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal Promise.ResultContainer GetResultContainerAndMaybeDispose()
             {
-                var resultContainer = new Promise.ResultContainer(_rejectContainer, State);
+                var resultContainer = new Promise.ResultContainer(RejectContainer, State);
                 SuppressRejection = true;
                 MaybeDispose();
                 return resultContainer;
@@ -101,7 +101,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 new internal Promise<TResult>.ResultContainer GetResultContainerAndMaybeDispose()
                 {
-                    var resultContainer = new Promise<TResult>.ResultContainer(_result, _rejectContainer, State);
+                    var resultContainer = new Promise<TResult>.ResultContainer(_result, RejectContainer, State);
                     SuppressRejection = true;
                     MaybeDispose();
                     return resultContainer;

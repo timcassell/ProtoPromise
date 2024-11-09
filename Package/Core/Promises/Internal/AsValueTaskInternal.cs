@@ -113,7 +113,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        var exception = state == Promise.State.Rejected ? handler._rejectContainer.GetValueAsException() : Promise.CancelException();
+                        var exception = state == Promise.State.Rejected ? handler.RejectContainer.GetValueAsException() : Promise.CancelException();
                         handler.MaybeDispose();
                         _core.SetException(exception);
                     }

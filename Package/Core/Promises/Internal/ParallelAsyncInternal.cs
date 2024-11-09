@@ -354,7 +354,7 @@ namespace Proto.Promises
                 internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
                     RemoveComplete(handler);
-                    var rejectContainer = handler._rejectContainer;
+                    var rejectContainer = handler.RejectContainer;
                     handler.SuppressRejection = true;
                     handler.SetCompletionState(state);
                     handler.MaybeDispose();
@@ -467,7 +467,7 @@ namespace Proto.Promises
                     // This must be the very last thing done.
                     if (_exceptions != null)
                     {
-                        _rejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
                         _exceptions = null;
                         HandleNextInternal(Promise.State.Rejected);
                     }
@@ -511,7 +511,7 @@ namespace Proto.Promises
                     handler.SetCompletionState(state);
                     if (state == Promise.State.Rejected)
                     {
-                        RecordException(handler._rejectContainer.GetValueAsException());
+                        RecordException(handler.RejectContainer.GetValueAsException());
                         handler.SuppressRejection = true;
                     }
                     handler.MaybeDispose();

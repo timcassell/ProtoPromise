@@ -143,7 +143,7 @@ namespace Proto.Promises
             {
                 handler.SetCompletionState(state);
                 _result = handler.GetResult<T>();
-                _rejectContainer = handler._rejectContainer;
+                RejectContainer = handler.RejectContainer;
                 handler.SuppressRejection = true;
                 handler.MaybeDispose();
                 OnComplete(state);
@@ -260,7 +260,7 @@ namespace Proto.Promises
             {
                 handler.SetCompletionState(state);
                 _result = handler.GetResult<T>();
-                _rejectContainer = handler._rejectContainer;
+                RejectContainer = handler.RejectContainer;
                 handler.SuppressRejection = true;
                 handler.MaybeDispose();
                 OnComplete(state);
@@ -335,7 +335,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        _rejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
                         OnComplete(Promise.State.Rejected);
                     }
                     ClearCurrentInvoker();
@@ -356,7 +356,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        _rejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
                         OnComplete(Promise.State.Rejected);
                     }
                     ClearCurrentInvoker();
@@ -382,7 +382,7 @@ namespace Proto.Promises
                     {
                         var state = handler.State;
                         _owner._result = handler.GetResult<TResult>();
-                        _owner._rejectContainer = handler._rejectContainer;
+                        _owner.RejectContainer = handler.RejectContainer;
                         _owner.SuppressRejection = true;
                         handler.MaybeDispose();
                         _owner.OnComplete(state);

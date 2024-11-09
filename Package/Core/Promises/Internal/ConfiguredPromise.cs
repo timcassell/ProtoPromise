@@ -80,7 +80,7 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
 
                     handler.SetCompletionState(state);
-                    _rejectContainer = handler._rejectContainer;
+                    RejectContainer = handler.RejectContainer;
                     handler.SuppressRejection = true;
                     _result = handler.GetResult<TResult>();
                     _tempState = state;

@@ -56,7 +56,7 @@ namespace Proto.Promises
                     if (TrySetComplete(handler))
                     {
                         _result = handler.GetResult<TResult>();
-                        _rejectContainer = handler._rejectContainer;
+                        RejectContainer = handler.RejectContainer;
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
                         InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1);
@@ -111,7 +111,7 @@ namespace Proto.Promises
                     if (TrySetComplete(handler))
                     {
                         _result = index;
-                        _rejectContainer = handler._rejectContainer;
+                        RejectContainer = handler.RejectContainer;
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
                         InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1);
@@ -166,7 +166,7 @@ namespace Proto.Promises
                     if (TrySetComplete(handler))
                     {
                         _result = (index, handler.GetResult<TResult>());
-                        _rejectContainer = handler._rejectContainer;
+                        RejectContainer = handler.RejectContainer;
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
                         InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1);
@@ -236,7 +236,7 @@ namespace Proto.Promises
                     bool isComplete = state == Promise.State.Resolved
                         ? TrySetComplete(handler)
                         : RemoveWaiterAndGetIsComplete(handler);
-                    _rejectContainer = handler._rejectContainer;
+                    RejectContainer = handler.RejectContainer;
                     handler.SuppressRejection = true;
                     if (isComplete)
                     {
@@ -294,7 +294,7 @@ namespace Proto.Promises
                     bool isComplete = handler.State == Promise.State.Resolved
                         ? TrySetComplete(handler)
                         : RemoveWaiterAndGetIsComplete(handler);
-                    _rejectContainer = handler._rejectContainer;
+                    RejectContainer = handler.RejectContainer;
                     handler.SuppressRejection = true;
                     if (isComplete)
                     {
@@ -352,7 +352,7 @@ namespace Proto.Promises
                     bool isComplete = handler.State == Promise.State.Resolved
                         ? TrySetComplete(handler)
                         : RemoveWaiterAndGetIsComplete(handler);
-                    _rejectContainer = handler._rejectContainer;
+                    RejectContainer = handler.RejectContainer;
                     handler.SuppressRejection = true;
                     if (isComplete)
                     {

@@ -1359,7 +1359,7 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref Promise<T>.ResultContainer result)
                 {
-                    result = new Promise<T>.ResultContainer(handler.GetResult<T>(), handler._rejectContainer, handler.State);
+                    result = new Promise<T>.ResultContainer(handler.GetResult<T>(), handler.RejectContainer, handler.State);
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
@@ -1385,7 +1385,7 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 private static void GetMergeResult(Internal.PromiseRefBase handler, int index, ref ResultContainer result)
                 {
-                    result = new ResultContainer(handler._rejectContainer, handler.State);
+                    result = new ResultContainer(handler.RejectContainer, handler.State);
                 }
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
