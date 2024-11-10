@@ -363,7 +363,6 @@ namespace Proto.Promises
                     {
                         Dispose();
                         _stateMachine = default;
-                        ContinuationContext = null;
                         ObjectPool.MaybeRepool(this);
                     }
 
