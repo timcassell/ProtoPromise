@@ -73,12 +73,6 @@ namespace Proto.Promises
 #endif
             internal partial class AsyncPromiseRef<TResult> : PromiseSingleAwait<TResult>
             {
-                internal ref object ContinuationContext
-                {
-                    [MethodImpl(InlineOption)]
-                    get => ref _contextOrRejection._continuationContext;
-                }
-
                 [MethodImpl(InlineOption)]
                 private static AsyncPromiseRef<TResult> GetFromPoolOrCreate()
                 {

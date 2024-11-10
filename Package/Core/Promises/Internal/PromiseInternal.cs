@@ -185,7 +185,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal abstract partial class PromiseRefBase : HandleablePromiseBase, ITraceable
+        internal abstract partial class PromiseRefBase : PromiseRefBaseWithStructField, ITraceable
         {
             internal void HandleSelfWithoutResult(PromiseRefBase handler, Promise.State state)
             {
@@ -243,15 +243,6 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 private set => _state = value;
             }
-
-            internal IRejectContainer RejectContainer
-            {
-                [MethodImpl(InlineOption)]
-                get => _contextOrRejection._rejectContainer;
-                [MethodImpl(InlineOption)]
-                set => _contextOrRejection._rejectContainer = value;
-            }
-
             internal bool SuppressRejection
             {
                 [MethodImpl(InlineOption)]
