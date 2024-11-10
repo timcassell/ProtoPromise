@@ -41,7 +41,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal void HookupAwaiterWithContext(PromiseRefBase awaiter, short promiseId, ref object continuationContext, SynchronizationContext synchronizationContext)
+            internal void HookupAwaiterWithContext(PromiseRefBase awaiter, short promiseId, SynchronizationContext synchronizationContext)
             {
                 ValidateAwait(awaiter, promiseId);
 
@@ -52,15 +52,10 @@ namespace Proto.Promises
                     return;
                 }
 
-                var context = continuationContext;
-                if (context == null)
-                {
-                    continuationContext = synchronizationContext;
-                }
-                else
-                {
-                    continuationContext = ConfiguredAwaitDualContext.GetOrCreate(synchronizationContext, context.UnsafeAs<ExecutionContext>());
-                }
+                var context = ContinuationContext;
+                ContinuationContext = context == null
+                    ? (object) synchronizationContext
+                    : ConfiguredAwaitDualContext.GetOrCreate(synchronizationContext, context.UnsafeAs<ExecutionContext>());
 
                 this.SetPrevious(awaiter);
                 awaiter.HookupExistingWaiter(promiseId, this);
@@ -129,7 +124,7 @@ namespace Proto.Promises
 #pragma warning disable IDE0038 // Use pattern matching
                     if (null != default(TAwaiter) && awaiter is IPromiseAwareAwaiter)
                     {
-                        ((IPromiseAwareAwaiter) awaiter).AwaitOnCompletedInternal(_ref, ref _ref.ContinuationContext);
+                        ((IPromiseAwareAwaiter) awaiter).AwaitOnCompletedInternal(_ref);
                     }
                     else
                     {
@@ -138,7 +133,7 @@ namespace Proto.Promises
 #pragma warning restore IDE0038 // Use pattern matching
 #else
                     // Unity does not optimize the pattern, so we have to call through AwaitOverrider to avoid boxing allocations.
-                    AwaitOverrider<TAwaiter>.AwaitOnCompleted(ref awaiter, _ref, ref _ref.ContinuationContext, _ref.MoveNext);
+                    AwaitOverrider<TAwaiter>.AwaitOnCompleted(ref awaiter, _ref, _ref.MoveNext);
 #endif
                 }
 
@@ -153,7 +148,7 @@ namespace Proto.Promises
 #pragma warning disable IDE0038 // Use pattern matching
                     if (null != default(TAwaiter) && awaiter is IPromiseAwareAwaiter)
                     {
-                        ((IPromiseAwareAwaiter) awaiter).AwaitOnCompletedInternal(_ref, ref _ref.ContinuationContext);
+                        ((IPromiseAwareAwaiter) awaiter).AwaitOnCompletedInternal(_ref);
                     }
                     else
                     {
@@ -162,7 +157,7 @@ namespace Proto.Promises
 #pragma warning restore IDE0038 // Use pattern matching
 #else
                     // Unity does not optimize the pattern, so we have to call through CriticalAwaitOverrider to avoid boxing allocations.
-                    CriticalAwaitOverrider<TAwaiter>.AwaitOnCompleted(ref awaiter, _ref, ref _ref.ContinuationContext, _ref.MoveNext);
+                    CriticalAwaitOverrider<TAwaiter>.AwaitOnCompleted(ref awaiter, _ref, _ref.MoveNext);
 #endif
                 }
             } // class AsyncPromiseRef<TResult>
@@ -314,8 +309,6 @@ namespace Proto.Promises
                         _continuer.Dispose();
                         _continuer = null;
                     }
-                    // Base Dispose sets RejectContainer to null which shares a field with ContinuationContext.
-                    //ContinuationContext = null;
                     ObjectPool.MaybeRepool(this);
                 }
 
@@ -462,8 +455,6 @@ namespace Proto.Promises
                 internal override void MaybeDispose()
                 {
                     Dispose();
-                    // Base Dispose sets RejectContainer to null which shares a field with ContinuationContext.
-                    //ContinuationContext = null;
                     ObjectPool.MaybeRepool(this);
                 }
             } // class AsyncPromiseRef<TResult>

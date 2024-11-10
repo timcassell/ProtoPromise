@@ -322,6 +322,8 @@ namespace Proto.Promises
             {
                 IncrementPromiseId();
                 RejectContainer = null;
+                // RejectContainer shares a field with ContinuationContext.
+                //ContinuationContext = null;
                 this.SetPrevious(null);
             }
 

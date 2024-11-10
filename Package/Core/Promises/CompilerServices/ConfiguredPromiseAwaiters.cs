@@ -155,14 +155,14 @@ namespace Proto.Promises.CompilerServices
             => OnCompleted(continuation);
 
         [MethodImpl(Internal.InlineOption)]
-        void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef, ref object continuationContext)
+        void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
         {
             if (_continuationOptions.IsSynchronous)
             {
                 asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
                 return;
             }
-            asyncPromiseRef.HookupAwaiterWithContext(_promise._ref, _promise._id, ref continuationContext, _continuationOptions.GetContinuationContext());
+            asyncPromiseRef.HookupAwaiterWithContext(_promise._ref, _promise._id, _continuationOptions.GetContinuationContext());
         }
 
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
@@ -268,14 +268,14 @@ namespace Proto.Promises.CompilerServices
             => OnCompleted(continuation);
 
         [MethodImpl(Internal.InlineOption)]
-        void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef, ref object continuationContext)
+        void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
         {
             if (_continuationOptions.IsSynchronous)
             {
                 asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
                 return;
             }
-            asyncPromiseRef.HookupAwaiterWithContext(_promise._ref, _promise._id, ref continuationContext, _continuationOptions.GetContinuationContext());
+            asyncPromiseRef.HookupAwaiterWithContext(_promise._ref, _promise._id, _continuationOptions.GetContinuationContext());
         }
 
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
@@ -373,14 +373,14 @@ namespace Proto.Promises.CompilerServices
             => OnCompleted(continuation);
 
         [MethodImpl(Internal.InlineOption)]
-        void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef, ref object continuationContext)
+        void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
         {
             if (_continuationOptions.IsSynchronous)
             {
                 asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
                 return;
             }
-            asyncPromiseRef.HookupAwaiterWithContext(_promise._ref, _promise._id, ref continuationContext, _continuationOptions.GetContinuationContext());
+            asyncPromiseRef.HookupAwaiterWithContext(_promise._ref, _promise._id, _continuationOptions.GetContinuationContext());
         }
 
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
@@ -478,14 +478,14 @@ namespace Proto.Promises.CompilerServices
             => OnCompleted(continuation);
 
         [MethodImpl(Internal.InlineOption)]
-        void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef, ref object continuationContext)
+        void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
         {
             if (_continuationOptions.IsSynchronous)
             {
                 asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
                 return;
             }
-            asyncPromiseRef.HookupAwaiterWithContext(_promise._ref, _promise._id, ref continuationContext, _continuationOptions.GetContinuationContext());
+            asyncPromiseRef.HookupAwaiterWithContext(_promise._ref, _promise._id, _continuationOptions.GetContinuationContext());
         }
 
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);

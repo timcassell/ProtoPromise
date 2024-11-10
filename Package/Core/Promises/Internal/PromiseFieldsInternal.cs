@@ -130,10 +130,12 @@ namespace Proto.Promises
 
             private ContextRejectUnion _contextOrRejection;
 
-            internal ref object ContinuationContext
+            internal object ContinuationContext
             {
                 [MethodImpl(InlineOption)]
-                get => ref _contextOrRejection._continuationContext;
+                get => _contextOrRejection._continuationContext;
+                [MethodImpl(InlineOption)]
+                set => _contextOrRejection._continuationContext = value;
             }
 
             internal IRejectContainer RejectContainer

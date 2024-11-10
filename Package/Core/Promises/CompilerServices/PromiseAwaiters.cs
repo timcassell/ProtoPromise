@@ -189,7 +189,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef, ref object continuationContext)
+            void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
                 => asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
@@ -275,7 +275,7 @@ namespace Proto.Promises
                 => OnCompleted(continuation);
 
             [MethodImpl(Internal.InlineOption)]
-            void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef, ref object continuationContext)
+            void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
                 => asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
@@ -360,7 +360,7 @@ namespace Proto.Promises
                 => OnCompleted(continuation);
 
             [MethodImpl(Internal.InlineOption)]
-            void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef, ref object continuationContext)
+            void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
                 => asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
 
             /// <summary>
@@ -454,7 +454,7 @@ namespace Proto.Promises
                 => OnCompleted(continuation);
 
             [MethodImpl(Internal.InlineOption)]
-            void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef, ref object continuationContext)
+            void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
                 => asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
 
             /// <summary>
