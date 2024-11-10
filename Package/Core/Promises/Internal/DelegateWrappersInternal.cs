@@ -491,7 +491,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        owner._rejectContainer = rejectContainer;
+                        owner.RejectContainer = rejectContainer;
                         owner.HandleNextInternal(Promise.State.Rejected);
                     }
                 }
@@ -563,7 +563,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        owner._rejectContainer = rejectContainer;
+                        owner.RejectContainer = rejectContainer;
                         owner.HandleNextInternal(Promise.State.Rejected);
                     }
                 }
@@ -712,7 +712,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        owner._rejectContainer = rejectContainer;
+                        owner.RejectContainer = rejectContainer;
                         owner.HandleNextInternal(Promise.State.Rejected);
                     }
                 }
@@ -760,7 +760,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        owner._rejectContainer = rejectContainer;
+                        owner.RejectContainer = rejectContainer;
                         owner.HandleNextInternal(Promise.State.Rejected);
                     }
                 }
@@ -1328,7 +1328,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        owner._rejectContainer = rejectContainer;
+                        owner.RejectContainer = rejectContainer;
                         owner.HandleNextInternal(Promise.State.Rejected);
                     }
                 }
@@ -1402,7 +1402,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        owner._rejectContainer = rejectContainer;
+                        owner.RejectContainer = rejectContainer;
                         owner.HandleNextInternal(Promise.State.Rejected);
                     }
                 }
@@ -1557,7 +1557,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        owner._rejectContainer = rejectContainer;
+                        owner.RejectContainer = rejectContainer;
                         owner.HandleNextInternal(Promise.State.Rejected);
                     }
                 }
@@ -1607,7 +1607,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        owner._rejectContainer = rejectContainer;
+                        owner.RejectContainer = rejectContainer;
                         owner.HandleNextInternal(Promise.State.Rejected);
                     }
                 }

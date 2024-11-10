@@ -15,7 +15,7 @@ namespace Proto.Promises
     {
         [MethodImpl(Internal.InlineOption)]
         private static void GetAllResultContainer(Internal.PromiseRefBase handler, int index, ref IList<ResultContainer> result)
-            => result[index] = new ResultContainer(handler._rejectContainer, handler.State);
+            => result[index] = new ResultContainer(handler.RejectContainer, handler.State);
 
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
         private static unsafe Internal.GetResultDelegate<IList<ResultContainer>> GetAllResultContainerFunc
@@ -283,10 +283,10 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item1 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item2 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -336,10 +336,10 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item2 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -389,10 +389,10 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -447,13 +447,13 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item1 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item2 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item3 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -506,13 +506,13 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item2 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item3 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -565,13 +565,13 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item3 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -624,13 +624,13 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -687,16 +687,16 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item1 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item2 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item3 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item4 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -751,16 +751,16 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item2 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item3 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item4 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -815,16 +815,16 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item3 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item4 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -879,16 +879,16 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item4 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -944,16 +944,16 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler._rejectContainer, handler.State);
+                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -1013,19 +1013,19 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item1 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item2 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item3 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item4 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item5 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -1082,19 +1082,19 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item2 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item3 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item4 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item5 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -1151,19 +1151,19 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item3 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item4 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item5 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -1220,19 +1220,19 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item4 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item5 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -1290,19 +1290,19 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler._rejectContainer, handler.State);
+                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler.RejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item5 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -1360,19 +1360,19 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler._rejectContainer, handler.State);
+                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler.RejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), handler._rejectContainer, handler.State);
+                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -1434,22 +1434,22 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item1 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item2 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item3 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item4 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item5 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item6 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -1509,22 +1509,22 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item2 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item3 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item4 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item5 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item6 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -1584,22 +1584,22 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item3 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item4 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item5 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item6 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -1659,22 +1659,22 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item4 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item5 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item6 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -1734,22 +1734,22 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler._rejectContainer, handler.State);
+                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler.RejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item5 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item6 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -1809,22 +1809,22 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler._rejectContainer, handler.State);
+                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler.RejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), handler._rejectContainer, handler.State);
+                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), handler.RejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item6 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -1884,22 +1884,22 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler._rejectContainer, handler.State);
+                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler.RejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), handler._rejectContainer, handler.State);
+                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), handler.RejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new Promise<T6>.ResultContainer(handler.GetResult<T6>(), handler._rejectContainer, handler.State);
+                            result.Item6 = new Promise<T6>.ResultContainer(handler.GetResult<T6>(), handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -1963,25 +1963,25 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item1 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item2 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item3 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item4 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item5 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item6 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 6:
-                            result.Item7 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item7 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -2043,25 +2043,25 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item2 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item3 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item4 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item5 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item6 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 6:
-                            result.Item7 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item7 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -2123,25 +2123,25 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item3 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item4 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item5 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item6 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 6:
-                            result.Item7 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item7 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -2203,25 +2203,25 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item4 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item5 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item6 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 6:
-                            result.Item7 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item7 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -2283,25 +2283,25 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler._rejectContainer, handler.State);
+                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler.RejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item5 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item6 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 6:
-                            result.Item7 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item7 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -2363,25 +2363,25 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler._rejectContainer, handler.State);
+                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler.RejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), handler._rejectContainer, handler.State);
+                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), handler.RejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item6 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                         case 6:
-                            result.Item7 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item7 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -2443,25 +2443,25 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler._rejectContainer, handler.State);
+                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler.RejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), handler._rejectContainer, handler.State);
+                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), handler.RejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new Promise<T6>.ResultContainer(handler.GetResult<T6>(), handler._rejectContainer, handler.State);
+                            result.Item6 = new Promise<T6>.ResultContainer(handler.GetResult<T6>(), handler.RejectContainer, handler.State);
                             break;
                         case 6:
-                            result.Item7 = new ResultContainer(handler._rejectContainer, handler.State);
+                            result.Item7 = new ResultContainer(handler.RejectContainer, handler.State);
                             break;
                     }
                 }
@@ -2523,25 +2523,25 @@ namespace Proto.Promises
                     switch (index)
                     {
                         case 0:
-                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler._rejectContainer, handler.State);
+                            result.Item1 = new Promise<T1>.ResultContainer(handler.GetResult<T1>(), handler.RejectContainer, handler.State);
                             break;
                         case 1:
-                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler._rejectContainer, handler.State);
+                            result.Item2 = new Promise<T2>.ResultContainer(handler.GetResult<T2>(), handler.RejectContainer, handler.State);
                             break;
                         case 2:
-                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler._rejectContainer, handler.State);
+                            result.Item3 = new Promise<T3>.ResultContainer(handler.GetResult<T3>(), handler.RejectContainer, handler.State);
                             break;
                         case 3:
-                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler._rejectContainer, handler.State);
+                            result.Item4 = new Promise<T4>.ResultContainer(handler.GetResult<T4>(), handler.RejectContainer, handler.State);
                             break;
                         case 4:
-                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), handler._rejectContainer, handler.State);
+                            result.Item5 = new Promise<T5>.ResultContainer(handler.GetResult<T5>(), handler.RejectContainer, handler.State);
                             break;
                         case 5:
-                            result.Item6 = new Promise<T6>.ResultContainer(handler.GetResult<T6>(), handler._rejectContainer, handler.State);
+                            result.Item6 = new Promise<T6>.ResultContainer(handler.GetResult<T6>(), handler.RejectContainer, handler.State);
                             break;
                         case 6:
-                            result.Item7 = new Promise<T7>.ResultContainer(handler.GetResult<T7>(), handler._rejectContainer, handler.State);
+                            result.Item7 = new Promise<T7>.ResultContainer(handler.GetResult<T7>(), handler.RejectContainer, handler.State);
                             break;
                     }
                 }

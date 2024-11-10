@@ -13,7 +13,7 @@ namespace Proto.Promises
 {
     partial class Internal
     {
-        partial class PromiseRefBase : HandleablePromiseBase, ITraceable
+        partial class PromiseRefBase
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -80,7 +80,7 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
 
                     handler.SetCompletionState(state);
-                    _rejectContainer = handler._rejectContainer;
+                    RejectContainer = handler.RejectContainer;
                     handler.SuppressRejection = true;
                     _result = handler.GetResult<TResult>();
                     _tempState = state;
@@ -259,65 +259,49 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class ConfiguredAsyncPromiseContinuer : HandleablePromiseBase
+            internal sealed partial class ConfiguredAwaitDualContext : HandleablePromiseBase
             {
-                private SynchronizationContext _context;
+                internal SynchronizationContext _synchronizationContext;
+                internal ExecutionContext _executionContext;
 
-                private ConfiguredAsyncPromiseContinuer() { }
+                private ConfiguredAwaitDualContext() { }
 
                 [MethodImpl(InlineOption)]
-                private static ConfiguredAsyncPromiseContinuer GetOrCreate()
+                private static ConfiguredAwaitDualContext GetOrCreate()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<ConfiguredAsyncPromiseContinuer>();
+                    var obj = ObjectPool.TryTakeOrInvalid<ConfiguredAwaitDualContext>();
                     return obj == InvalidAwaitSentinel.s_instance
-                        ? new ConfiguredAsyncPromiseContinuer()
-                        : obj.UnsafeAs<ConfiguredAsyncPromiseContinuer>();
+                        ? new ConfiguredAwaitDualContext()
+                        : obj.UnsafeAs<ConfiguredAwaitDualContext>();
                 }
 
-                internal static void ConfigureAsyncContinuation(PromiseRefBase asyncPromiseRef, SynchronizationContext context, PromiseRefBase awaiter, short promiseId)
+                [MethodImpl(InlineOption)]
+                internal static ConfiguredAwaitDualContext GetOrCreate(SynchronizationContext synchronizationContext, ExecutionContext executionContext)
                 {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    if (context == null)
+                    if (synchronizationContext == null)
                     {
-                        throw new InvalidOperationException("context cannot be null");
+                        throw new System.InvalidOperationException("synchronizationContext cannot be null");
+                    }
+                    if (executionContext == null)
+                    {
+                        throw new System.InvalidOperationException("executionContext cannot be null");
                     }
 #endif
 
-                    asyncPromiseRef.ValidateAwait(awaiter, promiseId);
-                    asyncPromiseRef.SetPrevious(awaiter);
-
-                    if (awaiter == null)
-                    {
-                        ScheduleContextCallback(context, asyncPromiseRef,
-                            obj => obj.UnsafeAs<PromiseRefBase>().ContinueAsyncFunction(),
-                            obj => obj.UnsafeAs<PromiseRefBase>().ContinueAsyncFunction()
-                        );
-                        return;
-                    }
-
-                    var continuer = GetOrCreate();
-                    continuer._next = asyncPromiseRef;
-                    continuer._context = context;
-
-                    awaiter.HookupNewWaiter(promiseId, continuer);
+                    var context = GetOrCreate();
+                    context._synchronizationContext = synchronizationContext;
+                    context._executionContext = executionContext;
+                    return context;
                 }
 
-                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                internal void Dispose()
                 {
-                    ThrowIfInPool(this);
-                    handler.SetCompletionState(state);
-
-                    var asyncPromiseRef = _next;
-                    var context = _context;
-                    _context = null;
+                    _synchronizationContext = null;
+                    _executionContext = null;
                     ObjectPool.MaybeRepool(this);
-
-                    ScheduleContextCallback(context, asyncPromiseRef,
-                        obj => obj.UnsafeAs<PromiseRefBase>().ContinueAsyncFunction(),
-                        obj => obj.UnsafeAs<PromiseRefBase>().ContinueAsyncFunction()
-                    );
                 }
-            } // class ConfiguredAsyncPromiseContinuer
+            } // class ConfiguredAwaitDualContext
         } // class PromiseRefBase
     } // class Internal
 }

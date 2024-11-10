@@ -70,7 +70,7 @@ namespace Proto.Promises
                     if (_exceptions != null)
                     {
                         state = Promise.State.Rejected;
-                        _rejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
                         _exceptions = null;
                     }
 
@@ -79,7 +79,7 @@ namespace Proto.Promises
                     {
                         var passthrough = passthroughs.Pop();
                         var owner = passthrough.Owner;
-                        _result[passthrough.Index] = new Promise.ResultContainer(owner._rejectContainer, owner.State);
+                        _result[passthrough.Index] = new Promise.ResultContainer(owner.RejectContainer, owner.State);
                         passthrough.Dispose();
                     }
 
@@ -153,7 +153,7 @@ namespace Proto.Promises
                     if (_exceptions != null)
                     {
                         state = Promise.State.Rejected;
-                        _rejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
                         _exceptions = null;
                     }
 
@@ -162,7 +162,7 @@ namespace Proto.Promises
                     {
                         var passthrough = passthroughs.Pop();
                         var owner = passthrough.Owner;
-                        _result[passthrough.Index] = new Promise<T>.ResultContainer(owner.GetResult<T>(), owner._rejectContainer, owner.State);
+                        _result[passthrough.Index] = new Promise<T>.ResultContainer(owner.GetResult<T>(), owner.RejectContainer, owner.State);
                         passthrough.Dispose();
                     }
 

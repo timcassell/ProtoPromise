@@ -57,7 +57,7 @@ namespace Proto.Promises
 
                 public void RejectDirect(IRejectContainer reasonContainer)
                 {
-                    _rejectContainer = reasonContainer;
+                    RejectContainer = reasonContainer;
                     HandleNextInternal(Promise.State.Rejected);
                 }
 

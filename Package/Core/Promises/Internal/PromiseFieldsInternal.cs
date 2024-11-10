@@ -20,7 +20,9 @@
 using Proto.Promises.Collections;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace Proto.Promises
@@ -91,13 +93,52 @@ namespace Proto.Promises
             volatile private int _waitState; // int for Interlocked.
         }
 
-        partial class PromiseRefBase : HandleablePromiseBase
+        // We add a class between HandleablePromiseBase and PromiseRefBase so that we can have a union struct field without affecting derived types sizes.
+        // https://github.com/dotnet/runtime/issues/109680
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal abstract class PromiseRefBaseWithStructField : HandleablePromiseBase
+        {
+            // We union the fields together to save space.
+            // The field may contain the ExecutionContext or SynchronizationContext of the yielded `async Promise` while it is pending.
+            // When the promise is complete in a rejected state, it will contain the IRejectContainer.
+            [StructLayout(LayoutKind.Explicit)]
+            private struct ContextRejectUnion
+            {
+                // Common case this is null. If Promise.Config.AsyncFlowExecutionContextEnabled is true, this may be ExecutionContext.
+                // If an awaited Promise was configured, this may be SynchronizationContext. If both cases occurred, this will be ConfiguredAwaitDualContext.
+                [FieldOffset(0)]
+                internal object _continuationContext;
+                [FieldOffset(0)]
+                internal IRejectContainer _rejectContainer;
+            }
+
+            private ContextRejectUnion _contextOrRejection;
+
+            internal object ContinuationContext
+            {
+                [MethodImpl(InlineOption)]
+                get => _contextOrRejection._continuationContext;
+                [MethodImpl(InlineOption)]
+                set => _contextOrRejection._continuationContext = value;
+            }
+
+            internal IRejectContainer RejectContainer
+            {
+                [MethodImpl(InlineOption)]
+                get => _contextOrRejection._rejectContainer;
+                [MethodImpl(InlineOption)]
+                set => _contextOrRejection._rejectContainer = value;
+            }
+        }
+
+        partial class PromiseRefBase : PromiseRefBaseWithStructField
         {
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
             internal PromiseRefBase _previous; // Used to detect circular awaits.
 #endif
-            internal IRejectContainer _rejectContainer;
 
             private short _promiseId = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
             volatile private Promise.State _state;
@@ -434,12 +475,6 @@ namespace Proto.Promises
 
             partial class AsyncPromiseRef<TResult> : PromiseSingleAwait<TResult>
             {
-                // TODO: change this field to object. Either store ExecutionContext or SynchronizationContext.
-                // If both contexts need to be used, use ConfiguredAsyncPromiseContinuer to wrap them both.
-                // We already null-check it, so it won't cost anything in the common case. If it's not null, then we proceed to type-check.
-                // This should improve performance of Promise.ConfigureAwait so that it can avoid allocating ConfiguredAsyncPromiseContinuer in the common case.
-                private ExecutionContext _executionContext;
-
 #if !OPTIMIZED_ASYNC_MODE
                 partial class PromiseMethodContinuer : HandleablePromiseBase
                 {

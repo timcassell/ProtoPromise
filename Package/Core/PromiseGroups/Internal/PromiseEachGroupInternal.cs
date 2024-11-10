@@ -272,7 +272,7 @@ namespace Proto.Promises
                         return;
                     }
 
-                    _rejectContainer = CreateRejectContainer(exception, int.MinValue, null, this);
+                    RejectContainer = CreateRejectContainer(exception, int.MinValue, null, this);
                     HandleNextInternal(Promise.State.Rejected);
                 }
 

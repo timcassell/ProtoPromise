@@ -156,7 +156,8 @@ namespace Proto.Promises
                     s_asyncFlowExecutionContextEnabled = true;
                 }
             }
-            private static bool s_asyncFlowExecutionContextEnabled;
+            // Internal so that tests can disable it directly.
+            internal static bool s_asyncFlowExecutionContextEnabled;
 
             [MethodImpl(MethodImplOptions.NoInlining)]
             private static void ThrowCannotDisableAsyncFlow()

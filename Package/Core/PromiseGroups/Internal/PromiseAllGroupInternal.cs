@@ -73,7 +73,7 @@ namespace Proto.Promises
                         _result[passthrough.Index] = owner.GetResult<T>();
                         if (owner.State == Promise.State.Rejected)
                         {
-                            RecordException(owner._rejectContainer.GetValueAsException());
+                            RecordException(owner.RejectContainer.GetValueAsException());
                         }
                         passthrough.Dispose();
                     }
@@ -81,7 +81,7 @@ namespace Proto.Promises
                     if (_exceptions != null)
                     {
                         state = Promise.State.Rejected;
-                        _rejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
                         _exceptions = null;
                     }
 

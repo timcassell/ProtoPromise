@@ -66,7 +66,7 @@ namespace Proto.Promises
                         {
                             // If this is an extended merge group, we need to propagate the exceptions from cancelation token callbacks.
                             state = Promise.State.Rejected;
-                            _rejectContainer = owner._rejectContainer;
+                            RejectContainer = owner.RejectContainer;
                         }
                         passthrough.Dispose();
                     }
@@ -75,14 +75,14 @@ namespace Proto.Promises
                     {
                         // In case any cancelation token callbacks threw, we propagate them out of this promise instead of resolving this and ignoring the exceptions.
                         state = Promise.State.Rejected;
-                        _rejectContainer = CreateRejectContainer(new AggregateException(group._exceptions), int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(new AggregateException(group._exceptions), int.MinValue, null, this);
                         group._exceptions = null;
                     }
-                    else if (handler._rejectContainer != null)
+                    else if (handler.RejectContainer != null)
                     {
                         // The group may have been already completed, in which case it already converted its exceptions to a reject container.
                         state = Promise.State.Rejected;
-                        _rejectContainer = handler._rejectContainer;
+                        RejectContainer = handler.RejectContainer;
                     }
                     group.MaybeDispose();
 

@@ -604,7 +604,7 @@ namespace Proto.Promises
 
         [MethodImpl(Internal.InlineOption)]
         private static void GetAllResultContainer(Internal.PromiseRefBase handler, int index, ref IList<ResultContainer> result)
-            => result[index] = new ResultContainer(handler.GetResult<T>(), handler._rejectContainer, handler.State);
+            => result[index] = new ResultContainer(handler.GetResult<T>(), handler.RejectContainer, handler.State);
         
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
         private static unsafe Internal.GetResultDelegate<IList<ResultContainer>> GetAllResultContainerFunc

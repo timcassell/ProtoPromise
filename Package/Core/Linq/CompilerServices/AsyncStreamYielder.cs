@@ -13,7 +13,7 @@ namespace Proto.Promises.CompilerServices
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public readonly partial struct AsyncStreamYielder<T> : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
+    public readonly partial struct AsyncStreamYielder<T> : ICriticalNotifyCompletion, Internal.IPromiseAwareAwaiter
     {
         private readonly Internal.PromiseRefBase.AsyncEnumerableWithIterator<T> _target;
         private readonly int _enumerableId;
@@ -62,7 +62,7 @@ namespace Proto.Promises.CompilerServices
             => _target.GetResultForAsyncStreamYielder(_enumerableId);
 
         [MethodImpl(Internal.InlineOption)]
-        void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
+        void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
             => _target.AwaitOnCompletedForAsyncStreamYielder(asyncPromiseRef, _enumerableId);
 
         void INotifyCompletion.OnCompleted(Action continuation)

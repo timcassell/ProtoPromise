@@ -67,7 +67,7 @@ namespace Proto.Promises.CompilerServices
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public readonly partial struct ConfiguredPromiseAwaiterVoid : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
+    public readonly partial struct ConfiguredPromiseAwaiterVoid : ICriticalNotifyCompletion, Internal.IPromiseAwareAwaiter
     {
         private readonly Promise _promise;
         private readonly ContinuationOptions _continuationOptions;
@@ -155,14 +155,14 @@ namespace Proto.Promises.CompilerServices
             => OnCompleted(continuation);
 
         [MethodImpl(Internal.InlineOption)]
-        void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
+        void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
         {
             if (_continuationOptions.IsSynchronous)
             {
                 asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
                 return;
             }
-            Internal.PromiseRefBase.ConfiguredAsyncPromiseContinuer.ConfigureAsyncContinuation(asyncPromiseRef, _continuationOptions.GetContinuationContext(), _promise._ref, _promise._id);
+            asyncPromiseRef.HookupAwaiterWithContext(_promise._ref, _promise._id, _continuationOptions.GetContinuationContext());
         }
 
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
@@ -179,7 +179,7 @@ namespace Proto.Promises.CompilerServices
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public readonly partial struct ConfiguredPromiseAwaiter<T> : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
+    public readonly partial struct ConfiguredPromiseAwaiter<T> : ICriticalNotifyCompletion, Internal.IPromiseAwareAwaiter
     {
         private readonly Promise<T> _promise;
         private readonly ContinuationOptions _continuationOptions;
@@ -268,14 +268,14 @@ namespace Proto.Promises.CompilerServices
             => OnCompleted(continuation);
 
         [MethodImpl(Internal.InlineOption)]
-        void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
+        void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
         {
             if (_continuationOptions.IsSynchronous)
             {
                 asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
                 return;
             }
-            Internal.PromiseRefBase.ConfiguredAsyncPromiseContinuer.ConfigureAsyncContinuation(asyncPromiseRef, _continuationOptions.GetContinuationContext(), _promise._ref, _promise._id);
+            asyncPromiseRef.HookupAwaiterWithContext(_promise._ref, _promise._id, _continuationOptions.GetContinuationContext());
         }
 
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
@@ -292,7 +292,7 @@ namespace Proto.Promises.CompilerServices
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public readonly partial struct ConfiguredPromiseNoThrowAwaiterVoid : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
+    public readonly partial struct ConfiguredPromiseNoThrowAwaiterVoid : ICriticalNotifyCompletion, Internal.IPromiseAwareAwaiter
     {
         private readonly Promise _promise;
         private readonly ContinuationOptions _continuationOptions;
@@ -373,14 +373,14 @@ namespace Proto.Promises.CompilerServices
             => OnCompleted(continuation);
 
         [MethodImpl(Internal.InlineOption)]
-        void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
+        void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
         {
             if (_continuationOptions.IsSynchronous)
             {
                 asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
                 return;
             }
-            Internal.PromiseRefBase.ConfiguredAsyncPromiseContinuer.ConfigureAsyncContinuation(asyncPromiseRef, _continuationOptions.GetContinuationContext(), _promise._ref, _promise._id);
+            asyncPromiseRef.HookupAwaiterWithContext(_promise._ref, _promise._id, _continuationOptions.GetContinuationContext());
         }
 
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
@@ -397,7 +397,7 @@ namespace Proto.Promises.CompilerServices
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public readonly partial struct ConfiguredPromiseNoThrowAwaiter<T> : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
+    public readonly partial struct ConfiguredPromiseNoThrowAwaiter<T> : ICriticalNotifyCompletion, Internal.IPromiseAwareAwaiter
     {
         private readonly Promise<T> _promise;
         private readonly ContinuationOptions _continuationOptions;
@@ -478,14 +478,14 @@ namespace Proto.Promises.CompilerServices
             => OnCompleted(continuation);
 
         [MethodImpl(Internal.InlineOption)]
-        void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
+        void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
         {
             if (_continuationOptions.IsSynchronous)
             {
                 asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
                 return;
             }
-            Internal.PromiseRefBase.ConfiguredAsyncPromiseContinuer.ConfigureAsyncContinuation(asyncPromiseRef, _continuationOptions.GetContinuationContext(), _promise._ref, _promise._id);
+            asyncPromiseRef.HookupAwaiterWithContext(_promise._ref, _promise._id, _continuationOptions.GetContinuationContext());
         }
 
         static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);

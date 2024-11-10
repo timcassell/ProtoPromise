@@ -129,7 +129,7 @@ namespace Proto.Promises
                         CancelGroup();
                         if (state == Promise.State.Rejected)
                         {
-                            RecordException(handler._rejectContainer.GetValueAsException());
+                            RecordException(handler.RejectContainer.GetValueAsException());
                         }
                     }
                     handler.MaybeDispose();
@@ -147,7 +147,7 @@ namespace Proto.Promises
                         return _completeState;
                     }
 
-                    _rejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
+                    RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
                     _exceptions = null;
                     return Promise.State.Rejected;
                 }
@@ -231,7 +231,7 @@ namespace Proto.Promises
                         s_getResult.Invoke(owner, index, ref _result);
                         if (owner.State == Promise.State.Rejected)
                         {
-                            var exception = owner._rejectContainer.GetValueAsException();
+                            var exception = owner.RejectContainer.GetValueAsException();
                             if (_isExtended & index == 0)
                             {
                                 // If this is an extended merge group, we need to extract the inner exceptions of the first cluster to make a flattened AggregateException.
@@ -253,13 +253,13 @@ namespace Proto.Promises
                     if (group._exceptions != null)
                     {
                         state = Promise.State.Rejected;
-                        _rejectContainer = CreateRejectContainer(new AggregateException(group._exceptions), int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(new AggregateException(group._exceptions), int.MinValue, null, this);
                         group._exceptions = null;
                     }
                     else
                     {
                         // The group may have been completed by a void promise, in which case it already converted its exceptions to a reject container.
-                        _rejectContainer = handler._rejectContainer;
+                        RejectContainer = handler.RejectContainer;
                     }
                     group.MaybeDispose();
 

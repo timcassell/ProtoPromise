@@ -185,12 +185,12 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal abstract partial class PromiseRefBase : HandleablePromiseBase, ITraceable
+        internal abstract partial class PromiseRefBase : PromiseRefBaseWithStructField, ITraceable
         {
             internal void HandleSelfWithoutResult(PromiseRefBase handler, Promise.State state)
             {
                 ThrowIfInPool(this);
-                _rejectContainer = handler._rejectContainer;
+                RejectContainer = handler.RejectContainer;
                 handler.SuppressRejection = true;
                 handler.MaybeDispose();
                 HandleNextInternal(state);
@@ -243,7 +243,6 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 private set => _state = value;
             }
-
             internal bool SuppressRejection
             {
                 [MethodImpl(InlineOption)]
@@ -267,14 +266,10 @@ namespace Proto.Promises
                 if (!WasAwaitedOrForgotten)
                 {
                     // Promise was not awaited or forgotten.
-                    string message = "A Promise's resources were garbage collected without it being awaited. You must await, return, or forget each promise. " + this;
+                    string message = $"A Promise's resources were garbage collected without it being awaited. You must await, return, or forget each promise. {this}";
                     ReportRejection(new UnobservedPromiseException(message), this);
                 }
-                if (State == Promise.State.Rejected & !SuppressRejection)
-                {
-                    // Rejection maybe wasn't caught.
-                    _rejectContainer?.ReportUnhandled();
-                }
+                MaybeReportUnhandledRejection(State);
             }
 
             [MethodImpl(InlineOption)]
@@ -326,7 +321,9 @@ namespace Proto.Promises
             protected void IncrementPromiseIdAndClearPrevious()
             {
                 IncrementPromiseId();
-                _rejectContainer = null;
+                RejectContainer = null;
+                // RejectContainer shares a field with ContinuationContext.
+                //ContinuationContext = null;
                 this.SetPrevious(null);
             }
 
@@ -462,12 +459,12 @@ namespace Proto.Promises
                 return nextWaiter;
             }
 
-            private void MaybeReportUnhandledRejection(IRejectContainer rejectContainer, Promise.State state)
+            private void MaybeReportUnhandledRejection(Promise.State state)
             {
                 if (state == Promise.State.Rejected & !SuppressRejection)
                 {
                     SuppressRejection = true;
-                    rejectContainer.ReportUnhandled();
+                    RejectContainer.ReportUnhandled();
                 }
             }
 
@@ -541,7 +538,7 @@ namespace Proto.Promises
                     handler.SetCompletionState(state);
 
                     // Handler is disposed in Execute, so we need to cache the reject container in case of a RethrowException.
-                    var rejectContainer = handler._rejectContainer;
+                    var rejectContainer = handler.RejectContainer;
                     bool invokingRejected = false;
                     SetCurrentInvoker(this);
                     try
@@ -552,11 +549,11 @@ namespace Proto.Promises
                     {
                         if (invokingRejected)
                         {
-                            _rejectContainer = rejectContainer;
+                            RejectContainer = rejectContainer;
                         }
                         else
                         {
-                            _rejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                            RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
                             state = Promise.State.Rejected;
                         }
                         HandleNextInternal(state);
@@ -567,7 +564,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        _rejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
                         HandleNextInternal(Promise.State.Rejected);
                     }
                     ClearCurrentInvoker();
@@ -645,7 +642,7 @@ namespace Proto.Promises
                         _nextBranches.Dispose();
                         // Rejection maybe wasn't caught.
                         // We handle this directly here because we don't add the PromiseForgetSentinel to this type when it is forgotten.
-                        MaybeReportUnhandledRejection(_rejectContainer, State);
+                        MaybeReportUnhandledRejection(State);
                         Dispose();
                     }
                     ObjectPool.MaybeRepool(this);
@@ -738,7 +735,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     handler.SetCompletionState(state);
-                    _rejectContainer = handler._rejectContainer;
+                    RejectContainer = handler.RejectContainer;
                     handler.SuppressRejection = true;
                     _result = handler.GetResult<TResult>();
                     SetCompletionState(state);
@@ -906,7 +903,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        _rejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
                         HandleNextInternal(Promise.State.Rejected);
                     }
                     ClearCurrentInvoker();
@@ -970,7 +967,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        _rejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
                         HandleNextInternal(Promise.State.Rejected);
                     }
                     ClearCurrentInvoker();
@@ -1249,7 +1246,7 @@ namespace Proto.Promises
                     }
                     else if (state == Promise.State.Rejected)
                     {
-                        var rejectContainer = handler._rejectContainer;
+                        var rejectContainer = handler.RejectContainer;
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
                         invokingRejected = true;
@@ -1317,7 +1314,7 @@ namespace Proto.Promises
                     {
                         handler.SuppressRejection = true;
                         invokingRejected = true;
-                        rejectCallback.InvokeRejecter(handler, handler._rejectContainer, this);
+                        rejectCallback.InvokeRejecter(handler, handler.RejectContainer, this);
                     }
                     else
                     {
@@ -1363,7 +1360,7 @@ namespace Proto.Promises
                     handler.SuppressRejection = true;
                     var callback = _continuer;
                     _continuer = default;
-                    callback.Invoke(handler, handler._rejectContainer, state, this);
+                    callback.Invoke(handler, handler.RejectContainer, state, this);
                 }
             }
 
@@ -1411,7 +1408,7 @@ namespace Proto.Promises
                     var callback = _continuer;
                     _continuer = default;
                     handler.SuppressRejection = true;
-                    callback.Invoke(handler, handler._rejectContainer, state, this);
+                    callback.Invoke(handler, handler.RejectContainer, state, this);
                 }
             }
 
@@ -1452,7 +1449,7 @@ namespace Proto.Promises
                     var callback = _finalizer;
                     _finalizer = default;
                     _result = handler.GetResult<TResult>();
-                    _rejectContainer = handler._rejectContainer;
+                    RejectContainer = handler.RejectContainer;
                     handler.SuppressRejection = true;
                     handler.MaybeDispose();
                     try
@@ -1464,8 +1461,8 @@ namespace Proto.Promises
                         // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
                         if (state == Promise.State.Rejected)
                         {
-                            _rejectContainer.ReportUnhandled();
-                            _rejectContainer = null; // Null it out in case it's a canceled exception.
+                            RejectContainer.ReportUnhandled();
+                            RejectContainer = null; // Null it out in case it's a canceled exception.
                         }
                         throw;
                     }
@@ -1515,7 +1512,7 @@ namespace Proto.Promises
                     }
 
                     _result = handler.GetResult<TResult>();
-                    _rejectContainer = handler._rejectContainer;
+                    RejectContainer = handler.RejectContainer;
                     handler.SuppressRejection = true;
                     handler.MaybeDispose();
                     var callback = _finalizer;
@@ -1530,8 +1527,8 @@ namespace Proto.Promises
                         if (state == Promise.State.Rejected)
                         {
                             // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
-                            _rejectContainer.ReportUnhandled();
-                            _rejectContainer = null; // Null it out in case it's a canceled exception.
+                            RejectContainer.ReportUnhandled();
+                            RejectContainer = null; // Null it out in case it's a canceled exception.
                         }
                         throw;
                     }
@@ -1551,9 +1548,9 @@ namespace Proto.Promises
                         if (_previousState == Promise.State.Rejected)
                         {
                             // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
-                            _rejectContainer.ReportUnhandled();
+                            RejectContainer.ReportUnhandled();
                         }
-                        _rejectContainer = handler._rejectContainer;
+                        RejectContainer = handler.RejectContainer;
                     }
                     handler.SuppressRejection = true;
                     handler.MaybeDispose();

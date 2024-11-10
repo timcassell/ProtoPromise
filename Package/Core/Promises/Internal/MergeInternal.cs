@@ -362,7 +362,7 @@ namespace Proto.Promises
                                 if (_isComplete == 0)
                                 {
                                     _next = PromiseCompletionSentinel.s_instance;
-                                    SetCompletionState(_rejectContainer == null ? stateIfComplete : Promise.State.Rejected);
+                                    SetCompletionState(RejectContainer == null ? stateIfComplete : Promise.State.Rejected);
                                 }
                                 break;
                             }
@@ -476,7 +476,7 @@ namespace Proto.Promises
                     }
                     if (isComplete)
                     {
-                        _rejectContainer = handler._rejectContainer;
+                        RejectContainer = handler.RejectContainer;
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
                         InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1);
@@ -496,7 +496,7 @@ namespace Proto.Promises
                         : TrySetComplete(handler);
                     if (isComplete)
                     {
-                        _rejectContainer = handler._rejectContainer;
+                        RejectContainer = handler.RejectContainer;
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
                         InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1);

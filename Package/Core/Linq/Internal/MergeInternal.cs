@@ -85,7 +85,7 @@ namespace Proto.Promises
                         // The async enumerator was canceled or rejected, notify all enumerators that they don't need to continue executing.
                         CancelEnumerators();
                     }
-                    _enumeratorsAndRejectContainers[index].rejectContainer = handler._rejectContainer;
+                    _enumeratorsAndRejectContainers[index].rejectContainer = handler.RejectContainer;
                     _readyQueue.RemoveProducer();
                 }
             }
