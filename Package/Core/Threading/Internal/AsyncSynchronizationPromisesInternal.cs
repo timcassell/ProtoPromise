@@ -53,7 +53,7 @@ namespace Proto.Promises
                         HandleNextInternal(_tempState);
                         return;
                     }
-                    // This was configured to continuation on the context.
+                    // This was configured to continue on the context.
                     ScheduleContextCallback(continuationContext.UnsafeAs<SynchronizationContext>(), this,
                         obj => obj.UnsafeAs<AsyncSynchronizationPromiseBase<TResult>>().HandleFromContext(),
                         obj => obj.UnsafeAs<AsyncSynchronizationPromiseBase<TResult>>().HandleFromContext()
