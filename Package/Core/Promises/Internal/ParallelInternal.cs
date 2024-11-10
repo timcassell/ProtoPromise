@@ -217,7 +217,6 @@ namespace Proto.Promises
                 private CancelationRegistration _externalCancelationRegistration;
                 // Use the CancelationRef directly instead of CancelationSource struct to save memory.
                 private CancelationRef _cancelationRef;
-                private SynchronizationContext _synchronizationContext;
                 private ExecutionContext _executionContext;
                 private int _remainingAvailableWorkers;
                 private int _waitCounter;
@@ -242,7 +241,7 @@ namespace Proto.Promises
                     promise.Reset();
                     promise._enumerator = enumerator;
                     promise._body = body;
-                    promise._synchronizationContext = synchronizationContext ?? BackgroundSynchronizationContextSentinel.s_instance;
+                    promise.ContinuationContext = synchronizationContext ?? BackgroundSynchronizationContextSentinel.s_instance;
                     promise._remainingAvailableWorkers = maxDegreeOfParallelism;
                     promise._completionState = Promise.State.Resolved;
                     promise._stopExecuting = false;
@@ -260,7 +259,6 @@ namespace Proto.Promises
                     ValidateNoPending();
                     Dispose();
                     _body = default;
-                    _synchronizationContext = null;
                     _executionContext = null;
                     ObjectPool.MaybeRepool(this);
                 }
@@ -279,7 +277,7 @@ namespace Proto.Promises
                         // We add to the wait counter before we run the worker to resolve a race condition where the counter could hit zero prematurely.
                         InterlockedAddWithUnsignedOverflowCheck(ref _waitCounter, 1);
 
-                        ScheduleContextCallback(_synchronizationContext, this,
+                        ScheduleContextCallback(ContinuationContext.UnsafeAs<SynchronizationContext>(), this,
                             obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorkerAndLaunchNext(),
                             obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorkerAndLaunchNext()
                         );
@@ -382,7 +380,7 @@ namespace Proto.Promises
                     if (state == Promise.State.Resolved)
                     {
                         // Schedule the worker body to run again on the context, but without launching another worker.
-                        ScheduleContextCallback(_synchronizationContext, this,
+                        ScheduleContextCallback(ContinuationContext.UnsafeAs<SynchronizationContext>(), this,
                             obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorkerWithoutLaunchNext(),
                             obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorkerWithoutLaunchNext()
                         );
