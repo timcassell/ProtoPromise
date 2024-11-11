@@ -92,7 +92,7 @@ namespace Proto.Promises
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
             {
                 _locker.Enter();
-                var waiters = _waiters.MoveElementsToStack();
+                var waiters = _waiters.TakeElements();
                 _locker.Exit();
                 if (waiters.IsEmpty)
                 {
@@ -100,10 +100,12 @@ namespace Proto.Promises
                 }
 
                 var rejectContainer = Internal.CreateRejectContainer(new AbandonedSemaphoreException("An AsyncSemaphore was collected with waiters still pending."), int.MinValue, null, this);
+
+                var stack = waiters.MoveElementsToStackUnsafe();
                 do
                 {
-                    waiters.Pop().Reject(rejectContainer);
-                } while (waiters.IsNotEmpty);
+                    stack.Pop().Reject(rejectContainer);
+                } while (stack.IsNotEmpty);
                 rejectContainer.ReportUnhandled();
             }
 #endif // PROMISE_DEBUG

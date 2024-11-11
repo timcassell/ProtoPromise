@@ -1478,6 +1478,18 @@ namespace Proto.Promises
                 _smallFields._locker.Exit();
             }
 
+            private void ResolveReaders(Internal.ValueLinkedQueue<Internal.AsyncReaderLockPromise> readers)
+            {
+                if (readers.IsNotEmpty)
+                {
+                    var stack = readers.MoveElementsToStackUnsafe();
+                    do
+                    {
+                        stack.Pop().Resolve(_currentKey);
+                    } while (stack.IsNotEmpty);
+                }
+            }
+
             internal void ReleaseNormalWriterLock(long key)
             {
                 _smallFields._locker.Enter();
@@ -1501,7 +1513,7 @@ namespace Proto.Promises
                     _smallFields._writerType = AsyncReaderWriterLockType.None;
                     _readerLockCount = _readerWaitCount;
                     _readerWaitCount = 0;
-                    var readers = _readerQueue.MoveElementsToStack();
+                    var readers = _readerQueue.TakeElements();
                     if (_upgradeQueue.IsEmpty)
                     {
                         _smallFields._lockType = lockType;
@@ -1515,10 +1527,7 @@ namespace Proto.Promises
                         _smallFields._locker.Exit();
                         upgradeablePromise.Resolve(_currentKey);
                     }
-                    while (readers.IsNotEmpty)
-                    {
-                        readers.Pop().Resolve(_currentKey);
-                    }
+                    ResolveReaders(readers);
                     return;
                 }
 
@@ -1555,7 +1564,7 @@ namespace Proto.Promises
 
             internal void ReleaseUpgradedWriterLock(long key)
             {
-                Internal.ValueLinkedStack<Internal.AsyncReaderLockPromise> readers;
+                Internal.ValueLinkedQueue<Internal.AsyncReaderLockPromise> readers;
                 _smallFields._locker.Enter();
                 {
                     if (_currentKey != key)
@@ -1595,14 +1604,10 @@ namespace Proto.Promises
                         ? AsyncReaderWriterLockType.Reader | AsyncReaderWriterLockType.Upgradeable | AsyncReaderWriterLockType.Writer
                         : AsyncReaderWriterLockType.Reader | AsyncReaderWriterLockType.Upgradeable;
                     _smallFields._writerType = AsyncReaderWriterLockType.None;
-                    readers = _readerQueue.MoveElementsToStack();
+                    readers = _readerQueue.TakeElements();
                 }
                 _smallFields._locker.Exit();
-
-                do
-                {
-                    readers.Pop().Resolve(_currentKey);
-                } while (readers.IsNotEmpty);
+                ResolveReaders(readers);
             }
 
             internal void ReleaseUpgradeableReaderLock(long key)
@@ -1699,7 +1704,7 @@ namespace Proto.Promises
                 _smallFields._lockType &= ~AsyncReaderWriterLockType.Writer;
                 _readerLockCount += _readerWaitCount;
                 _readerWaitCount = 0;
-                var readers = _readerQueue.MoveElementsToStack();
+                var readers = _readerQueue.TakeElements();
 
                 if ((_smallFields._lockType & AsyncReaderWriterLockType.Upgradeable) != 0 | _upgradeQueue.IsEmpty)
                 {
@@ -1712,10 +1717,7 @@ namespace Proto.Promises
                     _smallFields._locker.Exit();
                     upgradeablePromise.Resolve(_currentKey);
                 }
-                while (readers.IsNotEmpty)
-                {
-                    readers.Pop().Resolve(_currentKey);
-                }
+                ResolveReaders(readers);
                 return true;
             }
 
@@ -1729,7 +1731,7 @@ namespace Proto.Promises
 
             internal bool TryUnregister(Internal.AsyncUpgradedWriterLockPromise promise)
             {
-                Internal.ValueLinkedStack<Internal.AsyncReaderLockPromise> readers;
+                Internal.ValueLinkedQueue<Internal.AsyncReaderLockPromise> readers;
                 _smallFields._locker.Enter();
                 {
                     if (_upgradeWaiter != promise)
@@ -1752,13 +1754,17 @@ namespace Proto.Promises
                     _smallFields._lockType = AsyncReaderWriterLockType.Reader | AsyncReaderWriterLockType.Upgradeable;
                     _readerLockCount += _readerWaitCount;
                     _readerWaitCount = 0;
-                    readers = _readerQueue.MoveElementsToStack();
+                    readers = _readerQueue.TakeElements();
                 }
                 _smallFields._locker.Exit();
 
-                while (readers.IsNotEmpty)
+                if (readers.IsNotEmpty)
                 {
-                    readers.Pop().Resolve(_currentKey);
+                    var stack = readers.MoveElementsToStackUnsafe();
+                    do
+                    {
+                        stack.Pop().Resolve(_currentKey);
+                    } while (stack.IsNotEmpty);
                 }
                 return true;
             }
@@ -1801,9 +1807,9 @@ namespace Proto.Promises
 
             internal void NotifyAbandoned(string abandonedMessage, Internal.ITraceable traceable)
             {
-                Internal.ValueLinkedStack<Internal.AsyncReaderLockPromise> readers;
-                Internal.ValueLinkedStack<Internal.AsyncWriterLockPromise> writers;
-                Internal.ValueLinkedStack<Internal.AsyncUpgradeableReaderLockPromise> upgradeables;
+                Internal.ValueLinkedQueue<Internal.AsyncReaderLockPromise> readers;
+                Internal.ValueLinkedQueue<Internal.AsyncWriterLockPromise> writers;
+                Internal.ValueLinkedQueue<Internal.AsyncUpgradeableReaderLockPromise> upgradeables;
                 Internal.AsyncUpgradedWriterLockPromise upgradeWaiter;
                 _smallFields._locker.Enter();
                 {
@@ -1815,9 +1821,9 @@ namespace Proto.Promises
                     }
                     _abandonedMessage = abandonedMessage;
 
-                    readers = _readerQueue.MoveElementsToStack();
-                    writers = _writerQueue.MoveElementsToStack();
-                    upgradeables = _upgradeQueue.MoveElementsToStack();
+                    readers = _readerQueue.TakeElements();
+                    writers = _writerQueue.TakeElements();
+                    upgradeables = _upgradeQueue.TakeElements();
                     upgradeWaiter = _upgradeWaiter;
                     _upgradeWaiter = null;
                 }
@@ -1825,17 +1831,29 @@ namespace Proto.Promises
 
                 var rejectContainer = Internal.CreateRejectContainer(new AbandonedLockException(abandonedMessage), int.MinValue, null, traceable);
 
-                while (readers.IsNotEmpty)
+                if (readers.IsNotEmpty)
                 {
-                    readers.Pop().Reject(rejectContainer);
+                    var stack = readers.MoveElementsToStackUnsafe();
+                    do
+                    {
+                        stack.Pop().Reject(rejectContainer);
+                    } while (stack.IsNotEmpty);
                 }
-                while (writers.IsNotEmpty)
+                if (writers.IsNotEmpty)
                 {
-                    writers.Pop().Reject(rejectContainer);
+                    var stack = writers.MoveElementsToStackUnsafe();
+                    do
+                    {
+                        stack.Pop().Reject(rejectContainer);
+                    } while (stack.IsNotEmpty);
                 }
-                while (upgradeables.IsNotEmpty)
+                if (upgradeables.IsNotEmpty)
                 {
-                    upgradeables.Pop().Reject(rejectContainer);
+                    var stack = upgradeables.MoveElementsToStackUnsafe();
+                    do
+                    {
+                        stack.Pop().Reject(rejectContainer);
+                    } while (stack.IsNotEmpty);
                 }
                 upgradeWaiter?.Reject(rejectContainer);
 

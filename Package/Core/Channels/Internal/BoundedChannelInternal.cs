@@ -129,12 +129,16 @@ namespace Proto.Promises
                         else
                         {
                             // Otherwise, notify waiting writers.
-                            var waitToWriters = _waitToWriters.MoveElementsToStack();
+                            var waitToWriters = _waitToWriters.TakeElements();
                             _smallFields._locker.Exit();
 
-                            while (waitToWriters.IsNotEmpty)
+                            if (waitToWriters.IsNotEmpty)
                             {
-                                waitToWriters.Pop().Resolve(true);
+                                var stack = waitToWriters.MoveElementsToStackUnsafe();
+                                do
+                                {
+                                    stack.Pop().Resolve(true);
+                                } while (stack.IsNotEmpty);
                             }
                         }
                         return new ChannelReadResult<T>(item, ChannelReadResult.Success);
@@ -197,13 +201,17 @@ namespace Proto.Promises
                     if (_queue.Count < _capacity)
                     {
                         // Notify waiting readers.
-                        var waitToReaders = _waitToReaders.MoveElementsToStack();
+                        var waitToReaders = _waitToReaders.TakeElements();
                         _queue.EnqueueTail(item);
                         _smallFields._locker.Exit();
 
-                        while (waitToReaders.IsNotEmpty)
+                        if (waitToReaders.IsNotEmpty)
                         {
-                            waitToReaders.Pop().Resolve(true);
+                            var stack = waitToReaders.MoveElementsToStackUnsafe();
+                            do
+                            {
+                                stack.Pop().Resolve(true);
+                            } while (stack.IsNotEmpty);
                         }
                         return new ChannelWriteResult<T>(default, ChannelWriteResult.Success);
                     }
@@ -316,13 +324,17 @@ namespace Proto.Promises
                     if (_queue.Count < _capacity)
                     {
                         // Notify waiting readers.
-                        var waitToReaders = _waitToReaders.MoveElementsToStack();
+                        var waitToReaders = _waitToReaders.TakeElements();
                         _queue.EnqueueTail(item);
                         _smallFields._locker.Exit();
 
-                        while (waitToReaders.IsNotEmpty)
+                        if (waitToReaders.IsNotEmpty)
                         {
-                            waitToReaders.Pop().Resolve(true);
+                            var stack = waitToReaders.MoveElementsToStackUnsafe();
+                            do
+                            {
+                                stack.Pop().Resolve(true);
+                            } while (stack.IsNotEmpty);
                         }
                         return Promise.Resolved(new ChannelWriteResult<T>(default, ChannelWriteResult.Success));
                     }
@@ -458,27 +470,43 @@ namespace Proto.Promises
 
                     var rejection = CreateRejectContainer(reason, 1, null, this);
                     _closedReason = rejection;
-                    var readers = _readers.MoveElementsToStack();
-                    var writers = _writers.MoveElementsToStack();
-                    var waitToReaders = _waitToReaders.MoveElementsToStack();
-                    var waitToWriters = _waitToWriters.MoveElementsToStack();
+                    var readers = _readers.TakeElements();
+                    var writers = _writers.TakeElements();
+                    var waitToReaders = _waitToReaders.TakeElements();
+                    var waitToWriters = _waitToWriters.TakeElements();
                     _smallFields._locker.Exit();
 
-                    while (readers.IsNotEmpty)
+                    if (readers.IsNotEmpty)
                     {
-                        readers.Pop().Reject(rejection);
+                        var stack = readers.MoveElementsToStackUnsafe();
+                        do
+                        {
+                            stack.Pop().Reject(rejection);
+                        } while (stack.IsNotEmpty);
                     }
-                    while (writers.IsNotEmpty)
+                    if (writers.IsNotEmpty)
                     {
-                        writers.Pop().Reject(rejection);
+                        var stack = writers.MoveElementsToStackUnsafe();
+                        do
+                        {
+                            stack.Pop().Reject(rejection);
+                        } while (stack.IsNotEmpty);
                     }
-                    while (waitToReaders.IsNotEmpty)
+                    if (waitToReaders.IsNotEmpty)
                     {
-                        waitToReaders.Pop().Reject(rejection);
+                        var stack = waitToReaders.MoveElementsToStackUnsafe();
+                        do
+                        {
+                            stack.Pop().Reject(rejection);
+                        } while (stack.IsNotEmpty);
                     }
-                    while (waitToWriters.IsNotEmpty)
+                    if (waitToWriters.IsNotEmpty)
                     {
-                        waitToWriters.Pop().Reject(rejection);
+                        var stack = waitToWriters.MoveElementsToStackUnsafe();
+                        do
+                        {
+                            stack.Pop().Reject(rejection);
+                        } while (stack.IsNotEmpty);
                     }
                 }
                 return true;
@@ -497,27 +525,43 @@ namespace Proto.Promises
                     }
 
                     _closedReason = ChannelSmallFields.ClosedCanceledReason;
-                    var readers = _readers.MoveElementsToStack();
-                    var writers = _writers.MoveElementsToStack();
-                    var waitToReaders = _waitToReaders.MoveElementsToStack();
-                    var waitToWriters = _waitToWriters.MoveElementsToStack();
+                    var readers = _readers.TakeElements();
+                    var writers = _writers.TakeElements();
+                    var waitToReaders = _waitToReaders.TakeElements();
+                    var waitToWriters = _waitToWriters.TakeElements();
                     _smallFields._locker.Exit();
 
-                    while (readers.IsNotEmpty)
+                    if (readers.IsNotEmpty)
                     {
-                        readers.Pop().CancelDirect();
+                        var stack = readers.MoveElementsToStackUnsafe();
+                        do
+                        {
+                            stack.Pop().CancelDirect();
+                        } while (stack.IsNotEmpty);
                     }
-                    while (writers.IsNotEmpty)
+                    if (writers.IsNotEmpty)
                     {
-                        writers.Pop().CancelDirect();
+                        var stack = writers.MoveElementsToStackUnsafe();
+                        do
+                        {
+                            stack.Pop().CancelDirect();
+                        } while (stack.IsNotEmpty);
                     }
-                    while (waitToReaders.IsNotEmpty)
+                    if (waitToReaders.IsNotEmpty)
                     {
-                        waitToReaders.Pop().CancelDirect();
+                        var stack = waitToReaders.MoveElementsToStackUnsafe();
+                        do
+                        {
+                            stack.Pop().CancelDirect();
+                        } while (stack.IsNotEmpty);
                     }
-                    while (waitToWriters.IsNotEmpty)
+                    if (waitToWriters.IsNotEmpty)
                     {
-                        waitToWriters.Pop().CancelDirect();
+                        var stack = waitToWriters.MoveElementsToStackUnsafe();
+                        do
+                        {
+                            stack.Pop().CancelDirect();
+                        } while (stack.IsNotEmpty);
                     }
                 }
                 return true;
@@ -536,27 +580,43 @@ namespace Proto.Promises
                     }
 
                     _closedReason = ChannelSmallFields.ClosedResolvedReason;
-                    var readers = _readers.MoveElementsToStack();
-                    var writers = _writers.MoveElementsToStack();
-                    var waitToReaders = _waitToReaders.MoveElementsToStack();
-                    var waitToWriters = _waitToWriters.MoveElementsToStack();
+                    var readers = _readers.TakeElements();
+                    var writers = _writers.TakeElements();
+                    var waitToReaders = _waitToReaders.TakeElements();
+                    var waitToWriters = _waitToWriters.TakeElements();
                     _smallFields._locker.Exit();
 
-                    while (readers.IsNotEmpty)
+                    if (readers.IsNotEmpty)
                     {
-                        readers.Pop().Resolve(new ChannelReadResult<T>(default, ChannelReadResult.Closed));
+                        var stack = readers.MoveElementsToStackUnsafe();
+                        do
+                        {
+                            stack.Pop().Resolve(new ChannelReadResult<T>(default, ChannelReadResult.Closed));
+                        } while (stack.IsNotEmpty);
                     }
-                    while (writers.IsNotEmpty)
+                    if (writers.IsNotEmpty)
                     {
-                        writers.Pop().Resolve(new ChannelWriteResult<T>(default, ChannelWriteResult.Closed));
+                        var stack = writers.MoveElementsToStackUnsafe();
+                        do
+                        {
+                            stack.Pop().Resolve(new ChannelWriteResult<T>(default, ChannelWriteResult.Closed));
+                        } while (stack.IsNotEmpty);
                     }
-                    while (waitToReaders.IsNotEmpty)
+                    if (waitToReaders.IsNotEmpty)
                     {
-                        waitToReaders.Pop().Resolve(false);
+                        var stack = waitToReaders.MoveElementsToStackUnsafe();
+                        do
+                        {
+                            stack.Pop().Resolve(false);
+                        } while (stack.IsNotEmpty);
                     }
-                    while (waitToWriters.IsNotEmpty)
+                    if (waitToWriters.IsNotEmpty)
                     {
-                        waitToWriters.Pop().Resolve(false);
+                        var stack = waitToWriters.MoveElementsToStackUnsafe();
+                        do
+                        {
+                            stack.Pop().Resolve(false);
+                        } while (stack.IsNotEmpty);
                     }
                 }
                 return true;
@@ -576,10 +636,10 @@ namespace Proto.Promises
                 unchecked { _smallFields._id = id + 1; }
                 _closedReason = ChannelSmallFields.DisposedReason;
                 _queue.Dispose();
-                var readers = _readers.MoveElementsToStack();
-                var writers = _writers.MoveElementsToStack();
-                var waitToReaders = _waitToReaders.MoveElementsToStack();
-                var waitToWriters = _waitToWriters.MoveElementsToStack();
+                var readers = _readers.TakeElements();
+                var writers = _writers.TakeElements();
+                var waitToReaders = _waitToReaders.TakeElements();
+                var waitToWriters = _waitToWriters.TakeElements();
                 _smallFields._locker.Exit();
 
                 ObjectPool.MaybeRepool(this);
@@ -587,21 +647,37 @@ namespace Proto.Promises
                 if (readers.IsNotEmpty | writers.IsNotEmpty | waitToReaders.IsNotEmpty | waitToWriters.IsNotEmpty)
                 {
                     var rejection = CreateRejectContainer(new System.ObjectDisposedException(nameof(Channel<T>)), 3, null, this);
-                    while (readers.IsNotEmpty)
+                    if (readers.IsNotEmpty)
                     {
-                        readers.Pop().Reject(rejection);
+                        var stack = readers.MoveElementsToStackUnsafe();
+                        do
+                        {
+                            stack.Pop().Reject(rejection);
+                        } while (stack.IsNotEmpty);
                     }
-                    while (writers.IsNotEmpty)
+                    if (writers.IsNotEmpty)
                     {
-                        writers.Pop().Reject(rejection);
+                        var stack = writers.MoveElementsToStackUnsafe();
+                        do
+                        {
+                            stack.Pop().Reject(rejection);
+                        } while (stack.IsNotEmpty);
                     }
-                    while (waitToReaders.IsNotEmpty)
+                    if (waitToReaders.IsNotEmpty)
                     {
-                        waitToReaders.Pop().Reject(rejection);
+                        var stack = waitToReaders.MoveElementsToStackUnsafe();
+                        do
+                        {
+                            stack.Pop().Reject(rejection);
+                        } while (stack.IsNotEmpty);
                     }
-                    while (waitToWriters.IsNotEmpty)
+                    if (waitToWriters.IsNotEmpty)
                     {
-                        waitToWriters.Pop().Reject(rejection);
+                        var stack = waitToWriters.MoveElementsToStackUnsafe();
+                        do
+                        {
+                            stack.Pop().Reject(rejection);
+                        } while (stack.IsNotEmpty);
                     }
                 }
             }

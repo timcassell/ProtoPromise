@@ -167,7 +167,7 @@ namespace Proto.Promises
                 // In order to prevent a race condition with the list being expanded and results being assigned concurrently,
                 // we create the passthroughs and link them together in a queue before creating the return promise
                 // so that we can make sure the list's size is correct before hooking up any promises.
-                var passthroughs = new Internal.ValueLinkedQueue<Internal.PromiseRefBase.PromisePassThroughForAll>(
+                var passthroughs = Internal.ValueLinkedQueue<Internal.PromiseRefBase.PromisePassThroughForAll>.New(
                     Internal.PromiseRefBase.PromisePassThroughForAll.GetOrCreate(p._ref, p._id, index));
                 uint waitCount = 1;
                 while (promises.MoveNext())
@@ -198,7 +198,7 @@ namespace Proto.Promises
                 {
                     valueContainer.RemoveAt(--listSize);
                 }
-                var promise = Internal.PromiseRefBase.GetOrCreateAllSettledPromise(valueContainer, GetAllResultContainerFunc, passthroughs.MoveElementsToStack(), waitCount);
+                var promise = Internal.PromiseRefBase.GetOrCreateAllSettledPromise(valueContainer, GetAllResultContainerFunc, passthroughs.MoveElementsToStackUnsafe(), waitCount);
                 return new Promise<IList<ResultContainer>>(promise, promise.Id);
             }
         }
