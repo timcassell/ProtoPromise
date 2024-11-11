@@ -219,11 +219,7 @@ namespace Proto.Promises.Collections
                     // situation since this thread is waiting for another to write to the slot and
                     // this thread may have to check the same slot multiple times. Spin-wait to avoid
                     // a potential busy-wait, and then try again.
-#if NETCOREAPP3_0_OR_GREATER
                     spinner.SpinOnce(sleep1Threshold: -1);
-#else
-                    spinner.SpinOnce();
-#endif
                 }
                 else
                 {
@@ -292,11 +288,7 @@ namespace Proto.Promises.Collections
                     // situation since this thread is waiting for another to write to the slot and
                     // this thread may have to check the same slot multiple times. Spin-wait to avoid
                     // a potential busy-wait, and then try again.
-#if NETCOREAPP3_0_OR_GREATER
                     spinner.SpinOnce(sleep1Threshold: -1);
-#else
-                    spinner.SpinOnce();
-#endif
                 }
                 else
                 {

@@ -245,5 +245,12 @@ namespace Proto.Promises
                 list.RemoveAt(--listCount);
             }
         }
+
+        // SpinWait.SpinOnce(int sleep1Threshold) API was added in netcoreapp3.0. We just route it to SpinOnce() for older runtimes.
+#if !NETCOREAPP3_0_OR_GREATER
+        [MethodImpl(InlineOption)]
+        internal static void SpinOnce(this ref SpinWait spinner, int sleep1Threshold)
+            => spinner.SpinOnce();
+#endif
     } // class Internal
 } // namespace Proto.Promises

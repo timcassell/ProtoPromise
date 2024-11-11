@@ -225,7 +225,7 @@ namespace Proto.Promises
             {
                 AssertNotInCollection(item);
 
-                _locker.Enter();
+                _locker.EnterWithoutSleep1();
                 item._next = _head;
                 _head = item;
                 _locker.Exit();
@@ -235,7 +235,7 @@ namespace Proto.Promises
             internal HandleablePromiseBase PopOrInvalid()
             {
                 // We use InvalidAwaitSentinel as the sentinel, so we don't need a branch here to check the bottom of the stack, because it references itself.
-                _locker.Enter();
+                _locker.EnterWithoutSleep1();
                 var head = _head;
                 _head = head._next;
                 _locker.Exit();
