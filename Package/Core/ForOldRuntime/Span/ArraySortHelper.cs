@@ -2,6 +2,9 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+// TODO: Unity hasn't adopted .Net 5+ yet, and they usually use different compilation symbols than .Net SDK, so we'll have to update the compilation symbols here once Unity finally does adopt it.
+#if !NET5_0_OR_GREATER
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -12,8 +15,6 @@ using System.Runtime.CompilerServices;
 // Using Proto.Promises namespace instead of the original System.Runtime.CompilerServices, and wrapped in Internal class.
 namespace Proto.Promises
 {
-    // TODO: Unity hasn't adopted .Net 5+ yet, and they usually use different compilation symbols than .Net SDK, so we'll have to update the compilation symbols here once Unity finally does adopt it.
-#if !NET5_0_OR_GREATER
     partial class Internal
     {
         internal static class IntrospectiveSortUtilities
@@ -220,5 +221,6 @@ namespace Proto.Promises
             }
         }
     }
-#endif // !NET5_0_OR_GREATER
 }
+
+#endif // !NET5_0_OR_GREATER

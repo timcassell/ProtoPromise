@@ -4,13 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
-using System;
-// ArrayPool for old runtime is in Proto.Promises.Collections namespace.
-#if (NETCOREAPP || NETSTANDARD2_0_OR_GREATER || UNITY_2021_2_OR_NEWER)
 using System.Buffers;
-#else
-using Proto.Promises.Collections;
-#endif
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
