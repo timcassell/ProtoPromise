@@ -157,10 +157,10 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal T Pop()
             {
-                T temp = _head;
-                _head = _head.Next;
-                MarkRemovedFromCollection(temp);
-                return temp;
+                T head = _head;
+                _head = head.Next;
+                MarkRemovedFromCollection(head);
+                return head;
             }
 
             [MethodImpl(InlineOption)]
@@ -176,7 +176,7 @@ namespace Proto.Promises
             {
                 AssertNotInCollection(item);
 
-                var head = _head;
+                T head = _head;
                 while (true)
                 {
                     item.Next = head;
@@ -257,27 +257,37 @@ namespace Proto.Promises
         internal struct ValueLinkedQueue<T> where T : class, ILinked<T>
 #endif
         {
-            // TODO: only store the tail, form a circular linked list.
-            private T _head;
+            // We only store the tail to save space.
+            // We form a circular linked list so that the tail points to the head.
             private T _tail;
 
             internal bool IsEmpty
             {
                 [MethodImpl(InlineOption)]
-                get => _head == null;
+                get => _tail == null;
             }
 
             internal bool IsNotEmpty
             {
                 [MethodImpl(InlineOption)]
-                get => _head != null;
+                get => _tail != null;
             }
 
             [MethodImpl(InlineOption)]
-            internal ValueLinkedQueue(T head)
+            private ValueLinkedQueue(T tail)
             {
-                _head = head;
-                _tail = head;
+                _tail = tail;
+            }
+
+            [MethodImpl(InlineOption)]
+            internal static ValueLinkedQueue<T> New(T head)
+            {
+                var newQueue = new ValueLinkedQueue<T>(head);
+#if PROTO_PROMISE_DEVELOPER_MODE
+                newQueue.AssertNotInCollection(head);
+#endif
+                head.Next = head;
+                return newQueue;
             }
 
             // Only use if this is known to be not empty.
@@ -286,12 +296,13 @@ namespace Proto.Promises
                 AssertNotInCollection(item);
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                if (_head == null)
+                if (IsEmpty)
                 {
-                    throw new System.InvalidOperationException("EnqueueUnsafe must only be used on a non-empty queue.");
+                    throw new System.InvalidOperationException("EnqueueUnsafe must only be called on a non-empty queue.");
                 }
 #endif
 
+                item.Next = _tail.Next;
                 _tail.Next = item;
                 _tail = item;
             }
@@ -300,28 +311,30 @@ namespace Proto.Promises
             {
                 AssertNotInCollection(item);
 
-                if (_head == null)
+                T tail = _tail;
+                if (tail == null)
                 {
-                    _head = _tail = item;
+                    item.Next = item;
                 }
                 else
                 {
-                    _tail.Next = item;
-                    _tail = item;
+                    item.Next = tail.Next;
+                    tail.Next = item;
                 }
+                _tail = item;
             }
 
             internal T Dequeue()
             {
-                T head = _head;
-                if (_tail == head)
+                T tail = _tail;
+                T head = tail.Next;
+                if (tail == head)
                 {
-                    _head = null;
                     _tail = null;
                 }
                 else
                 {
-                    _head = head.Next;
+                    _tail.Next = head.Next;
                 }
 
                 MarkRemovedFromCollection(head);
@@ -330,80 +343,95 @@ namespace Proto.Promises
 
             internal bool TryRemove(T item)
             {
-                if (IsEmpty)
+                T tail = _tail;
+                if (tail == null)
                 {
                     return false;
                 }
-                if (item == _head)
+
+                T head = tail.Next;
+                T previous = tail;
+                T node = head;
+                do
                 {
-                    _head = _head.Next;
-                    if (item == _tail)
+                    if (item == node)
                     {
-                        _tail = null;
-                    }
-                    MarkRemovedFromCollection(item);
-                    return true;
-                }
-                T node = _head;
-                T next = node.Next;
-                while (next != null)
-                {
-                    if (next == item)
-                    {
-                        node.Next = next.Next;
-                        if (item == _tail)
+                        if (tail == head)
                         {
-                            _tail = node;
+                            _tail = null;
+                        }
+                        else if (tail == node)
+                        {
+                            _tail = previous;
+                            previous.Next = head;
+                        }
+                        else
+                        {
+                            previous.Next = node.Next;
                         }
                         MarkRemovedFromCollection(item);
                         return true;
                     }
-                    node = next;
-                    next = node.Next;
-                }
+                    previous = node;
+                    node = node.Next;
+                } while (node != head);
                 return false;
             }
 
-            internal ValueLinkedStack<T> MoveElementsToStack()
+            internal ValueLinkedQueue<T> TakeElements()
             {
-                var newStack = new ValueLinkedStack<T>(_head);
-                _head = null;
+                var newQueue = new ValueLinkedQueue<T>(_tail);
                 _tail = null;
+                return newQueue;
+            }
+
+            internal ValueLinkedStack<T> MoveElementsToStackUnsafe()
+            {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                if (IsEmpty)
+                {
+                    throw new System.InvalidOperationException("MoveElementsToStackUnsafe must only be called on a non-empty queue.");
+                }
+#endif
+
+                T tail = _tail;
+                _tail = null;
+                var newStack = new ValueLinkedStack<T>(tail.Next);
+                tail.Next = null;
                 return newStack;
             }
 
             internal ValueLinkedStack<T> MoveElementsToStack(int maxCount, out int actualCount)
             {
-                var current = _head;
-                if (maxCount <= 0 | current == null)
+                T tail = _tail;
+                if (maxCount <= 0 | tail == null)
                 {
                     actualCount = 0;
                     return new ValueLinkedStack<T>();
                 }
 
-                var newStack = new ValueLinkedStack<T>(current);
-                var next = current.Next;
+                T head = tail.Next;
+                var newStack = new ValueLinkedStack<T>(head);
+                T current = head;
+                T next = current.Next;
                 int count = 1;
                 while (true)
                 {
-                    if (next == null)
+                    if (next == head)
                     {
-                        _head = null;
                         _tail = null;
-                        actualCount = count;
-                        return newStack;
+                        break;
                     }
                     if (count == maxCount)
                     {
+                        tail.Next = next;
                         break;
                     }
                     ++count;
                     current = next;
                     next = current.Next;
                 }
-
                 current.Next = null;
-                _head = next;
                 actualCount = count;
                 return newStack;
             }
@@ -411,21 +439,21 @@ namespace Proto.Promises
 #if UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
             internal void TakeAndEnqueueElements(ref ValueLinkedQueue<T> other)
             {
-                if (other.IsEmpty)
+                T otherTail = other._tail;
+                if (otherTail == null)
                 {
                     return;
                 }
-                if (IsEmpty)
-                {
-                    _head = other._head;
-                }
-                else
-                {
-                    _tail.Next = other._head;
-                }
-                _tail = other._tail;
-                other._head = null;
                 other._tail = null;
+
+                T tail = _tail;
+                if (tail != null)
+                {
+                    T otherHead = otherTail.Next;
+                    otherTail.Next = tail.Next;
+                    tail.Next = otherHead;
+                }
+                _tail = otherTail;
             }
 #endif // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
         }

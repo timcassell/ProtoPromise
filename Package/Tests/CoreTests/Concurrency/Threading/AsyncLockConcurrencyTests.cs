@@ -33,7 +33,7 @@ namespace ProtoPromiseTests.Concurrency.Threading
             var cancelationSource = default(CancelationSource);
             int enteredCount = 0;
             int exitedCount = 0;
-            int expectedInvokes = ThreadHelper.GetExpandCount(4) * 4;
+            int expectedInvokes = 4;
             Action<bool> syncLockAction = observeCancelation =>
             {
                 try
@@ -140,7 +140,7 @@ namespace ProtoPromiseTests.Concurrency.Threading
             var cancelationSource = default(CancelationSource);
             int enteredCount = 0;
             int exitedCount = 0;
-            int expectedInvokes = ThreadHelper.GetExpandCount(4) * 4;
+            int expectedInvokes = 4;
             Action<bool> syncLockAction = observeCancelation =>
             {
                 using (var key = mutex.Lock())
@@ -238,7 +238,7 @@ namespace ProtoPromiseTests.Concurrency.Threading
             var cancelationSource = default(CancelationSource);
             int enteredCount = 0;
             int exitedCount = 0;
-            int expectedInvokes = ThreadHelper.GetExpandCount(4) * 4;
+            int expectedInvokes = 4;
             Action<bool> syncLockAction = observeCancelation =>
             {
                 using (var key = mutex.Lock())

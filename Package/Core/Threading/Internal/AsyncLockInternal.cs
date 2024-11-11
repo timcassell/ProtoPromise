@@ -643,7 +643,7 @@ namespace Proto.Promises
 
             internal void NotifyAbandoned(string abandonedMessage, Internal.ITraceable traceable)
             {
-                Internal.ValueLinkedStack<Internal.IAsyncLockPromise> queue;
+                Internal.ValueLinkedQueue<Internal.IAsyncLockPromise> queue;
                 _locker.Enter();
                 {
                     if (_abandonedMessage != null)
@@ -654,12 +654,16 @@ namespace Proto.Promises
                     }
                     _abandonedMessage = abandonedMessage;
                     _abandonedRejection = Internal.CreateRejectContainer(new AbandonedLockException(abandonedMessage), int.MinValue, null, traceable);
-                    queue = _queue.MoveElementsToStack();
+                    queue = _queue.TakeElements();
                 }
                 _locker.Exit();
-                while (queue.IsNotEmpty)
+                if (queue.IsNotEmpty)
                 {
-                    queue.Pop().Reject(_abandonedRejection);
+                    var stack = queue.MoveElementsToStackUnsafe();
+                    do
+                    {
+                        stack.Pop().Reject(_abandonedRejection);
+                    } while (stack.IsNotEmpty);
                 }
                 _abandonedRejection.ReportUnhandled();
             }

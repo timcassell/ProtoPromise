@@ -54,14 +54,18 @@ namespace Proto.Promises.Threading
             {
                 rejectContainer = Internal.CreateRejectContainer(new AbandonedConditionVariableException("An AsyncConditionVariable was collected with waiters still pending."), int.MinValue, null, this);
             }
-            Internal.ValueLinkedStack<Internal.IAsyncLockPromise> queue;
+            Internal.ValueLinkedQueue<Internal.IAsyncLockPromise> queue;
             lock (locker)
             {
-                queue = _queue.MoveElementsToStack();
+                queue = _queue.TakeElements();
             }
-            while (queue.IsNotEmpty)
+            if (queue.IsNotEmpty)
             {
-                queue.Pop().Reject(rejectContainer);
+                var stack = queue.MoveElementsToStackUnsafe();
+                do
+                {
+                    stack.Pop().Reject(rejectContainer);
+                } while (stack.IsNotEmpty);
             }
             if (!lockWasAbandoned)
             {
