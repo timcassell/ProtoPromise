@@ -3,19 +3,13 @@
 
 // Modified to work in Unity/netstandard2.0 without using the nuget package.
 // Hooks up to Promise.Manager.ClearObjectPool() event instead of using Gen2GC callbacks.
-
 #if UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+
 using System.Runtime.CompilerServices;
 using System.Threading;
-#endif
 
-namespace Proto.Promises.Collections
+namespace System.Buffers
 {
-#if UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
-
     /// <summary>
     /// Provides an ArrayPool implementation meant to be used as the singleton returned from ArrayPool.Shared.
     /// </summary>
@@ -26,7 +20,7 @@ namespace Proto.Promises.Collections
     /// checking its processor number, because multiple threads could interleave on the same core, and because
     /// a thread is allowed to check other core's buckets if its core's bucket is empty/full.
     /// </remarks>
-    internal sealed partial class TlsOverPerCoreLockedStacksArrayPool<T> : ArrayPool<T>
+    internal sealed partial class SharedArrayPool<T> : ArrayPool<T>
     {
         /// <summary>The number of buckets (array sizes) in the pool, one for each array length, starting from length 16.</summary>
         private const int NumBuckets = 17; // Utilities.SelectBucketIndex(2*1024*1024)
@@ -44,7 +38,7 @@ namespace Proto.Promises.Collections
         private readonly PerCoreLockedStacks[] _buckets = new PerCoreLockedStacks[NumBuckets];
 
         /// <summary>Initialize the pool.</summary>
-        public TlsOverPerCoreLockedStacksArrayPool()
+        public SharedArrayPool()
         {
             var sizes = new int[NumBuckets];
             for (int i = 0; i < sizes.Length; i++)
@@ -53,8 +47,8 @@ namespace Proto.Promises.Collections
             }
             _bucketArraySizes = sizes;
 
-            // Hook up to Promise.Manage.ClearObjectPool() event.
-            Internal.AddClearPoolListener(Trim);
+            // Hook up to Promise.Manager.ClearObjectPool() event.
+            Proto.Promises.Internal.AddClearPoolListener(Trim);
         }
 
         /// <summary>Allocate a new PerCoreLockedStacks and try to store it into the <see cref="_buckets"/> array.</summary>
@@ -271,6 +265,6 @@ namespace Proto.Promises.Collections
             }
         }
     }
-
-#endif // UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
 }
+
+#endif

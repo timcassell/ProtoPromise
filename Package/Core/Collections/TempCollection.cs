@@ -5,9 +5,7 @@
 #endif
 
 using System;
-#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
 using System.Buffers;
-#endif
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;

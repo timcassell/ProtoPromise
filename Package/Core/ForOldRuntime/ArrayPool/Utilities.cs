@@ -2,15 +2,12 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 #if UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
-using System;
+
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-#endif
 
-namespace Proto.Promises.Collections
+namespace System.Buffers
 {
-#if UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
-
     internal static class Utilities
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -46,6 +43,6 @@ namespace Proto.Promises.Collections
             return (int) Math.Log(value, 2);
         }
     }
+}
 
 #endif // UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
-}
