@@ -90,7 +90,7 @@ namespace Proto.Promises
                     PrepareEarlyDispose();
                     base.Dispose();
                     _disposed = true;
-                    _current = default;
+                    ClearReferences(ref _current);
                     _queue.Dispose();
                     _queue = default;
                     ObjectPool.MaybeRepool(this);

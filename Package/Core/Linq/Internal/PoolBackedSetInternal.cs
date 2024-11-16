@@ -96,7 +96,7 @@ namespace Proto.Promises
                         }
 
                         _slots[i]._hashCode = -1;
-                        _slots[i]._value = default;
+                        ClearReferences(ref _slots[i]._value);
                         _slots[i]._next = -1;
                         return true;
                     }

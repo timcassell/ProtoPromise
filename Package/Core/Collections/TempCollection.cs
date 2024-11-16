@@ -278,7 +278,7 @@ namespace Proto.Promises.Collections
 
         internal void SetCapacityNoCopy(int capacity)
         {
-            Array.Clear(_items, 0, _count);
+            Internal.ClearReferences(_items, 0, _count);
             ArrayPool<T>.Shared.Return(_items, false);
             _items = ArrayPool<T>.Shared.Rent(capacity);
         }
@@ -287,7 +287,7 @@ namespace Proto.Promises.Collections
         {
             var newStorage = ArrayPool<T>.Shared.Rent(capacity);
             _items.CopyTo(newStorage, 0);
-            Array.Clear(_items, 0, _count);
+            Internal.ClearReferences(_items, 0, _count);
             ArrayPool<T>.Shared.Return(_items, false);
             _items = newStorage;
         }
@@ -312,7 +312,7 @@ namespace Proto.Promises.Collections
 
         internal void Clear()
         {
-            Array.Clear(_items, 0, _count);
+            Internal.ClearReferences(_items, 0, _count);
             _count = 0;
         }
 
@@ -323,7 +323,7 @@ namespace Proto.Promises.Collections
             _disposedChecker._isDisposed = true;
             Internal.Discard(_disposedChecker);
 #endif
-            Array.Clear(_items, 0, _count);
+            Internal.ClearReferences(_items, 0, _count);
             ArrayPool<T>.Shared.Return(_items, false);
             this = default;
         }

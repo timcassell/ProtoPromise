@@ -137,7 +137,7 @@ namespace Proto.Promises.Threading
             private void Dispose()
             {
                 _callback = default;
-                _capturedInfo = default;
+                _capturedInfo = null;
                 Internal.ObjectPool.MaybeRepool(this);
             }
         }

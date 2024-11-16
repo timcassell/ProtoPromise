@@ -213,7 +213,7 @@ namespace Proto.Promises
 
                 protected void Dispose()
                 {
-                    _comparer = default;
+                    ClearReferences(ref _comparer);
                     // Dispose ThenBys
                     var next = _next;
                     _next = null;
@@ -439,7 +439,7 @@ namespace Proto.Promises
 
                 protected void Dispose()
                 {
-                    _comparer = default;
+                    ClearReferences(ref _comparer);
                     // Dispose ThenBys
                     var next = _next;
                     _next = null;
@@ -937,7 +937,7 @@ namespace Proto.Promises
                     {
                         _keys.Dispose();
                     }
-                    _comparer = default;
+                    ClearReferences(ref _comparer);
                 }
             }
 

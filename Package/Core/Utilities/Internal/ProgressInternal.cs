@@ -192,7 +192,7 @@ namespace Proto.Promises
 
             private void DisposeAndRepool()
             {
-                _progress = default;
+                ClearReferences(ref _progress);
                 _invokeContext = null;
                 ObjectPool.MaybeRepool(this);
             }

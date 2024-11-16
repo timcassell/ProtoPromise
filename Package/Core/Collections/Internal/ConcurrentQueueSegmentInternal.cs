@@ -149,7 +149,7 @@ namespace Proto.Promises.Collections
             Slot[] slots = _slots;
 
             // Loop in case of contention...
-            SpinWait spinner = default;
+            var spinner = new SpinWait();
             while (true)
             {
                 // Get the head at which to try to dequeue.
@@ -183,11 +183,7 @@ namespace Proto.Promises.Collections
                             // peeking.  And we don't update the sequence number,
                             // so that an enqueuer will see it as full and be forced to move to a new segment.
 
-                            // TODO
-                            //if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
-                            {
-                                slots[slotsIndex].item = default;
-                            }
+                            Internal.ClearReferences(ref slots[slotsIndex].item);
                             Volatile.Write(ref slots[slotsIndex].sequenceNumber, currentHead + slots.Length);
                         }
                         return true;
@@ -247,7 +243,7 @@ namespace Proto.Promises.Collections
             Slot[] slots = _slots;
 
             // Loop in case of contention...
-            SpinWait spinner = default;
+            var spinner = new SpinWait();
             while (true)
             {
                 // Get the head at which to try to peek.

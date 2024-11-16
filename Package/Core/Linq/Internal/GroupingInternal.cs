@@ -97,7 +97,7 @@ namespace Proto.Promises
                 _nextGrouping = null;
                 _elements.Dispose();
                 _elements = default;
-                _key = default;
+                ClearReferences(ref _key);
                 ObjectPool.MaybeRepool(this);
             }
         }

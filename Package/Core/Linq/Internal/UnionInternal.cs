@@ -162,7 +162,7 @@ namespace Proto.Promises
 
             private void Dispose()
             {
-                _comparer = default;
+                ClearReferences(ref _comparer);
                 _first = default;
                 _second = default;
                 ObjectPool.MaybeRepool(this);
@@ -364,7 +364,7 @@ namespace Proto.Promises
 
             private void Dispose()
             {
-                _comparer = default;
+                ClearReferences(ref _comparer);
                 _nextEnumerator = default;
                 ObjectPool.MaybeRepool(this);
             }
@@ -530,7 +530,7 @@ namespace Proto.Promises
 
             private void Dispose()
             {
-                _comparer = default;
+                ClearReferences(ref _comparer);
                 _configuredFirst = default;
                 _second = default;
                 ObjectPool.MaybeRepool(this);

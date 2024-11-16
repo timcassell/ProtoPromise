@@ -203,7 +203,7 @@ namespace Proto.Promises.Collections
         {
             get
             {
-                SpinWait spinner = default;
+                var spinner = new SpinWait();
                 while (true)
                 {
                     // Capture the head and tail, as well as the head's head and tail.
