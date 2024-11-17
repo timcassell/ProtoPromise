@@ -6,6 +6,7 @@
 
 using Proto.Promises.Collections;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 
@@ -21,10 +22,12 @@ namespace Proto.Promises
         internal struct PoolBackedSet<TElement, TEqualityComparer> : IDisposable
             where TEqualityComparer : IEqualityComparer<TElement>
         {
+            // Pooled arrays
+            private int[] _buckets;
+            private Slot[] _slots;
             private readonly TEqualityComparer _comparer;
-            // We use TempCollectionBuilder to handle renting from ArrayPool.
-            private TempCollectionBuilder<int> _buckets;
-            private TempCollectionBuilder<Slot> _slots;
+            // Usable length of the pooled arrays. They are both the same length.
+            private int _arraysLength;
             internal int _count;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             private bool _haveRemoved;
@@ -35,8 +38,9 @@ namespace Proto.Promises
                 _comparer = comparer;
                 // The smallest array returned from ArrayPool by default is 16, so we use 15 count to start instead of 7 that System.Linq uses.
                 // The actual array length could be larger than the requested size, so we make sure the count is what we expect.
-                _buckets = new TempCollectionBuilder<int>(15, 15);
-                _slots = new TempCollectionBuilder<Slot>(15, 15);
+                _buckets = ArrayPool<int>.Shared.Rent(15);
+                _slots = ArrayPool<Slot>.Shared.Rent(15);
+                _arraysLength = 15;
                 _count = 0;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 _haveRemoved = false;
@@ -50,7 +54,7 @@ namespace Proto.Promises
                 Debug.Assert(!_haveRemoved, "This class is optimized for never calling Add after Remove. If your changes need to do so, undo that optimization.");
 #endif
                 var hashCode = InternalGetHashCode(value);
-                for (var i = _buckets[hashCode % _buckets._count] - 1; i >= 0; i = _slots[i]._next)
+                for (var i = _buckets[hashCode % _arraysLength] - 1; i >= 0; i = _slots[i]._next)
                 {
                     if (_slots[i]._hashCode == hashCode && _comparer.Equals(_slots[i]._value, value))
                     {
@@ -58,14 +62,14 @@ namespace Proto.Promises
                     }
                 }
 
-                if (_count == _slots._count)
+                if (_count == _arraysLength)
                 {
                     Resize();
                 }
 
                 var index = _count;
                 ++_count;
-                var bucket = hashCode % _buckets._count;
+                var bucket = hashCode % _arraysLength;
                 _slots[index]._hashCode = hashCode;
                 _slots[index]._value = value;
                 _slots[index]._next = _buckets[bucket] - 1;
@@ -80,7 +84,7 @@ namespace Proto.Promises
                 _haveRemoved = true;
 #endif
                 var hashCode = InternalGetHashCode(value);
-                var bucket = hashCode % _buckets._count;
+                var bucket = hashCode % _arraysLength;
                 var last = -1;
                 for (var i = _buckets[bucket] - 1; i >= 0; last = i, i = _slots[i]._next)
                 {
@@ -114,8 +118,11 @@ namespace Proto.Promises
             private void Resize()
             {
                 var newSize = checked((_count * 2) + 1);
-                _buckets.SetCapacityNoCopy(newSize);
-                _slots.SetCapacityAndCopy(newSize);
+                ArrayPool<int>.Shared.Return(_buckets, clearArray: true);
+                ArrayPool<Slot>.Shared.Return(_slots, clearArray: true);
+                _buckets = ArrayPool<int>.Shared.Rent(newSize);
+                _slots = ArrayPool<Slot>.Shared.Rent(newSize);
+                _arraysLength = newSize;
                 for (var i = 0; i < _count; i++)
                 {
                     var bucket = _slots[i]._hashCode % newSize;
@@ -126,8 +133,8 @@ namespace Proto.Promises
 
             public void Dispose()
             {
-                _buckets.Dispose();
-                _slots.Dispose();
+                ArrayPool<int>.Shared.Return(_buckets, clearArray: true);
+                ArrayPool<Slot>.Shared.Return(_slots, clearArray: true);
             }
 
             private struct Slot

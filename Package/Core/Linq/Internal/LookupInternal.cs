@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Buffers;
 
 #pragma warning disable IDE0251 // Make member 'readonly'
 
@@ -27,10 +28,12 @@ namespace Proto.Promises
         internal struct LookupImpl<TKey, TElement, TEqualityComparer> : IDisposable
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            private readonly TEqualityComparer _comparer;
             internal Grouping<TKey, TElement> _lastGrouping;
-            // We use a TempCollectionBuilder to handle renting from ArrayPool.
-            internal TempCollectionBuilder<Grouping<TKey, TElement>> _groupings;
+            // Pooled array
+            private Grouping<TKey, TElement>[] _groupings;
+            private readonly TEqualityComparer _comparer;
+            // Usable length of the pooled array.
+            private int _groupingsLength;
             internal int _count;
 
             internal LookupImpl(TEqualityComparer comparer, bool willBeDisposed)
@@ -39,14 +42,8 @@ namespace Proto.Promises
                 _lastGrouping = null;
                 // The smallest array returned from ArrayPool by default is 16, so we use 15 count to start instead of 7 that System.Linq uses.
                 // The actual array length could be larger than the requested size, so we make sure the count is what we expect.
-                _groupings = new TempCollectionBuilder<Grouping<TKey, TElement>>(15, 15);
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                // ToLookupAsync does not dispose. GroupBy does.
-                if (!willBeDisposed)
-                {
-                    Discard(_groupings._disposedChecker);
-                }
-#endif
+                _groupings = ArrayPool<Grouping<TKey, TElement>>.Shared.Rent(15);
+                _groupingsLength = 15;
                 _count = 0;
             }
 
@@ -59,7 +56,7 @@ namespace Proto.Promises
 
             private Grouping<TKey, TElement> GetGrouping(TKey key, int hashCode)
             {
-                for (var g = _groupings[hashCode % _groupings._count]; g != null; g = g._hashNext)
+                for (var g = _groupings[hashCode % _groupingsLength]; g != null; g = g._hashNext)
                 {
                     if (g._hashCode == hashCode && _comparer.Equals(g._key, key))
                     {
@@ -80,12 +77,12 @@ namespace Proto.Promises
                     return grouping;
                 }
 
-                if (_count == _groupings._count)
+                if (_count == _groupingsLength)
                 {
                     Resize();
                 }
 
-                var index = hashCode % _groupings._count;
+                var index = hashCode % _groupingsLength;
                 var g = Grouping<TKey, TElement>.GetOrCreate(key, hashCode, _groupings[index], willBeDisposed);
                 _groupings[index] = g;
                 if (_lastGrouping == null)
@@ -113,8 +110,9 @@ namespace Proto.Promises
             private void Resize()
             {
                 var newSize = checked((_count * 2) + 1);
-                _groupings.SetCapacityNoCopy(newSize);
-                _groupings._count = newSize;
+                ArrayPool<Grouping<TKey, TElement>>.Shared.Return(_groupings, clearArray: true);
+                _groupings = ArrayPool<Grouping<TKey, TElement>>.Shared.Rent(newSize);
+                _groupingsLength = newSize;
                 var g = _lastGrouping;
                 do
                 {
@@ -127,10 +125,6 @@ namespace Proto.Promises
 
             public void Dispose()
             {
-                if (_groupings._items == null)
-                {
-                    return;
-                }
                 // Dispose each grouping.
                 if (_lastGrouping != null)
                 {
@@ -143,7 +137,8 @@ namespace Proto.Promises
                     }
                     _lastGrouping.Dispose();
                 }
-                _groupings.Dispose();
+
+                ArrayPool<Grouping<TKey, TElement>>.Shared.Return(_groupings, clearArray: true);
             }
         }
 

@@ -276,29 +276,18 @@ namespace Proto.Promises.Collections
 #endif
         }
 
-        internal void SetCapacityNoCopy(int capacity)
-        {
-            Internal.ClearReferences(_items, 0, _count);
-            ArrayPool<T>.Shared.Return(_items, false);
-            _items = ArrayPool<T>.Shared.Rent(capacity);
-        }
-
-        internal void SetCapacityAndCopy(int capacity)
-        {
-            var newStorage = ArrayPool<T>.Shared.Rent(capacity);
-            _items.CopyTo(newStorage, 0);
-            Internal.ClearReferences(_items, 0, _count);
-            ArrayPool<T>.Shared.Return(_items, false);
-            _items = newStorage;
-        }
-
         internal void EnsureCapacity(int capacity)
         {
             if (capacity <= _items.Length)
             {
                 return;
             }
-            SetCapacityAndCopy(capacity);
+
+            var newStorage = ArrayPool<T>.Shared.Rent(capacity);
+            _items.CopyTo(newStorage, 0);
+            Internal.ClearReferences(_items, 0, _count);
+            ArrayPool<T>.Shared.Return(_items, false);
+            _items = newStorage;
         }
 
         internal void Add(T item)
