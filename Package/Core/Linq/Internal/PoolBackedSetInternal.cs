@@ -4,11 +4,12 @@
 #undef PROMISE_DEBUG
 #endif
 
-using Proto.Promises.Collections;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
+
+#pragma warning disable IDE0251 // Make member 'readonly'
 
 namespace Proto.Promises
 {
@@ -39,6 +40,8 @@ namespace Proto.Promises
                 // The smallest array returned from ArrayPool by default is 16, so we use 15 count to start instead of 7 that System.Linq uses.
                 // The actual array length could be larger than the requested size, so we make sure the count is what we expect.
                 _buckets = ArrayPool<int>.Shared.Rent(15);
+                // We are renting a public type `int[]` from the shared ArrayPool, so we need to zero the elements.
+                _buckets.AsSpan().Clear();
                 _slots = ArrayPool<Slot>.Shared.Rent(15);
                 _arraysLength = 15;
                 _count = 0;
@@ -118,9 +121,11 @@ namespace Proto.Promises
             private void Resize()
             {
                 var newSize = checked((_count * 2) + 1);
-                ArrayPool<int>.Shared.Return(_buckets, clearArray: true);
+                ArrayPool<int>.Shared.Return(_buckets, clearArray: false);
                 ArrayPool<Slot>.Shared.Return(_slots, clearArray: true);
                 _buckets = ArrayPool<int>.Shared.Rent(newSize);
+                // We are renting a public type `int[]` from the shared ArrayPool, so we need to zero the elements.
+                _buckets.AsSpan().Clear();
                 _slots = ArrayPool<Slot>.Shared.Rent(newSize);
                 _arraysLength = newSize;
                 for (var i = 0; i < _count; i++)
@@ -133,7 +138,7 @@ namespace Proto.Promises
 
             public void Dispose()
             {
-                ArrayPool<int>.Shared.Return(_buckets, clearArray: true);
+                ArrayPool<int>.Shared.Return(_buckets, clearArray: false);
                 ArrayPool<Slot>.Shared.Return(_slots, clearArray: true);
             }
 

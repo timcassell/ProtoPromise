@@ -4,7 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-using Proto.Promises.Collections;
 using Proto.Promises.CompilerServices;
 using Proto.Promises.Linq;
 using System;
@@ -12,6 +11,8 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+
+#pragma warning disable IDE0251 // Make member 'readonly'
 
 namespace Proto.Promises
 {

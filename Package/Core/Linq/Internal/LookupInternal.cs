@@ -5,7 +5,6 @@
 #endif
 
 using Proto.Promises.CompilerServices;
-using Proto.Promises.Collections;
 using Proto.Promises.Linq;
 using System;
 using System.Collections;
