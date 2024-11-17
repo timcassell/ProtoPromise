@@ -188,7 +188,7 @@ namespace Proto.Promises
                 {
                     current[i].Invoke();
                 }
-                Array.Clear(_currentQueue, 0, max);
+                Array.Clear(current, 0, max);
             }
 
             internal void Clear()
@@ -292,7 +292,7 @@ namespace Proto.Promises
                 {
                     current[i].Invoke();
                 }
-                Array.Clear(_currentQueue, 0, max);
+                Array.Clear(current, 0, max);
             }
 
             internal void Clear()
@@ -465,7 +465,7 @@ namespace Proto.Promises
                         }
                         --_currentCount;
                     }
-                    Array.Clear(_currentQueue, 0, max);
+                    Internal.ClearReferences(current, 0, max);
                 }
 
                 internal override void Reset()
