@@ -168,7 +168,7 @@ namespace Proto.Promises
                     _hashNext = null;
                     _nextNode = null;
                     ClearReferences(ref _key);
-                    ClearReferences(ref _value);
+                    _value = default;
                     ObjectPool.MaybeRepool(this);
                 }
             }
