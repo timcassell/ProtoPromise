@@ -53,6 +53,7 @@ namespace Proto.Promises
 
             internal static int s_currentFrame = -1;
             internal static float s_deltaTime = 0f;
+            internal static float s_time = 0f;
 
             // These must not be readonly.
 
@@ -71,6 +72,7 @@ namespace Proto.Promises
             {
                 s_currentFrame = Time.frameCount;
                 s_deltaTime = Time.deltaTime;
+                s_time = Time.time;
             }
 
             static private void StaticInit()

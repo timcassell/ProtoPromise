@@ -162,6 +162,29 @@ namespace Proto.Promises
             [MethodImpl(MethodImplOptions.NoInlining)]
             private static void ThrowCannotDisableAsyncFlow()
                 => throw new InvalidOperationException("Cannot disable AsyncFlowExecutionContext. It may only be enabled.");
+
+            /// <summary>
+            /// The default <see cref="TimeProvider"/> to use for time-based methods when one is not provided.
+            /// </summary>
+            public static TimeProvider DefaultTimeProvider
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get => s_defaultTimeProvider;
+                [MethodImpl(Internal.InlineOption)]
+                set
+                {
+                    if (value == null)
+                    {
+                        ThrowNullTimeProvider();
+                    }
+                    s_defaultTimeProvider = value;
+                }
+            }
+            private static TimeProvider s_defaultTimeProvider = PooledSystemTimeProvider.Instance;
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private static void ThrowNullTimeProvider()
+                => throw new ArgumentNullException("value", "TimeProvider may not be null.");
         }
     }
 }
