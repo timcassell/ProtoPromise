@@ -122,7 +122,7 @@ namespace Proto.Promises
             {
                 PrepareEarlyDispose();
                 base.Dispose();
-                _current = default;
+                ClearReferences(ref _current);
                 _disposed = true;
                 ObjectPool.MaybeRepool(this);
             }

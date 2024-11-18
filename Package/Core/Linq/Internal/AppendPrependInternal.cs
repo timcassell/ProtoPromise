@@ -115,7 +115,7 @@ namespace Proto.Promises
             private void Dispose()
             {
                 _source = default;
-                _prepended = default;
+                ClearReferences(ref _prepended);
                 ObjectPool.MaybeRepool(this);
             }
 
@@ -203,7 +203,7 @@ namespace Proto.Promises
             private void Dispose()
             {
                 _source = default;
-                _appended = default;
+                ClearReferences(ref _appended);
                 ObjectPool.MaybeRepool(this);
             }
 
@@ -293,8 +293,8 @@ namespace Proto.Promises
             private void Dispose()
             {
                 _source = default;
-                _prepended = default;
-                _appended = default;
+                ClearReferences(ref _prepended);
+                ClearReferences(ref _appended);
                 ObjectPool.MaybeRepool(this);
             }
 
@@ -404,7 +404,7 @@ namespace Proto.Promises
             private void RepoolWithoutDispose()
             {
                 _source = default;
-                _prepended = default;
+                ClearReferences(ref _prepended);
                 ObjectPool.MaybeRepool(this);
             }
 

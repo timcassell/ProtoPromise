@@ -48,7 +48,6 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    LookupSingleValue<TKey, TAccumulate, TEqualityComparer> dict = default;
                     try
                     {
                         // Make sure at least 1 element exists before creating the dictionary.
@@ -57,28 +56,29 @@ namespace Proto.Promises
                             return;
                         }
 
-                        dict = new LookupSingleValue<TKey, TAccumulate, TEqualityComparer>(_comparer);
-                        do
+                        using (var dict = new LookupSingleValue<TKey, TAccumulate, TEqualityComparer>(_comparer))
                         {
-                            var element = _asyncEnumerator.Current;
-                            var accNode = dict.GetOrCreateNode(_keySelector.Invoke(element), out bool exists);
-                            accNode._value = _accumulator.Invoke(exists ? accNode._value : _seed, element);
-                        } while (await _asyncEnumerator.MoveNextAsync());
+                            do
+                            {
+                                var element = _asyncEnumerator.Current;
+                                var accNode = dict.GetOrCreateNode(_keySelector.Invoke(element), out bool exists);
+                                accNode._value = _accumulator.Invoke(exists ? accNode._value : _seed, element);
+                            } while (await _asyncEnumerator.MoveNextAsync());
 
-                        // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        var node = dict._lastNode;
-                        do
-                        {
-                            node = node._nextNode;
-                            await writer.YieldAsync(new KeyValuePair<TKey, TAccumulate>(node._key, node._value));
-                        } while (node != dict._lastNode);
+                            // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                            var node = dict._lastNode;
+                            do
+                            {
+                                node = node._nextNode;
+                                await writer.YieldAsync(new KeyValuePair<TKey, TAccumulate>(node._key, node._value));
+                            } while (node != dict._lastNode);
+                        }
 
                         // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
                         await writer.YieldAsync(default).ForLinqExtension();
                     }
                     finally
                     {
-                        dict.Dispose();
                         await _asyncEnumerator.DisposeAsync();
                     }
                 }
@@ -125,7 +125,6 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    LookupSingleValue<TKey, TAccumulate, TEqualityComparer> dict = default;
                     try
                     {
                         // Make sure at least 1 element exists before creating the dictionary.
@@ -134,28 +133,29 @@ namespace Proto.Promises
                             return;
                         }
 
-                        dict = new LookupSingleValue<TKey, TAccumulate, TEqualityComparer>(_comparer);
-                        do
+                        using (var dict = new LookupSingleValue<TKey, TAccumulate, TEqualityComparer>(_comparer))
                         {
-                            var element = _asyncEnumerator.Current;
-                            var accNode = dict.GetOrCreateNode(await _keySelector.Invoke(element), out bool exists);
-                            accNode._value = await _accumulator.Invoke(exists ? accNode._value : _seed, element);
-                        } while (await _asyncEnumerator.MoveNextAsync());
+                            do
+                            {
+                                var element = _asyncEnumerator.Current;
+                                var accNode = dict.GetOrCreateNode(await _keySelector.Invoke(element), out bool exists);
+                                accNode._value = await _accumulator.Invoke(exists ? accNode._value : _seed, element);
+                            } while (await _asyncEnumerator.MoveNextAsync());
 
-                        // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        var node = dict._lastNode;
-                        do
-                        {
-                            node = node._nextNode;
-                            await writer.YieldAsync(new KeyValuePair<TKey, TAccumulate>(node._key, node._value));
-                        } while (node != dict._lastNode);
+                            // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                            var node = dict._lastNode;
+                            do
+                            {
+                                node = node._nextNode;
+                                await writer.YieldAsync(new KeyValuePair<TKey, TAccumulate>(node._key, node._value));
+                            } while (node != dict._lastNode);
+                        }
 
                         // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
                         await writer.YieldAsync(default).ForLinqExtension();
                     }
                     finally
                     {
-                        dict.Dispose();
                         await _asyncEnumerator.DisposeAsync();
                     }
                 }
@@ -202,7 +202,6 @@ namespace Proto.Promises
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
                     var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
-                    LookupSingleValue<TKey, TAccumulate, TEqualityComparer> dict = default;
                     try
                     {
                         // Make sure at least 1 element exists before creating the dictionary.
@@ -211,21 +210,23 @@ namespace Proto.Promises
                             return;
                         }
 
-                        dict = new LookupSingleValue<TKey, TAccumulate, TEqualityComparer>(_comparer);
-                        do
+                        using (var dict = new LookupSingleValue<TKey, TAccumulate, TEqualityComparer>(_comparer))
                         {
-                            var element = _configuredAsyncEnumerator.Current;
-                            var accNode = dict.GetOrCreateNode(_keySelector.Invoke(element), out bool exists);
-                            accNode._value = _accumulator.Invoke(exists ? accNode._value : _seed, element);
-                        } while (await _configuredAsyncEnumerator.MoveNextAsync());
+                            do
+                            {
+                                var element = _configuredAsyncEnumerator.Current;
+                                var accNode = dict.GetOrCreateNode(_keySelector.Invoke(element), out bool exists);
+                                accNode._value = _accumulator.Invoke(exists ? accNode._value : _seed, element);
+                            } while (await _configuredAsyncEnumerator.MoveNextAsync());
 
-                        // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        var node = dict._lastNode;
-                        do
-                        {
-                            node = node._nextNode;
-                            await writer.YieldAsync(new KeyValuePair<TKey, TAccumulate>(node._key, node._value));
-                        } while (node != dict._lastNode);
+                            // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                            var node = dict._lastNode;
+                            do
+                            {
+                                node = node._nextNode;
+                                await writer.YieldAsync(new KeyValuePair<TKey, TAccumulate>(node._key, node._value));
+                            } while (node != dict._lastNode);
+                        }
 
                         // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
                         await writer.YieldAsync(default).ForLinqExtension();
@@ -233,7 +234,6 @@ namespace Proto.Promises
                     finally
                     {
                         joinedCancelationSource.TryDispose();
-                        dict.Dispose();
                         await _configuredAsyncEnumerator.DisposeAsync();
                     }
                 }
@@ -281,7 +281,6 @@ namespace Proto.Promises
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
                     var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
-                    LookupSingleValue<TKey, TAccumulate, TEqualityComparer> dict = default;
                     try
                     {
                         // Make sure at least 1 element exists before creating the dictionary.
@@ -290,23 +289,25 @@ namespace Proto.Promises
                             return;
                         }
 
-                        dict = new LookupSingleValue<TKey, TAccumulate, TEqualityComparer>(_comparer);
-                        do
+                        using (var dict = new LookupSingleValue<TKey, TAccumulate, TEqualityComparer>(_comparer))
                         {
-                            var element = _configuredAsyncEnumerator.Current;
-                            // The key selector function could have switched context, make sure we're on the configured context before invoking the comparer and accumulator.
-                            var key = await _keySelector.Invoke(element).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
-                            var accNode = dict.GetOrCreateNode(key, out bool exists);
-                            accNode._value = await _accumulator.Invoke(exists ? accNode._value : _seed, element);
-                        } while (await _configuredAsyncEnumerator.MoveNextAsync());
+                            do
+                            {
+                                var element = _configuredAsyncEnumerator.Current;
+                                // The key selector function could have switched context, make sure we're on the configured context before invoking the comparer and accumulator.
+                                var key = await _keySelector.Invoke(element).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
+                                var accNode = dict.GetOrCreateNode(key, out bool exists);
+                                accNode._value = await _accumulator.Invoke(exists ? accNode._value : _seed, element);
+                            } while (await _configuredAsyncEnumerator.MoveNextAsync());
 
-                        // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        var node = dict._lastNode;
-                        do
-                        {
-                            node = node._nextNode;
-                            await writer.YieldAsync(new KeyValuePair<TKey, TAccumulate>(node._key, node._value));
-                        } while (node != dict._lastNode);
+                            // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                            var node = dict._lastNode;
+                            do
+                            {
+                                node = node._nextNode;
+                                await writer.YieldAsync(new KeyValuePair<TKey, TAccumulate>(node._key, node._value));
+                            } while (node != dict._lastNode);
+                        }
 
                         // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
                         await writer.YieldAsync(default).ForLinqExtension();
@@ -314,7 +315,6 @@ namespace Proto.Promises
                     finally
                     {
                         joinedCancelationSource.TryDispose();
-                        dict.Dispose();
                         await _configuredAsyncEnumerator.DisposeAsync();
                     }
                 }
@@ -369,7 +369,6 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    LookupSingleValue<TKey, TAccumulate, TEqualityComparer> dict = default;
                     try
                     {
                         // Make sure at least 1 element exists before creating the dictionary.
@@ -378,29 +377,30 @@ namespace Proto.Promises
                             return;
                         }
 
-                        dict = new LookupSingleValue<TKey, TAccumulate, TEqualityComparer>(_comparer);
-                        do
+                        using (var dict = new LookupSingleValue<TKey, TAccumulate, TEqualityComparer>(_comparer))
                         {
-                            var element = _asyncEnumerator.Current;
-                            var key = _keySelector.Invoke(element);
-                            var accNode = dict.GetOrCreateNode(key, out bool exists);
-                            accNode._value = _accumulator.Invoke(exists ? accNode._value : _seedSelector.Invoke(key), element);
-                        } while (await _asyncEnumerator.MoveNextAsync());
+                            do
+                            {
+                                var element = _asyncEnumerator.Current;
+                                var key = _keySelector.Invoke(element);
+                                var accNode = dict.GetOrCreateNode(key, out bool exists);
+                                accNode._value = _accumulator.Invoke(exists ? accNode._value : _seedSelector.Invoke(key), element);
+                            } while (await _asyncEnumerator.MoveNextAsync());
 
-                        // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        var node = dict._lastNode;
-                        do
-                        {
-                            node = node._nextNode;
-                            await writer.YieldAsync(new KeyValuePair<TKey, TAccumulate>(node._key, node._value));
-                        } while (node != dict._lastNode);
+                            // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                            var node = dict._lastNode;
+                            do
+                            {
+                                node = node._nextNode;
+                                await writer.YieldAsync(new KeyValuePair<TKey, TAccumulate>(node._key, node._value));
+                            } while (node != dict._lastNode);
+                        }
 
                         // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
                         await writer.YieldAsync(default).ForLinqExtension();
                     }
                     finally
                     {
-                        dict.Dispose();
                         await _asyncEnumerator.DisposeAsync();
                     }
                 }
@@ -450,7 +450,6 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    LookupSingleValue<TKey, TAccumulate, TEqualityComparer> dict = default;
                     try
                     {
                         // Make sure at least 1 element exists before creating the dictionary.
@@ -459,29 +458,30 @@ namespace Proto.Promises
                             return;
                         }
 
-                        dict = new LookupSingleValue<TKey, TAccumulate, TEqualityComparer>(_comparer);
-                        do
+                        using (var dict = new LookupSingleValue<TKey, TAccumulate, TEqualityComparer>(_comparer))
                         {
-                            var element = _asyncEnumerator.Current;
-                            var key = await _keySelector.Invoke(element);
-                            var accNode = dict.GetOrCreateNode(key, out bool exists);
-                            accNode._value = await _accumulator.Invoke(exists ? accNode._value : await _seedSelector.Invoke(key), element);
-                        } while (await _asyncEnumerator.MoveNextAsync());
+                            do
+                            {
+                                var element = _asyncEnumerator.Current;
+                                var key = await _keySelector.Invoke(element);
+                                var accNode = dict.GetOrCreateNode(key, out bool exists);
+                                accNode._value = await _accumulator.Invoke(exists ? accNode._value : await _seedSelector.Invoke(key), element);
+                            } while (await _asyncEnumerator.MoveNextAsync());
 
-                        // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        var node = dict._lastNode;
-                        do
-                        {
-                            node = node._nextNode;
-                            await writer.YieldAsync(new KeyValuePair<TKey, TAccumulate>(node._key, node._value));
-                        } while (node != dict._lastNode);
+                            // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                            var node = dict._lastNode;
+                            do
+                            {
+                                node = node._nextNode;
+                                await writer.YieldAsync(new KeyValuePair<TKey, TAccumulate>(node._key, node._value));
+                            } while (node != dict._lastNode);
+                        }
 
                         // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
                         await writer.YieldAsync(default).ForLinqExtension();
                     }
                     finally
                     {
-                        dict.Dispose();
                         await _asyncEnumerator.DisposeAsync();
                     }
                 }
@@ -531,7 +531,6 @@ namespace Proto.Promises
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
                     var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
-                    LookupSingleValue<TKey, TAccumulate, TEqualityComparer> dict = default;
                     try
                     {
                         // Make sure at least 1 element exists before creating the dictionary.
@@ -540,22 +539,24 @@ namespace Proto.Promises
                             return;
                         }
 
-                        dict = new LookupSingleValue<TKey, TAccumulate, TEqualityComparer>(_comparer);
-                        do
+                        using (var dict = new LookupSingleValue<TKey, TAccumulate, TEqualityComparer>(_comparer))
                         {
-                            var element = _configuredAsyncEnumerator.Current;
-                            var key = _keySelector.Invoke(element);
-                            var accNode = dict.GetOrCreateNode(key, out bool exists);
-                            accNode._value = _accumulator.Invoke(exists ? accNode._value : _seedSelector.Invoke(key), element);
-                        } while (await _configuredAsyncEnumerator.MoveNextAsync());
+                            do
+                            {
+                                var element = _configuredAsyncEnumerator.Current;
+                                var key = _keySelector.Invoke(element);
+                                var accNode = dict.GetOrCreateNode(key, out bool exists);
+                                accNode._value = _accumulator.Invoke(exists ? accNode._value : _seedSelector.Invoke(key), element);
+                            } while (await _configuredAsyncEnumerator.MoveNextAsync());
 
-                        // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        var node = dict._lastNode;
-                        do
-                        {
-                            node = node._nextNode;
-                            await writer.YieldAsync(new KeyValuePair<TKey, TAccumulate>(node._key, node._value));
-                        } while (node != dict._lastNode);
+                            // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                            var node = dict._lastNode;
+                            do
+                            {
+                                node = node._nextNode;
+                                await writer.YieldAsync(new KeyValuePair<TKey, TAccumulate>(node._key, node._value));
+                            } while (node != dict._lastNode);
+                        }
 
                         // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
                         await writer.YieldAsync(default).ForLinqExtension();
@@ -563,7 +564,6 @@ namespace Proto.Promises
                     finally
                     {
                         joinedCancelationSource.TryDispose();
-                        dict.Dispose();
                         await _configuredAsyncEnumerator.DisposeAsync();
                     }
                 }
@@ -613,7 +613,6 @@ namespace Proto.Promises
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
                     var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
-                    LookupSingleValue<TKey, TAccumulate, TEqualityComparer> dict = default;
                     try
                     {
                         // Make sure at least 1 element exists before creating the dictionary.
@@ -622,33 +621,35 @@ namespace Proto.Promises
                             return;
                         }
 
-                        dict = new LookupSingleValue<TKey, TAccumulate, TEqualityComparer>(_comparer);
-                        do
+                        using (var dict = new LookupSingleValue<TKey, TAccumulate, TEqualityComparer>(_comparer))
                         {
-                            var element = _configuredAsyncEnumerator.Current;
-                            // The key selector function could have switched context, make sure we're on the configured context before invoking the comparer and seed selector.
-                            var key = await _keySelector.Invoke(element).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
-                            var accNode = dict.GetOrCreateNode(key, out bool exists);
-                            TAccumulate acc;
-                            if (exists)
+                            do
                             {
-                                acc = accNode._value;
-                            }
-                            else
-                            {
-                                // The seed selector function could have switched context, make sure we're on the configured context before invoking the accumulator.
-                                acc = await _seedSelector.Invoke(key).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
-                            }
-                            accNode._value = await _accumulator.Invoke(acc, element);
-                        } while (await _configuredAsyncEnumerator.MoveNextAsync());
+                                var element = _configuredAsyncEnumerator.Current;
+                                // The key selector function could have switched context, make sure we're on the configured context before invoking the comparer and seed selector.
+                                var key = await _keySelector.Invoke(element).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
+                                var accNode = dict.GetOrCreateNode(key, out bool exists);
+                                TAccumulate acc;
+                                if (exists)
+                                {
+                                    acc = accNode._value;
+                                }
+                                else
+                                {
+                                    // The seed selector function could have switched context, make sure we're on the configured context before invoking the accumulator.
+                                    acc = await _seedSelector.Invoke(key).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
+                                }
+                                accNode._value = await _accumulator.Invoke(acc, element);
+                            } while (await _configuredAsyncEnumerator.MoveNextAsync());
 
-                        // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        var node = dict._lastNode;
-                        do
-                        {
-                            node = node._nextNode;
-                            await writer.YieldAsync(new KeyValuePair<TKey, TAccumulate>(node._key, node._value));
-                        } while (node != dict._lastNode);
+                            // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                            var node = dict._lastNode;
+                            do
+                            {
+                                node = node._nextNode;
+                                await writer.YieldAsync(new KeyValuePair<TKey, TAccumulate>(node._key, node._value));
+                            } while (node != dict._lastNode);
+                        }
 
                         // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
                         await writer.YieldAsync(default).ForLinqExtension();
@@ -656,7 +657,6 @@ namespace Proto.Promises
                     finally
                     {
                         joinedCancelationSource.TryDispose();
-                        dict.Dispose();
                         await _configuredAsyncEnumerator.DisposeAsync();
                     }
                 }

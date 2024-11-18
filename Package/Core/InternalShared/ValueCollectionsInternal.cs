@@ -508,7 +508,7 @@ namespace Proto.Promises
             internal void Clear()
             {
                 _count = 0;
-                Array.Clear(_storage, 0, _storage.Length);
+                ClearReferences(_storage, 0, _storage.Length);
             }
         }
     } // class Internal

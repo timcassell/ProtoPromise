@@ -252,5 +252,27 @@ namespace Proto.Promises
         internal static void SpinOnce(this ref SpinWait spinner, int sleep1Threshold)
             => spinner.SpinOnce();
 #endif
+
+        [MethodImpl(InlineOption)]
+        internal static void ClearReferences<T>(ref T location)
+        {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+            if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+#endif
+            {
+                location = default;
+            }
+        }
+
+        [MethodImpl(InlineOption)]
+        internal static void ClearReferences<T>(T[] array, int index, int length)
+        {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+            if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+#endif
+            {
+                Array.Clear(array, index, length);
+            }
+        }
     } // class Internal
 } // namespace Proto.Promises

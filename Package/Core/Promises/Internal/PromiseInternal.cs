@@ -214,7 +214,7 @@ namespace Proto.Promises
                 new protected void Dispose()
                 {
                     base.Dispose();
-                    _result = default;
+                    ClearReferences(ref _result);
                 }
             }
 

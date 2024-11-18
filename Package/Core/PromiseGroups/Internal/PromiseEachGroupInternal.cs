@@ -106,7 +106,7 @@ namespace Proto.Promises
                     ValidateNoPending();
 
                     base.Dispose();
-                    _current = default;
+                    ClearReferences(ref _current);
                     _cancelationException = null;
                     _cancelationRef.TryDispose(_cancelationRef.SourceId);
                     _cancelationRef = null;

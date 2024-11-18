@@ -700,7 +700,7 @@ namespace Proto.Promises
                     {
                         ++_nodeId;
                     }
-                    _cancelable = default;
+                    ClearReferences(ref _cancelable);
                     ObjectPool.MaybeRepool(this);
                 }
             } // class CallbackNodeImpl<TCancelable>

@@ -78,7 +78,7 @@ namespace Proto.Promises.Collections
             Debug.Assert(!IsEmpty); // caller's responsibility to make sure there are elements remaining
 
             T item = _array[_head];
-            _array[_head] = default;
+            Internal.ClearReferences(ref _array[_head]);
 
             if (++_head == _array.Length)
             {
@@ -117,7 +117,7 @@ namespace Proto.Promises.Collections
             }
 
             T item = _array[_tail];
-            _array[_tail] = default;
+            Internal.ClearReferences(ref _array[_tail]);
 
             _size--;
             return item;
@@ -141,14 +141,14 @@ namespace Proto.Promises.Collections
             if (_head < _tail)
             {
                 Array.Copy(_array, _head, newArray, 0, _size);
-                Array.Clear(_array, _head, _size);
+                Internal.ClearReferences(_array, _head, _size);
             }
             else
             {
                 Array.Copy(_array, _head, newArray, 0, _array.Length - _head);
                 Array.Copy(_array, 0, newArray, _array.Length - _head, _tail);
-                Array.Clear(_array, _head, _array.Length - _head);
-                Array.Clear(_array, 0, _tail);
+                Internal.ClearReferences(_array, _head, _array.Length - _head);
+                Internal.ClearReferences(_array, 0, _tail);
             }
 
             ArrayPool<T>.Shared.Return(_array, false);
@@ -159,20 +159,26 @@ namespace Proto.Promises.Collections
 
         public void Dispose()
         {
-            if (_size > 0)
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+#endif
             {
-                if (_head < _tail)
+                if (_size > 0)
                 {
-                    Array.Clear(_array, _head, _size);
-                }
-                else
-                {
-                    Array.Clear(_array, _head, _array.Length - _head);
-                    Array.Clear(_array, 0, _tail);
+                    if (_head < _tail)
+                    {
+                        Array.Clear(_array, _head, _size);
+                    }
+                    else
+                    {
+                        Array.Clear(_array, _head, _array.Length - _head);
+                        Array.Clear(_array, 0, _tail);
+                    }
                 }
             }
 
             ArrayPool<T>.Shared.Return(_array, false);
+            this = default;
         }
     }
 }

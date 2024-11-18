@@ -39,19 +39,24 @@ namespace Proto.Promises
 
             internal void Clear()
             {
-                if (_size != 0)
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+                if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+#endif
                 {
-                    if (_head < _tail)
+                    if (_size != 0)
                     {
-                        Array.Clear(_array, _head, _size);
-                    }
-                    else
-                    {
-                        Array.Clear(_array, _head, _array.Length - _head);
-                        Array.Clear(_array, 0, _tail);
-                    }
+                        if (_head < _tail)
+                        {
+                            Array.Clear(_array, _head, _size);
+                        }
+                        else
+                        {
+                            Array.Clear(_array, _head, _array.Length - _head);
+                            Array.Clear(_array, 0, _tail);
+                        }
 
-                    _size = 0;
+                        _size = 0;
+                    }
                 }
 
                 _head = 0;
@@ -78,7 +83,7 @@ namespace Proto.Promises
 #endif
                 int head = _head;
                 T removed = _array[head];
-                _array[head] = default;
+                ClearReferences(ref _array[head]);
                 MoveNext(ref _head);
                 _size--;
                 return removed;
@@ -125,14 +130,14 @@ namespace Proto.Promises
                     if (_head < _tail)
                     {
                         Array.Copy(_array, _head, newarray, 0, _size);
-                        Array.Clear(_array, _head, _size);
+                        ClearReferences(_array, _head, _size);
                     }
                     else
                     {
                         Array.Copy(_array, _head, newarray, 0, _array.Length - _head);
                         Array.Copy(_array, 0, newarray, _array.Length - _head, _tail);
-                        Array.Clear(_array, _head, _array.Length - _head);
-                        Array.Clear(_array, 0, _tail);
+                        ClearReferences(_array, _head, _array.Length - _head);
+                        ClearReferences(_array, 0, _tail);
                     }
                 }
 
@@ -165,19 +170,7 @@ namespace Proto.Promises
 
             public void Dispose()
             {
-                if (_size > 0)
-                {
-                    if (_head < _tail)
-                    {
-                        Array.Clear(_array, _head, _size);
-                    }
-                    else
-                    {
-                        Array.Clear(_array, _head, _array.Length - _head);
-                        Array.Clear(_array, 0, _tail);
-                    }
-                }
-
+                Clear();
                 ArrayPool<T>.Shared.Return(_array, false);
             }
         }
