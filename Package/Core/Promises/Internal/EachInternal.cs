@@ -6,6 +6,7 @@
 
 #pragma warning disable IDE0090 // Use 'new(...)'
 
+using Proto.Promises.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -26,7 +27,7 @@ namespace Proto.Promises
 
                 private CancelationRegistration _cancelationRegistration;
                 // This must not be readonly.
-                private PoolBackedQueue<TResult> _queue;
+                private PoolBackedDeque<TResult> _queue;
                 private int _remaining;
                 private int _retainCount;
                 private bool _isMoveNextAsyncPending;
@@ -60,7 +61,7 @@ namespace Proto.Promises
                     // 1 retain for DisposeAsync, and 1 retain for cancelation registration.
                     _retainCount = 2;
                     _isCanceled = false;
-                    _queue = new PoolBackedQueue<TResult>(0);
+                    _queue = new PoolBackedDeque<TResult>(0);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -69,7 +70,7 @@ namespace Proto.Promises
                     ++_remaining;
                     lock (this)
                     {
-                        _queue.Enqueue(result);
+                        _queue.EnqueueTail(result);
                     }
                 }
 
@@ -159,14 +160,13 @@ namespace Proto.Promises
                     
                     // Reset this before entering the lock so that we're not spending extra time inside the lock.
                     ResetForNextAwait();
-                    bool pending;
                     lock (this)
                     {
-                        _isMoveNextAsyncPending = pending = !_queue.TryDequeue(out _current);
-                    }
-                    if (pending)
-                    {
-                        return new Promise<bool>(this, Id);
+                        if (_isMoveNextAsyncPending = _queue.IsEmpty)
+                        {
+                            return new Promise<bool>(this, Id);
+                        }
+                        _current = _queue.DequeueHead();
                     }
                     _enumerableId = id;
                     return Promise.Resolved(true);
@@ -189,7 +189,7 @@ namespace Proto.Promises
                             _isMoveNextAsyncPending = false;
                             goto HandleNext;
                         }
-                        _queue.Enqueue(result);
+                        _queue.EnqueueTail(result);
                     }
                     MaybeDispose();
                     return;

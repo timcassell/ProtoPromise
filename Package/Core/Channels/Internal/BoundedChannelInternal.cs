@@ -384,7 +384,7 @@ namespace Proto.Promises
                 {
                     ValidateInsideLock(id);
 
-                    if (!_queue.IsEmpty)
+                    if (_queue.IsNotEmpty)
                     {
                         _smallFields._locker.Exit();
                         return Promise.Resolved(true);

@@ -33,19 +33,19 @@ namespace Proto.Promises.Collections
             get => _size;
         }
 
-        public bool IsEmpty
+        internal bool IsEmpty
         {
             [MethodImpl(Internal.InlineOption)]
             get => _size == 0;
         }
 
-        public bool IsNotEmpty
+        internal bool IsNotEmpty
         {
             [MethodImpl(Internal.InlineOption)]
             get => _size != 0;
         }
 
-        public void EnqueueTail(T item)
+        internal void EnqueueTail(T item)
         {
             if (_size == _array.Length)
             {
@@ -61,7 +61,7 @@ namespace Proto.Promises.Collections
         }
 
         //// Uncomment if/when enqueueing at the head is needed
-        //public void EnqueueHead(T item)
+        //internal void EnqueueHead(T item)
         //{
         //    if (_size == _array.Length)
         //    {
@@ -73,7 +73,7 @@ namespace Proto.Promises.Collections
         //    _size++;
         //}
 
-        public T DequeueHead()
+        internal T DequeueHead()
         {
             Debug.Assert(!IsEmpty); // caller's responsibility to make sure there are elements remaining
 
@@ -89,14 +89,14 @@ namespace Proto.Promises.Collections
             return item;
         }
 
-        public T PeekHead()
+        internal T PeekHead()
         {
             Debug.Assert(!IsEmpty); // caller's responsibility to make sure there are elements remaining
             return _array[_head];
         }
 
         //// Uncomment if/when peeking at the tail is needed
-        //public T PeekTail()
+        //internal T PeekTail()
         //{
         //    Debug.Assert(!IsEmpty); // caller's responsibility to make sure there are elements remaining
         //    var index = _tail - 1;
@@ -107,7 +107,7 @@ namespace Proto.Promises.Collections
         //    return _array[index];
         //}
 
-        public T DequeueTail()
+        internal T DequeueTail()
         {
             Debug.Assert(!IsEmpty); // caller's responsibility to make sure there are elements remaining
 

@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Promises.Collections;
 using Proto.Promises.Linq;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -330,27 +331,27 @@ namespace Proto.Promises
                         return;
                     }
 
-                    using (var queue = new PoolBackedQueue<TSource>(1))
+                    using (var queue = new PoolBackedDeque<TSource>(1))
                     {
                         if (HasUpperLimit)
                         {
                             // TakeLast
-                            queue.Enqueue(_source.Current);
+                            queue.EnqueueTail(_source.Current);
                             int count = 1;
 
                             while (await _source.MoveNextAsync())
                             {
                                 if (count <= _maxIndexInclusive)
                                 {
-                                    queue.Enqueue(_source.Current);
+                                    queue.EnqueueTail(_source.Current);
                                     ++count;
                                 }
                                 else
                                 {
                                     do
                                     {
-                                        queue.Dequeue();
-                                        queue.Enqueue(_source.Current);
+                                        queue.DequeueHead();
+                                        queue.EnqueueTail(_source.Current);
                                     } while (await _source.MoveNextAsync());
                                     break;
                                 }
@@ -359,7 +360,7 @@ namespace Proto.Promises
                             // SkipLast
                             while (count > _minIndexInclusive)
                             {
-                                await YieldAsync(queue.Dequeue(), streamWriterId);
+                                await YieldAsync(queue.DequeueHead(), streamWriterId);
                                 --count;
                             }
                         }
@@ -372,15 +373,15 @@ namespace Proto.Promises
                                 {
                                     do
                                     {
-                                        await YieldAsync(queue.Dequeue(), streamWriterId);
-                                        queue.Enqueue(_source.Current);
+                                        await YieldAsync(queue.DequeueHead(), streamWriterId);
+                                        queue.EnqueueTail(_source.Current);
                                     }
                                     while (await _source.MoveNextAsync());
                                     break;
                                 }
                                 else
                                 {
-                                    queue.Enqueue(_source.Current);
+                                    queue.EnqueueTail(_source.Current);
                                 }
                             } while (await _source.MoveNextAsync());
                         }
@@ -511,23 +512,23 @@ namespace Proto.Promises
                         return;
                     }
 
-                    var queue = new PoolBackedQueue<TSource>(1);
-                    queue.Enqueue(_source.Current);
+                    var queue = new PoolBackedDeque<TSource>(1);
+                    queue.EnqueueTail(_source.Current);
                     int count = 1;
 
                     while (await _source.MoveNextAsync())
                     {
                         if (count < _startFromEndIndex)
                         {
-                            queue.Enqueue(_source.Current);
+                            queue.EnqueueTail(_source.Current);
                             ++count;
                         }
                         else
                         {
                             do
                             {
-                                queue.Dequeue();
-                                queue.Enqueue(_source.Current);
+                                queue.DequeueHead();
+                                queue.EnqueueTail(_source.Current);
                                 checked { ++count; }
                             } while (await _source.MoveNextAsync());
                             break;
@@ -539,7 +540,7 @@ namespace Proto.Promises
 
                     for (; startIndex < endIndex; ++startIndex)
                     {
-                        await writer.YieldAsync(queue.Dequeue());
+                        await writer.YieldAsync(queue.DequeueHead());
                     }
 
                     // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.

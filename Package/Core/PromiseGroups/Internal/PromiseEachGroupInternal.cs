@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Promises.Collections;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -28,7 +29,7 @@ namespace Proto.Promises
                 private Exception _cancelationException; // In case a cancelation token callback throws, we have to store it to rethrow it from DisposeAsync.
                 private CancelationRegistration _cancelationRegistration;
                 // This must not be readonly.
-                private PoolBackedQueue<TResult> _queue;
+                private PoolBackedDeque<TResult> _queue;
                 private int _remaining;
                 private int _retainCount;
                 private bool _isMoveNextAsyncPending;
@@ -53,7 +54,7 @@ namespace Proto.Promises
 
                     var enumerable = GetOrCreate();
                     enumerable.Reset();
-                    enumerable._queue = new PoolBackedQueue<TResult>(0);
+                    enumerable._queue = new PoolBackedDeque<TResult>(0);
                     enumerable._cancelationRef = cancelationRef;
                     enumerable._isIterationCanceled = false;
                     return enumerable;
@@ -68,7 +69,7 @@ namespace Proto.Promises
                 {
                     lock (this)
                     {
-                        _queue.Enqueue(result);
+                        _queue.EnqueueTail(result);
                     }
                 }
 
@@ -161,9 +162,9 @@ namespace Proto.Promises
                         : new List<Exception>() { _cancelationException };
                     if (!_suppressUnobservedRejections)
                     {
-                        while (_queue.TryDequeue(out var result))
+                        while (_queue.IsNotEmpty)
                         {
-                            var rejectContainer = result.RejectContainer;
+                            var rejectContainer = _queue.DequeueHead().RejectContainer;
                             if (rejectContainer != null)
                             {
                                 RecordException(rejectContainer.GetValueAsException(), ref exceptions);
@@ -215,14 +216,13 @@ namespace Proto.Promises
 
                     // Reset this before entering the lock so that we're not spending extra time inside the lock.
                     ResetForNextAwait();
-                    bool pending;
                     lock (this)
                     {
-                        _isMoveNextAsyncPending = pending = !_queue.TryDequeue(out _current);
-                    }
-                    if (pending)
-                    {
-                        return new Promise<bool>(this, Id);
+                        if (_isMoveNextAsyncPending = _queue.IsEmpty)
+                        {
+                            return new Promise<bool>(this, Id);
+                        }
+                        _current = _queue.DequeueHead();
                     }
                     _enumerableId = id;
                     return Promise.Resolved(true);
@@ -245,7 +245,7 @@ namespace Proto.Promises
                             _isMoveNextAsyncPending = false;
                             goto HandleNext;
                         }
-                        _queue.Enqueue(result);
+                        _queue.EnqueueTail(result);
                     }
                     MaybeHandleDisposeAsync();
                     return;

@@ -7,6 +7,8 @@
 #pragma warning disable IDE0062 // Make local function 'static'
 #pragma warning disable IDE0063 // Use simple 'using' statement
 
+using Proto.Promises.Collections;
+
 namespace Proto.Promises.Linq
 {
     partial class AsyncEnumerable
@@ -124,22 +126,22 @@ namespace Proto.Promises.Linq
                 {
                     if (await asyncEnumerator.MoveNextAsync())
                     {
-                        using (var queue = new Internal.PoolBackedQueue<TSource>(1))
+                        using (var queue = new PoolBackedDeque<TSource>(1))
                         {
-                            queue.Enqueue(asyncEnumerator.Current);
+                            queue.EnqueueTail(asyncEnumerator.Current);
                             while (await asyncEnumerator.MoveNextAsync())
                             {
                                 if (queue.Count == indexFromEnd)
                                 {
-                                    queue.Dequeue();
+                                    queue.DequeueHead();
                                 }
 
-                                queue.Enqueue(asyncEnumerator.Current);
+                                queue.EnqueueTail(asyncEnumerator.Current);
                             }
 
                             if (queue.Count == indexFromEnd)
                             {
-                                return queue.Dequeue();
+                                return queue.DequeueHead();
                             }
                         }
                     }
@@ -179,22 +181,22 @@ namespace Proto.Promises.Linq
                 {
                     if (await asyncEnumerator.MoveNextAsync())
                     {
-                        using (var queue = new Internal.PoolBackedQueue<TSource>(1))
+                        using (var queue = new PoolBackedDeque<TSource>(1))
                         {
-                            queue.Enqueue(asyncEnumerator.Current);
+                            queue.EnqueueTail(asyncEnumerator.Current);
                             while (await asyncEnumerator.MoveNextAsync())
                             {
                                 if (queue.Count == indexFromEnd)
                                 {
-                                    queue.Dequeue();
+                                    queue.DequeueHead();
                                 }
 
-                                queue.Enqueue(asyncEnumerator.Current);
+                                queue.EnqueueTail(asyncEnumerator.Current);
                             }
 
                             if (queue.Count == indexFromEnd)
                             {
-                                return queue.Dequeue();
+                                return queue.DequeueHead();
                             }
                         }
                     }
