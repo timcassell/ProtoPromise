@@ -1,3 +1,4 @@
+using Proto.Promises.Collections;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -31,13 +32,13 @@ namespace Proto.Promises
         {
             private PromiseRefBase.DeferredPromise<(bool, T)> _waiter;
             // These must not be readonly.
-            private PoolBackedQueue<T> _queue;
+            private PoolBackedDeque<T> _queue;
             private SingleConsumerAsyncQueueSmallFields _smallValues;
 
             [MethodImpl(InlineOption)]
             internal SingleConsumerAsyncQueueInternal(int capacity, int producerCount)
             {
-                _queue = new PoolBackedQueue<T>(capacity);
+                _queue = new PoolBackedDeque<T>(capacity);
                 _waiter = null;
                 _smallValues = new SingleConsumerAsyncQueueSmallFields(producerCount);
             }
@@ -55,7 +56,7 @@ namespace Proto.Promises
                     }
                     if (_queue.Count > 0)
                     {
-                        var value = _queue.Dequeue();
+                        var value = _queue.DequeueHead();
                         _smallValues._locker.Exit();
                         return Promise.Resolved((true, value));
                     }
@@ -75,7 +76,7 @@ namespace Proto.Promises
                     promise = _waiter;
                     if (promise == null)
                     {
-                        _queue.Enqueue(value);
+                        _queue.EnqueueTail(value);
                         _smallValues._locker.Exit();
                         return;
                     }
