@@ -72,7 +72,9 @@ namespace Proto.Promises
             internal static PooledSystemTimeProviderTimer GetOrCreate(TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
             {
                 var timer = GetOrCreate();
-                timer._callbackInvoker = CallbackInvoker.GetOrCreate(callback, state, dueTime, period);
+                var callbackInvoker = CallbackInvoker.GetOrCreate(callback, state);
+                callbackInvoker.PrepareChange(dueTime, period);
+                Volatile.Write(ref timer._callbackInvoker, callbackInvoker);
                 timer._timer.Change(dueTime, period);
                 return timer;
             }
@@ -84,12 +86,11 @@ namespace Proto.Promises
                 {
                     callbackInvoker = _callbackInvoker;
                     // If the timer callback was invoked on a background thread after this was disposed and returned to the pool,
-                    // the invoker will be null, or GetShouldInvoke() will return false.
-                    if (callbackInvoker?.GetShouldInvoke() != true)
+                    // the invoker will be null, or TryPrepareInvoke() will return false.
+                    if (callbackInvoker?.TryPrepareInvoke(_timer) != true)
                     {
                         return;
                     }
-                    callbackInvoker.PrepareInvoke();
                 }
 
                 // Invoke outside of the lock!
@@ -122,6 +123,7 @@ namespace Proto.Promises
                         throw new ObjectDisposedException(nameof(PooledSystemTimeProviderTimer));
                     }
                     _callbackInvoker = null;
+                    callbackInvoker.PrepareChange(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
                 }
 
                 _timer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
@@ -131,7 +133,10 @@ namespace Proto.Promises
             }
 
             public void Dispose()
-                => DisposePromise().Wait();
+                // We Forget() instead of Wait() because this might be called from the callback itself,
+                // and we need to prevent deadlocks. We call Change() with InfiniteTimeSpan to prevent any further callback invocations.
+                // This does not wait for any invocations that are currently executing, which matches the behavior of the System timer.
+                => DisposePromise().Forget();
 
 #if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
             public ValueTask DisposeAsync()
@@ -139,7 +144,7 @@ namespace Proto.Promises
 #endif
             // System timers run on background threads, which may cause the timer callback to be invoked unexpectedly.
             // In order to ensure the correct values are used to invoke user callbacks, and user callbacks are not invoked prematurely or after the timer is disposed,
-            // we wrap the fields in a separate class so that we can read and update them atomically without invoking the callback inside a lock.
+            // we wrap the fields in a separate class so that we can read and update them atomically without invoking the callback while holding a lock.
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
@@ -163,9 +168,10 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(Internal.InlineOption)]
-                internal static CallbackInvoker GetOrCreate(TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
+                internal static CallbackInvoker GetOrCreate(TimerCallback callback, object state)
                 {
                     var callbackInvoker = GetOrCreate();
+                    callbackInvoker.Reset();
                     // System timers always capture ExecutionContext (unless flow is suppressed).
                     // For performance reasons, we only capture if it's enabled in the config.
                     if (Promise.Config.AsyncFlowExecutionContextEnabled)
@@ -175,7 +181,6 @@ namespace Proto.Promises
                     callbackInvoker._callback = callback;
                     callbackInvoker._state = state;
                     callbackInvoker._retainCounter = 1;
-                    callbackInvoker.PrepareChange(dueTime, period);
                     return callbackInvoker;
                 }
 
@@ -196,16 +201,26 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(Internal.InlineOption)]
-                internal bool GetShouldInvoke()
-                    // Ensure the dueTime has elapsed.
-                    => _dueTime != Timeout.InfiniteTimeSpan && System.GetElapsedTime(_changedTimestamp) <= _dueTime;
-
-                [MethodImpl(Internal.InlineOption)]
-                internal void PrepareInvoke()
+                internal bool TryPrepareInvoke(ITimer timer)
                 {
-                    Internal.InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, 1);
-                    // The system timer callback could be invoked multiple times on background threads simultaneously,
-                    // we ensure that it is only invoked once per period.
+                    // If the dueTime is infinite, this should not be invoked.
+                    if (_dueTime == Timeout.InfiniteTimeSpan)
+                    {
+                        return false;
+                    }
+
+                    // If the dueTime has not elapsed, this should not be invoked.
+                    // System timers may sometimes fire a bit early. https://github.com/dotnet/runtime/issues/87112
+                    // Also, due to object pooling, the system timer callback could be invoked "early", or multiple times on background threads simultaneously.
+                    // To protect against both cases, we simply Change() the underlying timer to the remaining time, and don't invoke now.
+                    var elapsed = System.GetElapsedTime(_changedTimestamp);
+                    if (elapsed < _dueTime)
+                    {
+                        timer.Change(_dueTime - elapsed, _period);
+                        return false;
+                    }
+
+                    // If the period is infinite, this should be invoked exactly once.
                     if (_period == Timeout.InfiniteTimeSpan)
                     {
                         _dueTime = Timeout.InfiniteTimeSpan;
@@ -214,6 +229,9 @@ namespace Proto.Promises
                     {
                         _dueTime += _period;
                     }
+
+                    Internal.InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, 1);
+                    return true;
                 }
 
                 [MethodImpl(Internal.InlineOption)]
