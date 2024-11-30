@@ -159,7 +159,7 @@ namespace Proto.Promises.Collections
 
         public void Dispose()
         {
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+#if NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NETCOREAPP2_0_OR_GREATER
             if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
 #endif
             {

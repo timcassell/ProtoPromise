@@ -256,7 +256,7 @@ namespace Proto.Promises
         [MethodImpl(InlineOption)]
         internal static void ClearReferences<T>(ref T location)
         {
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#if NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NETCOREAPP2_0_OR_GREATER
             if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
 #endif
             {
@@ -267,7 +267,7 @@ namespace Proto.Promises
         [MethodImpl(InlineOption)]
         internal static void ClearReferences<T>(T[] array, int index, int length)
         {
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP || UNITY_2021_2_OR_NEWER
+#if NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NETCOREAPP2_0_OR_GREATER
             if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
 #endif
             {
