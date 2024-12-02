@@ -81,13 +81,15 @@ namespace Proto.Promises
                 SynchronizationContext.SetSynchronizationContext(_syncContext);
                 Promise.Manager.ThreadStaticSynchronizationContext = _syncContext;
 
-#if UNITY_WEBGL
                 // WebGL does not support system timers, so we set the default timer factory to one that works in WebGL.
-                if (Promise.Config.DefaultTimerFactory == PoolableTimerFactory.System)
+                if (
+#if !UNITY_WEBGL
+                    Application.platform == RuntimePlatform.WebGLPlayer &&
+#endif
+                    Promise.Config.DefaultTimerFactory == PoolableTimerFactory.System)
                 {
                     Promise.Config.DefaultTimerFactory = PoolableUnityRealTimerFactory.Instance;
                 }
-#endif
             }
 
             private void Start()
