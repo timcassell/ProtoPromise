@@ -15,7 +15,7 @@ using System.Threading;
 
 namespace ProtoPromiseTests.APIs.Utilities
 {
-    public class PooledSystemTimeProviderTests
+    public class PoolableTimerFactoryTests
     {
         [SetUp]
         public void Setup()
@@ -43,14 +43,19 @@ namespace ProtoPromiseTests.APIs.Utilities
             public CancellationTokenSource TokenSource { get; set; }
             public int Counter { get; set; }
             public int Period { get; set; }
-            public ITimer Timer { get; set; }
+            public IPoolableTimer Timer { get; set; }
             public Stopwatch Stopwatch { get; set; }
         };
 
+        private sealed class CustomTimeProvider : TimeProvider { }
+
         [Test]
-        public void TestPooledSystemTimeProviderTimer()
+        public void PoolableTimerFactory_CreateTimer(
+            [Values] bool customTimeProvider)
         {
-            TimeProvider provider = PooledSystemTimeProvider.Instance;
+            PoolableTimerFactory provider = customTimeProvider
+                ? PoolableTimerFactory.FromTimeProvider(new CustomTimeProvider())
+                : PoolableTimerFactory.System;
             int minMilliseconds = 1200;
             TimerState state = new TimerState();
 
@@ -71,7 +76,7 @@ namespace ProtoPromiseTests.APIs.Utilities
 
                             case 4:
                                 s.Stopwatch.Stop();
-                                s.Timer.Dispose();
+                                s.Timer.DisposeAsync().Forget();
                                 s.TokenSource.Cancel();
                                 break;
                         }

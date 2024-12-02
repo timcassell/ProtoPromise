@@ -15,7 +15,7 @@ using System.Threading;
 
 namespace ProtoPromiseTests.Concurrency.Utilities
 {
-    public class PooledSystemTimeProviderConcurrencyTests
+    public class PoolableTimerFactoryConcurrencyTests
     {
         [SetUp]
         public void Setup()
@@ -29,12 +29,18 @@ namespace ProtoPromiseTests.Concurrency.Utilities
             TestHelper.Cleanup();
         }
 
+        private sealed class CustomTimeProvider : TimeProvider { }
+
         [Test]
-        public void PooledSystemTimeProvider_CreateTimer_Concurrent(
+        public void PoolableTimerFactory_CreateTimer_Concurrent(
             [Values(0, 1, 2)] int numPeriods1,
-            [Values(0, 1, 2)] int numPeriods2)
+            [Values(0, 1, 2)] int numPeriods2,
+            [Values] bool customTimeProvider)
         {
-            TimeProvider provider = PooledSystemTimeProvider.Instance;
+            PoolableTimerFactory provider = customTimeProvider
+                ? PoolableTimerFactory.FromTimeProvider(new CustomTimeProvider())
+                : PoolableTimerFactory.System;
+
             int stateChecker = 0;
             int invokedCounter = 0;
             int timersRunningCounter = ThreadHelper.multiExecutionCount;
@@ -43,7 +49,7 @@ namespace ProtoPromiseTests.Concurrency.Utilities
             {
                 int periodCounter = 0;
                 int state = Interlocked.Increment(ref stateChecker);
-                ITimer timer = null;
+                IPoolableTimer timer = null;
                 timer = provider.CreateTimer(s =>
                 {
                     Interlocked.Increment(ref invokedCounter);
@@ -51,11 +57,11 @@ namespace ProtoPromiseTests.Concurrency.Utilities
                     if ((Interlocked.Increment(ref periodCounter) - 1) == numPeriods1)
                     {
                         SpinWait.SpinUntil(() => timer != null);
-                        timer.Dispose();
+                        timer.DisposeAsync().Forget();
 
                         int periodCounter2 = 0;
                         int state2 = Interlocked.Increment(ref stateChecker);
-                        ITimer timer2 = null;
+                        IPoolableTimer timer2 = null;
                         timer2 = provider.CreateTimer(s2 =>
                         {
                             Interlocked.Increment(ref invokedCounter);
@@ -63,7 +69,7 @@ namespace ProtoPromiseTests.Concurrency.Utilities
                             if ((Interlocked.Increment(ref periodCounter2) - 1) == numPeriods2)
                             {
                                 SpinWait.SpinUntil(() => timer2 != null);
-                                timer2.Dispose();
+                                timer2.DisposeAsync().Forget();
 
                                 Interlocked.Decrement(ref timersRunningCounter);
                             }

@@ -8,71 +8,88 @@ using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using System.Threading.Tasks;
+
+#pragma warning disable IDE0090 // Use 'new(...)'
 
 namespace Proto.Promises
 {
-    /// <summary>
-    /// A <see cref="TimeProvider"/> that provides pooled timers based on system time.
-    /// </summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode, StackTraceHidden]
-#endif
-    public sealed class PooledSystemTimeProvider : TimeProvider
+    partial class PoolableTimerFactory
     {
-        /// <summary>
-        /// Gets the singleton instance of the <see cref="PooledSystemTimeProvider"/>.
-        /// </summary>
-        public static PooledSystemTimeProvider Instance { get; } = new PooledSystemTimeProvider();
-
-        private PooledSystemTimeProvider() { }
-
-        /// <summary>
-        /// Gets a timer from the object pool, or creates a new timer, based on system time, which will be returned to the object pool when it is disposed.
-        /// </summary>
-        /// <inheritdoc/>
-        public override ITimer CreateTimer(TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        private sealed class PoolableTimeProviderTimerFactory : PoolableTimerFactory
         {
-            if (callback == null)
+            // We have to use per-instance object pooling instead of global, because TimeProvider is abstract, and can have many different implementations.
+            internal readonly Internal.LocalObjectPool<PoolableTimeProviderTimerFactoryTimer> _timerPool;
+            internal readonly TimeProvider _timeProvider;
+
+            internal PoolableTimeProviderTimerFactory(TimeProvider timeProvider)
             {
-                throw new ArgumentNullException(nameof(callback), "callback may not be null", Internal.GetFormattedStacktrace(1));
+                _timeProvider = timeProvider;
+                _timerPool = new Internal.LocalObjectPool<PoolableTimeProviderTimerFactoryTimer>(() => new PoolableTimeProviderTimerFactoryTimer(this));
             }
-            return PooledSystemTimeProviderTimer.GetOrCreate(callback, state, dueTime, period);
+
+            public override IPoolableTimer CreateTimer(TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
+            {
+                if (callback == null)
+                {
+                    throw new ArgumentNullException(nameof(callback), "callback may not be null", Internal.GetFormattedStacktrace(1));
+                }
+                return PoolableTimeProviderTimerFactoryTimer.GetOrCreate(this, callback, state, dueTime, period);
+            }
+
+            public override TimeProvider ToTimeProvider()
+                => _timeProvider;
+
+            public override TimeProvider ToTimeProvider(TimeProvider otherTimeProvider)
+            {
+                if (otherTimeProvider is null)
+                {
+                    throw new ArgumentNullException(nameof(otherTimeProvider), $"The provided {nameof(otherTimeProvider)} may not be null", Internal.GetFormattedStacktrace(1));
+                }
+
+                return _timeProvider == otherTimeProvider
+                    ? otherTimeProvider
+                    : new DualTimeProvider(_timeProvider, otherTimeProvider);
+            }
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        private sealed class PooledSystemTimeProviderTimer : Internal.HandleablePromiseBase, ITimer
+        private sealed class PoolableTimeProviderTimerFactoryTimer : Internal.HandleablePromiseBase, IPoolableTimer
         {
+            private readonly PoolableTimeProviderTimerFactory _factory;
             // Timer doubles as the sync lock.
             private readonly ITimer _timer;
             private CallbackInvoker _callbackInvoker;
 
-            private PooledSystemTimeProviderTimer()
+            internal PoolableTimeProviderTimerFactoryTimer(PoolableTimeProviderTimerFactory factory)
             {
-                // We don't need the extra overhead of the system timer capturing the execution context.
+                _factory = factory;
+                // We don't need the extra overhead of the timer capturing the execution context.
                 // We capture it manually per usage of this instance.
                 using (ExecutionContext.SuppressFlow())
                 {
-                    _timer = System.CreateTimer(OnTimerCallback, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+                    _timer = factory._timeProvider.CreateTimer(OnTimerCallback, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
                 }
             }
 
             [MethodImpl(Internal.InlineOption)]
-            private static PooledSystemTimeProviderTimer GetOrCreate()
+            private static PoolableTimeProviderTimerFactoryTimer GetOrCreate(PoolableTimeProviderTimerFactory factory)
             {
-                var obj = Internal.ObjectPool.TryTakeOrInvalid<PooledSystemTimeProviderTimer>();
+                var obj = factory._timerPool.TryTakeOrInvalid();
                 return obj == Internal.PromiseRefBase.InvalidAwaitSentinel.s_instance
-                    ? new PooledSystemTimeProviderTimer()
-                    : obj.UnsafeAs<PooledSystemTimeProviderTimer>();
+                    ? new PoolableTimeProviderTimerFactoryTimer(factory)
+                    : obj.UnsafeAs<PoolableTimeProviderTimerFactoryTimer>();
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static PooledSystemTimeProviderTimer GetOrCreate(TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
+            internal static PoolableTimeProviderTimerFactoryTimer GetOrCreate(PoolableTimeProviderTimerFactory factory, TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
             {
-                var timer = GetOrCreate();
-                var callbackInvoker = CallbackInvoker.GetOrCreate(callback, state);
+                var timer = GetOrCreate(factory);
+                var callbackInvoker = CallbackInvoker.GetOrCreate(factory._timeProvider, callback, state);
                 callbackInvoker.PrepareChange(dueTime, period);
                 Volatile.Write(ref timer._callbackInvoker, callbackInvoker);
                 timer._timer.Change(dueTime, period);
@@ -97,22 +114,22 @@ namespace Proto.Promises
                 callbackInvoker.Invoke();
             }
 
-            public bool Change(TimeSpan dueTime, TimeSpan period)
+            public void Change(TimeSpan dueTime, TimeSpan period)
             {
                 lock (_timer)
                 {
                     var callbackInvoker = _callbackInvoker;
                     if (callbackInvoker is null)
                     {
-                        return false;
+                        throw new ObjectDisposedException(nameof(IPoolableTimer));
                     }
                     callbackInvoker.PrepareChange(dueTime, period);
                 }
 
-                return _timer.Change(dueTime, period);
+                _timer.Change(dueTime, period);
             }
 
-            private Promise DisposePromise()
+            public Promise DisposeAsync()
             {
                 CallbackInvoker callbackInvoker;
                 lock (_timer)
@@ -120,7 +137,7 @@ namespace Proto.Promises
                     callbackInvoker = _callbackInvoker;
                     if (callbackInvoker is null)
                     {
-                        throw new ObjectDisposedException(nameof(PooledSystemTimeProviderTimer));
+                        throw new ObjectDisposedException(nameof(IPoolableTimer));
                     }
                     _callbackInvoker = null;
                     callbackInvoker.PrepareChange(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
@@ -132,16 +149,6 @@ namespace Proto.Promises
                 return callbackInvoker.DisposeAsync();
             }
 
-            public void Dispose()
-                // We Forget() instead of Wait() because this might be called from the callback itself,
-                // and we need to prevent deadlocks. We call Change() with InfiniteTimeSpan to prevent any further callback invocations.
-                // This does not wait for any invocations that are currently executing, which matches the behavior of the System timer.
-                => DisposePromise().Forget();
-
-#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
-            public ValueTask DisposeAsync()
-                => DisposePromise();
-#endif
             // System timers run on background threads, which may cause the timer callback to be invoked unexpectedly.
             // In order to ensure the correct values are used to invoke user callbacks, and user callbacks are not invoked prematurely or after the timer is disposed,
             // we wrap the fields in a separate class so that we can read and update them atomically without invoking the callback while holding a lock.
@@ -151,6 +158,7 @@ namespace Proto.Promises
             // We inherit from PromiseSingleAwait<> to support DisposeAsync.
             private sealed class CallbackInvoker : Internal.PromiseRefBase.PromiseSingleAwait<Internal.VoidResult>
             {
+                private TimeProvider _timeProvider;
                 private TimerCallback _callback;
                 private object _state;
                 private long _changedTimestamp;
@@ -168,7 +176,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(Internal.InlineOption)]
-                internal static CallbackInvoker GetOrCreate(TimerCallback callback, object state)
+                internal static CallbackInvoker GetOrCreate(TimeProvider timeProvider, TimerCallback callback, object state)
                 {
                     var callbackInvoker = GetOrCreate();
                     callbackInvoker.Reset();
@@ -178,6 +186,7 @@ namespace Proto.Promises
                     {
                         callbackInvoker.ContinuationContext = ExecutionContext.Capture();
                     }
+                    callbackInvoker._timeProvider = timeProvider;
                     callbackInvoker._callback = callback;
                     callbackInvoker._state = state;
                     callbackInvoker._retainCounter = 1;
@@ -195,7 +204,7 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 internal void PrepareChange(TimeSpan dueTime, TimeSpan period)
                 {
-                    _changedTimestamp = System.GetTimestamp();
+                    _changedTimestamp = _timeProvider.GetTimestamp();
                     _dueTime = dueTime;
                     _period = period;
                 }
@@ -213,7 +222,7 @@ namespace Proto.Promises
                     // System timers may sometimes fire a bit early. https://github.com/dotnet/runtime/issues/87112
                     // Also, due to object pooling, the system timer callback could be invoked "early", or multiple times on background threads simultaneously.
                     // To protect against both cases, we simply Change() the underlying timer to the remaining time, and don't invoke now.
-                    var elapsed = System.GetElapsedTime(_changedTimestamp);
+                    var elapsed = _timeProvider.GetElapsedTime(_changedTimestamp);
                     if (elapsed < _dueTime)
                     {
                         timer.Change(_dueTime - elapsed, _period);
@@ -271,6 +280,6 @@ namespace Proto.Promises
                     return new Promise(this, Id);
                 }
             } // class CallbackInvoker
-        } // class PooledSystemTimer
-    } // class PooledSystemTimeProvider
+        } // class PoolableTimeProviderTimerFactoryTimer
+    } // class PoolableTimerFactory
 } // namespace Proto.Promises
