@@ -70,6 +70,7 @@ namespace Proto.Promises
 
             private void OnTimerCallback(object _)
             {
+                // TODO: Add exception handling.
                 CallbackInvoker callbackInvoker;
                 lock (_timer)
                 {
@@ -223,7 +224,13 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        ExecutionContext.Run(executionContext.UnsafeAs<ExecutionContext>(), obj => obj.UnsafeAs<CallbackInvoker>().InvokeDirect(), this);
+                        ExecutionContext.Run(
+                            // .Net Framework doesn't allow us to re-use a captured context, so we have to copy it for each invocation.
+                            // .Net Core's implementation of CreateCopy returns itself, so this is always as efficient as it can be.
+                            executionContext.UnsafeAs<ExecutionContext>().CreateCopy(),
+                            obj => obj.UnsafeAs<CallbackInvoker>().InvokeDirect(),
+                            this
+                        );
                     }
                 }
 

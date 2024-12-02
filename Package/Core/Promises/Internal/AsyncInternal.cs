@@ -276,9 +276,11 @@ namespace Proto.Promises
                             else
                             {
                                 _owner.ContinuationContext = null;
-                                ExecutionContext.Run(continuationContext.UnsafeAs<ExecutionContext>(),
+                                ExecutionContext.Run(
+                                    continuationContext.UnsafeAs<ExecutionContext>(),
                                     obj => obj.UnsafeAs<Continuer<TStateMachine>>()._stateMachine.MoveNext(),
-                                    this);
+                                    this
+                                );
                             }
                         }
                     }
@@ -409,9 +411,11 @@ namespace Proto.Promises
                         else
                         {
                             ContinuationContext = null;
-                            ExecutionContext.Run(continuationContext.UnsafeAs<ExecutionContext>(),
+                            ExecutionContext.Run(
+                                continuationContext.UnsafeAs<ExecutionContext>(),
                                 obj => obj.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>()._stateMachine.MoveNext(),
-                                this);
+                                this
+                            );
                         }
                     }
 
@@ -419,9 +423,11 @@ namespace Proto.Promises
                     {
                         var continuationContext = ContinuationContext;
                         ContinuationContext = null;
-                        ExecutionContext.Run(continuationContext.UnsafeAs<ExecutionContext>(),
+                        ExecutionContext.Run(
+                            continuationContext.UnsafeAs<ExecutionContext>(),
                             obj => obj.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>()._stateMachine.MoveNext(),
-                            this);
+                            this
+                        );
                     }
 
                     protected override void ContinueOnContext(SynchronizationContext synchronizationContext)

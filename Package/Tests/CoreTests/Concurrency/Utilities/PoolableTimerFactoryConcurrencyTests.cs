@@ -35,8 +35,12 @@ namespace ProtoPromiseTests.Concurrency.Utilities
         public void PoolableTimerFactory_CreateTimer_Concurrent(
             [Values(0, 1, 2)] int numPeriods1,
             [Values(0, 1, 2)] int numPeriods2,
-            [Values] bool customTimeProvider)
+            [Values] bool customTimeProvider,
+            [Values] bool flowExecutionContext)
         {
+            // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
+            Promise.Config.s_asyncFlowExecutionContextEnabled = flowExecutionContext;
+
             PoolableTimerFactory provider = customTimeProvider
                 ? PoolableTimerFactory.FromTimeProvider(new CustomTimeProvider())
                 : PoolableTimerFactory.System;

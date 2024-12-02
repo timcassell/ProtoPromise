@@ -225,9 +225,13 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        // .Net Framework doesn't allow us to re-use a captured context, so we have to copy it for each invocation.
-                        // .Net Core's implementation of CreateCopy returns itself, so this is always as efficient as it can be.
-                        ExecutionContext.Run(_executionContext.CreateCopy(), obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorker(false), this);
+                        ExecutionContext.Run(
+                            // .Net Framework doesn't allow us to re-use a captured context, so we have to copy it for each invocation.
+                            // .Net Core's implementation of CreateCopy returns itself, so this is always as efficient as it can be.
+                            _executionContext.CreateCopy(),
+                            obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorker(false),
+                            this
+                        );
                     }
                 }
 
@@ -239,9 +243,13 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        // .Net Framework doesn't allow us to re-use a captured context, so we have to copy it for each invocation.
-                        // .Net Core's implementation of CreateCopy returns itself, so this is always as efficient as it can be.
-                        ExecutionContext.Run(_executionContext.CreateCopy(), obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorker(true), this);
+                        ExecutionContext.Run(
+                            // .Net Framework doesn't allow us to re-use a captured context, so we have to copy it for each invocation.
+                            // .Net Core's implementation of CreateCopy returns itself, so this is always as efficient as it can be.
+                            _executionContext.CreateCopy(),
+                            obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorker(true),
+                            this
+                        );
                     }
                 }
 
