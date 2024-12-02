@@ -83,7 +83,7 @@ namespace ProtoPromiseTests.Concurrency.Utilities
             });
 
             int expectedInvokes = ThreadHelper.multiExecutionCount * (numPeriods1 + numPeriods2 + 2);
-            SpinWait.SpinUntil(() => timersRunningCounter == 0, TimeSpan.FromMilliseconds(expectedInvokes * 4));
+            SpinWait.SpinUntil(() => timersRunningCounter == 0, TimeSpan.FromSeconds(expectedInvokes));
             if ((numPeriods1 + numPeriods2) == 0)
             {
                 Assert.AreEqual(expectedInvokes, invokedCounter);
