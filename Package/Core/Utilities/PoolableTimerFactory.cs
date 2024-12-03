@@ -1,3 +1,4 @@
+using Proto.Promises.Threading;
 using System;
 using System.Diagnostics;
 using System.Threading;
@@ -10,6 +11,8 @@ namespace Proto.Promises
 #endif
     public abstract partial class PoolableTimerFactory
     {
+        private protected TimeProvider _timeProvider;
+
         /// <summary>
         /// Gets a <see cref="PoolableTimerFactory"/> that creates poolable timers based on <see cref="TimeProvider.System"/>.
         /// </summary>
@@ -41,37 +44,22 @@ namespace Proto.Promises
         public abstract IPoolableTimer CreateTimer(TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period);
 
         /// <summary>
-        /// Gets a <see cref="TimeProvider"/> that creates timers based on the timers returned from <see cref="CreateTimer(TimerCallback, object, TimeSpan, TimeSpan)"/>.
+        /// Gets a <see cref="TimeProvider"/> that creates timers based on this <see cref="PoolableTimerFactory"/>.
         /// </summary>
         /// <returns>A <see cref="TimeProvider"/> based on this <see cref="PoolableTimerFactory"/>.</returns>
         /// <remarks>
-        /// The returned <see cref="TimeProvider"/>'s implementation of other methods and properties besides <see cref="TimeProvider.CreateTimer(TimerCallback, object, TimeSpan, TimeSpan)"/>
-        /// depends on how this <see cref="PoolableTimerFactory"/> was created, and whether this method is overridden.
+        /// If the implemented <see cref="PoolableTimerFactory"/> does not override this method, the returned <see cref="TimeProvider"/>'s
+        /// <see cref="TimeProvider.CreateTimer(TimerCallback, object, TimeSpan, TimeSpan)"/> method will create timers that wrap the timers
+        /// created from <see cref="CreateTimer(TimerCallback, object, TimeSpan, TimeSpan)"/>, and other methods will use the default implementation.
         /// </remarks>
         public virtual TimeProvider ToTimeProvider()
-            => this == System
-            ? TimeProvider.System
-            : ToTimeProvider(TimeProvider.System);
-
-        /// <summary>
-        /// Gets a <see cref="TimeProvider"/> that creates timers based on the timers returned from <see cref="CreateTimer(TimerCallback, object, TimeSpan, TimeSpan)"/>.
-        /// </summary>
-        /// <param name="otherTimeProvider">Provides the implementation to use for other methods and properties besides <see cref="TimeProvider.CreateTimer(TimerCallback, object, TimeSpan, TimeSpan)"/>.</param>
-        /// <returns>A <see cref="TimeProvider"/> based on this <see cref="PoolableTimerFactory"/> and the provided <paramref name="otherTimeProvider"/>.</returns>
-        public virtual TimeProvider ToTimeProvider(TimeProvider otherTimeProvider)
         {
-            if (otherTimeProvider is null)
+            var timeProvider = _timeProvider;
+            if (timeProvider is null)
             {
-                throw new ArgumentNullException(nameof(otherTimeProvider), $"The provided {nameof(otherTimeProvider)} may not be null", Internal.GetFormattedStacktrace(1));
+                _timeProvider = timeProvider = new PoolableTimerFactoryTimeProvider(this);
             }
-
-            if (this == System)
-            {
-                return otherTimeProvider == TimeProvider.System
-                    ? TimeProvider.System
-                    : new DualTimeProvider(TimeProvider.System, otherTimeProvider);
-            }
-            return new PoolableTimerFactoryTimeProvider(this, otherTimeProvider);
+            return timeProvider;
         }
 
         /// <summary>
@@ -86,8 +74,8 @@ namespace Proto.Promises
                 throw new ArgumentNullException(nameof(timeProvider), $"The provided {nameof(timeProvider)} may not be null", Internal.GetFormattedStacktrace(1));
             }
 
-            return timeProvider == TimeProvider.System
-                ? System
+            return timeProvider == TimeProvider.System ? System
+                : timeProvider is PoolableTimerFactoryTimeProvider tp ? tp._poolableTimerFactory
                 : new PoolableTimeProviderTimerFactory(timeProvider);
         }
     } // class PoolableTimerFactory

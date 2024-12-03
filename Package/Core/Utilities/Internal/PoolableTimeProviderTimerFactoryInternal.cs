@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Promises.Threading;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -22,7 +23,6 @@ namespace Proto.Promises
         {
             // We have to use per-instance object pooling instead of global, because TimeProvider is abstract, and can have many different implementations.
             internal readonly Internal.LocalObjectPool<PoolableTimeProviderTimerFactoryTimer> _timerPool;
-            internal readonly TimeProvider _timeProvider;
 
             internal PoolableTimeProviderTimerFactory(TimeProvider timeProvider)
             {
@@ -41,18 +41,6 @@ namespace Proto.Promises
 
             public override TimeProvider ToTimeProvider()
                 => _timeProvider;
-
-            public override TimeProvider ToTimeProvider(TimeProvider otherTimeProvider)
-            {
-                if (otherTimeProvider is null)
-                {
-                    throw new ArgumentNullException(nameof(otherTimeProvider), $"The provided {nameof(otherTimeProvider)} may not be null", Internal.GetFormattedStacktrace(1));
-                }
-
-                return _timeProvider == otherTimeProvider
-                    ? otherTimeProvider
-                    : new DualTimeProvider(_timeProvider, otherTimeProvider);
-            }
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -98,20 +86,27 @@ namespace Proto.Promises
 
             private void OnTimerCallback(object _)
             {
-                CallbackInvoker callbackInvoker;
-                lock (_timer)
+                CallbackInvoker callbackInvoker = null;
+                try
                 {
-                    callbackInvoker = _callbackInvoker;
-                    // If the timer callback was invoked on a background thread after this was disposed and returned to the pool,
-                    // the invoker will be null, or TryPrepareInvoke() will return false.
-                    if (callbackInvoker?.TryPrepareInvoke(_timer) != true)
+                    lock (_timer)
                     {
-                        return;
+                        callbackInvoker = _callbackInvoker;
+                        // If the timer callback was invoked on a background thread after this was disposed and returned to the pool,
+                        // the invoker will be null, or TryPrepareInvoke() will return false.
+                        if (callbackInvoker?.TryPrepareInvoke(_timer) != true)
+                        {
+                            return;
+                        }
                     }
-                }
 
-                // Invoke outside of the lock!
-                callbackInvoker.Invoke();
+                    // Invoke outside of the lock!
+                    callbackInvoker.Invoke();
+                }
+                catch (Exception e)
+                {
+                    Internal.ReportRejection(e, callbackInvoker);
+                }
             }
 
             public void Change(TimeSpan dueTime, TimeSpan period)

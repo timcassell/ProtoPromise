@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Promises.Threading;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -27,6 +28,9 @@ namespace Proto.Promises
                 }
                 return PoolableSystemTimerFactoryTimer.GetOrCreate(callback, state, dueTime, period);
             }
+
+            public override TimeProvider ToTimeProvider()
+                => TimeProvider.System;
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -70,21 +74,27 @@ namespace Proto.Promises
 
             private void OnTimerCallback(object _)
             {
-                // TODO: Add exception handling.
-                CallbackInvoker callbackInvoker;
-                lock (_timer)
+                CallbackInvoker callbackInvoker = null;
+                try
                 {
-                    callbackInvoker = _callbackInvoker;
-                    // If the timer callback was invoked on a background thread after this was disposed and returned to the pool,
-                    // the invoker will be null, or TryPrepareInvoke() will return false.
-                    if (callbackInvoker?.TryPrepareInvoke(_timer) != true)
+                    lock (_timer)
                     {
-                        return;
+                        callbackInvoker = _callbackInvoker;
+                        // If the timer callback was invoked on a background thread after this was disposed and returned to the pool,
+                        // the invoker will be null, or TryPrepareInvoke() will return false.
+                        if (callbackInvoker?.TryPrepareInvoke(_timer) != true)
+                        {
+                            return;
+                        }
                     }
-                }
 
-                // Invoke outside of the lock!
-                callbackInvoker.Invoke();
+                    // Invoke outside of the lock!
+                    callbackInvoker.Invoke();
+                }
+                catch (Exception e)
+                {
+                    Internal.ReportRejection(e, callbackInvoker);
+                }
             }
 
             public void Change(TimeSpan dueTime, TimeSpan period)

@@ -1,7 +1,7 @@
 using System;
 using System.Threading;
 
-namespace Proto.Promises
+namespace Proto.Promises.Threading
 {
     /// <summary>Represents a timer that can have its due time and period changed, and which may be pooled when it is disposed.</summary>
     /// <remarks>

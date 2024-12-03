@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Promises.Threading;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -123,7 +124,15 @@ namespace Proto.Promises
                     return false;
                 }
 
-                Invoke();
+                try
+                {
+                    Invoke();
+                }
+                catch (Exception e)
+                {
+                    Internal.ReportRejection(e, this);
+                    return true;
+                }
 
                 if (float.IsInfinity(_period))
                 {

@@ -8,6 +8,7 @@
 
 using NUnit.Framework;
 using Proto.Promises;
+using Proto.Promises.Threading;
 using System;
 using System.Diagnostics;
 using System.Linq;
@@ -35,16 +36,15 @@ namespace ProtoPromiseTests.APIs.Utilities
             {
                 Counter = 0;
                 Period = 300;
-                TokenSource = new CancellationTokenSource();
                 Stopwatch = new Stopwatch();
                 Stopwatch.Start();
             }
 
-            public CancellationTokenSource TokenSource { get; set; }
             public int Counter { get; set; }
             public int Period { get; set; }
             public IPoolableTimer Timer { get; set; }
             public Stopwatch Stopwatch { get; set; }
+            public Promise DisposePromise { get; set; }
         };
 
         private sealed class CustomTimeProvider : TimeProvider { }
@@ -63,7 +63,9 @@ namespace ProtoPromiseTests.APIs.Utilities
             int minMilliseconds = 1200;
             TimerState state = new TimerState();
 
-            state.Timer = provider.CreateTimer(
+            lock (state)
+            {
+                state.Timer = provider.CreateTimer(
                 stat =>
                 {
                     TimerState s = (TimerState) stat;
@@ -80,17 +82,18 @@ namespace ProtoPromiseTests.APIs.Utilities
 
                             case 4:
                                 s.Stopwatch.Stop();
-                                s.Timer.DisposeAsync().Forget();
-                                s.TokenSource.Cancel();
+                                s.DisposePromise = s.Timer.DisposeAsync();
+                                s.Timer = null;
                                 break;
                         }
                     }
                 },
                 state,
                 TimeSpan.FromMilliseconds(state.Period), TimeSpan.FromMilliseconds(state.Period));
+            }
 
-            state.TokenSource.Token.WaitHandle.WaitOne(Timeout.InfiniteTimeSpan);
-            state.TokenSource.Dispose();
+            SpinWait.SpinUntil(() => state.Timer == null, TimeSpan.FromSeconds(8));
+            state.DisposePromise.WaitWithTimeout(TimeSpan.FromSeconds(2));
 
             Assert.AreEqual(4, state.Counter);
             Assert.AreEqual(400, state.Period);

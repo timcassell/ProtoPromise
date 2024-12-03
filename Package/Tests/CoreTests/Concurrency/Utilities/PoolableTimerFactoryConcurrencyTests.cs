@@ -8,6 +8,7 @@
 
 using NUnit.Framework;
 using Proto.Promises;
+using Proto.Promises.Threading;
 using System;
 using System.Diagnostics;
 using System.Linq;
