@@ -131,7 +131,6 @@ namespace Proto.Promises
                 catch (Exception e)
                 {
                     Internal.ReportRejection(e, this);
-                    return true;
                 }
 
                 if (float.IsInfinity(_period))
