@@ -10,6 +10,7 @@ using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Threading;
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -50,6 +51,8 @@ namespace ProtoPromiseTests.Concurrency.Utilities
             int invokedCounter = 0;
             int timersRunningCounter = ThreadHelper.multiExecutionCount;
 
+            var disposePromises = new ConcurrentBag<Promise>();
+
             new ThreadHelper().ExecuteMultiActionParallel(() =>
             {
                 int periodCounter = 0;
@@ -62,7 +65,7 @@ namespace ProtoPromiseTests.Concurrency.Utilities
                     if ((Interlocked.Increment(ref periodCounter) - 1) == numPeriods1)
                     {
                         SpinWait.SpinUntil(() => timer != null);
-                        timer.DisposeAsync().Forget();
+                        disposePromises.Add(timer.DisposeAsync());
 
                         int periodCounter2 = 0;
                         int state2 = Interlocked.Increment(ref stateChecker);
@@ -74,7 +77,7 @@ namespace ProtoPromiseTests.Concurrency.Utilities
                             if ((Interlocked.Increment(ref periodCounter2) - 1) == numPeriods2)
                             {
                                 SpinWait.SpinUntil(() => timer2 != null);
-                                timer2.DisposeAsync().Forget();
+                                disposePromises.Add(timer2.DisposeAsync());
 
                                 Interlocked.Decrement(ref timersRunningCounter);
                             }
@@ -85,6 +88,7 @@ namespace ProtoPromiseTests.Concurrency.Utilities
 
             int expectedInvokes = ThreadHelper.multiExecutionCount * (numPeriods1 + numPeriods2 + 2);
             SpinWait.SpinUntil(() => timersRunningCounter == 0, TimeSpan.FromSeconds(expectedInvokes));
+            Promise.All(disposePromises).WaitWithTimeout(TimeSpan.FromSeconds(1));
             if ((numPeriods1 + numPeriods2) == 0)
             {
                 Assert.AreEqual(expectedInvokes, invokedCounter);
