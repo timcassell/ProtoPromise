@@ -215,7 +215,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void ClearUnsafe()
             {
-                // Worst case scenario, ClearUnsafe() is called concurrently with Push() and/or TryPop() and the objects are re-pooled.
+                // Worst case scenario, ClearUnsafe() is called concurrently with Push() and/or PopOrInvalid() and the objects are re-pooled.
                 // Very low probability, probably not a big deal, not worth adding an extra lock.
                 _head = PromiseRefBase.InvalidAwaitSentinel.s_instance;
             }
@@ -233,9 +233,14 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             internal HandleablePromiseBase PopOrInvalid()
+                => _locker.TryEnter()
+                ? PopOrInvalidLocked()
+                : PopOrInvalidSlow();
+
+            [MethodImpl(InlineOption)]
+            private HandleablePromiseBase PopOrInvalidLocked()
             {
                 // We use InvalidAwaitSentinel as the sentinel, so we don't need a branch here to check the bottom of the stack, because it references itself.
-                _locker.EnterWithoutSleep1();
                 var head = _head;
                 _head = head._next;
                 _locker.Exit();
@@ -244,6 +249,27 @@ namespace Proto.Promises
                 CollectionChecker<HandleablePromiseBase>.Remove(head);
 #endif
                 return head;
+            }
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private HandleablePromiseBase PopOrInvalidSlow()
+            {
+                // Spin until we acquire the lock.
+                var spinner = new SpinWait();
+                do
+                {
+                    // We're in the slow path, we can spend some extra time to check to see if we can exit early without taking the lock.
+                    var head = _head;
+                    if (head == PromiseRefBase.InvalidAwaitSentinel.s_instance)
+                    {
+                        // The stack is empty, exit early.
+                        return head;
+                    }
+                    spinner.SpinOnce(sleep1Threshold: -1);
+                }
+                while (!_locker.TryEnter());
+
+                return PopOrInvalidLocked();
             }
         }
 

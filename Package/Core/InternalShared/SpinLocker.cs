@@ -39,7 +39,7 @@ namespace Proto.Promises
             [MethodImpl(MethodImplOptions.NoInlining)]
             private void EnterCore()
             {
-                // Spin until we successfully get lock.
+                // Spin until we acquire the lock.
                 var spinner = new SpinWait();
                 do
                 {
@@ -64,7 +64,7 @@ namespace Proto.Promises
             [MethodImpl(MethodImplOptions.NoInlining)]
             private void EnterWithoutSleep1Core()
             {
-                // Spin until we successfully get lock.
+                // Spin until we acquire the lock.
                 var spinner = new SpinWait();
                 do
                 {
