@@ -41,6 +41,8 @@ namespace Proto.Promises
             {
                 private IPoolableTimer _poolableTimer;
                 private readonly TaskCompletionSource<bool> _completionSource = new TaskCompletionSource<bool>();
+                // ReaderWriterLock used to ensure that Change will not be called after DisposeAsync.
+                private readonly ReaderWriterLockSlim _lock = new ReaderWriterLockSlim();
 
                 internal PoolableTimerFactoryTimeProviderTimer(IPoolableTimer poolableTimer)
                 {
@@ -49,34 +51,33 @@ namespace Proto.Promises
 
                 public bool Change(TimeSpan dueTime, TimeSpan period)
                 {
-                    IPoolableTimer timer;
-                    lock (this)
+                    _lock.EnterReadLock();
+                    var timer = _poolableTimer;
+                    if (timer is null)
                     {
-                        timer = _poolableTimer;
-                        if (timer is null)
-                        {
-                            return false;
-                        }
-                        _poolableTimer = null;
+                        _lock.ExitReadLock();
+                        return false;
                     }
                     timer.Change(dueTime, period);
+                    _lock.ExitReadLock();
                     return true;
                 }
 
                 private Task<bool> MaybeDisposeAsync()
                 {
-                    IPoolableTimer timer;
-                    lock (this)
+                    // Check if this was already disposed before entering the write lock.
+                    if (_poolableTimer is null)
                     {
-                        timer = _poolableTimer;
-                        if (timer is null)
-                        {
-                            return _completionSource.Task;
-                        }
-
-                        _poolableTimer = null;
+                        return _completionSource.Task;
                     }
-                    timer.DisposeAsync()
+
+                    _lock.EnterWriteLock();
+                    // Cache the timer to dispose if it was not already disposed.
+                    var timer = _poolableTimer;
+                    _poolableTimer = null;
+                    _lock.ExitWriteLock();
+
+                    timer?.DisposeAsync()
                         .Then(_completionSource, cs => cs.SetResult(true))
                         .Forget();
                     return _completionSource.Task;
