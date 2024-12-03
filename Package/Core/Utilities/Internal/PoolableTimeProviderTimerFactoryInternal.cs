@@ -21,7 +21,7 @@ namespace Proto.Promises
 #endif
         private sealed class PoolableTimeProviderTimerFactory : PoolableTimerFactory
         {
-            // We have to use per-instance object pooling instead of global, because TimeProvider is abstract, and can have many different implementations.
+            // We have to use per-instance object pooling instead of global, because PoolableTimerFactory is abstract, and can have many different implementations.
             internal readonly Internal.LocalObjectPool<PoolableTimeProviderTimerFactoryTimer> _timerPool;
 
             internal PoolableTimeProviderTimerFactory(TimeProvider timeProvider)
