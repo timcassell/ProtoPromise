@@ -52,20 +52,20 @@ namespace Proto.Promises
 
             internal static void Initialize()
             {
-                // Even though we try to initialize this as early as possible, it is possible for other code to run before this.
-                // So we need to be careful to not overwrite non-default values.
-
                 // Create a PromiseBehaviour instance before any promise actions are made.
                 // Unity will throw if this is not ran on the main thread.
                 new GameObject("Proto.Promises.Unity.PromiseBehaviour")
                     .AddComponent<PromiseBehaviour>()
-                    .SetSynchronizationContext();
+                    .InitializeConfig();
 
                 StaticInit();
             }
 
-            private void SetSynchronizationContext()
+            private void InitializeConfig()
             {
+                // Even though we try to initialize this as early as possible, it is possible for other code to run before this.
+                // So we need to be careful to not overwrite non-default values.
+
                 if (Promise.Config.ForegroundContext == null)
                 {
                     Promise.Config.ForegroundContext = _syncContext;
@@ -80,6 +80,16 @@ namespace Proto.Promises
                 _oldContext = SynchronizationContext.Current;
                 SynchronizationContext.SetSynchronizationContext(_syncContext);
                 Promise.Manager.ThreadStaticSynchronizationContext = _syncContext;
+
+                // WebGL does not support system timers, so we set the default timer factory to one that works in WebGL.
+                if (
+#if !UNITY_WEBGL
+                    Application.platform == RuntimePlatform.WebGLPlayer &&
+#endif
+                    Promise.Config.DefaultTimerFactory == PoolableTimerFactory.System)
+                {
+                    Promise.Config.DefaultTimerFactory = PoolableUnityRealTimerFactory.Instance;
+                }
             }
 
             private void Start()
