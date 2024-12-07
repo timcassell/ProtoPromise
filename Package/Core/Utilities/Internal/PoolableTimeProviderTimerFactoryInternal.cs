@@ -64,6 +64,15 @@ namespace Proto.Promises
                 }
             }
 
+            ~PoolableTimeProviderTimerFactoryTimer()
+            {
+                if (_callbackInvoker != null)
+                {
+                    Internal.Discard(_callbackInvoker); // Prevent the invoker's base finalizer from adding an extra exception.
+                    Internal.ReportRejection(new UnreleasedObjectException($"A poolable timer was garbage collected without being disposed. {this}"), _callbackInvoker);
+                }
+            }
+
             [MethodImpl(Internal.InlineOption)]
             private static PoolableTimeProviderTimerFactoryTimer GetOrCreate(PoolableTimeProviderTimerFactory factory)
             {
@@ -140,7 +149,7 @@ namespace Proto.Promises
 
                 _timer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
 
-                Internal.ObjectPool.MaybeRepool(this);
+                _factory._timerPool.MaybeRepool(this);
                 return callbackInvoker.DisposeAsync();
             }
 

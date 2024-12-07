@@ -61,6 +61,15 @@ namespace Proto.Promises
 
             private PoolableUnitySimulatedTimerFactoryTimer() { }
 
+            ~PoolableUnitySimulatedTimerFactoryTimer()
+            {
+                if (_isDisposingFlag != 1)
+                {
+                    WasAwaitedOrForgotten = true; // Stop base finalizer from adding an extra exception.
+                    Internal.ReportRejection(new UnreleasedObjectException($"A poolable timer was garbage collected without being disposed. {this}"), this);
+                }
+            }
+
             [MethodImpl(Internal.InlineOption)]
             private static PoolableUnitySimulatedTimerFactoryTimer GetOrCreate()
             {

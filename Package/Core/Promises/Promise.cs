@@ -125,7 +125,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Mark this as awaited and wait for the operation to complete with a specified timeout, without throwing. <paramref name="resultContainer"/> wraps the completion state and reason.
-        /// <para/>This will return <see langword="true"/> if the operation completed successfully before the timeout expired, <see langword="false"/> otherwise.
+        /// <para/>This will return <see langword="true"/> if the operation completed before the timeout expired, <see langword="false"/> otherwise.
         /// </summary>
         /// <remarks>
         /// If a <see cref="TimeSpan"/> representing -1 millisecond is specified for the timeout parameter, this method blocks indefinitely until the operation is complete.

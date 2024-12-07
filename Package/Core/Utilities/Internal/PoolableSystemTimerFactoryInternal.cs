@@ -52,6 +52,15 @@ namespace Proto.Promises
                 }
             }
 
+            ~PoolableSystemTimerFactoryTimer()
+            {
+                if (_callbackInvoker != null)
+                {
+                    Internal.Discard(_callbackInvoker); // Prevent the invoker's base finalizer from adding an extra exception.
+                    Internal.ReportRejection(new UnreleasedObjectException($"A poolable timer was garbage collected without being disposed. {this}"), _callbackInvoker);
+                }
+            }
+
             [MethodImpl(Internal.InlineOption)]
             private static PoolableSystemTimerFactoryTimer GetOrCreate()
             {
