@@ -508,7 +508,17 @@ namespace Proto.Promises
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public static Promise Canceled()
-            => Internal.CreateCanceled();
+        {
+#if PROMISE_DEBUG
+            // Make a new promise to capture causality trace and help with debugging.
+            var promise = Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult>.GetOrCreate();
+            promise.CancelDirect();
+#else
+            // Use a singleton promise for efficiency.
+            var promise = Internal.PromiseRefBase.CanceledPromiseSentinel<Internal.VoidResult>.s_instance;
+#endif
+            return new Promise(promise, promise.Id);
+        }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that is already canceled.

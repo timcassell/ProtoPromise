@@ -143,7 +143,7 @@ namespace Proto.Promises
             private short _promiseId = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
             volatile private Promise.State _state;
             private bool _suppressRejection;
-            private bool _wasAwaitedorForgotten;
+            private bool _wasAwaitedOrForgotten;
 #if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
             internal bool _ignoreValueTaskContextScheduling;
 #endif
