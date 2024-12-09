@@ -753,12 +753,14 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     _target = null;
-                    bool shouldRepool = _parent == null;
-                    _parent = null;
-                    if (shouldRepool)
+                    if (_parent == null)
                     {
                         // Only repool here if UnhookAndDispose() was called synchronously from inside the invoke.
                         Repool();
+                    }
+                    else
+                    {
+                        Volatile.Write(ref _parent, null);
                     }
                 }
 
