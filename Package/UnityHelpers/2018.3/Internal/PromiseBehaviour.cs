@@ -3,6 +3,7 @@
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 using Proto.Promises.Threading;
+using Proto.Timers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -86,9 +87,9 @@ namespace Proto.Promises
 #if !UNITY_WEBGL
                     Application.platform == RuntimePlatform.WebGLPlayer &&
 #endif
-                    Promise.Config.DefaultTimerFactory == PoolableTimerFactory.System)
+                    Promise.Config.DefaultTimerFactory == TimerFactory.System)
                 {
-                    Promise.Config.DefaultTimerFactory = PoolableUnityRealTimerFactory.Instance;
+                    Promise.Config.DefaultTimerFactory = UnityRealTimerFactory.Instance;
                 }
             }
 

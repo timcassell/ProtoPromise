@@ -6,7 +6,7 @@
 
 using NUnit.Framework;
 using Proto.Promises;
-using Proto.Promises.Threading;
+using Proto.Timers;
 using System;
 using System.Collections;
 using UnityEngine;
@@ -14,7 +14,7 @@ using UnityEngine.TestTools;
 
 namespace ProtoPromiseTests.Unity
 {
-    public class PoolableUnityTimerFactoryTests
+    public class UnityTimerFactoryTests
     {
         [SetUp]
         public void Setup()
@@ -38,20 +38,20 @@ namespace ProtoPromiseTests.Unity
 
             public int Counter { get; set; }
             public TimeSpan Period { get; set; }
-            public IPoolableTimer Timer { get; set; }
+            public Timer Timer { get; set; }
             public float StartTime { get; set; }
             public float EndTime { get; set; }
             public Promise DisposePromise { get; set; }
         };
 
         [UnityTest]
-        public IEnumerator PoolableUnityRealTimerFactory_CreateTimer(
+        public IEnumerator UnityRealTimerFactory_CreateTimer(
             [Values(0.5f, 1f, 2f)] float timeScale)
         {
             float oldTimeScale = Time.timeScale;
             Time.timeScale = timeScale;
 
-            PoolableTimerFactory provider = PoolableUnityRealTimerFactory.Instance;
+            TimerFactory provider = UnityRealTimerFactory.Instance;
             float minSeconds = 1.2f;
             TimerState state = new TimerState()
             {
@@ -98,13 +98,13 @@ namespace ProtoPromiseTests.Unity
         }
 
         [UnityTest]
-        public IEnumerator PoolableUnitySimulatedTimerFactory_CreateTimer(
+        public IEnumerator UnitySimulatedTimerFactory_CreateTimer(
             [Values(0.5f, 1f, 2f)] float timeScale)
         {
             float oldTimeScale = Time.timeScale;
             Time.timeScale = timeScale;
 
-            PoolableTimerFactory provider = PoolableUnitySimulatedTimerFactory.Instance;
+            TimerFactory provider = UnitySimulatedTimerFactory.Instance;
             float minSeconds = 1.2f;
             TimerState state = new TimerState()
             {

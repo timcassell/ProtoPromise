@@ -142,7 +142,7 @@ namespace Proto.Promises
         } // class ObjectPool
 
         // LocalObjectPool is used for pooling on a per-instance basis, used with types that we don't have compile-time access to
-        // (e.g. pooled types associated with a public abstract class, like PoolableTimerFactory).
+        // (e.g. pooled types associated with a public abstract class, like TimerFactory).
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif

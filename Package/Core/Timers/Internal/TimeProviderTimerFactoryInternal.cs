@@ -4,7 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
-using Proto.Promises.Threading;
+using Proto.Promises;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -12,31 +12,32 @@ using System.Threading;
 
 #pragma warning disable IDE0090 // Use 'new(...)'
 
-namespace Proto.Promises
+namespace Proto.Timers
 {
-    partial class PoolableTimerFactory
+    partial class TimerFactory
     {
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        private sealed class PoolableTimeProviderTimerFactory : PoolableTimerFactory
+        private sealed class TimeProviderTimerFactory : TimerFactory
         {
-            // We have to use per-instance object pooling instead of global, because PoolableTimerFactory is abstract, and can have many different implementations.
-            internal readonly Internal.LocalObjectPool<PoolableTimeProviderTimerFactoryTimer> _timerPool;
+            // We have to use per-instance object pooling instead of global, because TimerFactory is abstract, and can have many different implementations.
+            internal readonly Internal.LocalObjectPool<TimeProviderTimerFactoryTimer> _timerPool;
 
-            internal PoolableTimeProviderTimerFactory(TimeProvider timeProvider)
+            internal TimeProviderTimerFactory(TimeProvider timeProvider)
             {
                 _timeProvider = timeProvider;
-                _timerPool = new Internal.LocalObjectPool<PoolableTimeProviderTimerFactoryTimer>(() => new PoolableTimeProviderTimerFactoryTimer(this));
+                _timerPool = new Internal.LocalObjectPool<TimeProviderTimerFactoryTimer>(() => new TimeProviderTimerFactoryTimer(this));
             }
 
-            public override IPoolableTimer CreateTimer(TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
+            public override Timer CreateTimer(TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
             {
                 if (callback == null)
                 {
-                    throw new ArgumentNullException(nameof(callback), "callback may not be null", Internal.GetFormattedStacktrace(1));
+                    throw new Promises.ArgumentNullException(nameof(callback), "callback may not be null", Internal.GetFormattedStacktrace(1));
                 }
-                return PoolableTimeProviderTimerFactoryTimer.GetOrCreate(this, callback, state, dueTime, period);
+                var timer = TimeProviderTimerFactoryTimer.GetOrCreate(this, callback, state, dueTime, period);
+                return new Timer(timer, timer.Version);
             }
 
             public override TimeProvider ToTimeProvider()
@@ -46,14 +47,18 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        private sealed class PoolableTimeProviderTimerFactoryTimer : Internal.HandleablePromiseBase, IPoolableTimer
+        private sealed class TimeProviderTimerFactoryTimer : Internal.HandleablePromiseBase, ITimerSource
         {
-            private readonly PoolableTimeProviderTimerFactory _factory;
+            private readonly TimeProviderTimerFactory _factory;
             // Timer doubles as the sync lock.
             private readonly ITimer _timer;
             private CallbackInvoker _callbackInvoker;
+            // Start with 1 instead of 0 to reduce risk of false positives.
+            private int _version = 1;
 
-            internal PoolableTimeProviderTimerFactoryTimer(PoolableTimeProviderTimerFactory factory)
+            internal int Version => _version;
+
+            internal TimeProviderTimerFactoryTimer(TimeProviderTimerFactory factory)
             {
                 _factory = factory;
                 // We don't need the extra overhead of the timer capturing the execution context.
@@ -64,26 +69,26 @@ namespace Proto.Promises
                 }
             }
 
-            ~PoolableTimeProviderTimerFactoryTimer()
+            ~TimeProviderTimerFactoryTimer()
             {
                 if (_callbackInvoker != null)
                 {
                     Internal.Discard(_callbackInvoker); // Prevent the invoker's base finalizer from adding an extra exception.
-                    Internal.ReportRejection(new UnreleasedObjectException($"A poolable timer was garbage collected without being disposed. {this}"), _callbackInvoker);
+                    Internal.ReportRejection(new UnreleasedObjectException($"A timer's resources were garbage collected without being disposed. {this}"), _callbackInvoker);
                 }
             }
 
             [MethodImpl(Internal.InlineOption)]
-            private static PoolableTimeProviderTimerFactoryTimer GetOrCreate(PoolableTimeProviderTimerFactory factory)
+            private static TimeProviderTimerFactoryTimer GetOrCreate(TimeProviderTimerFactory factory)
             {
                 var obj = factory._timerPool.TryTakeOrInvalid();
                 return obj == Internal.PromiseRefBase.InvalidAwaitSentinel.s_instance
-                    ? new PoolableTimeProviderTimerFactoryTimer(factory)
-                    : obj.UnsafeAs<PoolableTimeProviderTimerFactoryTimer>();
+                    ? new TimeProviderTimerFactoryTimer(factory)
+                    : obj.UnsafeAs<TimeProviderTimerFactoryTimer>();
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static PoolableTimeProviderTimerFactoryTimer GetOrCreate(PoolableTimeProviderTimerFactory factory, TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
+            internal static TimeProviderTimerFactoryTimer GetOrCreate(TimeProviderTimerFactory factory, TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
             {
                 var timer = GetOrCreate(factory);
                 var callbackInvoker = CallbackInvoker.GetOrCreate(factory._timeProvider, callback, state);
@@ -118,14 +123,14 @@ namespace Proto.Promises
                 }
             }
 
-            public void Change(TimeSpan dueTime, TimeSpan period)
+            public void Change(TimeSpan dueTime, TimeSpan period, int token)
             {
                 lock (_timer)
                 {
                     var callbackInvoker = _callbackInvoker;
-                    if (callbackInvoker is null)
+                    if (callbackInvoker is null | _version != token)
                     {
-                        throw new ObjectDisposedException(nameof(IPoolableTimer));
+                        throw new ObjectDisposedException(nameof(TimeProviderTimerFactoryTimer));
                     }
                     callbackInvoker.PrepareChange(dueTime, period);
                 }
@@ -133,17 +138,18 @@ namespace Proto.Promises
                 _timer.Change(dueTime, period);
             }
 
-            public Promise DisposeAsync()
+            public Promise DisposeAsync(int token)
             {
                 CallbackInvoker callbackInvoker;
                 lock (_timer)
                 {
                     callbackInvoker = _callbackInvoker;
-                    if (callbackInvoker is null)
+                    if (callbackInvoker is null | _version != token)
                     {
-                        throw new ObjectDisposedException(nameof(IPoolableTimer));
+                        throw new ObjectDisposedException(nameof(TimeProviderTimerFactoryTimer));
                     }
                     _callbackInvoker = null;
+                    unchecked { ++_version; }
                     callbackInvoker.PrepareChange(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
                 }
 
@@ -290,6 +296,6 @@ namespace Proto.Promises
                     return new Promise(this, Id);
                 }
             } // class CallbackInvoker
-        } // class PoolableTimeProviderTimerFactoryTimer
-    } // class PoolableTimerFactory
-} // namespace Proto.Promises
+        } // class TimeProviderTimerFactoryTimer
+    } // class TimerFactory
+} // namespace Proto.Timers
