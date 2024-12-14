@@ -4,7 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-using Proto.Promises.Threading;
 using System;
 using System.Diagnostics;
 using System.Threading;
@@ -13,47 +12,47 @@ using System.Threading.Tasks;
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0290 // Use primary constructor
 
-namespace Proto.Promises
+namespace Proto.Timers
 {
-    partial class PoolableTimerFactory
+    partial class TimerFactory
     {
-        // TimeProvider that implements ITimers by wrapping the IPoolableTimers returned from PoolableTimerFactory.CreateTimer.
+        // TimeProvider that implements ITimers by wrapping the Timer returned from TimerFactory.CreateTimer.
         // Other methods use the default implementation (same as TimeProvider.System).
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        private sealed class PoolableTimerFactoryTimeProvider : TimeProvider
+        private sealed class TimerFactoryTimeProvider : TimeProvider
         {
-            internal readonly PoolableTimerFactory _poolableTimerFactory;
+            internal readonly TimerFactory _timerFactory;
 
-            internal PoolableTimerFactoryTimeProvider(PoolableTimerFactory poolableTimerFactory)
+            internal TimerFactoryTimeProvider(TimerFactory timerFactory)
             {
-                _poolableTimerFactory = poolableTimerFactory;
+                _timerFactory = timerFactory;
             }
 
             public override ITimer CreateTimer(TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
-                => new PoolableTimerFactoryTimeProviderTimer(_poolableTimerFactory.CreateTimer(callback, state, dueTime, period));
+                => new TimerFactoryTimeProviderTimer(_timerFactory.CreateTimer(callback, state, dueTime, period));
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed class PoolableTimerFactoryTimeProviderTimer : ITimer
+            private sealed class TimerFactoryTimeProviderTimer : ITimer
             {
-                private IPoolableTimer _poolableTimer;
                 private readonly TaskCompletionSource<bool> _completionSource = new TaskCompletionSource<bool>();
                 // ReaderWriterLock used to ensure that Change will not be called after DisposeAsync.
                 private readonly ReaderWriterLockSlim _lock = new ReaderWriterLockSlim();
+                private Timer _timer;
 
-                internal PoolableTimerFactoryTimeProviderTimer(IPoolableTimer poolableTimer)
+                internal TimerFactoryTimeProviderTimer(Timer timer)
                 {
-                    _poolableTimer = poolableTimer;
+                    _timer = timer;
                 }
 
                 public bool Change(TimeSpan dueTime, TimeSpan period)
                 {
                     _lock.EnterReadLock();
-                    var timer = _poolableTimer;
-                    if (timer is null)
+                    var timer = _timer;
+                    if (timer == default)
                     {
                         _lock.ExitReadLock();
                         return false;
@@ -66,20 +65,23 @@ namespace Proto.Promises
                 private Task<bool> MaybeDisposeAsync()
                 {
                     // Check if this was already disposed before entering the write lock.
-                    if (_poolableTimer is null)
+                    if (_timer == default)
                     {
                         return _completionSource.Task;
                     }
 
                     _lock.EnterWriteLock();
                     // Cache the timer to dispose if it was not already disposed.
-                    var timer = _poolableTimer;
-                    _poolableTimer = null;
+                    var timer = _timer;
+                    _timer = default;
                     _lock.ExitWriteLock();
 
-                    timer?.DisposeAsync()
-                        .Then(_completionSource, cs => cs.SetResult(true))
-                        .Forget();
+                    if (timer != default)
+                    {
+                        timer.DisposeAsync()
+                            .Then(_completionSource, cs => cs.SetResult(true))
+                            .Forget();
+                    }
                     return _completionSource.Task;
                 }
 
@@ -93,4 +95,4 @@ namespace Proto.Promises
             }
         }
     }
-}
+} // namespace Proto.Timers

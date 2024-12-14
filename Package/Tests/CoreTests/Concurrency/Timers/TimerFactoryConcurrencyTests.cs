@@ -9,15 +9,16 @@
 using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Threading;
+using Proto.Timers;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 
-namespace ProtoPromiseTests.Concurrency.Utilities
+namespace ProtoPromiseTests.Concurrency.Timers
 {
-    public class PoolableTimerFactoryConcurrencyTests
+    public class TimerFactoryConcurrencyTests
     {
         [SetUp]
         public void Setup()
@@ -34,7 +35,7 @@ namespace ProtoPromiseTests.Concurrency.Utilities
         private sealed class CustomTimeProvider : TimeProvider { }
 
         [Test]
-        public void PoolableTimerFactory_CreateTimer_Concurrent(
+        public void TimerFactory_CreateTimer_Concurrent(
             [Values(0, 1, 2)] int numPeriods1,
             [Values(0, 1, 2)] int numPeriods2,
             [Values] bool customTimeProvider,
@@ -43,9 +44,9 @@ namespace ProtoPromiseTests.Concurrency.Utilities
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
             Promise.Config.s_asyncFlowExecutionContextEnabled = flowExecutionContext;
 
-            PoolableTimerFactory provider = customTimeProvider
-                ? PoolableTimerFactory.FromTimeProvider(new CustomTimeProvider())
-                : PoolableTimerFactory.System;
+            TimerFactory provider = customTimeProvider
+                ? TimerFactory.FromTimeProvider(new CustomTimeProvider())
+                : TimerFactory.System;
 
             int stateChecker = 0;
             int invokedCounter = 0;
@@ -57,26 +58,26 @@ namespace ProtoPromiseTests.Concurrency.Utilities
             {
                 int periodCounter = 0;
                 int state = Interlocked.Increment(ref stateChecker);
-                IPoolableTimer timer = null;
+                Proto.Timers.Timer timer = default;
                 timer = provider.CreateTimer(s =>
                 {
                     Interlocked.Increment(ref invokedCounter);
                     Assert.AreEqual(state, s);
                     if ((Interlocked.Increment(ref periodCounter) - 1) == numPeriods1)
                     {
-                        SpinWait.SpinUntil(() => timer != null);
+                        SpinWait.SpinUntil(() => timer != default);
                         disposePromises.Add(timer.DisposeAsync());
 
                         int periodCounter2 = 0;
                         int state2 = Interlocked.Increment(ref stateChecker);
-                        IPoolableTimer timer2 = null;
+                        Proto.Timers.Timer timer2 = default;
                         timer2 = provider.CreateTimer(s2 =>
                         {
                             Interlocked.Increment(ref invokedCounter);
                             Assert.AreEqual(state2, s2);
                             if ((Interlocked.Increment(ref periodCounter2) - 1) == numPeriods2)
                             {
-                                SpinWait.SpinUntil(() => timer2 != null);
+                                SpinWait.SpinUntil(() => timer2 != default);
                                 disposePromises.Add(timer2.DisposeAsync());
 
                                 Interlocked.Decrement(ref timersRunningCounter);

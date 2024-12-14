@@ -9,14 +9,14 @@
 using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Threading;
+using Proto.Timers;
 using System;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 
-namespace ProtoPromiseTests.APIs.Utilities
+namespace ProtoPromiseTests.APIs.Timers
 {
-    public class PoolableTimerFactoryTests
+    public class TimerFactoryTests
     {
         [SetUp]
         public void Setup()
@@ -42,7 +42,7 @@ namespace ProtoPromiseTests.APIs.Utilities
 
             public int Counter { get; set; }
             public int Period { get; set; }
-            public IPoolableTimer Timer { get; set; }
+            public Timer Timer { get; set; }
             public Stopwatch Stopwatch { get; set; }
             public Promise DisposePromise { get; set; }
         };
@@ -50,16 +50,16 @@ namespace ProtoPromiseTests.APIs.Utilities
         private sealed class CustomTimeProvider : TimeProvider { }
 
         [Test]
-        public void PoolableTimerFactory_CreateTimer(
+        public void TimerFactory_CreateTimer(
             [Values] bool customTimeProvider,
             [Values] bool flowExecutionContext)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
             Promise.Config.s_asyncFlowExecutionContextEnabled = flowExecutionContext;
 
-            PoolableTimerFactory provider = customTimeProvider
-                ? PoolableTimerFactory.FromTimeProvider(new CustomTimeProvider())
-                : PoolableTimerFactory.System;
+            TimerFactory provider = customTimeProvider
+                ? TimerFactory.FromTimeProvider(new CustomTimeProvider())
+                : TimerFactory.System;
             int minMilliseconds = 1200;
             TimerState state = new TimerState();
 
@@ -83,7 +83,7 @@ namespace ProtoPromiseTests.APIs.Utilities
                             case 4:
                                 s.Stopwatch.Stop();
                                 s.DisposePromise = s.Timer.DisposeAsync();
-                                s.Timer = null;
+                                s.Timer = default;
                                 break;
                         }
                     }
@@ -92,7 +92,7 @@ namespace ProtoPromiseTests.APIs.Utilities
                 TimeSpan.FromMilliseconds(state.Period), TimeSpan.FromMilliseconds(state.Period));
             }
 
-            SpinWait.SpinUntil(() => state.Timer == null, TimeSpan.FromSeconds(8));
+            System.Threading.SpinWait.SpinUntil(() => state.Timer == default, TimeSpan.FromSeconds(8));
             state.DisposePromise.WaitWithTimeout(TimeSpan.FromSeconds(2));
 
             Assert.AreEqual(4, state.Counter);

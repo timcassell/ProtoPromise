@@ -4,83 +4,87 @@
 #undef PROMISE_DEBUG
 #endif
 
-using Proto.Promises.Threading;
+using Proto.Promises;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-namespace Proto.Promises
+namespace Proto.Timers
 {
     /// <summary>
-    /// A <see cref="PoolableTimerFactory"/> that provides pooled timers based on <see cref="UnityEngine.Time.realtimeSinceStartup"/>.
+    /// A <see cref="TimerFactory"/> that provides pooled timers based on <see cref="UnityEngine.Time.time"/>.
     /// </summary>
     /// <remarks>
     /// Timers created from this factory are safe to change and dispose on background threads, however calls to
-    /// <see cref="IPoolableTimer.Change(TimeSpan, TimeSpan)"/> will be marshalled to the main thread, which may cause delays.
+    /// <see cref="Timer.Change(TimeSpan, TimeSpan)"/> will be marshalled to the main thread, which may cause delays.
     /// </remarks>
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public sealed class PoolableUnityRealTimerFactory : PoolableTimerFactory
+    public sealed class UnitySimulatedTimerFactory : TimerFactory
     {
         /// <summary>
-        /// Gets the singleton instance of the <see cref="PoolableUnityRealTimerFactory"/>.
+        /// Gets the singleton instance of the <see cref="UnitySimulatedTimerFactory"/>.
         /// </summary>
-        public static PoolableUnityRealTimerFactory Instance { get; } = new PoolableUnityRealTimerFactory();
+        public static UnitySimulatedTimerFactory Instance { get; } = new UnitySimulatedTimerFactory();
 
-        private PoolableUnityRealTimerFactory() { }
+        private UnitySimulatedTimerFactory() { }
 
         /// <summary>
-        /// Gets a timer from the object pool, or creates a new timer, based on <see cref="UnityEngine.Time.realtimeSinceStartup"/>, which will be returned to the object pool when it is disposed.
+        /// Gets a timer from the object pool, or creates a new timer, based on <see cref="UnityEngine.Time.time"/>, which will be returned to the object pool when it is disposed.
         /// </summary>
         /// <remarks>
-        /// If this or <see cref="IPoolableTimer.Change(TimeSpan, TimeSpan)"/> are called from background threads, the calls will be marshalled to the main thread, which may cause delays.
+        /// If this or <see cref="Timer.Change(TimeSpan, TimeSpan)"/> are called from background threads, the calls will be marshalled to the main thread, which may cause delays.
         /// </remarks>
         /// <inheritdoc/>
-        public override IPoolableTimer CreateTimer(TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
+        public override Timer CreateTimer(TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
         {
-            var timer = PoolableUnityRealTimerFactoryTimer.GetOrCreate(callback, state);
-            timer.Change(dueTime, period);
-            return timer;
+            var timer = UnitySimulatedTimerFactoryTimer.GetOrCreate(callback, state);
+            timer.Change(dueTime, period, timer.Version);
+            return new Timer(timer, timer.Version);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
         // We inherit from PromiseSingleAwait<> to support DisposeAsync.
-        private sealed class PoolableUnityRealTimerFactoryTimer : Internal.PromiseRefBase.PromiseSingleAwait<Internal.VoidResult>, IPoolableTimer
+        private sealed class UnitySimulatedTimerFactoryTimer : Internal.PromiseRefBase.PromiseSingleAwait<Internal.VoidResult>, ITimerSource
         {
             private TimerCallback _callback;
             private object _state;
             private float _dueTime;
             private float _period;
-            private int _retainCounter;
+            // Start with 1 instead of 0 to reduce risk of false positives.
+            private int _version = 1;
+            private byte _retainCounter;
             private bool _isTicking;
-            volatile private int _isDisposingFlag;
+            private bool _isDisposed;
 
-            private PoolableUnityRealTimerFactoryTimer() { }
+            internal int Version => _version;
 
-            ~PoolableUnityRealTimerFactoryTimer()
+            private UnitySimulatedTimerFactoryTimer() { }
+
+            ~UnitySimulatedTimerFactoryTimer()
             {
-                if (_isDisposingFlag != 1)
+                if (!_isDisposed)
                 {
                     WasAwaitedOrForgotten = true; // Stop base finalizer from adding an extra exception.
-                    Internal.ReportRejection(new UnreleasedObjectException($"A poolable timer was garbage collected without being disposed. {this}"), this);
+                    Internal.ReportRejection(new UnreleasedObjectException($"A timer's resources were garbage collected without being disposed. {this}"), this);
                 }
             }
 
             [MethodImpl(Internal.InlineOption)]
-            private static PoolableUnityRealTimerFactoryTimer GetOrCreate()
+            private static UnitySimulatedTimerFactoryTimer GetOrCreate()
             {
-                var obj = Internal.ObjectPool.TryTakeOrInvalid<PoolableUnityRealTimerFactoryTimer>();
+                var obj = Internal.ObjectPool.TryTakeOrInvalid<UnitySimulatedTimerFactoryTimer>();
                 return obj == InvalidAwaitSentinel.s_instance
-                    ? new PoolableUnityRealTimerFactoryTimer()
-                    : obj.UnsafeAs<PoolableUnityRealTimerFactoryTimer>();
+                    ? new UnitySimulatedTimerFactoryTimer()
+                    : obj.UnsafeAs<UnitySimulatedTimerFactoryTimer>();
             }
 
             [MethodImpl(Internal.InlineOption)]
-            internal static PoolableUnityRealTimerFactoryTimer GetOrCreate(TimerCallback callback, object state)
+            internal static UnitySimulatedTimerFactoryTimer GetOrCreate(TimerCallback callback, object state)
             {
                 var timer = GetOrCreate();
                 timer.Reset();
@@ -93,7 +97,7 @@ namespace Proto.Promises
                 timer._callback = callback;
                 timer._state = state;
                 timer._retainCounter = 1;
-                timer._isDisposingFlag = 0;
+                timer._isDisposed = false;
                 return timer;
             }
 
@@ -107,28 +111,41 @@ namespace Proto.Promises
 
             [MethodImpl(Internal.InlineOption)]
             private void Retain()
-                => Internal.InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, 1);
+            {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                checked
+#endif
+                {
+                    ++_retainCounter;
+                }
+            }
 
             [MethodImpl(Internal.InlineOption)]
             private void Release()
             {
-                if (Internal.InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0)
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                checked
+#endif
                 {
-                    HandleNextInternal(Promise.State.Resolved);
+                    if (--_retainCounter == 0)
+                    {
+                        HandleNextInternal(Promise.State.Resolved);
+
+                    }
                 }
             }
 
             // This is called once per frame. Returns `true` to stop the ticking.
             private bool OnTick()
             {
-                if (_isDisposingFlag == 1 || float.IsInfinity(_dueTime))
+                if (_isDisposed || float.IsInfinity(_dueTime))
                 {
                     _isTicking = false;
                     Release();
                     return true;
                 }
 
-                if (UnityEngine.Time.realtimeSinceStartup < _dueTime)
+                if (InternalHelper.PromiseBehaviour.s_time < _dueTime)
                 {
                     return false;
                 }
@@ -167,7 +184,7 @@ namespace Proto.Promises
                         // .Net Framework doesn't allow us to re-use a captured context, so we have to copy it for each invocation.
                         // .Net Core's implementation of CreateCopy returns itself, so this is always as efficient as it can be.
                         executionContext.UnsafeAs<ExecutionContext>().CreateCopy(),
-                        obj => obj.UnsafeAs<PoolableUnityRealTimerFactoryTimer>().InvokeDirect(),
+                        obj => obj.UnsafeAs<UnitySimulatedTimerFactoryTimer>().InvokeDirect(),
                         this
                     );
                 }
@@ -177,56 +194,69 @@ namespace Proto.Promises
             private void InvokeDirect()
                 => _callback.Invoke(_state);
 
-            public void Change(TimeSpan dueTime, TimeSpan period)
+            public void Change(TimeSpan dueTime, TimeSpan period, int token)
             {
                 if (InternalHelper.IsOnMainThread())
                 {
-                    ChangeImpl(dueTime, period);
+                    ChangeImpl(dueTime, period, token);
+                    return;
                 }
-                else
-                {
-                    InternalHelper.PromiseBehaviour.Instance._syncContext.Send(
-                        t => t.UnsafeAs<PoolableUnityRealTimerFactoryTimer>().ChangeImpl(dueTime, period),
-                        this
-                    );
-                }
+
+                Promise.Run((this, dueTime, period, token),
+                    cv => cv.Item1.ChangeImpl(cv.dueTime, cv.period, cv.token),
+                    InternalHelper.PromiseBehaviour.Instance._syncContext, forceAsync: true
+                ).Wait();
             }
 
-            private void ChangeImpl(TimeSpan dueTime, TimeSpan period)
+            private void ChangeImpl(TimeSpan dueTime, TimeSpan period, int token)
             {
-                Retain();
-                if (_isDisposingFlag == 1)
+                if (_isDisposed | _version != token)
                 {
-                    Release();
-                    throw new ObjectDisposedException(nameof(PoolableUnityRealTimerFactoryTimer));
+                    throw new ObjectDisposedException(nameof(UnitySimulatedTimerFactoryTimer));
                 }
 
                 if (dueTime == Timeout.InfiniteTimeSpan)
                 {
                     _dueTime = _period = float.PositiveInfinity;
-                    Release();
                     return;
                 }
 
-                _dueTime = (float) (UnityEngine.Time.realtimeSinceStartup + dueTime.TotalSeconds);
+                // We use `UnityEngine.Time.time` instead of `InternalHelper.PromiseBehaviour.s_time`
+                // because we don't know if this is called before or after the processor is executed this frame.
+                _dueTime = (float) (UnityEngine.Time.time + dueTime.TotalSeconds);
                 _period = period == Timeout.InfiniteTimeSpan ? float.PositiveInfinity : (float) period.TotalSeconds;
                 if (_isTicking)
                 {
-                    Release();
                     return;
                 }
 
+                Retain();
                 _isTicking = true;
                 // TODO: Optimize this to just add the await instruction to the processor directly without using a Promise.
                 new AwaitInstruction(this).ToPromise().Forget();
             }
 
-            public Promise DisposeAsync()
+            public Promise DisposeAsync(int token)
             {
-                if (Interlocked.Exchange(ref _isDisposingFlag, 1) == 1)
+                if (InternalHelper.IsOnMainThread())
                 {
-                    throw new ObjectDisposedException(nameof(PoolableUnityRealTimerFactoryTimer));
+                    return DisposeAsyncImpl(token);
                 }
+
+                return Promise.Run((this, token),
+                    cv => cv.Item1.DisposeAsyncImpl(cv.token),
+                    InternalHelper.PromiseBehaviour.Instance._syncContext, forceAsync: true
+                );
+            }
+
+            private Promise DisposeAsyncImpl(int token)
+            {
+                if (_isDisposed | _version != token)
+                {
+                    throw new ObjectDisposedException(nameof(UnitySimulatedTimerFactoryTimer));
+                }
+                _isDisposed = true;
+                unchecked { _version = token + 1; }
 
                 Release();
                 return new Promise(this, Id);
@@ -237,9 +267,9 @@ namespace Proto.Promises
 #endif
             private readonly struct AwaitInstruction : IAwaitInstruction
             {
-                private readonly PoolableUnityRealTimerFactoryTimer _target;
+                private readonly UnitySimulatedTimerFactoryTimer _target;
 
-                internal AwaitInstruction(PoolableUnityRealTimerFactoryTimer target)
+                internal AwaitInstruction(UnitySimulatedTimerFactoryTimer target)
                 {
                     _target = target;
                 }
@@ -247,6 +277,6 @@ namespace Proto.Promises
                 public bool IsCompleted()
                     => _target.OnTick();
             }
-        }
-    }
-}
+        } // class UnitySimulatedTimerFactoryTimer
+    } // class UnitySimulatedTimerFactory
+} // namespace Proto.Timers
