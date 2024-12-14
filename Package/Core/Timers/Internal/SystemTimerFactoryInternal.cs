@@ -137,7 +137,7 @@ namespace Proto.Timers
                         throw new ObjectDisposedException(nameof(SystemTimerFactoryTimer));
                     }
                     _callbackInvoker = null;
-                    unchecked { ++_version; }
+                    unchecked { _version = token + 1; }
                     callbackInvoker.PrepareChange(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
                 }
 

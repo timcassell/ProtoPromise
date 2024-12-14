@@ -57,9 +57,9 @@ namespace Proto.Timers
             private float _period;
             // Start with 1 instead of 0 to reduce risk of false positives.
             private int _version = 1;
-            private int _retainCounter;
+            private byte _retainCounter;
             private bool _isTicking;
-            volatile private bool _isDisposed;
+            private bool _isDisposed;
 
             internal int Version => _version;
 
@@ -111,14 +111,27 @@ namespace Proto.Timers
 
             [MethodImpl(Internal.InlineOption)]
             private void Retain()
-                => Internal.InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, 1);
+            {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                checked
+#endif
+                {
+                    ++_retainCounter;
+                }
+            }
 
             [MethodImpl(Internal.InlineOption)]
             private void Release()
             {
-                if (Internal.InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0)
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                checked
+#endif
                 {
-                    HandleNextInternal(Promise.State.Resolved);
+                    if (--_retainCounter == 0)
+                    {
+                        HandleNextInternal(Promise.State.Resolved);
+
+                    }
                 }
             }
 
@@ -183,32 +196,28 @@ namespace Proto.Timers
 
             public void Change(TimeSpan dueTime, TimeSpan period, int token)
             {
-                Retain();
-                if (Volatile.Read(ref _version) != token)
+                if (InternalHelper.IsOnMainThread())
                 {
-                    Release();
+                    ChangeImpl(dueTime, period, token);
+                    return;
+                }
+
+                Promise.Run((this, dueTime, period, token),
+                    cv => cv.Item1.ChangeImpl(cv.dueTime, cv.period, cv.token),
+                    InternalHelper.PromiseBehaviour.Instance._syncContext, forceAsync: true
+                ).Wait();
+            }
+
+            private void ChangeImpl(TimeSpan dueTime, TimeSpan period, int token)
+            {
+                if (_isDisposed | _version != token)
+                {
                     throw new ObjectDisposedException(nameof(UnitySimulatedTimerFactoryTimer));
                 }
 
-                if (InternalHelper.IsOnMainThread())
-                {
-                    ChangeImpl(dueTime, period);
-                }
-                else
-                {
-                    InternalHelper.PromiseBehaviour.Instance._syncContext.Send(
-                        t => t.UnsafeAs<UnitySimulatedTimerFactoryTimer>().ChangeImpl(dueTime, period),
-                        this
-                    );
-                }
-            }
-
-            private void ChangeImpl(TimeSpan dueTime, TimeSpan period)
-            {
                 if (dueTime == Timeout.InfiniteTimeSpan)
                 {
                     _dueTime = _period = float.PositiveInfinity;
-                    Release();
                     return;
                 }
 
@@ -218,10 +227,10 @@ namespace Proto.Timers
                 _period = period == Timeout.InfiniteTimeSpan ? float.PositiveInfinity : (float) period.TotalSeconds;
                 if (_isTicking)
                 {
-                    Release();
                     return;
                 }
 
+                Retain();
                 _isTicking = true;
                 // TODO: Optimize this to just add the await instruction to the processor directly without using a Promise.
                 new AwaitInstruction(this).ToPromise().Forget();
@@ -229,11 +238,25 @@ namespace Proto.Timers
 
             public Promise DisposeAsync(int token)
             {
-                if (Interlocked.CompareExchange(ref _version, unchecked(token + 1), token) != token)
+                if (InternalHelper.IsOnMainThread())
+                {
+                    return DisposeAsyncImpl(token);
+                }
+
+                return Promise.Run((this, token),
+                    cv => cv.Item1.DisposeAsyncImpl(cv.token),
+                    InternalHelper.PromiseBehaviour.Instance._syncContext, forceAsync: true
+                );
+            }
+
+            private Promise DisposeAsyncImpl(int token)
+            {
+                if (_isDisposed | _version != token)
                 {
                     throw new ObjectDisposedException(nameof(UnitySimulatedTimerFactoryTimer));
                 }
                 _isDisposed = true;
+                unchecked { _version = token + 1; }
 
                 Release();
                 return new Promise(this, Id);
