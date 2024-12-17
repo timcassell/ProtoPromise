@@ -163,6 +163,7 @@ namespace Proto.Promises
             return unregistered | !isCanceling;
         }
 
+        // TODO: Use Microsoft.Bcl.HashCode nuget package.
         internal static int BuildHashCode(object _ref, int hashcode1, int hashcode2)
         {
             int hashcode0 = _ref == null ? 0 : _ref.GetHashCode();
