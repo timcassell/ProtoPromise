@@ -8,6 +8,7 @@ using NUnit.Framework;
 using Proto.Promises;
 using Proto.Timers;
 using System;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading;
 
@@ -66,14 +67,21 @@ namespace ProtoPromiseTests.Concurrency
         [Test]
         public void PromiseDelay()
         {
+            var bag = new ConcurrentBag<Promise>();
             // 1 thread for call to Promise.Delay, 1 thread for timer callback.
             int concurrencyFactor = Environment.ProcessorCount / 2;
-            var delayCalls = Enumerable.Repeat<Action>(() => Promise.Delay(TimeSpan.FromMilliseconds(1)).Forget(), concurrencyFactor);
+            var delayCalls = Enumerable.Repeat<Action>(() => bag.Add(Promise.Delay(TimeSpan.FromMilliseconds(1))), concurrencyFactor);
             new ThreadHelper().ExecuteParallelActionsMaybeWithOffsets(
                 // setup
                 () => { },
                 // teardown
-                () => TestHelper._backgroundContext.WaitForAllThreadsToComplete(),
+                () =>
+                {
+                    TestHelper._backgroundContext.WaitForAllThreadsToComplete();
+                    Promise.All(bag)
+                        .WaitWithTimeout(TimeSpan.FromSeconds(1));
+                    bag = new ConcurrentBag<Promise>();
+                },
                 delayCalls.ToList()
             );
         }
@@ -81,15 +89,22 @@ namespace ProtoPromiseTests.Concurrency
         [Test]
         public void PromiseDelay_WithFakeTimerFactory()
         {
+            var bag = new ConcurrentBag<Promise>();
             var fakeTimerFactory = new FakeTimerFactory();
             // 1 thread for call to Promise.Delay, 1 thread for timer callback.
             int concurrencyFactor = Environment.ProcessorCount / 2;
-            var delayCalls = Enumerable.Repeat<Action>(() => Promise.Delay(TimeSpan.FromMilliseconds(1), fakeTimerFactory).Forget(), concurrencyFactor);
+            var delayCalls = Enumerable.Repeat<Action>(() => bag.Add(Promise.Delay(TimeSpan.FromMilliseconds(1), fakeTimerFactory)), concurrencyFactor);
             new ThreadHelper().ExecuteParallelActionsMaybeWithOffsets(
                 // setup
                 () => { },
                 // teardown
-                () => TestHelper._backgroundContext.WaitForAllThreadsToComplete(),
+                () =>
+                {
+                    TestHelper._backgroundContext.WaitForAllThreadsToComplete();
+                    Promise.All(bag)
+                        .WaitWithTimeout(TimeSpan.FromSeconds(1));
+                    bag = new ConcurrentBag<Promise>();
+                },
                 delayCalls.ToList()
             );
         }
@@ -97,6 +112,7 @@ namespace ProtoPromiseTests.Concurrency
         [Test]
         public void PromiseDelay_WithCancelationToken()
         {
+            var bag = new ConcurrentBag<Promise>();
             // 1 thread for call to Promise.Delay, 1 thread for timer callback, 1 thread for cancelation.
             int concurrencyFactor = Environment.ProcessorCount / 3;
             var cancelationSources = new CancelationSource[concurrencyFactor];
@@ -106,7 +122,7 @@ namespace ProtoPromiseTests.Concurrency
             {
                 int index = i;
                 cancelationCalls[index] = () => cancelationSources[index].Cancel();
-                delayCalls[index] = () => Promise.Delay(TimeSpan.FromMilliseconds(1), cancelationSources[index].Token).Forget();
+                delayCalls[index] = () => bag.Add(Promise.Delay(TimeSpan.FromMilliseconds(1), cancelationSources[index].Token));
             }
             new ThreadHelper().ExecuteParallelActionsMaybeWithOffsets(
                 // setup
@@ -120,11 +136,21 @@ namespace ProtoPromiseTests.Concurrency
                 // teardown
                 () =>
                 {
+                    TestHelper._backgroundContext.WaitForAllThreadsToComplete();
+                    Promise.AllSettled(bag)
+                        .Then(results =>
+                        {
+                            foreach (var result in results)
+                            {
+                                result.RethrowIfRejected();
+                            }
+                        })
+                        .WaitWithTimeout(TimeSpan.FromSeconds(1));
                     for (int i = 0; i < concurrencyFactor; ++i)
                     {
                         cancelationSources[i].Dispose();
                     }
-                    TestHelper._backgroundContext.WaitForAllThreadsToComplete();
+                    bag = new ConcurrentBag<Promise>();
                 },
                 delayCalls.Concat(cancelationCalls).ToList()
             );
@@ -133,6 +159,7 @@ namespace ProtoPromiseTests.Concurrency
         [Test]
         public void PromiseDelay_WithTimerFactoryAndCancelationToken()
         {
+            var bag = new ConcurrentBag<Promise>();
             var fakeTimerFactory = new FakeTimerFactory();
             // 1 thread for call to Promise.Delay, 1 thread for timer callback, 1 thread for cancelation.
             int concurrencyFactor = Environment.ProcessorCount / 3;
@@ -143,7 +170,7 @@ namespace ProtoPromiseTests.Concurrency
             {
                 int index = i;
                 cancelationCalls[index] = () => cancelationSources[index].Cancel();
-                delayCalls[index] = () => Promise.Delay(TimeSpan.FromMilliseconds(1), fakeTimerFactory, cancelationSources[index].Token).Forget();
+                delayCalls[index] = () => bag.Add(Promise.Delay(TimeSpan.FromMilliseconds(1), fakeTimerFactory, cancelationSources[index].Token));
             }
             new ThreadHelper().ExecuteParallelActionsMaybeWithOffsets(
                 // setup
@@ -157,11 +184,21 @@ namespace ProtoPromiseTests.Concurrency
                 // teardown
                 () =>
                 {
+                    TestHelper._backgroundContext.WaitForAllThreadsToComplete();
+                    Promise.AllSettled(bag)
+                        .Then(results =>
+                        {
+                            foreach (var result in results)
+                            {
+                                result.RethrowIfRejected();
+                            }
+                        })
+                        .WaitWithTimeout(TimeSpan.FromSeconds(1));
                     for (int i = 0; i < concurrencyFactor; ++i)
                     {
                         cancelationSources[i].Dispose();
                     }
-                    TestHelper._backgroundContext.WaitForAllThreadsToComplete();
+                    bag = new ConcurrentBag<Promise>();
                 },
                 delayCalls.Concat(cancelationCalls).ToList()
             );
