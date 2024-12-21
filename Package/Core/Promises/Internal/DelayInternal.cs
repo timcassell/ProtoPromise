@@ -160,11 +160,6 @@ namespace Proto.Promises
                     {
                         HandleNextInternal(Promise.State.Canceled);
                     }
-                    else if (timerDisposePromise._ref.State != Promise.State.Pending)
-                    {
-                        timerDisposePromise._ref.MaybeReportUnhandledAndDispose(timerDisposePromise._ref.State);
-                        HandleNextInternal(Promise.State.Canceled);
-                    }
                     else
                     {
                         timerDisposePromise._ref.HookupExistingWaiter(timerDisposePromise._id, this);

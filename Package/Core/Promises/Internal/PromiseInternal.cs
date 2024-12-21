@@ -157,6 +157,10 @@ namespace Proto.Promises
                 {
                     throw new System.InvalidOperationException("Promise disposed while pending: " + this);
                 }
+                if (!WasAwaitedOrForgotten)
+                {
+                    throw new System.InvalidOperationException("Promise disposed without being awaited or forgotten: " + this);
+                }
 #endif
                 IncrementPromiseIdAndClearPrevious();
             }
