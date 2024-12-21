@@ -18,8 +18,8 @@ namespace Proto.Timers
     /// </summary>
     public readonly partial struct Timer : IEquatable<Timer>
     {
-        private readonly ITimerSource _timerSource;
-        private readonly int _token;
+        internal readonly ITimerSource _timerSource;
+        internal readonly int _token;
 
         /// <summary>
         /// Initializes a new instance of <see cref="Timer"/> using the supplied <see cref="ITimerSource"/> object that represents the timer.

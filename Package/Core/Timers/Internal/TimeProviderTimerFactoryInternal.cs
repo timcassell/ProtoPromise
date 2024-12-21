@@ -63,7 +63,7 @@ namespace Proto.Timers
                 _factory = factory;
                 // We don't need the extra overhead of the timer capturing the execution context.
                 // We capture it manually per usage of this instance.
-                using (ExecutionContext.SuppressFlow())
+                using (Internal.SuppressExecutionContextFlow())
                 {
                     _timer = factory._timeProvider.CreateTimer(OnTimerCallback, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
                 }
