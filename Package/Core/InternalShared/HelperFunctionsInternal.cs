@@ -275,5 +275,36 @@ namespace Proto.Promises
                 Array.Clear(array, index, length);
             }
         }
+
+#if NETCOREAPP
+        [MethodImpl(InlineOption)]
+        internal static AsyncFlowControl SuppressExecutionContextFlow()
+            => ExecutionContext.SuppressFlow();
+#else
+        // .Net Framework throws if ExecutionContext.SuppressFlow() is called recursively, so we need to check if it's already suppressed.
+        [MethodImpl(InlineOption)]
+        internal static WrappedAsyncFlowControl SuppressExecutionContextFlow()
+            => ExecutionContext.IsFlowSuppressed() ? default : new WrappedAsyncFlowControl(ExecutionContext.SuppressFlow());
+
+        internal readonly struct WrappedAsyncFlowControl : IDisposable
+        {
+            private readonly AsyncFlowControl _asyncFlowControl;
+
+            [MethodImpl(InlineOption)]
+            public WrappedAsyncFlowControl(AsyncFlowControl asyncFlowControl)
+            {
+                _asyncFlowControl = asyncFlowControl;
+            }
+
+            [MethodImpl(InlineOption)]
+            public void Dispose()
+            {
+                if (_asyncFlowControl != default)
+                {
+                    _asyncFlowControl.Dispose();
+                }
+            }
+        }
+#endif
     } // class Internal
 } // namespace Proto.Promises

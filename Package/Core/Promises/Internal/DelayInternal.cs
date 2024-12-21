@@ -60,7 +60,7 @@ namespace Proto.Promises
                     var promise = GetFromPoolOrCreate();
                     promise.Reset();
                     promise._timerUseCounter = 2;
-                    using (ExecutionContext.SuppressFlow())
+                    using (SuppressExecutionContextFlow())
                     {
                         var timer = timerFactory.CreateTimer(obj => obj.UnsafeAs<DelayPromise>().OnTimerCallback(), promise, delay, Timeout.InfiniteTimeSpan);
                         promise._timerToken = timer._token;
@@ -125,7 +125,7 @@ namespace Proto.Promises
                     promise.Reset();
                     promise._isCompletedFlag = 0;
                     promise._fieldUseCounter = 2;
-                    using (ExecutionContext.SuppressFlow())
+                    using (SuppressExecutionContextFlow())
                     {
                         promise._timer = timerFactory.CreateTimer(obj => obj.UnsafeAs<DelayWithCancelationPromise>().OnTimerCallback(), promise, delay, Timeout.InfiniteTimeSpan);
                     }
