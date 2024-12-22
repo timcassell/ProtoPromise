@@ -51,7 +51,7 @@ namespace Proto.Timers
             {
                 // We don't need the extra overhead of the system timer capturing the execution context.
                 // We capture it manually per usage of this instance.
-                using (ExecutionContext.SuppressFlow())
+                using (Internal.SuppressExecutionContextFlow())
                 {
                     _timer = TimeProvider.System.CreateTimer(OnTimerCallback, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
                 }
