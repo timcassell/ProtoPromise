@@ -1470,7 +1470,8 @@ namespace ProtoPromiseTests.APIs
 
             deferred.Promise
                 .Then(() => resolved = true)
-                .Then(_ => Assert.Fail("Promise was resolved when it should have been canceled."), cancelationSource.Token)
+                .WaitAsync(cancelationSource.Token)
+                .Then(_ => Assert.Fail("Promise was resolved when it should have been canceled."))
                 .Finally(cancelationSource.Dispose)
                 .Forget();
 
@@ -1511,7 +1512,8 @@ namespace ProtoPromiseTests.APIs
             CancelationSource cancelationSource = CancelationSource.New();
 
             deferred.Promise
-                .Then(() => { }, cancelationSource.Token)
+                .WaitAsync(cancelationSource.Token)
+                .Then(() => { })
                 .CatchCancelation(() =>
                 {
                     invoked = true;
@@ -1535,7 +1537,8 @@ namespace ProtoPromiseTests.APIs
 
             deferred.Promise
                 .Then(() => cancelationSource.Cancel())
-                .Then(() => { }, cancelationSource.Token)
+                .WaitAsync(cancelationSource.Token)
+                .Then(() => { })
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."),
                     () => Assert.Fail("Promise was rejected when it should have been canceled."))
                 .CatchCancelation(() => canceled = true)
@@ -1555,11 +1558,13 @@ namespace ProtoPromiseTests.APIs
             var promiseRetainer = deferred.Promise.GetRetainer();
 
             promiseRetainer.WaitAsync()
-                .Then(() => { }, cancelationSource.Token)
+                .WaitAsync(cancelationSource.Token)
+                .Then(() => { })
                 .CatchCancelation(captureValue, cv => Assert.AreEqual(captureValue, cv))
                 .Forget();
             promiseRetainer.WaitAsync()
-                .Then(() => 1f, cancelationSource.Token)
+                .WaitAsync(cancelationSource.Token)
+                .Then(() => 1f)
                 .CatchCancelation(captureValue, cv => Assert.AreEqual(captureValue, cv))
                 .Forget();
             cancelationSource.Cancel();
@@ -1629,174 +1634,29 @@ namespace ProtoPromiseTests.APIs
             }
 
             [Test]
-            public void OnCanceledIsNotInvokedIfTokenIsCanceled_void0()
+            public void OnCanceledIsNotInvokedIfPromiseIsResolved_void()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred();
-                cancelationSource.Token.Register(deferred);
-
-                deferred.Promise
-                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .Forget();
-
-                cancelationSource.Cancel();
-
-                cancelationSource.Dispose();
-            }
-
-            [Test]
-            public void OnCanceledIsNotInvokedIfTokenIsCanceled_T0()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred<int>();
-                cancelationSource.Token.Register(deferred);
-
-                deferred.Promise
-                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .Forget();
-
-                cancelationSource.Cancel();
-
-                cancelationSource.Dispose();
-            }
-
-            [Test]
-            public void OnCanceledIsNotInvokedIfTokenIsCanceled_void1()
-            {
-                CancelationSource deferredCancelationSource = CancelationSource.New();
-                CancelationSource catchCancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred();
-                deferredCancelationSource.Token.Register(deferred);
-
-                deferred.Promise
-                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), catchCancelationSource.Token)
-                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), catchCancelationSource.Token)
-                    .Forget();
-
-                catchCancelationSource.Cancel();
-                deferredCancelationSource.Cancel();
-
-                catchCancelationSource.Dispose();
-                deferredCancelationSource.Dispose();
-            }
-
-            [Test]
-            public void OnCanceledIsNotInvokedIfTokenIsCanceled_T1()
-            {
-                CancelationSource deferredCancelationSource = CancelationSource.New();
-                CancelationSource catchCancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred<int>();
-                deferredCancelationSource.Token.Register(deferred);
-
-                deferred.Promise
-                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), catchCancelationSource.Token)
-                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), catchCancelationSource.Token)
-                    .Forget();
-
-                catchCancelationSource.Cancel();
-                deferredCancelationSource.Cancel();
-
-                catchCancelationSource.Dispose();
-                deferredCancelationSource.Dispose();
-            }
-
-            [Test]
-            public void OnCanceledIsNotInvokedIfTokenIsAlreadyCanceled_0()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                cancelationSource.Cancel();
-
-                Promise.Canceled()
-                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .Forget();
-                Promise.Canceled<int>()
-                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .Forget();
-
-                cancelationSource.Dispose();
-            }
-
-            [Test]
-            public void OnCanceledIsNotInvokedIfTokenIsAlreadyCanceled_1()
-            {
-                Promise.Canceled()
-                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), Proto.Promises.CancelationToken.Canceled())
-                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), Proto.Promises.CancelationToken.Canceled())
-                    .Forget();
-                Promise.Canceled<int>()
-                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), Proto.Promises.CancelationToken.Canceled())
-                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), Proto.Promises.CancelationToken.Canceled())
-                    .Forget();
-            }
-
-            [Test]
-            public void OnCanceledIsNotInvokedIfPromiseIsResolved_void0()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
                 var deferred = Promise.NewDeferred();
 
                 deferred.Promise
-                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."))
+                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."))
                     .Forget();
 
                 deferred.Resolve();
-                cancelationSource.Cancel();
-
-                cancelationSource.Dispose();
             }
 
             [Test]
-            public void OnCanceledIsNotInvokedIfPromiseIsResolved_T0()
+            public void OnCanceledIsNotInvokedIfPromiseIsResolved_T()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
                 var deferred = Promise.NewDeferred<int>();
 
                 deferred.Promise
-                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."))
+                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."))
                     .Forget();
 
                 deferred.Resolve(1);
-                cancelationSource.Cancel();
-
-                cancelationSource.Dispose();
-            }
-
-            [Test]
-            public void OnCanceledIsNotInvokedIfPromiseIsResolved_void1()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred();
-
-                deferred.Promise
-                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .Forget();
-
-                deferred.Resolve();
-
-                cancelationSource.Dispose();
-            }
-
-            [Test]
-            public void OnCanceledIsNotInvokedIfPromiseIsResolved_T1()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred<int>();
-
-                deferred.Promise
-                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .Forget();
-
-                deferred.Resolve(1);
-
-                cancelationSource.Dispose();
             }
 
             [Test]
