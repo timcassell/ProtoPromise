@@ -516,7 +516,7 @@ namespace ProtoPromiseTests.APIs
                     cancelationSource.Cancel()
                 );
 
-                Assert.AreEqual(TestHelper.onCancelCallbacks * 2, cancelCount);
+                Assert.AreEqual(TestHelper.onCancelCallbacks, cancelCount);
 
                 cancelationSource.Dispose();
             }
@@ -539,7 +539,7 @@ namespace ProtoPromiseTests.APIs
                     cancelationSource.Cancel()
                 );
 
-                Assert.AreEqual(TestHelper.onCancelCallbacks * 2, cancelCount);
+                Assert.AreEqual(TestHelper.onCancelCallbacks, cancelCount);
 
                 cancelationSource.Dispose();
             }
@@ -667,7 +667,7 @@ namespace ProtoPromiseTests.APIs
 
             deferred.Cancel();
 
-            Assert.AreEqual(TestHelper.onCancelCallbacks * 2, exceptionCount);
+            Assert.AreEqual(TestHelper.onCancelCallbacks, exceptionCount);
         }
 
         [Test]
@@ -693,7 +693,7 @@ namespace ProtoPromiseTests.APIs
 
             deferred.Cancel();
 
-            Assert.AreEqual(TestHelper.onCancelCallbacks * 2, exceptionCount);
+            Assert.AreEqual(TestHelper.onCancelCallbacks, exceptionCount);
         }
 
         [Test]
@@ -883,7 +883,7 @@ namespace ProtoPromiseTests.APIs
                 deferred.Cancel();
 
                 Assert.AreEqual(
-                    TestHelper.onCancelPromiseCallbacks * 2,
+                    TestHelper.onCancelPromiseCallbacks,
                     exceptionCounter
                 );
 
@@ -920,7 +920,7 @@ namespace ProtoPromiseTests.APIs
                 deferred.Cancel();
 
                 Assert.AreEqual(
-                    TestHelper.onCancelPromiseCallbacks * 2,
+                    TestHelper.onCancelPromiseCallbacks,
                     exceptionCounter
                 );
 
@@ -982,15 +982,15 @@ namespace ProtoPromiseTests.APIs
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     resolveWaitDeferred.Resolve();
-                    expectedCompleteCount += TestHelper.onCancelCallbacks;
+                    expectedCompleteCount += TestHelper.onCancelCallbacks / 2;
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     rejectWaitDeferred.Reject("Reject");
-                    expectedCompleteCount += TestHelper.onCancelCallbacks;
+                    expectedCompleteCount += TestHelper.onCancelCallbacks / 2;
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     cancelWaitDeferred.Cancel();
-                    expectedCompleteCount += TestHelper.onCancelCallbacks;
+                    expectedCompleteCount += TestHelper.onCancelCallbacks / 2;
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     cancelPromiseRetainer.Dispose();
@@ -1039,15 +1039,15 @@ namespace ProtoPromiseTests.APIs
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     resolveWaitDeferred.Resolve(1);
-                    expectedCompleteCount += TestHelper.onCancelCallbacks;
+                    expectedCompleteCount += TestHelper.onCancelCallbacks / 2;
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     rejectWaitDeferred.Reject("Reject");
-                    expectedCompleteCount += TestHelper.onCancelCallbacks;
+                    expectedCompleteCount += TestHelper.onCancelCallbacks / 2;
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     cancelWaitDeferred.Cancel();
-                    expectedCompleteCount += TestHelper.onCancelCallbacks;
+                    expectedCompleteCount += TestHelper.onCancelCallbacks / 2;
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     cancelPromiseRetainer.Dispose();
@@ -1095,7 +1095,7 @@ namespace ProtoPromiseTests.APIs
                         resolveWaitDeferred.Resolve();
                     }
 
-                    Assert.AreEqual(TestHelper.onCancelCallbacks, resolveCounter);
+                    Assert.AreEqual(TestHelper.onCancelCallbacks / 2, resolveCounter);
 
                     if (firstRun)
                     {
@@ -1149,7 +1149,7 @@ namespace ProtoPromiseTests.APIs
                         resolveWaitDeferred.Resolve(resolveValue);
                     }
 
-                    Assert.AreEqual(TestHelper.onCancelCallbacks, resolveCounter);
+                    Assert.AreEqual(TestHelper.onCancelCallbacks / 2, resolveCounter);
 
                     if (firstRun)
                     {
@@ -1202,7 +1202,7 @@ namespace ProtoPromiseTests.APIs
                         rejectWaitDeferred.Reject(rejectReason);
                     }
 
-                    Assert.AreEqual(TestHelper.onCancelCallbacks, rejectCounter);
+                    Assert.AreEqual(TestHelper.onCancelCallbacks / 2, rejectCounter);
 
                     if (firstRun)
                     {
@@ -1256,7 +1256,7 @@ namespace ProtoPromiseTests.APIs
                         rejectWaitDeferred.Reject(rejectReason);
                     }
 
-                    Assert.AreEqual(TestHelper.onCancelCallbacks, rejectCounter);
+                    Assert.AreEqual(TestHelper.onCancelCallbacks / 2, rejectCounter);
 
                     if (firstRun)
                     {
@@ -1287,7 +1287,7 @@ namespace ProtoPromiseTests.APIs
                 deferred.Cancel();
 
                 Assert.AreEqual(
-                    TestHelper.onCancelCallbacks * 2,
+                    TestHelper.onCancelCallbacks,
                     resolveCounter
                 );
             }
@@ -1316,7 +1316,7 @@ namespace ProtoPromiseTests.APIs
                 deferred.Cancel();
 
                 Assert.AreEqual(
-                    TestHelper.onCancelCallbacks * 2,
+                    TestHelper.onCancelCallbacks,
                     resolveCounter
                 );
             }
@@ -1370,7 +1370,7 @@ namespace ProtoPromiseTests.APIs
 
                 deferred.Cancel();
 
-                Assert.AreEqual(TestHelper.onCancelCallbacks, exceptionCounter);
+                Assert.AreEqual(TestHelper.onCancelCallbacks / 2, exceptionCounter);
             }
 
             [Test]
@@ -1416,7 +1416,7 @@ namespace ProtoPromiseTests.APIs
 
                 deferred.Cancel();
 
-                Assert.AreEqual(TestHelper.onCancelCallbacks, exceptionCounter);
+                Assert.AreEqual(TestHelper.onCancelCallbacks / 2, exceptionCounter);
             }
 #endif
         }
@@ -1632,6 +1632,113 @@ namespace ProtoPromiseTests.APIs
 
                 cancelationSource.Dispose();
             }
+
+#pragma warning disable CS0618 // Type or member is obsolete
+            [Test]
+            public void OnCanceledIsNotInvokedIfTokenIsCanceled_void0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred();
+                cancelationSource.Token.Register(deferred);
+
+                deferred.Promise
+                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                    .Forget();
+
+                cancelationSource.Cancel();
+
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void OnCanceledIsNotInvokedIfTokenIsCanceled_T0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred<int>();
+                cancelationSource.Token.Register(deferred);
+
+                deferred.Promise
+                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                    .Forget();
+
+                cancelationSource.Cancel();
+
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void OnCanceledIsNotInvokedIfTokenIsCanceled_void1()
+            {
+                CancelationSource deferredCancelationSource = CancelationSource.New();
+                CancelationSource catchCancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred();
+                deferredCancelationSource.Token.Register(deferred);
+
+                deferred.Promise
+                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), catchCancelationSource.Token)
+                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), catchCancelationSource.Token)
+                    .Forget();
+
+                catchCancelationSource.Cancel();
+                deferredCancelationSource.Cancel();
+
+                catchCancelationSource.Dispose();
+                deferredCancelationSource.Dispose();
+            }
+
+            [Test]
+            public void OnCanceledIsNotInvokedIfTokenIsCanceled_T1()
+            {
+                CancelationSource deferredCancelationSource = CancelationSource.New();
+                CancelationSource catchCancelationSource = CancelationSource.New();
+                var deferred = Promise.NewDeferred<int>();
+                deferredCancelationSource.Token.Register(deferred);
+
+                deferred.Promise
+                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), catchCancelationSource.Token)
+                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), catchCancelationSource.Token)
+                    .Forget();
+
+                catchCancelationSource.Cancel();
+                deferredCancelationSource.Cancel();
+
+                catchCancelationSource.Dispose();
+                deferredCancelationSource.Dispose();
+            }
+
+            [Test]
+            public void OnCanceledIsNotInvokedIfTokenIsAlreadyCanceled_0()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                cancelationSource.Cancel();
+
+                Promise.Canceled()
+                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                    .Forget();
+                Promise.Canceled<int>()
+                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                    .Forget();
+
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void OnCanceledIsNotInvokedIfTokenIsAlreadyCanceled_1()
+            {
+                Promise.Canceled()
+                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), Proto.Promises.CancelationToken.Canceled())
+                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), Proto.Promises.CancelationToken.Canceled())
+                    .Forget();
+                Promise.Canceled<int>()
+                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), Proto.Promises.CancelationToken.Canceled())
+                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), Proto.Promises.CancelationToken.Canceled())
+                    .Forget();
+            }
+#pragma warning restore CS0618 // Type or member is obsolete
 
             [Test]
             public void OnCanceledIsNotInvokedIfPromiseIsResolved_void()
