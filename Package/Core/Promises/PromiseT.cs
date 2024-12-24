@@ -9,7 +9,6 @@
 using Proto.Promises.CompilerServices;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -684,9 +683,62 @@ namespace Proto.Promises
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>
                 .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
-#endregion
-        
-#region Continue Callbacks
+        #endregion
+
+        #region Continue Callbacks
+        /// <summary>
+        /// Add a continuation callback. Returns a new <see cref="Promise"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// </summary>
+        public Promise ContinueWith(Action<ResultContainer> onContinue)
+        {
+            ValidateOperation(1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
+
+            return Internal.PromiseRefBase.CallbackHelperArg<T>.AddContinue(this, Internal.PromiseRefBase.DelegateWrapper.Create(onContinue));
+        }
+
+        /// <summary>
+        /// Add a continuation callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// </summary>
+        public Promise<TResult> ContinueWith<TResult>(Func<ResultContainer, TResult> onContinue)
+        {
+            ValidateOperation(1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
+
+            return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddContinue(this, Internal.PromiseRefBase.DelegateWrapper.Create(onContinue));
+        }
+
+
+        /// <summary>
+        /// Add a continuation callback. Returns a new <see cref="Promise"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// </summary>
+        public Promise ContinueWith(Func<ResultContainer, Promise> onContinue)
+        {
+            ValidateOperation(1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
+
+            return Internal.PromiseRefBase.CallbackHelperArg<T>.AddContinueWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onContinue));
+        }
+
+        /// <summary>
+        /// Add a continuation callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// </summary>
+        public Promise<TResult> ContinueWith<TResult>(Func<ResultContainer, Promise<TResult>> onContinue)
+        {
+            ValidateOperation(1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
+
+            return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddContinueWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onContinue));
+        }
+
         /// <summary>
         /// Add a continuation callback. Returns a new <see cref="Promise"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will be resolved when it returns.
@@ -1896,6 +1948,58 @@ namespace Proto.Promises
         /// Capture a value and add a continuation callback. Returns a new <see cref="Promise"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with <paramref name="continueCaptureValue"/> and the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will be resolved when it returns.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// </summary>
+        public Promise ContinueWith<TCapture>(TCapture continueCaptureValue, Action<TCapture, ResultContainer> onContinue)
+        {
+            ValidateOperation(1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
+
+            return Internal.PromiseRefBase.CallbackHelperArg<T>.AddContinue(this, Internal.PromiseRefBase.DelegateWrapper.Create(continueCaptureValue, onContinue));
+        }
+
+        /// <summary>
+        /// Capture a value and add a continuation callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with <paramref name="continueCaptureValue"/> and the <see cref="ResultContainer"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// </summary>
+        public Promise<TResult> ContinueWith<TCapture, TResult>(TCapture continueCaptureValue, Func<TCapture, ResultContainer, TResult> onContinue)
+        {
+            ValidateOperation(1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
+
+            return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddContinue(this, Internal.PromiseRefBase.DelegateWrapper.Create(continueCaptureValue, onContinue));
+        }
+
+        /// <summary>
+        /// Capture a value and add a continuation callback. Returns a new <see cref="Promise"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with <paramref name="continueCaptureValue"/> and the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// </summary>
+        public Promise ContinueWith<TCapture>(TCapture continueCaptureValue, Func<TCapture, ResultContainer, Promise> onContinue)
+        {
+            ValidateOperation(1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
+
+            return Internal.PromiseRefBase.CallbackHelperArg<T>.AddContinueWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(continueCaptureValue, onContinue));
+        }
+
+        /// <summary>
+        /// Add a continuation callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with <paramref name="continueCaptureValue"/> and the <see cref="ResultContainer"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// </summary>
+        public Promise<TResult> ContinueWith<TCapture, TResult>(TCapture continueCaptureValue, Func<TCapture, ResultContainer, Promise<TResult>> onContinue)
+        {
+            ValidateOperation(1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
+
+            return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddContinueWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(continueCaptureValue, onContinue));
+        }
+
+        /// <summary>
+        /// Capture a value and add a continuation callback. Returns a new <see cref="Promise"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with <paramref name="continueCaptureValue"/> and the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         ///
         /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onContinue"/> will not be invoked.
         /// </summary>
@@ -1951,7 +2055,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddContinueWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(continueCaptureValue, onContinue), cancelationToken);
         }
-#endregion
+        #endregion
     }
 
     // Inherited from Promise (must copy since structs cannot inherit).

@@ -2920,18 +2920,114 @@ namespace ProtoPromiseTests
             {
                 retainer.WaitAsync().Catch(() => { }).Forget(); // Suppress any rejections from the retained promise.
 
-                AddContinueCallbacksWithCancelation(
-                    retainer.WaitAsync(),
-                    onContinue, convertValue,
-                    onContinueCapture, captureValue,
-                    promiseToPromise, promiseToPromiseConvert,
-                    onCallbackAdded, onCallbackAddedConvert,
-                    default(CancelationToken),
-                    onCancel,
-                    onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                    continuationOptions
-                );
+                // Add empty delegate so no need for null check.
+                onContinue += _ => { };
+                onContinueCapture += (_, __) => { };
+                if (promiseToPromise == null)
+                {
+                    promiseToPromise = _ => Promise.Resolved();
+                }
+                if (promiseToPromiseConvert == null)
+                {
+                    promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
+                }
+                if (onCallbackAdded == null)
+                {
+                    onCallbackAdded = (ref Promise p) => p.Forget();
+                }
+                if (onCallbackAddedConvert == null)
+                {
+                    onCallbackAddedConvert = (ref Promise<TConvert> p) => p.Forget();
+                }
+                if (onAdoptCallbackAdded == null)
+                {
+                    onAdoptCallbackAdded = (ref Promise p) => { };
+                }
+                if (onAdoptCallbackAddedConvert == null)
+                {
+                    onAdoptCallbackAddedConvert = (ref Promise<TConvert> p) => { };
+                }
+                onCancel += () => { };
 
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p1 = default(Promise);
+                    p1 = p
+                        .ConfigureContinuation(continuationOptions)
+                        .ContinueWith(r => { onContinue(r); })
+                        .CatchCancelation(onCancel);
+                    onCallbackAdded(ref p1);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p2 = default(Promise<TConvert>);
+                    p2 = p
+                        .ConfigureContinuation(continuationOptions)
+                        .ContinueWith(r => { onContinue(r); return convertValue; })
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onCallbackAddedConvert(ref p2);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p3 = default(Promise);
+                    p3 = p
+                        .ConfigureContinuation(continuationOptions)
+                        .ContinueWith(r => { onContinue(r); return promiseToPromise(p3); })
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p3);
+                    onCallbackAdded(ref p3);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p4 = default(Promise<TConvert>);
+                    p4 = p
+                        .ConfigureContinuation(continuationOptions)
+                        .ContinueWith(r => { onContinue(r); return promiseToPromiseConvert(p4); })
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p4);
+                    onCallbackAddedConvert(ref p4);
+                }
+
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p5 = default(Promise);
+                    p5 = p
+                        .ConfigureContinuation(continuationOptions)
+                        .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); })
+                        .CatchCancelation(onCancel);
+                    onCallbackAdded(ref p5);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p6 = default(Promise<TConvert>);
+                    p6 = p
+                        .ConfigureContinuation(continuationOptions)
+                        .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return convertValue; })
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onCallbackAddedConvert(ref p6);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p7 = default(Promise);
+                    p7 = p
+                        .ConfigureContinuation(continuationOptions)
+                        .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromise(p7); })
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p7);
+                    onCallbackAdded(ref p7);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p8 = default(Promise<TConvert>);
+                    p8 = p
+                        .ConfigureContinuation(continuationOptions)
+                        .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromiseConvert(p8); })
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p8);
+                    onCallbackAddedConvert(ref p8);
+                }
+
+                // Also call overloads accepting CancelationToken
                 CancelationSource cancelationSource = CancelationSource.New();
                 AddContinueCallbacksWithCancelation(
                     retainer.WaitAsync(),
@@ -3084,18 +3180,114 @@ namespace ProtoPromiseTests
             {
                 retainer.WaitAsync().Catch(() => { }).Forget(); // Suppress any rejections from the retained promise.
 
-                AddContinueCallbacksWithCancelation(
-                    retainer.WaitAsync(),
-                    onContinue, convertValue,
-                    onContinueCapture, captureValue,
-                    promiseToPromise, promiseToPromiseConvert,
-                    onCallbackAdded, onCallbackAddedConvert,
-                    default(CancelationToken),
-                    onCancel,
-                    onAdoptCallbackAdded, onAdoptCallbackAddedConvert,
-                    continuationOptions
-                );
+                // Add empty delegate so no need for null check.
+                onContinue += _ => { };
+                onContinueCapture += (_, __) => { };
+                if (promiseToPromise == null)
+                {
+                    promiseToPromise = _ => Promise.Resolved();
+                }
+                if (promiseToPromiseConvert == null)
+                {
+                    promiseToPromiseConvert = _ => Promise.Resolved(convertValue);
+                }
+                if (onCallbackAdded == null)
+                {
+                    onCallbackAdded = (ref Promise p) => p.Forget();
+                }
+                if (onCallbackAddedConvert == null)
+                {
+                    onCallbackAddedConvert = (ref Promise<TConvert> p) => p.Forget();
+                }
+                if (onAdoptCallbackAdded == null)
+                {
+                    onAdoptCallbackAdded = (ref Promise p) => { };
+                }
+                if (onAdoptCallbackAddedConvert == null)
+                {
+                    onAdoptCallbackAddedConvert = (ref Promise<TConvert> p) => { };
+                }
+                onCancel += () => { };
 
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p1 = default(Promise);
+                    p1 = p
+                        .ConfigureContinuation(continuationOptions)
+                        .ContinueWith(r => { onContinue(r); })
+                        .CatchCancelation(onCancel);
+                    onCallbackAdded(ref p1);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p2 = default(Promise<TConvert>);
+                    p2 = p
+                        .ConfigureContinuation(continuationOptions)
+                        .ContinueWith(r => { onContinue(r); return convertValue; })
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onCallbackAddedConvert(ref p2);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p3 = default(Promise);
+                    p3 = p
+                        .ConfigureContinuation(continuationOptions)
+                        .ContinueWith(r => { onContinue(r); return promiseToPromise(p3); })
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p3);
+                    onCallbackAdded(ref p3);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p4 = default(Promise<TConvert>);
+                    p4 = p
+                        .ConfigureContinuation(continuationOptions)
+                        .ContinueWith(r => { onContinue(r); return promiseToPromiseConvert(p4); })
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p4);
+                    onCallbackAddedConvert(ref p4);
+                }
+
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p5 = default(Promise);
+                    p5 = p
+                        .ConfigureContinuation(continuationOptions)
+                        .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); })
+                        .CatchCancelation(onCancel);
+                    onCallbackAdded(ref p5);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p6 = default(Promise<TConvert>);
+                    p6 = p
+                        .ConfigureContinuation(continuationOptions)
+                        .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return convertValue; })
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onCallbackAddedConvert(ref p6);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise p7 = default(Promise);
+                    p7 = p
+                        .ConfigureContinuation(continuationOptions)
+                        .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromise(p7); })
+                        .CatchCancelation(onCancel);
+                    onAdoptCallbackAdded(ref p7);
+                    onCallbackAdded(ref p7);
+                }
+                foreach (var p in GetTestablePromises(retainer))
+                {
+                    Promise<TConvert> p8 = default(Promise<TConvert>);
+                    p8 = p
+                        .ConfigureContinuation(continuationOptions)
+                        .ContinueWith(captureValue, (cv, r) => { onContinueCapture(cv, r); onContinue(r); return promiseToPromiseConvert(p8); })
+                        .CatchCancelation(() => { onCancel(); return convertValue; });
+                    onAdoptCallbackAddedConvert(ref p8);
+                    onCallbackAddedConvert(ref p8);
+                }
+
+                // Also call overloads accepting CancelationToken
                 CancelationSource cancelationSource = CancelationSource.New();
                 AddContinueCallbacksWithCancelation(
                     retainer.WaitAsync(),
