@@ -93,7 +93,7 @@ namespace Proto.Promises
                 var promise = Resolved();
                 while (promiseFuncs.MoveNext())
                 {
-                    promise = promise.Then(promiseFuncs.Current, cancelationToken);
+                    promise = promise.WaitAsync(cancelationToken).Then(promiseFuncs.Current);
                 }
                 return promise;
             }
