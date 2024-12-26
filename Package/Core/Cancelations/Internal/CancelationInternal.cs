@@ -7,6 +7,7 @@
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0251 // Make member 'readonly'
 #pragma warning disable IDE0270 // Use coalesce expression
+#pragma warning disable IDE0290 // Use primary constructor
 
 using System;
 using System.Collections.Generic;
@@ -498,13 +499,27 @@ namespace Proto.Promises
                 }
 
                 ThrowIfInPool(this);
+                DisposeLocked();
+                return true;
+            }
+
+            // Internal dispose method skipping the id check.
+            internal void DisposeUnsafe()
+            {
+                ThrowIfInPool(this);
+                _smallFields._locker.Enter();
+                unchecked { ++_sourceId; }
+                DisposeLocked();
+            }
+
+            private void DisposeLocked()
+            {
                 if (_state == State.Pending)
                 {
                     _state = State.Disposed;
                     UnregisterAll();
                 }
                 MaybeResetAndRepoolAlreadyLocked();
-                return true;
             }
 
             [MethodImpl(InlineOption)]

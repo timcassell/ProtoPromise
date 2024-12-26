@@ -155,14 +155,6 @@ namespace Proto.Promises
 #endif
         }
 
-        [MethodImpl(InlineOption)]
-        internal static bool TryUnregisterAndIsNotCanceling(ref CancelationRegistration cancelationRegistration)
-        {
-            // We check isCanceling in case the token is not cancelable (in which case TryUnregister returns false).
-            bool unregistered = cancelationRegistration.TryUnregister(out bool isCanceling);
-            return unregistered | !isCanceling;
-        }
-
         // TODO: Use Microsoft.Bcl.HashCode nuget package.
         internal static int BuildHashCode(object _ref, int hashcode1, int hashcode2)
         {
