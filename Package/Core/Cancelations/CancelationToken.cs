@@ -208,7 +208,7 @@ namespace Proto.Promises
 
         /// <summary>Returns the hash code for this instance.</summary>
         public override int GetHashCode()
-            => Internal.BuildHashCode(_ref, _id.GetHashCode(), 0);
+            => HashCode.Combine(_ref, _id);
 
         /// <summary>Returns a value indicating whether two <see cref="CancelationToken"/> values are equal.</summary>
         public static bool operator ==(CancelationToken lhs, CancelationToken rhs)

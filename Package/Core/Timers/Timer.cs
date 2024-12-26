@@ -72,7 +72,7 @@ namespace Proto.Timers
 
         /// <summary>Returns the hash code for this instance.</summary>
         public override int GetHashCode()
-            => Internal.BuildHashCode(_timerSource, _token, 0);
+            => HashCode.Combine(_timerSource, _token);
 
         /// <summary>Returns a value indicating whether two <see cref="Timer"/> values are equal.</summary>
         public static bool operator ==(Timer lhs, Timer rhs)

@@ -99,7 +99,7 @@ namespace Proto.Promises
 
         /// <summary>Returns the hash code for this instance.</summary>
         public override int GetHashCode()
-            => Internal.BuildHashCode(_node, _nodeId.GetHashCode(), _tokenId.GetHashCode());
+            => HashCode.Combine(_ref, _node, _nodeId, _tokenId);
 
         /// <summary>Returns a value indicating whether two <see cref="CancelationRegistration"/> values are equal.</summary>
         public static bool operator ==(CancelationRegistration lhs, CancelationRegistration rhs)

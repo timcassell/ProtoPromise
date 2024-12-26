@@ -85,12 +85,12 @@ namespace Proto.Promises.Channels
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
         public override bool Equals(object obj)
-            => obj is Channel<T> other && Equals(other);
+            => obj is Channel<T> channel && Equals(channel);
 
         /// <summary>Returns the hash code for this instance.</summary>
         [MethodImpl(Internal.InlineOption)]
         public override int GetHashCode()
-            => Internal.BuildHashCode(_ref, _id, 0);
+            => HashCode.Combine(_ref, _id);
 
         /// <summary>Returns a value indicating whether two <see cref="Channel{T}"/> values are equal.</summary>
         [MethodImpl(Internal.InlineOption)]

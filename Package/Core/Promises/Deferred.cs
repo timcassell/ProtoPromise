@@ -26,8 +26,8 @@ namespace Proto.Promises
         public readonly struct DeferredBase : ICancelable, IEquatable<DeferredBase>
         {
             private readonly Internal.IDeferredPromise _ref;
-            private readonly short _promiseId;
             private readonly int _deferredId;
+            private readonly short _promiseId;
 
             /// <summary>
             /// The attached <see cref="Promises.Promise"/> that this controls.
@@ -185,7 +185,7 @@ namespace Proto.Promises
             /// <summary>Returns the hash code for this instance.</summary>
             [MethodImpl(Internal.InlineOption)]
             public override int GetHashCode()
-                => Internal.BuildHashCode(_ref, _deferredId.GetHashCode(), _promiseId.GetHashCode());
+                => HashCode.Combine(_ref, _deferredId, _promiseId);
 
             /// <summary>Returns a value indicating whether two <see cref="DeferredBase"/> values are equal.</summary>
             [MethodImpl(Internal.InlineOption)]
@@ -209,8 +209,8 @@ namespace Proto.Promises
         public readonly struct Deferred : ICancelable, IEquatable<Deferred>
         {
             internal readonly Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult> _ref;
-            internal readonly short _promiseId;
             internal readonly int _deferredId;
+            internal readonly short _promiseId;
 
             /// <summary>
             /// The attached <see cref="Promises.Promise"/> that this controls.
@@ -376,7 +376,7 @@ namespace Proto.Promises
             /// <summary>Returns the hash code for this instance.</summary>
             [MethodImpl(Internal.InlineOption)]
             public override int GetHashCode()
-                => Internal.BuildHashCode(_ref, _deferredId.GetHashCode(), _promiseId.GetHashCode());
+                => HashCode.Combine(_ref, _deferredId, _promiseId);
 
             /// <summary>Returns a value indicating whether two <see cref="Deferred"/> values are equal.</summary>
             [MethodImpl(Internal.InlineOption)]
@@ -403,8 +403,8 @@ namespace Proto.Promises
         public readonly struct Deferred : ICancelable, IEquatable<Deferred>
         {
             internal readonly Internal.PromiseRefBase.DeferredPromise<T> _ref;
-            internal readonly short _promiseId;
             internal readonly int _deferredId;
+            internal readonly short _promiseId;
 
             /// <summary>
             /// The attached <see cref="Promise{T}"/> that this controls.
@@ -570,7 +570,7 @@ namespace Proto.Promises
             /// <summary>Returns the hash code for this instance.</summary>
             [MethodImpl(Internal.InlineOption)]
             public override int GetHashCode()
-                => Internal.BuildHashCode(_ref, _deferredId.GetHashCode(), _promiseId.GetHashCode());
+                => HashCode.Combine(_ref, _deferredId, _promiseId);
 
             /// <summary>Returns a value indicating whether two <see cref="Deferred"/> values are equal.</summary>
             [MethodImpl(Internal.InlineOption)]

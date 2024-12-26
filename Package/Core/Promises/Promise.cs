@@ -2034,7 +2034,7 @@ namespace Proto.Promises
         /// <summary>Returns the hash code for this instance.</summary>
         [MethodImpl(Internal.InlineOption)]
         public override int GetHashCode()
-            => Internal.BuildHashCode(_ref, _id.GetHashCode(), 0);
+            => HashCode.Combine(_ref, _id);
 
         /// <summary>Returns a value indicating whether two <see cref="Promise"/> values are equal.</summary>
         [MethodImpl(Internal.InlineOption)]
