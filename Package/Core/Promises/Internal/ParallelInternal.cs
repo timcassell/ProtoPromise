@@ -446,7 +446,7 @@ namespace Proto.Promises
 
                     _externalCancelationRegistration.Dispose();
                     _externalCancelationRegistration = default;
-                    _cancelationRef.TryDispose(_cancelationRef.SourceId);
+                    _cancelationRef.DisposeUnsafe();
                     _cancelationRef = null;
 
                     try

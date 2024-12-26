@@ -289,6 +289,10 @@ namespace Proto.Promises
             partial struct CancelationHelper
             {
                 private CancelationRegistration _cancelationRegistration;
+                // int for Interlocked.Exchange.
+                private int _isCompletedFlag;
+                // The retain counter is to ensure the async op(s) we're waiting for and the cancelation callback
+                // are completed or guaranteed to never invoke before we return the object to the pool.
                 private int _retainCounter;
             }
 

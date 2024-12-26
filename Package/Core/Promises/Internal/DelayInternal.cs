@@ -66,6 +66,9 @@ namespace Proto.Promises
                         promise._timerToken = timer._token;
                         promise._timerSource = timer._timerSource;
                     }
+                    // In a rare race condition, the timer callback could be invoked before the fields are assigned.
+                    // To avoid an invalid timer disposal, we decrement the counter after all fields are definitely assigned,
+                    // and only dispose when the counter reaches 0.
                     promise.MaybeDisposeTimer();
                     return promise;
                 }
@@ -82,21 +85,18 @@ namespace Proto.Promises
 #endif
             internal sealed partial class DelayWithCancelationPromise : PromiseSingleAwait<VoidResult>, ICancelable
             {
-                private CancelationRegistration _cancelationRegistration;
                 private Timers.Timer _timer;
-                // The timer and cancelation callbacks can be invoked before the fields are actually assigned,
-                // so we use an Interlocked counter to ensure they are disposed properly.
-                private int _fieldUseCounter;
                 // The timer and cancelation callbacks can race on different threads,
-                // so we use an int flag for Interlocked to determine which one was invoked first.
-                private int _isCompletedFlag;
+                // and can be invoked before the fields are actually assigned;
+                // we use CancelationHelper to make sure they are used and disposed properly.
+                private CancelationHelper _cancelationHelper;
 
                 private void MaybeDisposeFields()
                 {
                     ThrowIfInPool(this);
-                    if (InterlockedAddWithUnsignedOverflowCheck(ref _fieldUseCounter, -1) == 0)
+                    if (_cancelationHelper.TryRelease())
                     {
-                        _cancelationRegistration.Dispose();
+                        _cancelationHelper.UnregisterAndWait();
                         _timer.DisposeAsync().Forget();
                     }
                 }
@@ -104,7 +104,7 @@ namespace Proto.Promises
                 internal override void MaybeDispose()
                 {
                     Dispose();
-                    _cancelationRegistration = default;
+                    _cancelationHelper = default;
                     _timer = default;
                     ObjectPool.MaybeRepool(this);
                 }
@@ -123,13 +123,17 @@ namespace Proto.Promises
                 {
                     var promise = GetFromPoolOrCreate();
                     promise.Reset();
-                    promise._isCompletedFlag = 0;
-                    promise._fieldUseCounter = 2;
+                    promise._cancelationHelper.Reset();
+                    // IMPORTANT - must hookup callbacks after promise is fully setup.
                     using (SuppressExecutionContextFlow())
                     {
                         promise._timer = timerFactory.CreateTimer(obj => obj.UnsafeAs<DelayWithCancelationPromise>().OnTimerCallback(), promise, delay, Timeout.InfiniteTimeSpan);
                     }
-                    cancelationToken.TryRegister<ICancelable>(promise, out promise._cancelationRegistration);
+                    // IMPORTANT - must register cancelation callback after everything else.
+                    promise._cancelationHelper.Register(cancelationToken, promise);
+                    // In a rare race condition, either callback could be invoked before the fields are assigned.
+                    // To avoid invalid disposal, we release the cancelation helper after all fields are definitely assigned,
+                    // and only dispose when it is completely released.
                     promise.MaybeDisposeFields();
                     return promise;
                 }
@@ -137,22 +141,24 @@ namespace Proto.Promises
                 private void OnTimerCallback()
                 {
                     ThrowIfInPool(this);
-                    if (Interlocked.Exchange(ref _isCompletedFlag, 1) != 0)
+                    if (_cancelationHelper.TrySetCompleted())
                     {
-                        return;
+                        MaybeDisposeFields();
+                        HandleNextInternal(Promise.State.Resolved);
                     }
-
-                    MaybeDisposeFields();
-                    HandleNextInternal(Promise.State.Resolved);
                 }
 
                 void ICancelable.Cancel()
                 {
                     ThrowIfInPool(this);
-                    if (Interlocked.Exchange(ref _isCompletedFlag, 1) != 0)
+                    if (!_cancelationHelper.TrySetCompleted())
                     {
                         return;
                     }
+
+                    // We don't call MaybeDisposeFields in this path. There is no need,
+                    // as disposing the cancelation registration is pointless because it's being invoked now,
+                    // and we are explicitly disposing the timer here.
 
                     // The _timer field is assigned before the cancelation registration is hooked up, so we know it's valid here.
                     var timerDisposePromise = _timer.DisposeAsync();

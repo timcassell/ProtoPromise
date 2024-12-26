@@ -391,7 +391,7 @@ namespace Proto.Promises
                     _readyQueue.Dispose();
                     _enumeratorsAndRejectContainers.Dispose();
                     // We stored the CancelationRef we created in the token field, so we extract it to dispose here.
-                    _cancelationToken._ref.TryDispose(_cancelationToken._ref.SourceId);
+                    _cancelationToken._ref.DisposeUnsafe();
 
 #pragma warning disable CA2219 // Do not raise exceptions in finally clauses
                     if (_exceptions != null)
@@ -636,7 +636,7 @@ namespace Proto.Promises
                     _readyQueue.Dispose();
                     _enumeratorsAndRejectContainers.Dispose();
                     // We stored the CancelationRef we created in the token field, so we extract it to dispose here.
-                    _cancelationToken._ref.TryDispose(_cancelationToken._ref.SourceId);
+                    _cancelationToken._ref.DisposeUnsafe();
 
 #pragma warning disable CA2219 // Do not raise exceptions in finally clauses
                     if (_exceptions != null)
