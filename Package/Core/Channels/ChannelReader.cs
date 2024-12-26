@@ -175,7 +175,7 @@ namespace Proto.Promises.Channels
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
         public override bool Equals(object obj)
-            => obj is ChannelReader<T> other && Equals(other);
+            => obj is ChannelReader<T> reader && Equals(reader);
 
         /// <summary>Returns the hash code for this instance.</summary>
         [MethodImpl(Internal.InlineOption)]

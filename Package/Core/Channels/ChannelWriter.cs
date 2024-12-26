@@ -159,7 +159,7 @@ namespace Proto.Promises.Channels
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
         public override bool Equals(object obj)
-            => obj is ChannelWriter<T> other && Equals(other);
+            => obj is ChannelWriter<T> writer && Equals(writer);
 
         /// <summary>Returns the hash code for this instance.</summary>
         [MethodImpl(Internal.InlineOption)]

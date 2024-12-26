@@ -132,11 +132,11 @@ namespace Proto.Promises.Threading
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
             public override bool Equals(object obj)
-                => obj is Key token && Equals(token);
+                => obj is Key key && Equals(key);
 
             /// <summary>Returns the hash code for this instance.</summary>
             public override int GetHashCode()
-                => Internal.BuildHashCode(_owner, _key.GetHashCode(), 0);
+                => HashCode.Combine(_owner, _key);
 
             /// <summary>Returns a value indicating whether two <see cref="Key"/> values are equal.</summary>
             public static bool operator ==(Key lhs, Key rhs)

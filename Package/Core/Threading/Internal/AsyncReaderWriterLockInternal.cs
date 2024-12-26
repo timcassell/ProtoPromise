@@ -280,15 +280,11 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             public override int GetHashCode()
-            {
-                return BuildHashCode(_owner, _key.GetHashCode(), 0);
-            }
+                => HashCode.Combine(_owner, _key);
 
             [MethodImpl(InlineOption)]
             public static bool operator !=(AsyncReaderWriterLockKey lhs, AsyncReaderWriterLockKey rhs)
-            {
-                return !(lhs == rhs);
-            }
+                => !(lhs == rhs);
         }
 
         // We check to make sure every key is disposed exactly once in DEBUG mode.
@@ -424,9 +420,9 @@ namespace Proto.Promises
             }
 
             public static bool operator ==(AsyncReaderWriterLockKey lhs, AsyncReaderWriterLockKey rhs)
-            {
-                return lhs._owner == rhs._owner & lhs._key == rhs._key & lhs._disposedChecker == rhs._disposedChecker;
-            }
+                => lhs._owner == rhs._owner
+                & lhs._key == rhs._key
+                & lhs._disposedChecker == rhs._disposedChecker;
         }
 #else // PROMISE_DEBUG
         partial struct AsyncReaderWriterLockKey

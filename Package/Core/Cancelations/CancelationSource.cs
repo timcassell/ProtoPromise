@@ -172,12 +172,13 @@ namespace Proto.Promises
 
         /// <summary>Returns the hash code for this instance.</summary>
         public override int GetHashCode()
-            => Internal.BuildHashCode(_ref, _sourceId.GetHashCode(), 0);
+            => HashCode.Combine(_ref, _sourceId, _tokenId);
 
         /// <summary>Returns a value indicating whether two <see cref="CancelationSource"/> values are equal.</summary>
         public static bool operator ==(CancelationSource c1, CancelationSource c2)
             => c1._ref == c2._ref
-            & c1._sourceId == c2._sourceId;
+            & c1._sourceId == c2._sourceId
+            & c1._tokenId == c2._tokenId;
 
         /// <summary>Returns a value indicating whether two <see cref="CancelationSource"/> values are not equal.</summary>
         public static bool operator !=(CancelationSource c1, CancelationSource c2)

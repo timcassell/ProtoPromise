@@ -2508,11 +2508,7 @@ namespace Proto.Promises
         // Promises really shouldn't be used for lookups, but GetHashCode is overridden to complement ==.
         /// <summary>Returns the hash code for this instance.</summary>
         public override int GetHashCode()
-        {
-            T result = _result;
-            int resultHashCode = result == null ? 0 : EqualityComparer<T>.Default.GetHashCode(result); // EqualityComparer instead of direct result.GetHashCode() to prevent boxing.
-            return Internal.BuildHashCode(_ref, _id.GetHashCode(), resultHashCode, typeof(T).TypeHandle.GetHashCode()); // Hashcode variance for different T types.
-        }
+            => HashCode.Combine(_ref, _id, _result);
 
         /// <summary>Returns a value indicating whether two <see cref="Promise{T}"/> values are equal.</summary>
         public static bool operator ==(Promise<T> lhs, Promise<T> rhs)
