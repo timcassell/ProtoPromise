@@ -1041,22 +1041,25 @@ namespace Proto.Promises
                     & parent._executingThread != Thread.CurrentThread)
                 {
                     var spinner = new SpinWait();
-                    // _this._nodeId will be incremented when the callback is complete and this is disposed.
-                    // parent.TokenId will be incremented when all callbacks are complete and it is disposed.
-                    // We really only need to compare the nodeId, the tokenId comparison is just for a little extra safety in case of thread starvation and node re-use.
-                    while (nodeId == Volatile.Read(ref _this._nodeId) & tokenId == parent.TokenId)
+                    do
                     {
                         spinner.SpinOnce(); // Spin, as we assume callback execution is fast and that this situation is rare.
                     }
+                    // _this._nodeId will be incremented when the callback is complete and this is disposed.
+                    // parent.TokenId will be incremented when all callbacks are complete and it is disposed.
+                    // We really only need to compare the nodeId, the other comparisons are just for a little extra safety in case of thread starvation and node re-use.
+                    while (nodeId == Volatile.Read(ref _this._nodeId)
+                        & tokenId == parent.TokenId
+                        & parent._smallFields._instanceId == _this._parentId);
                 }
             }
 
             [MethodImpl(InlineOption)]
-            internal static Promise TryUnregisterOrWaitForCallbackToCompleteAsync(CancelationRef parent, CancelationCallbackNode _this, int nodeId, int tokenId)
+            internal static async Promise TryUnregisterOrWaitForCallbackToCompleteAsync(CancelationRef parent, CancelationCallbackNode _this, int nodeId, int tokenId)
             {
                 if (_this == null | parent == null)
                 {
-                    return new Promise();
+                    return;
                 }
 
                 parent._smallFields._locker.Enter();
@@ -1068,7 +1071,7 @@ namespace Proto.Promises
                     _this.RemoveFromLinkedList();
                     parent._smallFields._locker.Exit();
                     _this.Dispose();
-                    return new Promise();
+                    return;
                 }
 
                 bool parentIsCanceling = parent._state == CancelationRef.State.Canceled;
@@ -1081,31 +1084,18 @@ namespace Proto.Promises
                     // callback to complete. While such polling isn't ideal, we expect this to be a rare case (disposing while
                     // the associated callback is running), and brief when it happens (so the polling will be minimal), and making
                     // this work with a callback mechanism will add additional cost to other more common cases.
-                    var deferred = Promise.NewDeferred();
-                    WaitForInvokeComplete(parent, _this, nodeId, tokenId, deferred);
-                    return deferred.Promise;
-                }
-                return new Promise();
-            }
-
-            private static void WaitForInvokeComplete(CancelationRef parent, CancelationCallbackNode node, int nodeId, int tokenId, Promise.Deferred deferred)
-            {
-                // node._nodeId will be incremented when the callback is complete and it is disposed.
-                // parent.TokenId will be incremented when all callbacks are complete and it is disposed.
-                // We really only need to compare the nodeId, the tokenId comparison is just for a little extra safety in case of thread starvation and node re-use.
-                if (nodeId == Volatile.Read(ref node._nodeId) & tokenId == parent.TokenId)
-                {
-                    // Queue the check to happen again on a background thread.
-                    // Force async so the current thread will be yielded if this is already being executed on a background thread.
-                    // This is recursive, but it's done so asynchronously so it will never cause StackOverflowException.
-                    Promise.Run((parent, node, nodeId, tokenId, deferred),
-                        cv => WaitForInvokeComplete(cv.parent, cv.node, cv.nodeId, cv.tokenId, cv.deferred),
-                        Promise.Config.BackgroundContext, forceAsync: true)
-                        .Forget();
-                }
-                else
-                {
-                    deferred.Resolve();
+                    do
+                    {
+                        // Queue the check to happen again on a background thread.
+                        // Force async so the current thread will be yielded if this is already being executed on a background thread.
+                        await Promise.SwitchToBackgroundAwait(forceAsync: true);
+                    }
+                    // _this._nodeId will be incremented when the callback is complete and it is disposed.
+                    // parent.TokenId will be incremented when all callbacks are complete and it is disposed.
+                    // We really only need to compare the nodeId, the other comparisons are just for a little extra safety in case of thread starvation and node re-use.
+                    while (nodeId == Volatile.Read(ref _this._nodeId)
+                        & tokenId == parent.TokenId
+                        & parent._smallFields._instanceId == _this._parentId);
                 }
             }
         } // class CancelationCallbackNode
