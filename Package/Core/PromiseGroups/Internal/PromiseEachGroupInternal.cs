@@ -92,7 +92,7 @@ namespace Proto.Promises
                 {
                     try
                     {
-                        _cancelationRef.Cancel();
+                        _cancelationRef.CancelUnsafe();
                     }
                     catch (Exception e)
                     {

@@ -95,7 +95,7 @@ namespace Proto.Promises
                 // This may be called multiple times. It's fine because it checks internally if it's already canceled.
                 try
                 {
-                    _cancelationToken._ref.Cancel();
+                    _cancelationToken._ref.CancelUnsafe();
                 }
                 catch (Exception e)
                 {

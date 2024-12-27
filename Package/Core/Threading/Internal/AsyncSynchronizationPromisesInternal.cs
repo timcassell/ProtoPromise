@@ -69,7 +69,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     // We register without immediate invoke because we hold a spin lock here, and we don't want to cause a deadlock from it trying to re-enter from the invoke.
-                    cancelationToken.TryRegisterWithoutImmediateInvoke<ICancelable>(this, out _cancelationRegistration, out var alreadyCanceled);
+                    _cancelationRegistration = cancelationToken.RegisterWithoutImmediateInvoke<ICancelable>(this, out var alreadyCanceled);
                     return alreadyCanceled;
                 }
 

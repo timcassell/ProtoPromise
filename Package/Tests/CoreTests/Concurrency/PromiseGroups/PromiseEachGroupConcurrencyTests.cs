@@ -145,8 +145,14 @@ namespace ProtoPromiseTests.Concurrency.PromiseGroups
                 () =>
                 {
                     helper.Teardown();
-                    groupCancelationSource.TryDispose();
-                    iterationCancelationSource.TryDispose();
+                    if (cancelationType.HasFlag(EachCancelationType.Group))
+                    {
+                        groupCancelationSource.Dispose();
+                    }
+                    if (cancelationType.HasFlag(EachCancelationType.Iteration))
+                    {
+                        iterationCancelationSource.Dispose();
+                    }
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
@@ -261,8 +267,14 @@ namespace ProtoPromiseTests.Concurrency.PromiseGroups
                 () =>
                 {
                     helper.Teardown();
-                    groupCancelationSource.TryDispose();
-                    iterationCancelationSource.TryDispose();
+                    if (cancelationType.HasFlag(EachCancelationType.Group))
+                    {
+                        groupCancelationSource.Dispose();
+                    }
+                    if (cancelationType.HasFlag(EachCancelationType.Iteration))
+                    {
+                        iterationCancelationSource.Dispose();
+                    }
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions

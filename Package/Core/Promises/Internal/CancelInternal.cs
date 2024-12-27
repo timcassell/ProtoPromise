@@ -57,11 +57,11 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal void Register(CancelationToken cancelationToken, ICancelable owner)
-                    => cancelationToken.TryRegister(owner, out _cancelationRegistration);
+                    => _cancelationRegistration = cancelationToken.Register(owner);
 
                 [MethodImpl(InlineOption)]
                 internal void RegisterWithoutImmediateInvoke(CancelationToken cancelationToken, ICancelable owner, out bool alreadyCanceled)
-                    => cancelationToken.TryRegisterWithoutImmediateInvoke(owner, out _cancelationRegistration, out alreadyCanceled);
+                    => _cancelationRegistration = cancelationToken.RegisterWithoutImmediateInvoke(owner, out alreadyCanceled);
 
                 [MethodImpl(InlineOption)]
                 internal bool TrySetCompleted()

@@ -35,23 +35,8 @@ namespace ProtoPromiseTests.APIs
             public void NewCancelationSourceIsNotValid()
             {
                 CancelationSource cancelationSource = new CancelationSource();
-                Assert.IsFalse(cancelationSource.IsValid);
-            }
-
-            [Test]
-            public void CancelationSourceInvalidOperations()
-            {
-                CancelationSource cancelationSource = new CancelationSource();
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() => { cancelationSource.Cancel(); });
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() => { cancelationSource.Dispose(); });
-            }
-
-            [Test]
-            public void CancelationSourceNewIsValid()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                Assert.IsTrue(cancelationSource.IsValid);
-                cancelationSource.Dispose();
+                Assert.Catch<NullReferenceException>(() => cancelationSource.Cancel());
+                Assert.Catch<NullReferenceException>(() => cancelationSource.Dispose());
             }
 
             [Test]
@@ -59,7 +44,15 @@ namespace ProtoPromiseTests.APIs
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 cancelationSource.Dispose();
-                Assert.IsFalse(cancelationSource.IsValid);
+                Assert.Catch<ObjectDisposedException>(() => cancelationSource.Cancel());
+                Assert.Catch<ObjectDisposedException>(() => cancelationSource.Dispose());
+            }
+
+            [Test]
+            public void CancelationSourceNewIsValid()
+            {
+                CancelationSource cancelationSource = CancelationSource.New();
+                cancelationSource.Dispose();
             }
 
             [Test]
@@ -67,7 +60,6 @@ namespace ProtoPromiseTests.APIs
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 cancelationSource.Cancel();
-                Assert.IsTrue(cancelationSource.IsValid);
                 cancelationSource.Dispose();
             }
 
@@ -1551,9 +1543,12 @@ namespace ProtoPromiseTests.APIs
                 cancelationSource.Dispose();
                 cancelationToken.Register(() => { });
                 cancelationToken.Register(1, cv => { });
-                CancelationRegistration cancelationRegistration;
-                Assert.IsTrue(cancelationToken.TryRegister(() => { }, out cancelationRegistration));
-                Assert.IsTrue(cancelationToken.TryRegister(1, cv => { }, out cancelationRegistration));
+                bool invoked = false;
+                cancelationToken.Register(() => invoked = true);
+                Assert.True(invoked);
+                invoked = false;
+                cancelationToken.Register(1, cv => invoked = true);
+                Assert.True(invoked);
                 cancelationToken.Release();
             }
 
@@ -1567,9 +1562,6 @@ namespace ProtoPromiseTests.APIs
                 bool wasInvoked = false;
                 Assert.IsFalse(cancelationToken.Register(() => wasInvoked = true).IsRegistered);
                 Assert.IsFalse(cancelationToken.Register(1, cv => wasInvoked = true).IsRegistered);
-                CancelationRegistration cancelationRegistration;
-                Assert.IsFalse(cancelationToken.TryRegister(() => wasInvoked = true, out cancelationRegistration));
-                Assert.IsFalse(cancelationToken.TryRegister(1, cv => wasInvoked = true, out cancelationRegistration));
                 Assert.IsFalse(wasInvoked);
                 cancelationToken.Release();
             }

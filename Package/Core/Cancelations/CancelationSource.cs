@@ -5,6 +5,7 @@
 #endif
 
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -115,52 +116,50 @@ namespace Proto.Promises
         /// Get whether or not this <see cref="CancelationSource"/> is valid.
         /// <para/>A <see cref="CancelationSource"/> is valid if it was created from <see cref="New()"/> and was not disposed.
         /// </summary>
+        [Obsolete("Due to object pooling, this property is inherently unsafe. Prefer != default, and remember to set your CancelationSource fields to default when you Dispose.", false), EditorBrowsable(EditorBrowsableState.Never)]
         public bool IsValid
-            => Internal.CancelationRef.IsValidSource(_ref, _sourceId);
+            => _ref?.IsValidSource(_sourceId) == true;
 
         /// <summary>
         /// Gets whether cancelation has been requested for this source.
         /// </summary>
         public bool IsCancelationRequested
-            => Internal.CancelationRef.IsSourceCanceled(_ref, _sourceId);
+            => _ref?.IsSourceCanceled(_sourceId) == true;
 
         /// <summary>
         /// Try to communicate a request for cancelation, and invoke all callbacks that are registered to the associated <see cref="Token"/>. Returns true if successful, false otherwise.
         /// </summary>
         /// <returns>True if this is valid and was not already canceled, false otherwise.</returns>
+        [Obsolete("Prefer != default and Cancel.", false), EditorBrowsable(EditorBrowsableState.Never)]
         public bool TryCancel()
-            => Internal.CancelationRef.TrySetCanceled(_ref, _sourceId);
+            => _ref?.TryCancel(_sourceId) == true;
 
         /// <summary>
         /// Communicate a request for cancelation, and invoke all callbacks that are registered to the associated <see cref="Token"/>.
         /// </summary>
-        /// <exception cref="InvalidOperationException"/>
+        /// <remarks>
+        /// If this was already canceled, a call do this does nothing.
+        /// </remarks>
+        /// <exception cref="ObjectDisposedException">This was disposed.</exception>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
         public void Cancel()
-        {
-            if (!TryCancel())
-            {
-                throw new InvalidOperationException("CancelationSource.Cancel: source is not valid or was already canceled.", Internal.GetFormattedStacktrace(1));
-            }
-        }
+            => _ref.Cancel(_sourceId);
 
         /// <summary>
         /// Try to release all resources used by this <see cref="CancelationSource"/>. This instance will no longer be valid.
         /// </summary>
         /// <returns>True if this is valid and was not already disposed, false otherwise.</returns>
+        [Obsolete("Prefer != default and Dispose.", false), EditorBrowsable(EditorBrowsableState.Never)]
         public bool TryDispose()
-            => Internal.CancelationRef.TryDispose(_ref, _sourceId);
+            => _ref?.TryDispose(_sourceId) == true;
 
         /// <summary>
         /// Release all resources used by this <see cref="CancelationSource"/>. This instance will no longer be valid.
         /// </summary>
-        /// <exception cref="InvalidOperationException"/>
+        /// <exception cref="ObjectDisposedException">This was disposed.</exception>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
         public void Dispose()
-        {
-            if (!TryDispose())
-            {
-                throw new InvalidOperationException("CancelationSource.Dispose: source is not valid.", Internal.GetFormattedStacktrace(1));
-            }
-        }
+            => _ref.Dispose(_sourceId);
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="CancelationSource"/>.</summary>
         public bool Equals(CancelationSource other)

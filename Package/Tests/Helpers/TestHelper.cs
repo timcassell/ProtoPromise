@@ -384,7 +384,7 @@ namespace ProtoPromiseTests
             }
 
             var deferred = Promise.NewDeferred();
-            cancelationToken.TryRegister(() => deferred.TryCancel(), out _);
+            var registration = cancelationToken.Register(() => deferred.TryCancel());
             switch (completeType)
             {
                 case CompleteType.Resolve:
@@ -399,7 +399,9 @@ namespace ProtoPromiseTests
                 default:
                     throw new Exception();
             }
-            return deferred.Promise;
+            return registration.IsRegistered
+                ? deferred.Promise.Finally(registration.Dispose)
+                : deferred.Promise;
         }
 
         public static Promise<T> BuildPromise<T, TReject>(CompleteType completeType, bool isAlreadyComplete, T value, TReject reason, CancelationToken cancelationToken, out Action tryCompleter)
@@ -426,7 +428,7 @@ namespace ProtoPromiseTests
             }
 
             var deferred = Promise<T>.NewDeferred();
-            cancelationToken.TryRegister(() => deferred.TryCancel(), out _);
+            var registration = cancelationToken.Register(() => deferred.TryCancel());
             switch (completeType)
             {
                 case CompleteType.Resolve:
@@ -441,7 +443,9 @@ namespace ProtoPromiseTests
                 default:
                     throw new Exception();
             }
-            return deferred.Promise;
+            return registration.IsRegistered
+                ? deferred.Promise.Finally(registration.Dispose)
+                : deferred.Promise;
         }
 
         public static Promise ThenDuplicate(this Promise promise, CancelationToken cancelationToken = default(CancelationToken))

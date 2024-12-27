@@ -360,7 +360,10 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                 tryCompleters[args[i].completeIndex].Invoke();
             }
             Assert.True(runComplete);
-            cancelationSource.TryDispose();
+            if (!disposeCancelationSourceEarly)
+            {
+                cancelationSource.Dispose();
+            }
 
             runPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -467,7 +470,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                 cancelationSource.Cancel();
                 Assert.False(await asyncEnumerator.MoveNextAsync());
                 await asyncEnumerator.DisposeAsync();
-                cancelationSource.TryDispose();
+                cancelationSource.Dispose();
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -525,7 +528,10 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                     Assert.AreEqual(Promise.State.Canceled, asyncEnumerator.Current.State);
                 }
                 await asyncEnumerator.DisposeAsync();
-                cancelationSource.TryDispose();
+                if (!disposeCancelationSourceEarly)
+                {
+                    cancelationSource.Dispose();
+                }
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -630,7 +636,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                 cancelationSource.Cancel();
                 Assert.False(await asyncEnumerator.MoveNextAsync());
                 await asyncEnumerator.DisposeAsync();
-                cancelationSource.TryDispose();
+                cancelationSource.Dispose();
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -1024,7 +1030,10 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                 tryCompleters[args[i].completeIndex].Invoke();
             }
             Assert.True(runComplete);
-            cancelationSource.TryDispose();
+            if (!disposeCancelationSourceEarly)
+            {
+                cancelationSource.Dispose();
+            }
 
             runPromise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -1143,7 +1152,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                 cancelationSource.Cancel();
                 Assert.False(await asyncEnumerator.MoveNextAsync());
                 await asyncEnumerator.DisposeAsync();
-                cancelationSource.TryDispose();
+                cancelationSource.Dispose();
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -1205,7 +1214,10 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                     Assert.AreEqual(Promise.State.Canceled, asyncEnumerator.Current.State);
                 }
                 await asyncEnumerator.DisposeAsync();
-                cancelationSource.TryDispose();
+                if (!disposeCancelationSourceEarly)
+                {
+                    cancelationSource.Dispose();
+                }
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -1322,7 +1334,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                 cancelationSource.Cancel();
                 Assert.False(await asyncEnumerator.MoveNextAsync());
                 await asyncEnumerator.DisposeAsync();
-                cancelationSource.TryDispose();
+                cancelationSource.Dispose();
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
