@@ -279,7 +279,7 @@ namespace ProtoPromiseTests.Concurrency
             var returnDeferred = default(Promise.Deferred);
             var returnPromise = default(Promise);
             Action threadBarrier = null;
-            var tryCompleter = TestHelper.GetTryCompleterVoid(completeType, rejectValue);
+            var completer = TestHelper.GetCompleterVoid(completeType, rejectValue);
 
             Promise.State result = Promise.State.Pending;
 
@@ -310,7 +310,7 @@ namespace ProtoPromiseTests.Concurrency
                     },
                     parallelActions: new Action[]
                     {
-                        () => tryCompleter(returnDeferred)
+                        () => completer(returnDeferred)
                     },
                     teardown: () =>
                     {
@@ -339,7 +339,7 @@ namespace ProtoPromiseTests.Concurrency
             var returnDeferred = default(Promise<int>.Deferred);
             var returnPromise = default(Promise<int>);
             Action threadBarrier = null;
-            var tryCompleter = TestHelper.GetTryCompleterT(completeType, 1, rejectValue);
+            var completer = TestHelper.GetCompleterT(completeType, 1, rejectValue);
 
             Promise.State result = Promise.State.Pending;
 
@@ -370,7 +370,7 @@ namespace ProtoPromiseTests.Concurrency
                     },
                     parallelActions: new Action[]
                     {
-                        () => tryCompleter(returnDeferred)
+                        () => completer(returnDeferred)
                     },
                     teardown: () =>
                     {

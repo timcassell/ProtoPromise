@@ -248,46 +248,16 @@ namespace ProtoPromiseTests
             throw new Exception();
         }
 
-        public static Action<Promise<T>.Deferred> GetCompleterT<T, TReject>(CompleteType completeType, T resolveValue, TReject rejectValue)
+        public static Action<Promise<T>.Deferred> GetCompleterT<T, TReject>(CompleteType completeType, T value, TReject rejectValue)
         {
             switch (completeType)
             {
                 case CompleteType.Resolve:
-                    return deferred => deferred.Resolve(resolveValue);
+                    return deferred => deferred.Resolve(value);
                 case CompleteType.Reject:
                     return deferred => deferred.Reject(rejectValue);
                 case CompleteType.Cancel:
                     return deferred => deferred.Cancel();
-            }
-            throw new Exception();
-        }
-
-        public static Action<Promise.Deferred> GetTryCompleterVoid<TReject>(CompleteType completeType, TReject rejectValue)
-        {
-            // TODO: Remove try/catch, update calling tests.
-            switch (completeType)
-            {
-                case CompleteType.Resolve:
-                    return deferred => { try { deferred.Resolve(); } catch { } };
-                case CompleteType.Reject:
-                    return deferred => { try { deferred.Reject(rejectValue); } catch { } };
-                case CompleteType.Cancel:
-                    return deferred => { try { deferred.Cancel(); } catch { } };
-            }
-            throw new Exception();
-        }
-
-        public static Action<Promise<T>.Deferred> GetTryCompleterT<T, TReject>(CompleteType completeType, T resolveValue, TReject rejectValue)
-        {
-            // TODO: Remove try/catch, update calling tests.
-            switch (completeType)
-            {
-                case CompleteType.Resolve:
-                    return deferred => { try { deferred.Resolve(resolveValue); } catch { } };
-                case CompleteType.Reject:
-                    return deferred => { try { deferred.Reject(rejectValue); } catch { } };
-                case CompleteType.Cancel:
-                    return deferred => { try { deferred.Cancel(); } catch { } };
             }
             throw new Exception();
         }
@@ -310,21 +280,22 @@ namespace ProtoPromiseTests
             }
 
             var deferred = Promise.NewDeferred();
-            // TODO: Remove try/catch, update calling tests.
+            Action completer;
             switch (completeType)
             {
                 case CompleteType.Resolve:
-                    tryCompleter = () => { try { deferred.Resolve(); } catch { } };
+                    completer = () => deferred.Resolve();
                     break;
                 case CompleteType.Reject:
-                    tryCompleter = () => { try { deferred.Reject(reason); } catch { } };
+                    completer = () => deferred.Reject(reason);
                     break;
                 case CompleteType.Cancel:
-                    tryCompleter = () => { try { deferred.Cancel(); } catch { } };
+                    completer = () => deferred.Cancel();
                     break;
                 default:
                     throw new Exception();
             }
+            tryCompleter = () => Interlocked.Exchange(ref completer, null)?.Invoke();
             return deferred.Promise;
         }
 
@@ -346,21 +317,22 @@ namespace ProtoPromiseTests
             }
 
             var deferred = Promise<T>.NewDeferred();
-            // TODO: Remove try/catch, update calling tests.
+            Action completer;
             switch (completeType)
             {
                 case CompleteType.Resolve:
-                    tryCompleter = () => { try { deferred.Resolve(value); } catch { } };
+                    completer = () => deferred.Resolve(value);
                     break;
                 case CompleteType.Reject:
-                    tryCompleter = () => { try { deferred.Reject(reason); } catch { } };
+                    completer = () => deferred.Reject(reason);
                     break;
                 case CompleteType.Cancel:
-                    tryCompleter = () => { try { deferred.Cancel(); } catch { } };
+                    completer = () => deferred.Cancel();
                     break;
                 default:
                     throw new Exception();
             }
+            tryCompleter = () => Interlocked.Exchange(ref completer, null)?.Invoke();
             return deferred.Promise;
         }
 
@@ -388,25 +360,31 @@ namespace ProtoPromiseTests
             }
 
             var deferred = Promise.NewDeferred();
-            var registration = cancelationToken.Register(deferred);
-            // TODO: Remove try/catch, update calling tests.
+            Action completer;
             switch (completeType)
             {
                 case CompleteType.Resolve:
-                    tryCompleter = () => { try { deferred.Resolve(); } catch { } };
+                    completer = () => deferred.Resolve();
                     break;
                 case CompleteType.Reject:
-                    tryCompleter = () => { try { deferred.Reject(reason); } catch { } };
+                    completer = () => deferred.Reject(reason);
                     break;
                 case CompleteType.Cancel:
-                    tryCompleter = () => { try { deferred.Cancel(); } catch { } };
+                    completer = () => deferred.Cancel();
                     break;
                 default:
                     throw new Exception();
             }
-            return registration.IsRegistered
-                ? deferred.Promise.Finally(registration.Dispose)
-                : deferred.Promise;
+            var registration = cancelationToken.Register(() =>
+            {
+                if (Interlocked.Exchange(ref completer, null) != null)
+                {
+                    deferred.Cancel();
+                }
+            });
+            tryCompleter = () => Interlocked.Exchange(ref completer, null)?.Invoke();
+            return deferred.Promise
+                .Finally(registration.Dispose);
         }
 
         public static Promise<T> BuildPromise<T, TReject>(CompleteType completeType, bool isAlreadyComplete, T value, TReject reason, CancelationToken cancelationToken, out Action tryCompleter)
@@ -433,25 +411,31 @@ namespace ProtoPromiseTests
             }
 
             var deferred = Promise<T>.NewDeferred();
-            var registration = cancelationToken.Register(deferred);
-            // TODO: Remove try/catch, update calling tests.
+            Action completer;
             switch (completeType)
             {
                 case CompleteType.Resolve:
-                    tryCompleter = () => { try { deferred.Resolve(value); } catch { } };
+                    completer = () => deferred.Resolve(value);
                     break;
                 case CompleteType.Reject:
-                    tryCompleter = () => { try { deferred.Reject(reason); } catch { } };
+                    completer = () => deferred.Reject(reason);
                     break;
                 case CompleteType.Cancel:
-                    tryCompleter = () => { try { deferred.Cancel(); } catch { } };
+                    completer = () => deferred.Cancel();
                     break;
                 default:
                     throw new Exception();
             }
-            return registration.IsRegistered
-                ? deferred.Promise.Finally(registration.Dispose)
-                : deferred.Promise;
+            var registration = cancelationToken.Register(() =>
+            {
+                if (Interlocked.Exchange(ref completer, null) != null)
+                {
+                    deferred.Cancel();
+                }
+            });
+            tryCompleter = () => Interlocked.Exchange(ref completer, null)?.Invoke();
+            return deferred.Promise
+                .Finally(registration.Dispose);
         }
 
         public static Promise ThenDuplicate(this Promise promise, CancelationToken cancelationToken = default(CancelationToken))
