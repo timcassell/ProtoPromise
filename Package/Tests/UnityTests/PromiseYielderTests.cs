@@ -114,10 +114,10 @@ namespace ProtoPromiseTests.Unity
                 {
                     yield return endOfFrame;
 
-                    if (_eofDeferred.IsValidAndPending)
+                    if (_eofDeferred != default)
                     {
                         var deferred = _eofDeferred;
-                        _eofDeferred = default(Promise<ValueTuple<int, int>>.Deferred);
+                        _eofDeferred = default;
                         _eofWaitOneFrameFunc()
                             .Then(ValueTuple.Create(deferred, Time.frameCount), cv => deferred.Resolve(ValueTuple.Create(cv.Item2, Time.frameCount)))
                             .Forget();
@@ -127,10 +127,10 @@ namespace ProtoPromiseTests.Unity
 
             private void Update()
             {
-                if (_updateDeferred.IsValidAndPending)
+                if (_updateDeferred != default)
                 {
                     var deferred = _updateDeferred;
-                    _updateDeferred = default(Promise<ValueTuple<int, int>>.Deferred);
+                    _updateDeferred = default;
                     _updateWaitOneFrameFunc()
                         .Then(ValueTuple.Create(deferred, Time.frameCount), cv => deferred.Resolve(ValueTuple.Create(cv.Item2, Time.frameCount)))
                         .Forget();

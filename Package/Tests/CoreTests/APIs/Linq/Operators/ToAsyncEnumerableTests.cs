@@ -127,7 +127,7 @@ namespace ProtoPromiseTests.APIs.Linq
             runner
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
 
-            if (deferred.IsValid)
+            if (!consumerIsAsync)
             {
                 deferred.Promise.Forget();
             }
@@ -343,7 +343,7 @@ namespace ProtoPromiseTests.APIs.Linq
             runner
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
 
-            if (deferred.IsValid)
+            if (!consumerIsAsync)
             {
                 deferred.Promise.Forget();
             }
@@ -447,7 +447,7 @@ namespace ProtoPromiseTests.APIs.Linq
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
             Assert.True(runnerIsComplete);
 
-            if (deferred.IsValid)
+            if (!iteratorIsAsync && !consumerIsAsync)
             {
                 deferred.Promise.Forget();
             }

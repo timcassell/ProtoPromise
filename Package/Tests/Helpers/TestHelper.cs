@@ -264,28 +264,30 @@ namespace ProtoPromiseTests
 
         public static Action<Promise.Deferred> GetTryCompleterVoid<TReject>(CompleteType completeType, TReject rejectValue)
         {
+            // TODO: Remove try/catch, update calling tests.
             switch (completeType)
             {
                 case CompleteType.Resolve:
-                    return deferred => deferred.TryResolve();
+                    return deferred => { try { deferred.Resolve(); } catch { } };
                 case CompleteType.Reject:
-                    return deferred => deferred.TryReject(rejectValue);
+                    return deferred => { try { deferred.Reject(rejectValue); } catch { } };
                 case CompleteType.Cancel:
-                    return deferred => deferred.TryCancel();
+                    return deferred => { try { deferred.Cancel(); } catch { } };
             }
             throw new Exception();
         }
 
         public static Action<Promise<T>.Deferred> GetTryCompleterT<T, TReject>(CompleteType completeType, T resolveValue, TReject rejectValue)
         {
+            // TODO: Remove try/catch, update calling tests.
             switch (completeType)
             {
                 case CompleteType.Resolve:
-                    return deferred => deferred.TryResolve(resolveValue);
+                    return deferred => { try { deferred.Resolve(resolveValue); } catch { } };
                 case CompleteType.Reject:
-                    return deferred => deferred.TryReject(rejectValue);
+                    return deferred => { try { deferred.Reject(rejectValue); } catch { } };
                 case CompleteType.Cancel:
-                    return deferred => deferred.TryCancel();
+                    return deferred => { try { deferred.Cancel(); } catch { } };
             }
             throw new Exception();
         }
@@ -308,16 +310,17 @@ namespace ProtoPromiseTests
             }
 
             var deferred = Promise.NewDeferred();
+            // TODO: Remove try/catch, update calling tests.
             switch (completeType)
             {
                 case CompleteType.Resolve:
-                    tryCompleter = () => deferred.TryResolve();
+                    tryCompleter = () => { try { deferred.Resolve(); } catch { } };
                     break;
                 case CompleteType.Reject:
-                    tryCompleter = () => deferred.TryReject(reason);
+                    tryCompleter = () => { try { deferred.Reject(reason); } catch { } };
                     break;
                 case CompleteType.Cancel:
-                    tryCompleter = () => deferred.TryCancel();
+                    tryCompleter = () => { try { deferred.Cancel(); } catch { } };
                     break;
                 default:
                     throw new Exception();
@@ -343,16 +346,17 @@ namespace ProtoPromiseTests
             }
 
             var deferred = Promise<T>.NewDeferred();
+            // TODO: Remove try/catch, update calling tests.
             switch (completeType)
             {
                 case CompleteType.Resolve:
-                    tryCompleter = () => deferred.TryResolve(value);
+                    tryCompleter = () => { try { deferred.Resolve(value); } catch { } };
                     break;
                 case CompleteType.Reject:
-                    tryCompleter = () => deferred.TryReject(reason);
+                    tryCompleter = () => { try { deferred.Reject(reason); } catch { } };
                     break;
                 case CompleteType.Cancel:
-                    tryCompleter = () => deferred.TryCancel();
+                    tryCompleter = () => { try { deferred.Cancel(); } catch { } };
                     break;
                 default:
                     throw new Exception();
@@ -384,17 +388,18 @@ namespace ProtoPromiseTests
             }
 
             var deferred = Promise.NewDeferred();
-            var registration = cancelationToken.Register(() => deferred.TryCancel());
+            var registration = cancelationToken.Register(deferred);
+            // TODO: Remove try/catch, update calling tests.
             switch (completeType)
             {
                 case CompleteType.Resolve:
-                    tryCompleter = () => deferred.TryResolve();
+                    tryCompleter = () => { try { deferred.Resolve(); } catch { } };
                     break;
                 case CompleteType.Reject:
-                    tryCompleter = () => deferred.TryReject(reason);
+                    tryCompleter = () => { try { deferred.Reject(reason); } catch { } };
                     break;
                 case CompleteType.Cancel:
-                    tryCompleter = () => deferred.TryCancel();
+                    tryCompleter = () => { try { deferred.Cancel(); } catch { } };
                     break;
                 default:
                     throw new Exception();
@@ -428,17 +433,18 @@ namespace ProtoPromiseTests
             }
 
             var deferred = Promise<T>.NewDeferred();
-            var registration = cancelationToken.Register(() => deferred.TryCancel());
+            var registration = cancelationToken.Register(deferred);
+            // TODO: Remove try/catch, update calling tests.
             switch (completeType)
             {
                 case CompleteType.Resolve:
-                    tryCompleter = () => deferred.TryResolve(value);
+                    tryCompleter = () => { try { deferred.Resolve(value); } catch { } };
                     break;
                 case CompleteType.Reject:
-                    tryCompleter = () => deferred.TryReject(reason);
+                    tryCompleter = () => { try { deferred.Reject(reason); } catch { } };
                     break;
                 case CompleteType.Cancel:
-                    tryCompleter = () => deferred.TryCancel();
+                    tryCompleter = () => { try { deferred.Cancel(); } catch { } };
                     break;
                 default:
                     throw new Exception();

@@ -903,7 +903,10 @@ namespace ProtoPromiseTests.APIs
             bool completed = false;
 
             Func();
-            deferred.TryResolve();
+            if (isPending)
+            {
+                deferred.Resolve();
+            }
 
             Assert.IsTrue(completed);
 
@@ -923,7 +926,10 @@ namespace ProtoPromiseTests.APIs
             bool completed = false;
 
             Func();
-            deferred.TryResolve(1);
+            if (isPending)
+            {
+                deferred.Resolve(1);
+            }
 
             Assert.IsTrue(completed);
 
@@ -992,7 +998,10 @@ namespace ProtoPromiseTests.APIs
             bool completed = false;
 
             Func();
-            deferred.TryResolve();
+            if (isPending)
+            {
+                deferred.Resolve();
+            }
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
             Assert.IsTrue(completed);
@@ -1013,7 +1022,10 @@ namespace ProtoPromiseTests.APIs
             bool completed = false;
 
             Func();
-            deferred.TryResolve(1);
+            if (isPending)
+            {
+                deferred.Resolve(1);
+            }
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
             Assert.IsTrue(completed);
