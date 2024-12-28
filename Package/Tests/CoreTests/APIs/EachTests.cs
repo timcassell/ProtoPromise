@@ -332,7 +332,10 @@ namespace ProtoPromiseTests.APIs
                 {
                     tryCompleters[args[i].completeIndex].Invoke();
                 }
-                cancelationSource.TryDispose();
+                if (!disposeCancelationSourceEarly)
+                {
+                    cancelationSource.Dispose();
+                }
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -435,7 +438,7 @@ namespace ProtoPromiseTests.APIs
                 cancelationSource.Cancel();
                 Assert.False(await asyncEnumerator.MoveNextAsync());
                 await asyncEnumerator.DisposeAsync();
-                cancelationSource.TryDispose();
+                cancelationSource.Dispose();
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -665,7 +668,10 @@ namespace ProtoPromiseTests.APIs
                 {
                     tryCompleters[args[i].completeIndex].Invoke();
                 }
-                cancelationSource.TryDispose();
+                if (!disposeCancelationSourceEarly)
+                {
+                    cancelationSource.Dispose();
+                }
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }
@@ -780,7 +786,7 @@ namespace ProtoPromiseTests.APIs
                 cancelationSource.Cancel();
                 Assert.False(await asyncEnumerator.MoveNextAsync());
                 await asyncEnumerator.DisposeAsync();
-                cancelationSource.TryDispose();
+                cancelationSource.Dispose();
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
         }

@@ -224,7 +224,7 @@ namespace ProtoPromiseTests.Concurrency.Threading
                         }
                         if (delayCancel && exitedCount != 0)
                         {
-                            cancelationSource.TryCancel();
+                            cancelationSource.Cancel();
                         }
                     }
                 });
@@ -322,7 +322,7 @@ namespace ProtoPromiseTests.Concurrency.Threading
                         }
                         if (delayCancel && exitedCount != 0)
                         {
-                            cancelationSource.TryCancel();
+                            cancelationSource.Cancel();
                         }
                     }
                 });

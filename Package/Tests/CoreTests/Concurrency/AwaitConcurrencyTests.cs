@@ -191,7 +191,6 @@ namespace ProtoPromiseTests.Concurrency
         {
             var deferred = default(Promise.Deferred);
             var promise = default(Promise);
-            var cancelationSource = default(CancelationSource);
             var tryCompleter = TestHelper.GetTryCompleterVoid(completeType, rejectValue);
 
             Promise.State result = Promise.State.Pending;
@@ -235,8 +234,6 @@ namespace ProtoPromiseTests.Concurrency
                 },
                 teardown: () =>
                 {
-                    cancelationSource.TryDispose();
-
                     Assert.AreNotEqual(Promise.State.Pending, result);
                     switch (completeType)
                     {
@@ -260,7 +257,6 @@ namespace ProtoPromiseTests.Concurrency
         {
             var deferred = default(Promise<int>.Deferred);
             var promise = default(Promise<int>);
-            var cancelationSource = default(CancelationSource);
             var tryCompleter = TestHelper.GetTryCompleterT(completeType, 1, rejectValue);
 
             Promise.State result = Promise.State.Pending;
@@ -304,8 +300,6 @@ namespace ProtoPromiseTests.Concurrency
                 },
                 teardown: () =>
                 {
-                    cancelationSource.TryDispose();
-
                     Assert.AreNotEqual(Promise.State.Pending, result);
                     switch (completeType)
                     {

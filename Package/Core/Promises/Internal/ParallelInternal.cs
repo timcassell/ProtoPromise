@@ -246,7 +246,7 @@ namespace Proto.Promises
                     promise._completionState = Promise.State.Resolved;
                     promise._stopExecuting = false;
                     promise._cancelationRef = CancelationRef.GetOrCreate();
-                    cancelationToken.TryRegister(promise, out promise._externalCancelationRegistration);
+                    promise._externalCancelationRegistration = cancelationToken.Register<ICancelable>(promise);
                     if (Promise.Config.AsyncFlowExecutionContextEnabled)
                     {
                         promise._executionContext = ExecutionContext.Capture();
@@ -422,7 +422,7 @@ namespace Proto.Promises
                     // This may be called multiple times. It's fine because it checks internally if it's already canceled.
                     try
                     {
-                        _cancelationRef.Cancel();
+                        _cancelationRef.CancelUnsafe();
                     }
                     catch (Exception e)
                     {

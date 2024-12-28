@@ -91,7 +91,7 @@ namespace Proto.Promises
                     promise._lockAndLaunchNext = 0;
                     var cancelRef = CancelationRef.GetOrCreate();
                     promise._cancelationRef = cancelRef;
-                    cancelationToken.TryRegister(promise, out promise._externalCancelationRegistration);
+                    promise._externalCancelationRegistration = cancelationToken.Register<ICancelable>(promise);
                     promise._asyncEnumerator = enumerable.GetAsyncEnumerator(new CancelationToken(cancelRef, cancelRef.TokenId));
                     if (Promise.Config.AsyncFlowExecutionContextEnabled)
                     {
@@ -425,7 +425,7 @@ namespace Proto.Promises
                     // This may be called multiple times. It's fine because it checks internally if it's already canceled.
                     try
                     {
-                        _cancelationRef.Cancel();
+                        _cancelationRef.CancelUnsafe();
                     }
                     catch (Exception e)
                     {

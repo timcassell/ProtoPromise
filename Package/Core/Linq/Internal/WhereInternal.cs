@@ -145,7 +145,7 @@ namespace Proto.Promises
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
-                    var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
                     try
                     {
@@ -165,7 +165,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
-                        joinedCancelationSource.TryDispose();
+                        maybeJoinedCancelationSource.Dispose();
                         await _configuredAsyncEnumerator.DisposeAsync();
                     }
                 }
@@ -200,7 +200,7 @@ namespace Proto.Promises
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
-                    var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
                     try
                     {
@@ -220,7 +220,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
-                        joinedCancelationSource.TryDispose();
+                        maybeJoinedCancelationSource.Dispose();
                         await _configuredAsyncEnumerator.DisposeAsync();
                     }
                 }
@@ -364,7 +364,7 @@ namespace Proto.Promises
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
-                    var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
                     try
                     {
@@ -385,7 +385,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
-                        joinedCancelationSource.TryDispose();
+                        maybeJoinedCancelationSource.Dispose();
                         await _configuredAsyncEnumerator.DisposeAsync();
                     }
                 }
@@ -420,7 +420,7 @@ namespace Proto.Promises
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
-                    var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
                     try
                     {
@@ -441,7 +441,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
-                        joinedCancelationSource.TryDispose();
+                        maybeJoinedCancelationSource.Dispose();
                         await _configuredAsyncEnumerator.DisposeAsync();
                     }
                 }

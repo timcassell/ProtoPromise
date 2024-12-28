@@ -111,7 +111,7 @@ namespace Proto.Promises
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _firstAsyncEnumerator._enumerator._target;
-                    var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
                     // Use the same cancelation token for both enumerators.
                     _secondAsyncEnumerator._target._cancelationToken = enumerableRef._cancelationToken;
 
@@ -140,7 +140,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
-                        joinedCancelationSource.TryDispose();
+                        maybeJoinedCancelationSource.Dispose();
                         try
                         {
                             await _secondAsyncEnumerator.DisposeAsync();
@@ -351,7 +351,7 @@ namespace Proto.Promises
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _firstAsyncEnumerator._enumerator._target;
-                    var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
                     // Use the same cancelation token for both enumerators.
                     _secondAsyncEnumerator._target._cancelationToken = enumerableRef._cancelationToken;
 
@@ -380,7 +380,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
-                        joinedCancelationSource.TryDispose();
+                        maybeJoinedCancelationSource.Dispose();
                         try
                         {
                             await _secondAsyncEnumerator.DisposeAsync();
@@ -433,7 +433,7 @@ namespace Proto.Promises
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _firstAsyncEnumerator._enumerator._target;
-                    var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
                     // Use the same cancelation token for both enumerators.
                     _secondAsyncEnumerator._target._cancelationToken = enumerableRef._cancelationToken;
 
@@ -466,7 +466,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
-                        joinedCancelationSource.TryDispose();
+                        maybeJoinedCancelationSource.Dispose();
                         try
                         {
                             await _secondAsyncEnumerator.DisposeAsync();

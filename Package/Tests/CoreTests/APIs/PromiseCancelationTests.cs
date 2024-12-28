@@ -345,7 +345,7 @@ namespace ProtoPromiseTests.APIs
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Resolve());
                 Assert.IsFalse(deferred.TryReject("Fail value"));
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() => cancelationSource.Cancel());
+                cancelationSource.Cancel();
 
                 Assert.IsTrue(canceled);
 
@@ -373,7 +373,7 @@ namespace ProtoPromiseTests.APIs
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Resolve(1));
                 Assert.IsFalse(deferred.TryReject("Fail value"));
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() => cancelationSource.Cancel());
+                cancelationSource.Cancel();
 
                 Assert.IsTrue(canceled);
 
@@ -511,10 +511,7 @@ namespace ProtoPromiseTests.APIs
                     onCancelCapture: cv => ++cancelCount
                 );
                 cancelationSource.Cancel();
-
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() =>
-                    cancelationSource.Cancel()
-                );
+                cancelationSource.Cancel();
 
                 Assert.AreEqual(TestHelper.onCancelCallbacks, cancelCount);
 
@@ -534,10 +531,7 @@ namespace ProtoPromiseTests.APIs
                     onCancelCapture: cv => ++cancelCount
                 );
                 cancelationSource.Cancel();
-
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() =>
-                    cancelationSource.Cancel()
-                );
+                cancelationSource.Cancel();
 
                 Assert.AreEqual(TestHelper.onCancelCallbacks, cancelCount);
 

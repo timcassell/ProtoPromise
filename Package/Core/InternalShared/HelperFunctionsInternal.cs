@@ -174,7 +174,7 @@ namespace Proto.Promises
             => dict.TryGetValue(key, out value) && dict.Remove(key);
 #endif
 
-        internal static CancelationSource MaybeJoinCancelationTokens(CancelationToken first, CancelationToken second, out CancelationToken maybeJoinedToken)
+        internal static MaybemaybeJoinedCancelationSource MaybeJoinCancelationTokens(CancelationToken first, CancelationToken second, out CancelationToken maybeJoinedToken)
         {
             if (first == second | !first.CanBeCanceled)
             {
@@ -193,7 +193,27 @@ namespace Proto.Promises
             }
             var source = CancelationSource.New(first, second);
             maybeJoinedToken = source.Token;
-            return source;
+            return new MaybemaybeJoinedCancelationSource(source);
+        }
+
+        internal readonly struct MaybemaybeJoinedCancelationSource: IDisposable
+        {
+            private readonly CancelationSource _source;
+
+            [MethodImpl(InlineOption)]
+            public MaybemaybeJoinedCancelationSource(CancelationSource source)
+            {
+                _source = source;
+            }
+
+            [MethodImpl(InlineOption)]
+            public void Dispose()
+            {
+                if (_source != default)
+                {
+                    _source.Dispose();
+                }
+            }
         }
 
         internal static void SetOrAdd<T>(this IList<T> list, in T value, int index)

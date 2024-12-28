@@ -27,19 +27,33 @@ namespace Proto.Promises.Examples
 
             async Promise _OnClick()
             {
-                cancelationSource.TryCancel(); // Cancel previous download if it's not yet completed.
+                if (cancelationSource != default)
+                {
+                    // Cancel previous download if it's not yet completed.
+                    cancelationSource.Cancel();
+                }
                 using var cs = CancelationSource.New();
                 cancelationSource = cs;
-                cancelButton.interactable = true;
-
-                Texture2D texture;
-                await using (var progress = Progress.New(this, (_this, value) => _this.OnProgress(value)))
+                try
                 {
-                    texture = await DownloadHelper.DownloadTexture(imageUrl, progress.Token, cs.Token);
-                }
+                    cancelButton.interactable = true;
 
-                cancelButton.interactable = false;
-                image.sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+                    Texture2D texture;
+                    await using (var progress = Progress.New(this, (_this, value) => _this.OnProgress(value)))
+                    {
+                        texture = await DownloadHelper.DownloadTexture(imageUrl, progress.Token, cs.Token);
+                    }
+
+                    cancelButton.interactable = false;
+                    image.sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+                }
+                finally
+                {
+                    if (cancelationSource == cs)
+                    {
+                        cancelationSource = default;
+                    }
+                }
             }
         }
 #else
@@ -50,25 +64,39 @@ namespace Proto.Promises.Examples
 
             async Promise _OnClick()
             {
-                cancelationSource.TryCancel(); // Cancel previous download if it's not yet completed.
+                if (cancelationSource != default)
+                {
+                    // Cancel previous download if it's not yet completed.
+                    cancelationSource.Cancel();
+                }
                 using (var cs = CancelationSource.New())
                 {
                     cancelationSource = cs;
-                    cancelButton.interactable = true;
-
-                    var progress = Progress.New(this, (_this, value) => _this.OnProgress(value));
-                    Texture2D texture;
                     try
                     {
-                        texture = await DownloadHelper.DownloadTexture(imageUrl, progress.Token, cs.Token);
+                        cancelButton.interactable = true;
+
+                        var progress = Progress.New(this, (_this, value) => _this.OnProgress(value));
+                        Texture2D texture;
+                        try
+                        {
+                            texture = await DownloadHelper.DownloadTexture(imageUrl, progress.Token, cs.Token);
+                        }
+                        finally
+                        {
+                            await progress.DisposeAsync();
+                        }
+
+                        cancelButton.interactable = false;
+                        image.sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
                     }
                     finally
                     {
-                        await progress.DisposeAsync();
+                        if (cancelationSource == cs)
+                        {
+                            cancelationSource = default;
+                        }
                     }
-
-                    cancelButton.interactable = false;
-                    image.sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
                 }
             }
         }
@@ -83,8 +111,9 @@ namespace Proto.Promises.Examples
         public void OnCancelClick()
         {
             // Cancel download if it's not yet completed.
-            if (cancelationSource.TryCancel())
+            if (cancelationSource != default)
             {
+                cancelationSource.Cancel();
                 cancelButton.interactable = false;
                 progressText.text = "Canceled";
             }

@@ -515,7 +515,7 @@ namespace Proto.Promises
                 routine._deferred = Promise.NewDeferred();
                 runner = runner ? runner : PromiseBehaviour.Instance;
                 routine.Current = yieldInstruction;
-                cancelationToken.TryRegister((routine, runner), cv => cv.routine.OnCancel(cv.runner), out routine._cancelationRegistration);
+                routine._cancelationRegistration = cancelationToken.Register((routine, runner), cv => cv.routine.OnCancel(cv.runner));
 
                 runner.StartCoroutine(routine);
                 return routine._deferred.Promise;

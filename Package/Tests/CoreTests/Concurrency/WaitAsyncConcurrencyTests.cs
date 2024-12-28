@@ -171,7 +171,10 @@ namespace ProtoPromiseTests.Concurrency
 
                     TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
                     TestHelper.SpinUntil(() => didContinue, timeout, $"didContinue: {didContinue}");
-                    cancelationSource.TryDispose();
+                    if (withCancelation)
+                    {
+                        cancelationSource.Dispose();
+                    }
                 },
                 actions: parallelActions.ToArray()
             );
@@ -281,7 +284,10 @@ namespace ProtoPromiseTests.Concurrency
 
                     TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
                     TestHelper.SpinUntil(() => didContinue, timeout, $"didContinue: {didContinue}");
-                    cancelationSource.TryDispose();
+                    if (withCancelation)
+                    {
+                        cancelationSource.Dispose();
+                    }
                 },
                 actions: parallelActions.ToArray()
             );

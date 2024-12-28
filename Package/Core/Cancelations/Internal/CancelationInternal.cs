@@ -215,31 +215,21 @@ namespace Proto.Promises
                 _previous = this;
             }
 
-            [MethodImpl(InlineOption)]
-            internal static bool IsValidSource(CancelationRef _this, int sourceId)
-                => _this != null && Volatile.Read(ref _this._sourceId) == sourceId;
+            internal bool IsValidSource(int sourceId)
+                => Volatile.Read(ref _sourceId) == sourceId;
 
             [MethodImpl(InlineOption)]
-            internal static bool IsSourceCanceled(CancelationRef _this, int sourceId)
-                => _this != null && _this.IsSourceCanceled(sourceId);
-
-            [MethodImpl(InlineOption)]
-            private bool IsSourceCanceled(int sourceId)
+            internal bool IsSourceCanceled(int sourceId)
                 // Volatile read the state before the id.
                 => _state >= State.Canceled & sourceId == SourceId;
 
             [MethodImpl(InlineOption)]
-            internal static bool CanTokenBeCanceled(CancelationRef _this, int tokenId)
-                => _this != null
-                    // Volatile read the state before the id.
-                    && (_this._state != State.Disposed & _this.TokenId == tokenId);
+            internal bool CanTokenBeCanceled(int tokenId)
+                // Volatile read the state before the id.
+                => _state != State.Disposed & TokenId == tokenId;
 
             [MethodImpl(InlineOption)]
-            internal static bool IsTokenCanceled(CancelationRef _this, int tokenId)
-                => _this != null && _this.IsTokenCanceled(tokenId);
-
-            [MethodImpl(InlineOption)]
-            private bool IsTokenCanceled(int tokenId)
+            internal bool IsTokenCanceled(int tokenId)
             {
                 // Volatile read the state before everything else.
                 var state = _state;
@@ -392,7 +382,7 @@ namespace Proto.Promises
                             ts_isLinkingToBclToken = false;
                             return;
                         }
-                        cancelRef.UnsafeAs<CancelationRef>().Cancel();
+                        cancelRef.UnsafeAs<CancelationRef>().CancelUnsafe();
                     }, this);
 
                     if (!ts_isLinkingToBclToken)
@@ -423,12 +413,7 @@ namespace Proto.Promises
                 _previous = node;
             }
 
-            [MethodImpl(InlineOption)]
-            internal static bool TrySetCanceled(CancelationRef _this, int sourceId)
-                => _this != null && _this.TrySetCanceled(sourceId);
-
-            [MethodImpl(InlineOption)]
-            private bool TrySetCanceled(int sourceId)
+            internal bool TryCancel(int sourceId)
             {
                 _smallFields._locker.Enter();
                 if (sourceId != SourceId | _state != State.Pending)
@@ -438,6 +423,36 @@ namespace Proto.Promises
                 }
                 InvokeCallbacksAlreadyLocked();
                 return true;
+            }
+
+            internal void Cancel(int sourceId)
+            {
+                _smallFields._locker.Enter();
+                bool idsMismatch = sourceId != SourceId;
+                var state = _state;
+                if (idsMismatch | state != State.Pending)
+                {
+                    _smallFields._locker.Exit();
+                    // Only throw if this was disposed. If this was already canceled, do nothing.
+                    if (idsMismatch | state == State.Disposed)
+                    {
+                        throw new ObjectDisposedException(nameof(CancelationSource));
+                    }
+                    return;
+                }
+                InvokeCallbacksAlreadyLocked();
+            }
+
+            // Internal Cancel method skipping the disposed check.
+            internal void CancelUnsafe()
+            {
+                _smallFields._locker.Enter();
+                if (_state != State.Pending)
+                {
+                    _smallFields._locker.Exit();
+                    return;
+                }
+                InvokeCallbacksAlreadyLocked();
             }
 
             private void InvokeCallbacksAlreadyLocked()
@@ -485,14 +500,10 @@ namespace Proto.Promises
                 }
             }
 
-            [MethodImpl(InlineOption)]
-            internal static bool TryDispose(CancelationRef _this, int sourceId)
-                => _this != null && _this.TryDispose(sourceId);
-
             internal bool TryDispose(int sourceId)
             {
                 _smallFields._locker.Enter();
-                if (!TryIncrementSourceId(sourceId))
+                if (_state == State.Disposed || !TryIncrementSourceId(sourceId))
                 {
                     _smallFields._locker.Exit();
                     return false;
@@ -503,7 +514,20 @@ namespace Proto.Promises
                 return true;
             }
 
-            // Internal dispose method skipping the id check.
+            internal void Dispose(int sourceId)
+            {
+                _smallFields._locker.Enter();
+                if (_state == State.Disposed || !TryIncrementSourceId(sourceId))
+                {
+                    _smallFields._locker.Exit();
+                    throw new ObjectDisposedException(nameof(CancelationSource));
+                }
+
+                ThrowIfInPool(this);
+                DisposeLocked();
+            }
+
+            // Internal Dispose method skipping the disposed check.
             internal void DisposeUnsafe()
             {
                 ThrowIfInPool(this);
@@ -548,11 +572,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static bool TryRetainUser(CancelationRef _this, int tokenId)
-                => _this != null && _this.TryRetainUser(tokenId);
-
-            [MethodImpl(InlineOption)]
-            private bool TryRetainUser(int tokenId)
+            internal bool TryRetainUser(int tokenId)
             {
                 _smallFields._locker.Enter();
                 if (tokenId != TokenId | _state == State.Disposed)
@@ -571,11 +591,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static bool TryReleaseUser(CancelationRef _this, int tokenId)
-                => _this != null && _this.TryReleaseUser(tokenId);
-
-            [MethodImpl(InlineOption)]
-            private bool TryReleaseUser(int tokenId)
+            internal bool TryReleaseUser(int tokenId)
             {
                 _smallFields._locker.Enter();
                 if (tokenId != TokenId)
@@ -645,18 +661,6 @@ namespace Proto.Promises
                     _links.Pop().UnhookAndDispose();
                 }
                 ObjectPool.MaybeRepool(this);
-            }
-
-            internal void Cancel()
-            {
-                // Same as TrySetCanceled, but without checking the SourceId.
-                _smallFields._locker.Enter();
-                if (_state != State.Pending)
-                {
-                    _smallFields._locker.Exit();
-                    return;
-                }
-                InvokeCallbacksAlreadyLocked();
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -755,7 +759,7 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     try
                     {
-                        _target.Cancel();
+                        _target.CancelUnsafe();
                     }
                     finally
                     {
@@ -905,7 +909,7 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 public void Invoke()
-                    => _target.Cancel();
+                    => _target.CancelUnsafe();
             }
         } // class CancelationRef
 
@@ -1238,9 +1242,9 @@ namespace Proto.Promises
             {
                 // We don't need the synchronous invoke check when this is created.
 #if NETCOREAPP3_0_OR_GREATER
-                var registration = token.UnsafeRegister(state => state.UnsafeAs<CancelationRef>().Cancel(), this);
+                var registration = token.UnsafeRegister(state => state.UnsafeAs<CancelationRef>().CancelUnsafe(), this);
 #else
-                var registration = token.Register(state => state.UnsafeAs<CancelationRef>().Cancel(), this, false);
+                var registration = token.Register(state => state.UnsafeAs<CancelationRef>().CancelUnsafe(), this, false);
 #endif
                 SetCancellationTokenRegistration(registration);
             }

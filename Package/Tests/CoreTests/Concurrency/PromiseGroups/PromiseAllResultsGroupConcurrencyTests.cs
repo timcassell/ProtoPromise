@@ -103,7 +103,10 @@ namespace ProtoPromiseTests.Concurrency.PromiseGroups
                 () =>
                 {
                     helper.Teardown();
-                    cancelationSource.TryDispose();
+                    if (withCancelation)
+                    {
+                        cancelationSource.Dispose();
+                    }
                     Assert.IsTrue(helper.Success);
                 },
                 parallelActions
