@@ -18,6 +18,7 @@ namespace Proto.Promises.CompilerServices
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
+    // TODO: Implement IPromiseAwareAwaiter when we start using IThreadPoolWorkItem.
     public readonly partial struct PromiseSwitchToContextAwaiter : ICriticalNotifyCompletion
     {
         private readonly SynchronizationContext _context;
