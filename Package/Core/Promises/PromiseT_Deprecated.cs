@@ -22,6 +22,14 @@ namespace Proto.Promises
     public readonly partial struct Promise<T> : IEquatable<Promise<T>>
     {
         /// <summary>
+        /// Gets whether this instance is valid to be awaited.
+        /// </summary>
+        [Obsolete("Due to object pooling, this property is inherently unsafe. This will be removed in a future version.", false), EditorBrowsable(EditorBrowsableState.Never)]
+        public bool IsValid
+            // I would prefer to have a null ref only valid if the promise was created from Promise.Resolved, but it's more efficient to allow default values to be valid.
+            => _ref?.GetIsValid(_id) != false;
+
+        /// <summary>
         /// Mark this as awaited and get a new <see cref="Promise{T}"/> of <typeparamref name="T"/> that inherits the state of this and can be awaited multiple times until <see cref="Forget"/> is called on it.
         /// <para/><see cref="Forget"/> must be called when you are finished with it.
         /// <para/>NOTE: You should not return a preserved <see cref="Promise{T}"/> from a public API. Use <see cref="Duplicate"/> to get a <see cref="Promise{T}"/> that is publicly safe.

@@ -63,7 +63,7 @@ namespace ProtoPromiseTests.Concurrency
             );
 
             promiseRetainer.Dispose();
-            TestHelper.GetTryCompleterVoid(completeType, rejectValue).Invoke(deferred);
+            TestHelper.GetCompleterVoid(completeType, rejectValue).Invoke(deferred);
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
@@ -141,7 +141,7 @@ namespace ProtoPromiseTests.Concurrency
             );
 
             promiseRetainer.Dispose();
-            TestHelper.GetTryCompleterT(completeType, 1, rejectValue).Invoke(deferred);
+            TestHelper.GetCompleterT(completeType, 1, rejectValue).Invoke(deferred);
             Assert.AreEqual(ThreadHelper.multiExecutionCount, invokedCount);
         }
 
@@ -191,7 +191,7 @@ namespace ProtoPromiseTests.Concurrency
         {
             var deferred = default(Promise.Deferred);
             var promise = default(Promise);
-            var tryCompleter = TestHelper.GetTryCompleterVoid(completeType, rejectValue);
+            var completer = TestHelper.GetCompleterVoid(completeType, rejectValue);
 
             Promise.State result = Promise.State.Pending;
 
@@ -230,7 +230,7 @@ namespace ProtoPromiseTests.Concurrency
                 },
                 parallelActions: new Action[]
                 {
-                    () => tryCompleter(deferred)
+                    () => completer(deferred)
                 },
                 teardown: () =>
                 {
@@ -257,7 +257,7 @@ namespace ProtoPromiseTests.Concurrency
         {
             var deferred = default(Promise<int>.Deferred);
             var promise = default(Promise<int>);
-            var tryCompleter = TestHelper.GetTryCompleterT(completeType, 1, rejectValue);
+            var completer = TestHelper.GetCompleterT(completeType, 1, rejectValue);
 
             Promise.State result = Promise.State.Pending;
 
@@ -296,7 +296,7 @@ namespace ProtoPromiseTests.Concurrency
                 },
                 parallelActions: new Action[]
                 {
-                    () => tryCompleter(deferred)
+                    () => completer(deferred)
                 },
                 teardown: () =>
                 {

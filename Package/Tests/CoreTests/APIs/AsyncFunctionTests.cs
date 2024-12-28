@@ -907,7 +907,10 @@ namespace ProtoPromiseTests.APIs
             var deferred = isPending ? Promise.NewDeferred() : default(Promise.Deferred);
             _promise = isPending ? deferred.Promise : Promise.Resolved();
             FuncVoid().Forget();
-            deferred.TryResolve();
+            if (isPending)
+            {
+                deferred.Resolve();
+            }
         }
 
         private async Promise FuncVoid()
@@ -936,7 +939,10 @@ namespace ProtoPromiseTests.APIs
             var deferred = isPending ? Promise.NewDeferred() : default(Promise.Deferred);
             _promise = isPending ? deferred.Promise : Promise.Resolved();
             FuncT().Forget();
-            deferred.TryResolve();
+            if (isPending)
+            {
+                deferred.Resolve();
+            }
         }
 
         private async Promise<int> FuncT()

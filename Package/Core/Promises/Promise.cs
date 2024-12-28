@@ -44,13 +44,6 @@ namespace Proto.Promises
 #endif // UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
 
         /// <summary>
-        /// Gets whether this instance is valid to be awaited.
-        /// </summary>
-        public bool IsValid
-            // I would prefer to have a null ref only valid if the promise was created from Promise.Resolved, but it's more efficient to allow default values to be valid.
-            => _ref?.GetIsValid(_id) != false;
-
-        /// <summary>
         /// Mark this as awaited and prevent any further awaits or callbacks on this.
         /// <para/>NOTE: It is imperative to terminate your promise chains with Forget so that any uncaught rejections will be reported and objects repooled (if pooling is enabled).
         /// </summary>

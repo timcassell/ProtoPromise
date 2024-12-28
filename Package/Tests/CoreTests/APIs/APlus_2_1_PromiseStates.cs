@@ -28,7 +28,6 @@ namespace ProtoPromiseTests.APIs
                 string state = null;
 
                 var deferred = Promise.NewDeferred();
-                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .Then(() => state = Resolved, () => state = Rejected)
@@ -36,13 +35,10 @@ namespace ProtoPromiseTests.APIs
                 Assert.IsNull(state);
 
                 deferred.Resolve();
-                Assert.IsFalse(deferred.IsValidAndPending);
-
                 Assert.AreEqual(Resolved, state);
 
                 state = null;
                 deferred = Promise.NewDeferred();
-                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .Then(() => state = Resolved, () => state = Rejected)
@@ -50,8 +46,6 @@ namespace ProtoPromiseTests.APIs
                 Assert.IsNull(state);
 
                 deferred.Reject("Fail Value");
-                Assert.IsFalse(deferred.IsValidAndPending);
-
                 Assert.AreEqual(Rejected, state);
             }
 
@@ -62,7 +56,6 @@ namespace ProtoPromiseTests.APIs
                 string state = null;
 
                 var deferred = Promise.NewDeferred<int>();
-                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .Then(v => state = Resolved, () => state = Rejected)
@@ -70,13 +63,10 @@ namespace ProtoPromiseTests.APIs
                 Assert.IsNull(state);
 
                 deferred.Resolve(1);
-                Assert.IsFalse(deferred.IsValidAndPending);
-
                 Assert.AreEqual(Resolved, state);
 
                 state = null;
                 deferred = Promise.NewDeferred<int>();
-                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .Then(v => state = Resolved, () => state = Rejected)
@@ -84,8 +74,6 @@ namespace ProtoPromiseTests.APIs
                 Assert.IsNull(state);
 
                 deferred.Reject("Fail Value");
-                Assert.IsFalse(deferred.IsValidAndPending);
-
                 Assert.AreEqual(Rejected, state);
             }
         }
@@ -121,10 +109,8 @@ namespace ProtoPromiseTests.APIs
                     Assert.IsTrue(voidResolved);
                     Assert.IsFalse(voidRejected);
 
-                    Assert.IsFalse(deferred.TryResolve());
-                    Assert.Throws<InvalidOperationException>(() => deferred.Resolve());
-                    Assert.IsFalse(deferred.TryReject(RejectValue));
-                    Assert.Throws<InvalidOperationException>(() => deferred.Reject(RejectValue));
+                    Assert.Catch<InvalidOperationException>(() => deferred.Resolve());
+                    Assert.Catch<InvalidOperationException>(() => deferred.Reject(RejectValue));
 
                     promiseRetainer.WaitAsync()
                         .Then(() => voidResolved = true, () => voidRejected = true)
@@ -151,10 +137,8 @@ namespace ProtoPromiseTests.APIs
                     Assert.IsTrue(intResolved);
                     Assert.IsFalse(intRejected);
 
-                    Assert.IsFalse(deferred.TryResolve(1));
-                    Assert.Throws<InvalidOperationException>(() => deferred.Resolve(1));
-                    Assert.IsFalse(deferred.TryReject(RejectValue));
-                    Assert.Throws<InvalidOperationException>(() => deferred.Reject(RejectValue));
+                    Assert.Catch<InvalidOperationException>(() => deferred.Resolve(1));
+                    Assert.Catch<InvalidOperationException>(() => deferred.Reject(RejectValue));
 
                     promiseRetainer.WaitAsync()
                         .Then(_ => intResolved = true, () => intRejected = true)
@@ -187,8 +171,7 @@ namespace ProtoPromiseTests.APIs
                         onReject: s => Assert.Fail("Promise was rejected when it should have been resolved."),
                         onUnknownRejection: () => Assert.Fail("Promise was rejected when it should have been resolved.")
                     );
-                    Assert.IsFalse(deferred.TryResolve(100));
-                    Assert.Throws<InvalidOperationException>(() => deferred.Resolve(100));
+                    Assert.Catch<InvalidOperationException>(() => deferred.Resolve(100));
 
                     Assert.AreEqual(expected, result);
                 }
@@ -226,10 +209,8 @@ namespace ProtoPromiseTests.APIs
                     Assert.IsFalse(voidResolved);
                     Assert.IsTrue(voidRejected);
 
-                    Assert.IsFalse(deferred.TryResolve());
-                    Assert.Throws<InvalidOperationException>(() => deferred.Resolve());
-                    Assert.IsFalse(deferred.TryReject(RejectValue));
-                    Assert.Throws<InvalidOperationException>(() => deferred.Reject(RejectValue));
+                    Assert.Catch<InvalidOperationException>(() => deferred.Resolve());
+                    Assert.Catch<InvalidOperationException>(() => deferred.Reject(RejectValue));
 
                     promiseRetainer.WaitAsync()
                         .Then(() => voidResolved = true, () => voidRejected = true)
@@ -256,10 +237,8 @@ namespace ProtoPromiseTests.APIs
                     Assert.IsFalse(intResolved);
                     Assert.IsTrue(intRejected);
 
-                    Assert.IsFalse(deferred.TryResolve(1));
-                    Assert.Throws<InvalidOperationException>(() => deferred.Resolve(1));
-                    Assert.IsFalse(deferred.TryReject(RejectValue));
-                    Assert.Throws<InvalidOperationException>(() => deferred.Reject(RejectValue));
+                    Assert.Catch<InvalidOperationException>(() => deferred.Resolve(1));
+                    Assert.Catch<InvalidOperationException>(() => deferred.Reject(RejectValue));
 
                     promiseRetainer.WaitAsync()
                         .Then(_ => intResolved = true, () => intRejected = true)
@@ -288,8 +267,7 @@ namespace ProtoPromiseTests.APIs
 
                     Assert.AreEqual(expected, rejection);
 
-                    Assert.IsFalse(deferred.TryReject("Different Fail Value"));
-                    Assert.Throws<InvalidOperationException>(() => deferred.Reject("Different Fail Value"));
+                    Assert.Catch<InvalidOperationException>(() => deferred.Reject("Different Fail Value"));
                     TestHelper.AddCallbacks<int, string, string>(promiseRetainer.WaitAsync(),
                         onResolve: () => Assert.Fail("Promise was resolved when it should have been rejected."),
                         onReject: failValue =>
@@ -321,8 +299,7 @@ namespace ProtoPromiseTests.APIs
 
                     Assert.AreEqual(expected, rejection);
 
-                    Assert.IsFalse(deferred.TryReject("Different Fail Value"));
-                    Assert.Throws<InvalidOperationException>(() => deferred.Reject("Different Fail Value"));
+                    Assert.Catch<InvalidOperationException>(() => deferred.Reject("Different Fail Value"));
                     TestHelper.AddCallbacks<int, bool, string, string>(promiseRetainer.WaitAsync(),
                         onResolve: v => Assert.Fail("Promise was resolved when it should have been rejected."),
                         onReject: failValue =>

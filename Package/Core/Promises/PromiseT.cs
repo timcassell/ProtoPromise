@@ -59,13 +59,6 @@ namespace Proto.Promises
 #endif // UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
 
         /// <summary>
-        /// Gets whether this instance is valid to be awaited.
-        /// </summary>
-        public bool IsValid
-            // I would prefer to have a null ref only valid if the promise was created from Promise.Resolved, but it's more efficient to allow default values to be valid.
-            => _ref?.GetIsValid(_id) != false;
-
-        /// <summary>
         /// Cast to <see cref="Promise"/>.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]

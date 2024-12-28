@@ -162,7 +162,9 @@ namespace Proto.Promises
         }
         internal static void ValidateArgument(Promise arg, string argName, int skipFrames)
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             if (!arg.IsValid)
+#pragma warning restore CS0618 // Type or member is obsolete
             {
                 throw new InvalidArgumentException(argName,
                     "Promise is invalid. Call `GetRetainer()` if you intend to await multiple times.",
@@ -252,7 +254,9 @@ namespace Proto.Promises
 
         internal static void ValidateOperation(Promise promise, int skipFrames)
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             if (!promise.IsValid)
+#pragma warning restore CS0618 // Type or member is obsolete
             {
                 throw new InvalidOperationException("Promise is invalid." +
                     " Call `GetRetainer()` if you intend to await multiple times.",
@@ -270,7 +274,9 @@ namespace Proto.Promises
 
             private void ValidateAwait(PromiseRefBase other, short promiseId, bool awaited)
             {
+#pragma warning disable CS0618 // Type or member is obsolete
                 if (new Promise(other, promiseId).IsValid == false)
+#pragma warning restore CS0618 // Type or member is obsolete
                 {
                     // Awaiting or returning an invalid from the callback is not allowed.
                     if (awaited)
@@ -492,7 +498,9 @@ namespace Proto.Promises
 
         static partial void ValidateElement(Promise promise, string argName, int skipFrames)
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             if (!promise.IsValid)
+#pragma warning restore CS0618 // Type or member is obsolete
             {
                 throw new InvalidElementException(argName,
                     $"A promise is invalid in {argName}." +
@@ -522,7 +530,9 @@ namespace Proto.Promises
 
         static partial void ValidateElement(Promise<T> promise, string argName, int skipFrames)
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             if (!promise.IsValid)
+#pragma warning restore CS0618 // Type or member is obsolete
             {
                 throw new InvalidElementException(argName,
                     $"A promise is invalid in {argName}." +
