@@ -83,10 +83,6 @@ namespace Proto.Promises
 #endif
         private sealed class LazyPromiseNoProgress : Internal.PromiseRefBase.LazyPromise<T>
         {
-            private AsyncLazy<T> _owner;
-            // TODO: make LazyPromise implement multi await handling directly, instead of allocating a separate object.
-            internal PromiseRetainer<T> _promiseRetainer;
-
             [MethodImpl(Internal.InlineOption)]
             private static LazyPromiseNoProgress GetOrCreate()
             {
@@ -125,7 +121,7 @@ namespace Proto.Promises
                     if (lazyFields.IsStarted)
                     {
                         promiseRetainer = lazyFields._lazyPromise.UnsafeAs<LazyPromiseNoProgress>()._promiseRetainer;
-                        return promiseRetainer.WaitAsyncSkipValidation();
+                        return promiseRetainer.WaitAsyncUnsafe();
                     }
 
                     lazyPromise = GetOrCreate(owner);
@@ -134,7 +130,7 @@ namespace Proto.Promises
                     lazyPromise._promiseRetainer = promiseRetainer = PromiseRetainer<T>.GetOrCreateAndHookup(lazyPromise, lazyPromise.Id);
                     // Exit the lock before invoking the factory.
                 }
-                var promise = promiseRetainer.WaitAsyncSkipValidation();
+                var promise = promiseRetainer.WaitAsyncUnsafe();
                 lazyPromise.Start(lazyFields._factory);
                 return promise;
             }
@@ -190,9 +186,7 @@ namespace Proto.Promises
 #endif
         private sealed class LazyWithProgressPromise : Internal.PromiseRefBase.LazyPromise<T>
         {
-            private AsyncLazy<T> _owner;
-            internal PromiseRetainer<T> _promiseRetainer;
-            internal Internal.ProgressMultiHandler _progressHandler;
+            private Internal.ProgressMultiHandler _progressHandler;
 
             [MethodImpl(Internal.InlineOption)]
             private static LazyWithProgressPromise GetOrCreate()
@@ -235,7 +229,7 @@ namespace Proto.Promises
                         var castedPromise = lazyFields._lazyPromise.UnsafeAs<LazyWithProgressPromise>();
                         castedPromise._progressHandler.Add(progressToken, castedPromise._progressHandler.Id);
                         promiseRetainer = castedPromise._promiseRetainer;
-                        return promiseRetainer.WaitAsyncSkipValidation();
+                        return promiseRetainer.WaitAsyncUnsafe();
                     }
 
                     lazyPromise = GetOrCreate(owner);
@@ -246,7 +240,7 @@ namespace Proto.Promises
                     lazyPromise._promiseRetainer = promiseRetainer = PromiseRetainer<T>.GetOrCreateAndHookup(lazyPromise, lazyPromise.Id);
                     // Exit the lock before invoking the factory.
                 }
-                var promise = promiseRetainer.WaitAsyncSkipValidation();
+                var promise = promiseRetainer.WaitAsyncUnsafe();
                 lazyPromise._progressHandler.Add(progressToken, lazyPromise._progressHandler.Id);
                 lazyPromise.Start(lazyFields._factory, new ProgressToken(lazyPromise._progressHandler, lazyPromise._progressHandler.Id, 0d, 1d));
                 return promise;
@@ -320,6 +314,9 @@ namespace Proto.Promises
 #endif
             internal abstract class LazyPromise<TResult> : PromiseWaitPromise<TResult>
             {
+                protected AsyncLazy<TResult> _owner;
+                protected PromiseRetainer<TResult> _promiseRetainer;
+
                 [MethodImpl(InlineOption)]
                 protected void Start(Func<Promise<TResult>> factory)
                 {

@@ -199,8 +199,9 @@ namespace Proto.Promises
                     return GetWaitAsync(promiseId);
                 }
 
+                // Same as WaitAsync, but skips validation.
                 [MethodImpl(InlineOption)]
-                internal Promise<TResult> WaitAsyncSkipValidation()
+                internal Promise<TResult> WaitAsyncUnsafe()
                 {
 #if PROMISE_DEBUG
                     return WaitAsync(Id);
