@@ -4,8 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0016 // Use 'throw' expression
-
 using Proto.Promises.Collections;
 using System;
 using System.Diagnostics;
@@ -20,11 +18,9 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class PromiseRetainer<TResult> : PromiseRef<TResult>
+            internal abstract partial class RetainedPromiseBase<TResult> : PromiseRef<TResult>
             {
-                private PromiseRetainer() { }
-
-                ~PromiseRetainer()
+                ~RetainedPromiseBase()
                 {
                     if (!WasAwaitedOrForgotten)
                     {
@@ -40,37 +36,62 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                new private void Reset()
+                new protected void Reset()
                 {
                     _retainCounter = 2; // 1 for dispose, 1 for completion.
                     base.Reset();
                 }
 
                 [MethodImpl(InlineOption)]
-                private static PromiseRetainer<TResult> GetOrCreate()
+                protected void ResetForInternalUse()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<PromiseRetainer<TResult>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new PromiseRetainer<TResult>()
-                        : obj.UnsafeAs<PromiseRetainer<TResult>>();
+                    _retainCounter = 1; // 1 for completion/dispose.
+                    _nextBranches = new TempCollectionBuilder<HandleablePromiseBase>(0);
+                    base.Reset();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseRetainer<TResult> GetOrCreateAndHookup(PromiseRefBase previous, short id)
+                protected void Hookup(PromiseRefBase previous, short id)
+                    => previous.HookupNewPromise(id, this);
+
+                [MethodImpl(InlineOption)]
+                protected void ResetAndHookup(PromiseRefBase previous, short id)
                 {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    previous.HookupNewPromise(id, promise);
+                    Reset();
+                    Hookup(previous, id);
                     // We create the temp collection after we hook up in case the operation is invalid.
-                    promise._nextBranches = new TempCollectionBuilder<HandleablePromiseBase>(0);
-                    return promise;
+                    _nextBranches = new TempCollectionBuilder<HandleablePromiseBase>(0);
                 }
 
                 [MethodImpl(InlineOption)]
                 private void Retain()
                     => InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, 1);
 
-                internal override void MaybeDispose()
+                internal void Dispose(short promiseId)
+                {
+                    lock (this)
+                    {
+                        if (promiseId != Id | WasAwaitedOrForgotten)
+                        {
+                            throw new ObjectDisposedException(nameof(Promise.Retainer), "The promise retainer was already disposed.");
+                        }
+                        ThrowIfInPool(this);
+
+                        WasAwaitedOrForgotten = true;
+                    }
+                    MaybeDispose();
+                }
+
+                // Same as Dispose, but skips validation.
+                [MethodImpl(InlineOption)]
+                protected void DisposeUnsafe()
+                {
+                    ThrowIfInPool(this);
+                    WasAwaitedOrForgotten = true;
+                    MaybeDispose();
+                }
+
+                internal sealed override void MaybeDispose()
                 {
                     if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) != 0)
                     {
@@ -87,23 +108,10 @@ namespace Proto.Promises
                     // We handle this directly here because we don't add the PromiseForgetSentinel to this type when it is disposed.
                     MaybeReportUnhandledRejection(State);
                     Dispose();
-                    ObjectPool.MaybeRepool(this);
+                    MaybeRepool();
                 }
 
-                internal void Dispose(short promiseId)
-                {
-                    lock (this)
-                    {
-                        if (promiseId != Id | WasAwaitedOrForgotten)
-                        {
-                            throw new ObjectDisposedException("The promise retainer was already disposed.", GetFormattedStacktrace(2));
-                        }
-                        ThrowIfInPool(this);
-
-                        WasAwaitedOrForgotten = true;
-                    }
-                    MaybeDispose();
-                }
+                protected abstract void MaybeRepool();
 
                 internal override bool GetIsCompleted(short promiseId)
                 {
@@ -172,6 +180,12 @@ namespace Proto.Promises
                     SetCompletionState(state);
                     handler.MaybeDispose();
 
+                    HandleBranches(state);
+                    MaybeDispose();
+                }
+
+                protected void HandleBranches(Promise.State state)
+                {
                     TempCollectionBuilder<HandleablePromiseBase> branches;
                     lock (this)
                     {
@@ -181,7 +195,6 @@ namespace Proto.Promises
                     {
                         branches[i].Handle(this, state);
                     }
-                    MaybeDispose();
                 }
 
                 internal Promise<TResult> WaitAsync(short promiseId)
@@ -190,7 +203,7 @@ namespace Proto.Promises
                     {
                         if (!GetIsValid(promiseId))
                         {
-                            throw new ObjectDisposedException("The promise retainer was already disposed.", GetFormattedStacktrace(2));
+                            throw new ObjectDisposedException(nameof(Promise.Retainer), "The promise retainer was already disposed.");
                         }
                         ThrowIfInPool(this);
 
@@ -203,12 +216,9 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal Promise<TResult> WaitAsyncUnsafe()
                 {
-#if PROMISE_DEBUG
-                    return WaitAsync(Id);
-#else
+                    ThrowIfInPool(this);
                     Retain();
                     return GetWaitAsync(Id);
-#endif
                 }
 
                 [MethodImpl(InlineOption)]
@@ -224,6 +234,34 @@ namespace Proto.Promises
                     return new Promise<TResult>(this, promiseId);
 #endif
                 }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal sealed partial class PromiseRetainer<TResult> : RetainedPromiseBase<TResult>
+            {
+                private PromiseRetainer() { }
+
+                [MethodImpl(InlineOption)]
+                private static PromiseRetainer<TResult> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<PromiseRetainer<TResult>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new PromiseRetainer<TResult>()
+                        : obj.UnsafeAs<PromiseRetainer<TResult>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static PromiseRetainer<TResult> GetOrCreateAndHookup(PromiseRefBase previous, short id)
+                {
+                    var promise = GetOrCreate();
+                    promise.ResetAndHookup(previous, id);
+                    return promise;
+                }
+
+                protected override void MaybeRepool()
+                    => ObjectPool.MaybeRepool(this);
             }
         } // class PromiseRefBase
     } // class Internal

@@ -97,20 +97,16 @@ namespace Proto.Promises
             {
                 var promise = GetOrCreate();
                 promise._owner = owner;
-                promise.Reset();
+                promise.ResetForInternalUse();
                 return promise;
             }
 
-            internal override void MaybeDispose()
-            {
-                Dispose();
-                Internal.ObjectPool.MaybeRepool(this);
-            }
+            protected override void MaybeRepool()
+                => Internal.ObjectPool.MaybeRepool(this);
 
             internal static Promise<T> GetOrStartPromise(AsyncLazy<T> owner, LazyFieldsNoProgress lazyFields)
             {
                 LazyPromiseNoProgress lazyPromise;
-                PromiseRetainer<T> promiseRetainer;
                 lock (lazyFields)
                 {
                     if (lazyFields.IsComplete)
@@ -120,17 +116,14 @@ namespace Proto.Promises
 
                     if (lazyFields.IsStarted)
                     {
-                        promiseRetainer = lazyFields._lazyPromise.UnsafeAs<LazyPromiseNoProgress>()._promiseRetainer;
-                        return promiseRetainer.WaitAsyncUnsafe();
+                        return lazyFields._lazyPromise.WaitAsyncUnsafe();
                     }
 
                     lazyPromise = GetOrCreate(owner);
                     lazyFields._lazyPromise = lazyPromise;
-                    // Same thing as Promise.GetRetainer(), but more direct.
-                    lazyPromise._promiseRetainer = promiseRetainer = PromiseRetainer<T>.GetOrCreateAndHookup(lazyPromise, lazyPromise.Id);
                     // Exit the lock before invoking the factory.
                 }
-                var promise = promiseRetainer.WaitAsyncUnsafe();
+                var promise = lazyPromise.WaitAsyncUnsafe();
                 lazyPromise.Start(lazyFields._factory);
                 return promise;
             }
@@ -147,20 +140,18 @@ namespace Proto.Promises
 
             protected override void OnComplete(Promise.State state)
             {
+                SetCompletionState(state);
                 var lazyFields = _owner._lazyFields;
-                PromiseRetainer<T> promiseRetainer;
                 if (state != Promises.Promise.State.Resolved)
                 {
                     lock (lazyFields)
                     {
                         // Reset the state so that the factory will be ran again the next time the Promise is accessed.
-                        promiseRetainer = _promiseRetainer;
-                        _promiseRetainer = null;
                         lazyFields._lazyPromise = null;
                     }
 
-                    promiseRetainer.Dispose(promiseRetainer.Id);
-                    HandleNextInternal(state);
+                    HandleBranches(state);
+                    DisposeUnsafe();
                     return;
                 }
 
@@ -171,13 +162,11 @@ namespace Proto.Promises
 
                 lock (lazyFields)
                 {
-                    promiseRetainer = _promiseRetainer;
-                    _promiseRetainer = null;
                     lazyFields.UnsafeAs<LazyFieldsNoProgress>()._factory = null;
                 }
 
-                promiseRetainer.Dispose(promiseRetainer.Id);
-                HandleNextInternal(state);
+                HandleBranches(state);
+                DisposeUnsafe();
             }
         } // class LazyPromiseNoProgress
 
@@ -202,20 +191,16 @@ namespace Proto.Promises
             {
                 var promise = GetOrCreate();
                 promise._owner = owner;
-                promise.Reset();
+                promise.ResetForInternalUse();
                 return promise;
             }
 
-            internal override void MaybeDispose()
-            {
-                Dispose();
-                Internal.ObjectPool.MaybeRepool(this);
-            }
+            protected override void MaybeRepool()
+                => Internal.ObjectPool.MaybeRepool(this);
 
             internal static Promise<T> GetOrStartPromise(AsyncLazy<T> owner, LazyFieldsWithProgress lazyFields, ProgressToken progressToken)
             {
                 LazyWithProgressPromise lazyPromise;
-                PromiseRetainer<T> promiseRetainer;
                 lock (lazyFields)
                 {
                     if (lazyFields.IsComplete)
@@ -228,19 +213,16 @@ namespace Proto.Promises
                     {
                         var castedPromise = lazyFields._lazyPromise.UnsafeAs<LazyWithProgressPromise>();
                         castedPromise._progressHandler.Add(progressToken, castedPromise._progressHandler.Id);
-                        promiseRetainer = castedPromise._promiseRetainer;
-                        return promiseRetainer.WaitAsyncUnsafe();
+                        return castedPromise.WaitAsyncUnsafe();
                     }
 
                     lazyPromise = GetOrCreate(owner);
                     lazyFields._lazyPromise = lazyPromise;
                     // Same thing as Progress.NewMultiHandler(), but more direct.
                     lazyPromise._progressHandler = Internal.ProgressMultiHandler.GetOrCreate();
-                    // Same thing as Promise.GetRetainer(), but more direct.
-                    lazyPromise._promiseRetainer = promiseRetainer = PromiseRetainer<T>.GetOrCreateAndHookup(lazyPromise, lazyPromise.Id);
                     // Exit the lock before invoking the factory.
                 }
-                var promise = promiseRetainer.WaitAsyncUnsafe();
+                var promise = lazyPromise.WaitAsyncUnsafe();
                 lazyPromise._progressHandler.Add(progressToken, lazyPromise._progressHandler.Id);
                 lazyPromise.Start(lazyFields._factory, new ProgressToken(lazyPromise._progressHandler, lazyPromise._progressHandler.Id, 0d, 1d));
                 return promise;
@@ -262,24 +244,22 @@ namespace Proto.Promises
 
             protected override void OnComplete(Promise.State state)
             {
+                SetCompletionState(state);
                 var lazyFields = _owner._lazyFields;
-                PromiseRetainer<T> promiseRetainer;
                 Internal.ProgressMultiHandler progressHandler;
                 if (state != Promises.Promise.State.Resolved)
                 {
                     lock (lazyFields)
                     {
                         // Reset the state so that the factory will be ran again the next time GetResultAsync is called.
-                        promiseRetainer = _promiseRetainer;
-                        _promiseRetainer = null;
                         progressHandler = _progressHandler;
                         _progressHandler = null;
                         lazyFields._lazyPromise = null;
                     }
 
                     progressHandler.Dispose(progressHandler.Id);
-                    promiseRetainer.Dispose(promiseRetainer.Id);
-                    HandleNextInternal(state);
+                    HandleBranches(state);
+                    DisposeUnsafe();
                     return;
                 }
 
@@ -290,8 +270,6 @@ namespace Proto.Promises
 
                 lock (lazyFields)
                 {
-                    promiseRetainer = _promiseRetainer;
-                    _promiseRetainer = null;
                     progressHandler = _progressHandler;
                     _progressHandler = null;
                     lazyFields.UnsafeAs<LazyFieldsWithProgress>()._factory = null;
@@ -299,8 +277,8 @@ namespace Proto.Promises
 
                 progressHandler.Report(1d, progressHandler.Id);
                 progressHandler.Dispose(progressHandler.Id);
-                promiseRetainer.Dispose(promiseRetainer.Id);
-                HandleNextInternal(state);
+                HandleBranches(state);
+                DisposeUnsafe();
             }
         } // class LazyWithProgressPromise
     } // class AsyncLazy<T>
@@ -312,10 +290,9 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal abstract class LazyPromise<TResult> : PromiseWaitPromise<TResult>
+            internal abstract class LazyPromise<TResult> : RetainedPromiseBase<TResult>
             {
                 protected AsyncLazy<TResult> _owner;
-                protected PromiseRetainer<TResult> _promiseRetainer;
 
                 [MethodImpl(InlineOption)]
                 protected void Start(Func<Promise<TResult>> factory)
@@ -324,7 +301,16 @@ namespace Proto.Promises
                     try
                     {
                         var promise = factory.Invoke();
-                        WaitFor(promise._ref, promise._result, promise._id, new CompleteHandler(this));
+                        ValidateReturn(promise);
+                        if (promise._ref == null)
+                        {
+                            _result = promise._result;
+                            OnComplete(Promise.State.Resolved);
+                        }
+                        else
+                        {
+                            Hookup(promise._ref, promise._id);
+                        }
                     }
                     catch (OperationCanceledException)
                     {
@@ -345,7 +331,16 @@ namespace Proto.Promises
                     try
                     {
                         var promise = factory.Invoke(progressToken);
-                        WaitFor(promise._ref, promise._result, promise._id, new CompleteHandler(this));
+                        ValidateReturn(promise);
+                        if (promise._ref == null)
+                        {
+                            _result = promise._result;
+                            OnComplete(Promise.State.Resolved);
+                        }
+                        else
+                        {
+                            Hookup(promise._ref, promise._id);
+                        }
                     }
                     catch (OperationCanceledException)
                     {
@@ -360,35 +355,6 @@ namespace Proto.Promises
                 }
 
                 protected abstract void OnComplete(Promise.State state);
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-                [DebuggerNonUserCode, StackTraceHidden]
-#endif
-                private readonly struct CompleteHandler : IWaitForCompleteHandler
-                {
-                    private readonly LazyPromise<TResult> _owner;
-
-                    [MethodImpl(InlineOption)]
-                    internal CompleteHandler(LazyPromise<TResult> owner)
-                    {
-                        _owner = owner;
-                    }
-
-                    [MethodImpl(InlineOption)]
-                    void IWaitForCompleteHandler.HandleHookup(PromiseRefBase handler)
-                    {
-                        var state = handler.State;
-                        _owner._result = handler.GetResult<TResult>();
-                        _owner.RejectContainer = handler.RejectContainer;
-                        _owner.SuppressRejection = true;
-                        handler.MaybeDispose();
-                        _owner.OnComplete(state);
-                    }
-
-                    [MethodImpl(InlineOption)]
-                    void IWaitForCompleteHandler.HandleNull()
-                        => _owner.OnComplete(Promise.State.Resolved);
-                }
             }
         } // class PromiseRefBase
     } // class Internal
