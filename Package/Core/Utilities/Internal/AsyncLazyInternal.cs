@@ -86,10 +86,15 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             private static LazyPromiseNoProgress GetOrCreate()
             {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                // Take from pool for object tracking purposes.
                 var obj = Internal.ObjectPool.TryTakeOrInvalid<LazyPromiseNoProgress>();
                 return obj == InvalidAwaitSentinel.s_instance
                     ? new LazyPromiseNoProgress()
                     : obj.UnsafeAs<LazyPromiseNoProgress>();
+#else
+                return new LazyPromiseNoProgress();
+#endif
             }
 
             [MethodImpl(Internal.InlineOption)]
@@ -102,7 +107,9 @@ namespace Proto.Promises
             }
 
             protected override void MaybeRepool()
-                => Internal.ObjectPool.MaybeRepool(this);
+                // AsyncLazy resources are GC'd after the result is obtained, so it makes less sense to pool the promise object.
+                // We discard instead of returning to the object pool.
+                => Internal.Discard(this);
 
             internal static Promise<T> GetOrStartPromise(AsyncLazy<T> owner, LazyFieldsNoProgress lazyFields)
             {
@@ -180,10 +187,15 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             private static LazyWithProgressPromise GetOrCreate()
             {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                // Take from pool for object tracking purposes.
                 var obj = Internal.ObjectPool.TryTakeOrInvalid<LazyWithProgressPromise>();
                 return obj == InvalidAwaitSentinel.s_instance
                     ? new LazyWithProgressPromise()
                     : obj.UnsafeAs<LazyWithProgressPromise>();
+#else
+                return new LazyWithProgressPromise();
+#endif
             }
 
             [MethodImpl(Internal.InlineOption)]
@@ -196,7 +208,9 @@ namespace Proto.Promises
             }
 
             protected override void MaybeRepool()
-                => Internal.ObjectPool.MaybeRepool(this);
+                // AsyncLazy resources are GC'd after the result is obtained, so it makes less sense to pool the promise object.
+                // We discard instead of returning to the object pool.
+                => Internal.Discard(this);
 
             internal static Promise<T> GetOrStartPromise(AsyncLazy<T> owner, LazyFieldsWithProgress lazyFields, ProgressToken progressToken)
             {
