@@ -195,7 +195,7 @@ namespace Proto.Promises
                     return;
                 }
 
-                s_instance.ResetProcessors();
+                ResetProcessors();
                 s_instance.ResetConfig();
                 s_instance = null;
             }
