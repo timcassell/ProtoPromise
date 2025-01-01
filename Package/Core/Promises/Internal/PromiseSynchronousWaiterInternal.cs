@@ -18,6 +18,12 @@ namespace Proto.Promises
 #endif
         internal sealed partial class PromiseSynchronousWaiter : HandleablePromiseBase
         {
+            private const int InitialState = 0;
+            private const int WaitingState = 1;
+            private const int CompletedState = 2;
+            private const int WaitedSuccessState = 3;
+            private const int WaitedFailedState = 4;
+
             private PromiseSynchronousWaiter() { }
 
             [MethodImpl(InlineOption)]

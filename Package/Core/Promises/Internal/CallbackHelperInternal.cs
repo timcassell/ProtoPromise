@@ -281,7 +281,7 @@ namespace Proto.Promises
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = PromiseDuplicateCancel<TResult>.GetOrCreate();
+                        var p = WaitAsyncWithCancelationPromise<TResult>.GetOrCreate();
                         promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
                     }
                     else
@@ -787,7 +787,7 @@ namespace Proto.Promises
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = PromiseDuplicateCancel<VoidResult>.GetOrCreate();
+                        var p = WaitAsyncWithCancelationPromise<VoidResult>.GetOrCreate();
                         promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
                     }
                     else

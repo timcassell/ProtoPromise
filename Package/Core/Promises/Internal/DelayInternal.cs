@@ -21,30 +21,6 @@ namespace Proto.Promises
 #endif
             internal sealed partial class DelayPromise : PromiseSingleAwait<VoidResult>
             {
-                // Use ITimerSource and int directly instead of the Timer struct
-                // so that the fields can be packed efficiently without extra padding.
-                private ITimerSource _timerSource;
-                private int _timerToken;
-                // The timer callback can be invoked before the fields are actually assigned,
-                // so we use an Interlocked counter to ensure it is disposed properly.
-                private int _timerUseCounter;
-
-                private void MaybeDisposeTimer()
-                {
-                    ThrowIfInPool(this);
-                    if (InterlockedAddWithUnsignedOverflowCheck(ref _timerUseCounter, -1) == 0)
-                    {
-                        _timerSource.DisposeAsync(_timerToken).Forget();
-                    }
-                }
-
-                internal override void MaybeDispose()
-                {
-                    Dispose();
-                    _timerSource = null;
-                    ObjectPool.MaybeRepool(this);
-                }
-
                 [MethodImpl(InlineOption)]
                 private static DelayPromise GetFromPoolOrCreate()
                 {
@@ -73,6 +49,22 @@ namespace Proto.Promises
                     return promise;
                 }
 
+                private void MaybeDisposeTimer()
+                {
+                    ThrowIfInPool(this);
+                    if (InterlockedAddWithUnsignedOverflowCheck(ref _timerUseCounter, -1) == 0)
+                    {
+                        _timerSource.DisposeAsync(_timerToken).Forget();
+                    }
+                }
+
+                internal override void MaybeDispose()
+                {
+                    Dispose();
+                    _timerSource = null;
+                    ObjectPool.MaybeRepool(this);
+                }
+
                 private void OnTimerCallback()
                 {
                     MaybeDisposeTimer();
@@ -85,30 +77,6 @@ namespace Proto.Promises
 #endif
             internal sealed partial class DelayWithCancelationPromise : PromiseSingleAwait<VoidResult>, ICancelable
             {
-                private Timers.Timer _timer;
-                // The timer and cancelation callbacks can race on different threads,
-                // and can be invoked before the fields are actually assigned;
-                // we use CancelationHelper to make sure they are used and disposed properly.
-                private CancelationHelper _cancelationHelper;
-
-                private void MaybeDisposeFields()
-                {
-                    ThrowIfInPool(this);
-                    if (_cancelationHelper.TryRelease())
-                    {
-                        _cancelationHelper.UnregisterAndWait();
-                        _timer.DisposeAsync().Forget();
-                    }
-                }
-
-                internal override void MaybeDispose()
-                {
-                    Dispose();
-                    _cancelationHelper = default;
-                    _timer = default;
-                    ObjectPool.MaybeRepool(this);
-                }
-
                 [MethodImpl(InlineOption)]
                 private static DelayWithCancelationPromise GetFromPoolOrCreate()
                 {
@@ -136,6 +104,24 @@ namespace Proto.Promises
                     // and only dispose when it is completely released.
                     promise.MaybeDisposeFields();
                     return promise;
+                }
+
+                private void MaybeDisposeFields()
+                {
+                    ThrowIfInPool(this);
+                    if (_cancelationHelper.TryRelease())
+                    {
+                        _cancelationHelper.UnregisterAndWait();
+                        _timer.DisposeAsync().Forget();
+                    }
+                }
+
+                internal override void MaybeDispose()
+                {
+                    Dispose();
+                    _cancelationHelper = default;
+                    _timer = default;
+                    ObjectPool.MaybeRepool(this);
                 }
 
                 private void OnTimerCallback()
