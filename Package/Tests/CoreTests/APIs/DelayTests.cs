@@ -12,6 +12,59 @@ using System.Threading;
 
 namespace ProtoPromiseTests.APIs
 {
+    public enum TimerFactoryType
+    {
+#if !UNITY_WEBGL
+        System = 0,
+#endif
+        FakeDelayed = 1,
+        FakeImmediate = 2
+    }
+
+    public abstract class FakeTimerFactory : TimerFactory
+    {
+        internal virtual void Invoke() { }
+    }
+
+    public class FakeDelayedTimerFactory : FakeTimerFactory, ITimerSource
+    {
+        private TimerCallback _callback;
+        private object _state;
+
+        public override Proto.Timers.Timer CreateTimer(TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
+        {
+            _callback = callback;
+            _state = state;
+            return new Proto.Timers.Timer(this, 0);
+        }
+
+        void ITimerSource.Change(TimeSpan dueTime, TimeSpan period, int token) { }
+
+        Promise ITimerSource.DisposeAsync(int token)
+        {
+            _callback = null;
+            _state = null;
+            return Promise.Resolved();
+        }
+
+        internal override void Invoke()
+            => _callback?.Invoke(_state);
+    }
+
+    public class FakeImmediateTimerFactory : FakeTimerFactory, ITimerSource
+    {
+        public override Proto.Timers.Timer CreateTimer(TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
+        {
+            callback.Invoke(state);
+            return new Proto.Timers.Timer(this, 0);
+        }
+
+        void ITimerSource.Change(TimeSpan dueTime, TimeSpan period, int token) { }
+
+        Promise ITimerSource.DisposeAsync(int token)
+            => Promise.Resolved();
+    }
+
     public class DelayTests
     {
         [SetUp]
@@ -24,79 +77,6 @@ namespace ProtoPromiseTests.APIs
         public void Teardown()
         {
             TestHelper.Cleanup();
-        }
-
-        public enum TimerFactoryType
-        {
-#if !UNITY_WEBGL
-            System = 0,
-#endif
-            FakeDelayed = 1,
-            FakeImmediate = 2
-        }
-
-        private abstract class FakeTimerFactory : TimerFactory
-        {
-            internal virtual void Invoke() { }
-        }
-
-        private class FakeDelayedTimerFactory : FakeTimerFactory
-        {
-            private class FakeTimerSource : ITimerSource
-            {
-                internal static FakeTimerSource s_instance = new FakeTimerSource();
-
-                private TimerCallback _callback;
-                private object _state;
-
-                internal static FakeTimerSource Create(TimerCallback callback, object state)
-                {
-                    s_instance._callback = callback;
-                    s_instance._state = state;
-                    return s_instance;
-                }
-
-                void ITimerSource.Change(TimeSpan dueTime, TimeSpan period, int token) { }
-                
-                Promise ITimerSource.DisposeAsync(int token)
-                {
-                    _callback = null;
-                    _state = null;
-                    return Promise.Resolved();
-                }
-
-                internal void Invoke()
-                    => _callback?.Invoke(_state);
-            }
-
-            public override Proto.Timers.Timer CreateTimer(TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
-            {
-                var fakeTimer = FakeTimerSource.Create(callback, state);
-                return new Proto.Timers.Timer(fakeTimer, 0);
-            }
-
-            internal override void Invoke()
-                => FakeTimerSource.s_instance.Invoke();
-        }
-
-        private class FakeImmediateTimerFactory : FakeTimerFactory
-        {
-            private class FakeTimerSource : ITimerSource
-            {
-                internal static FakeTimerSource s_instance = new FakeTimerSource();
-
-                void ITimerSource.Change(TimeSpan dueTime, TimeSpan period, int token) { }
-
-                Promise ITimerSource.DisposeAsync(int token)
-                    => Promise.Resolved();
-            }
-
-            public override Proto.Timers.Timer CreateTimer(TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
-            {
-                callback.Invoke(state);
-                var fakeTimer = FakeTimerSource.s_instance;
-                return new Proto.Timers.Timer(fakeTimer, 0);
-            }
         }
 
         [Test]

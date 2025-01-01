@@ -96,68 +96,6 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class PromiseDuplicateCancel<TResult> : PromiseSingleAwait<TResult>, ICancelable
-            {
-                private PromiseDuplicateCancel() { }
-
-                internal override void MaybeDispose()
-                {
-                    if (_cancelationHelper.TryRelease())
-                    {
-                        Dispose();
-                        _cancelationHelper = default;
-                        ObjectPool.MaybeRepool(this);
-                    }
-                }
-
-                [MethodImpl(InlineOption)]
-                private static PromiseDuplicateCancel<TResult> GetOrCreateInstance()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<PromiseDuplicateCancel<TResult>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new PromiseDuplicateCancel<TResult>()
-                        : obj.UnsafeAs<PromiseDuplicateCancel<TResult>>();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static PromiseDuplicateCancel<TResult> GetOrCreate()
-                {
-                    var promise = GetOrCreateInstance();
-                    promise.Reset();
-                    promise._cancelationHelper.Reset();
-                    return promise;
-                }
-
-                internal override void Handle(PromiseRefBase handler, Promise.State state)
-                {
-                    ThrowIfInPool(this);
-                    handler.SetCompletionState(state);
-                    if (_cancelationHelper.TrySetCompleted())
-                    {
-                        _cancelationHelper.UnregisterAndWait();
-                        _cancelationHelper.ReleaseOne();
-                        HandleSelf(handler, state);
-                    }
-                    else
-                    {
-                        MaybeDispose();
-                        handler.MaybeReportUnhandledAndDispose(state);
-                    }
-                }
-
-                void ICancelable.Cancel()
-                {
-                    ThrowIfInPool(this);
-                    if (_cancelationHelper.TrySetCompleted())
-                    {
-                        HandleNextInternal(Promise.State.Canceled);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
             private sealed partial class CancelablePromiseContinue<TResult, TContinuer> : PromiseSingleAwait<TResult>, ICancelable
                 where TContinuer : IDelegateContinue
             {
