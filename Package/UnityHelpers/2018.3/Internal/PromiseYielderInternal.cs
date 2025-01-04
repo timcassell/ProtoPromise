@@ -81,13 +81,6 @@ namespace Proto.Promises
                 SetTimeValues();
             }
 
-            private void Init()
-            {
-                StartCoroutine(UpdateRoutine());
-                StartCoroutine(FixedUpdateRoutine());
-                StartCoroutine(EndOfFrameRoutine());
-            }
-
             private static void ResetProcessors()
             {
                 s_waitOneFrameProcessor.Clear();
@@ -96,6 +89,13 @@ namespace Proto.Promises
                 s_fixedUpdateProcessor.Clear();
                 s_endOfFrameProcessor.Clear();
                 s_genericProcessor.ResetProcessors();
+            }
+
+            private void StartCoroutines()
+            {
+                StartCoroutine(UpdateRoutine());
+                StartCoroutine(FixedUpdateRoutine());
+                StartCoroutine(EndOfFrameRoutine());
             }
 
             private IEnumerator UpdateRoutine()
