@@ -5,6 +5,7 @@
 #endif
 
 #pragma warning disable IDE0074 // Use compound assignment
+#pragma warning disable IDE0290 // Use primary constructor
 
 using System;
 using System.Collections.Generic;
@@ -174,7 +175,7 @@ namespace Proto.Promises
             => dict.TryGetValue(key, out value) && dict.Remove(key);
 #endif
 
-        internal static MaybemaybeJoinedCancelationSource MaybeJoinCancelationTokens(CancelationToken first, CancelationToken second, out CancelationToken maybeJoinedToken)
+        internal static MaybeJoinedCancelationSource MaybeJoinCancelationTokens(CancelationToken first, CancelationToken second, out CancelationToken maybeJoinedToken)
         {
             if (first == second | !first.CanBeCanceled)
             {
@@ -193,15 +194,18 @@ namespace Proto.Promises
             }
             var source = CancelationSource.New(first, second);
             maybeJoinedToken = source.Token;
-            return new MaybemaybeJoinedCancelationSource(source);
+            return new MaybeJoinedCancelationSource(source);
         }
 
-        internal readonly struct MaybemaybeJoinedCancelationSource: IDisposable
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal readonly struct MaybeJoinedCancelationSource: IDisposable
         {
             private readonly CancelationSource _source;
 
             [MethodImpl(InlineOption)]
-            public MaybemaybeJoinedCancelationSource(CancelationSource source)
+            public MaybeJoinedCancelationSource(CancelationSource source)
             {
                 _source = source;
             }
@@ -276,6 +280,9 @@ namespace Proto.Promises
         internal static WrappedAsyncFlowControl SuppressExecutionContextFlow()
             => ExecutionContext.IsFlowSuppressed() ? default : new WrappedAsyncFlowControl(ExecutionContext.SuppressFlow());
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal readonly struct WrappedAsyncFlowControl : IDisposable
         {
             private readonly AsyncFlowControl _asyncFlowControl;
