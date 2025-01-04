@@ -66,7 +66,7 @@ namespace Proto.Promises
             internal static SingleInstructionProcessor s_endOfFrameProcessor = new SingleInstructionProcessor(4);
 
             // Generic processor for instructions that need to be called every frame potentially multiple times.
-            internal InstructionProcessorGroup _updateProcessor = new InstructionProcessorGroup(16);
+            internal static InstructionProcessorGroup s_genericProcessor = new InstructionProcessorGroup(16);
 
             private static void SetTimeValues()
             {
@@ -88,14 +88,14 @@ namespace Proto.Promises
                 StartCoroutine(EndOfFrameRoutine());
             }
 
-            private void ResetProcessors()
+            private static void ResetProcessors()
             {
                 s_waitOneFrameProcessor.Clear();
                 s_updateProcessor.Clear();
                 s_lateUpdateProcessor.Clear();
                 s_fixedUpdateProcessor.Clear();
                 s_endOfFrameProcessor.Clear();
-                _updateProcessor.ResetProcessors();
+                s_genericProcessor.ResetProcessors();
             }
 
             private IEnumerator UpdateRoutine()
@@ -105,7 +105,7 @@ namespace Proto.Promises
                     yield return null;
                     SetTimeValues();
                     s_waitOneFrameProcessor.Process();
-                    _updateProcessor.Process();
+                    s_genericProcessor.Process();
                 }
             }
 

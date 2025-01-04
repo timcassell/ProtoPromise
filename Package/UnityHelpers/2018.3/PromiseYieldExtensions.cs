@@ -136,7 +136,7 @@ namespace Proto.Promises
                 InternalHelper.ValidateIsOnMainThread(1);
                 var copy = this;
                 copy._continuation = continuation;
-                InternalHelper.PromiseBehaviour.Instance._updateProcessor.WaitFor(copy);
+                InternalHelper.PromiseBehaviour.s_genericProcessor.WaitFor(copy);
             }
 
             /// <summary>
