@@ -17,19 +17,22 @@ namespace Proto.Promises
 #endif
     internal static partial class InternalHelper
     {
-        // AppDomain reload could be disabled in editor, so we need to explicitly reset static fields.
-        // See https://github.com/timcassell/ProtoPromise/issues/204
-        // https://docs.unity3d.com/Manual/DomainReloading.html
-        [RuntimeInitializeOnLoadMethod((RuntimeInitializeLoadType) 4)] // SubsystemRegistration
-        internal static void ResetStaticState()
-            => PromiseBehaviour.ResetStaticState();
+        // SubsystemRegistration was added in 2019.2, but it still runs on older Unity versions in a different order.
+        // To initialize as early as possible, we simply use all of the RuntimeInitializeLoadTypes, and all calls after the first will be ignored.
+        [RuntimeInitializeOnLoadMethod((RuntimeInitializeLoadType) 4)]
+        internal static void InitSubsystemRegistration()
+            => PromiseBehaviour.Initialize();
 
-        // We initialize the config as early as possible. Ideally we would just do this in static constructors of Promise(<T>) and Promise.Config,
-        // but since this is in a separate assembly, that's not possible.
-        // Also, using static constructors would slightly slow down promises in IL2CPP where it would have to check if it already ran on every call.
-        // We can't use SubsystemRegistration or AfterAssembliesLoaded which run before BeforeSceneLoad, because it forcibly destroys the MonoBehaviour.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-        internal static void InitializePromiseConfig()
+        internal static void InitBeforeSceneLoad()
+            => PromiseBehaviour.Initialize();
+
+        [RuntimeInitializeOnLoadMethod((RuntimeInitializeLoadType) 2)]
+        internal static void InitAfterAssembliesLoaded()
+            => PromiseBehaviour.Initialize();
+
+        [RuntimeInitializeOnLoadMethod((RuntimeInitializeLoadType) 3)]
+        internal static void InitBeforeSplashScreen()
             => PromiseBehaviour.Initialize();
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -51,19 +54,44 @@ namespace Proto.Promises
             private SynchronizationContext _oldContext;
             private bool _isApplicationQuitting = false;
 
-            internal static void Initialize()
+            private static void MaybeResetStaticState()
             {
-                // Create a PromiseBehaviour instance before any promise actions are made.
-                // Unity will throw if this is not ran on the main thread.
-                new GameObject("Proto.Promises.Unity.PromiseBehaviour")
-                    .AddComponent<PromiseBehaviour>()
-                    .InitializeConfig();
-
-                StaticInit();
+                // Check if the singleton instance is true null.
+                // If it's not, it means the editor is running with AppDomain reload disabled, so we need to reset static fields.
+                // #204 https://docs.unity3d.com/Manual/DomainReloading.html
+                if (s_instance is null)
+                {
+                    return;
+                }
+                ResetProcessors();
+                s_instance.ResetConfig();
             }
 
-            private void InitializeConfig()
+            internal static void Initialize()
             {
+                // Check if the singleton instance is alive.
+                if (s_instance != null)
+                {
+                    return;
+                }
+
+                MaybeResetStaticState();
+
+                // Create a PromiseBehaviour instance and initialize it.
+                // Unity will throw if this is not ran on the main thread.
+                new GameObject("Proto.Promises.UnityHelpers.PromiseBehaviour")
+                    .AddComponent<PromiseBehaviour>()
+                    .Init();
+            }
+
+            private void Init()
+            {
+                s_instance = this;
+                DontDestroyOnLoad(gameObject);
+                gameObject.hideFlags = HideFlags.HideAndDontSave; // Don't show in hierarchy and don't destroy.
+
+                StaticInit();
+
                 // Even though we try to initialize this as early as possible, it is possible for other code to run before this.
                 // So we need to be careful to not overwrite non-default values.
 
@@ -93,28 +121,23 @@ namespace Proto.Promises
                 }
             }
 
-            private void Start()
+            private void ResetConfig()
             {
-                if (s_instance != null)
+                if (Promise.Config.ForegroundContext == _syncContext)
                 {
-                    UnityEngine.Debug.LogWarning("There can only be one instance of PromiseBehaviour. Destroying new instance.");
-                    Destroy(this);
-                    return;
+                    Promise.Config.ForegroundContext = null;
                 }
-                DontDestroyOnLoad(gameObject);
-                gameObject.hideFlags = HideFlags.HideAndDontSave; // Don't show in hierarchy and don't destroy.
-                s_instance = this;
-                Init();
-            }
-
-            // This should never be called except when the application is shutting down.
-            // Users would have to go out of their way to find and destroy the PromiseBehaviour instance.
-            private void OnDestroy()
-            {
-                if (!_isApplicationQuitting & s_instance == this)
+                if (Promise.Config.UncaughtRejectionHandler == HandleRejection)
                 {
-                    UnityEngine.Debug.LogError("PromiseBehaviour destroyed! Removing PromiseSynchronizationContext from Promise.Config.ForegroundContext. PromiseYielder functions will stop working.");
-                    ResetStaticState();
+                    Promise.Config.UncaughtRejectionHandler = null;
+                }
+                if (Promise.Manager.ThreadStaticSynchronizationContext == _syncContext)
+                {
+                    Promise.Manager.ThreadStaticSynchronizationContext = null;
+                }
+                if (SynchronizationContext.Current == _syncContext)
+                {
+                    SynchronizationContext.SetSynchronizationContext(_oldContext);
                 }
             }
 
@@ -126,6 +149,17 @@ namespace Proto.Promises
                 {
                     _unhandledExceptions.Enqueue(exception);
                 }
+            }
+
+            private void Start()
+            {
+                if (s_instance != this)
+                {
+                    UnityEngine.Debug.LogWarning("There can only be one instance of PromiseBehaviour. Destroying new instance.");
+                    Destroy(this);
+                    return;
+                }
+                StartCoroutines();
             }
 
             private void Update()
@@ -179,36 +213,15 @@ namespace Proto.Promises
                 }
             }
 
-            private void ResetConfig()
+            // This should never be called except when the application is shutting down.
+            // Users would have to go out of their way to find and destroy the PromiseBehaviour instance.
+            private void OnDestroy()
             {
-                if (Promise.Config.ForegroundContext == _syncContext)
+                if (!_isApplicationQuitting & s_instance == this)
                 {
-                    Promise.Config.ForegroundContext = null;
+                    UnityEngine.Debug.LogError("PromiseBehaviour destroyed! Removing PromiseSynchronizationContext from Promise.Config.ForegroundContext. PromiseYielder functions will stop working.");
+                    ResetConfig();
                 }
-                if (Promise.Config.UncaughtRejectionHandler == HandleRejection)
-                {
-                    Promise.Config.UncaughtRejectionHandler = null;
-                }
-                if (Promise.Manager.ThreadStaticSynchronizationContext == _syncContext)
-                {
-                    Promise.Manager.ThreadStaticSynchronizationContext = null;
-                }
-                if (SynchronizationContext.Current == _syncContext)
-                {
-                    SynchronizationContext.SetSynchronizationContext(_oldContext);
-                }
-            }
-
-            internal static void ResetStaticState()
-            {
-                if (s_instance is null)
-                {
-                    return;
-                }
-
-                ResetProcessors();
-                s_instance.ResetConfig();
-                s_instance = null;
             }
         }
     }
