@@ -480,7 +480,7 @@ namespace Proto.Promises
         /// <returns>A <see cref="Promise"/> that represents the time delay.</returns>
         /// <exception cref="ArgumentNullException">The <paramref name="timerFactory"/> argument is <see langword="null"/>.</exception>
         /// <remarks>
-        /// The returned <see cref="Promise"/> may be resolved on a background thread. If you need to ensure
+        /// The returned <see cref="Promise"/> may be completed on a background thread. If you need to ensure
         /// the continuation executes on a particular context, append <see cref="ConfigureAwait(ContinuationOptions)"/>.
         /// </remarks>
         public static Promise Delay(TimeSpan delay, TimerFactory timerFactory)
@@ -502,9 +502,9 @@ namespace Proto.Promises
         /// <returns>A <see cref="Promise"/> that represents the time delay.</returns>
         /// <remarks>
         /// If the <paramref name="cancelationToken"/> is canceled before the specified time delay,
-        /// the returned <see cref="Promise"/> will be canceled. Otherwise, the <see cref="Promise"/> wil be resolved.
+        /// the returned <see cref="Promise"/> will be canceled. Otherwise, the <see cref="Promise"/> will be resolved.
         /// <para/>
-        /// The returned <see cref="Promise"/> may be resolved on a background thread. If you need to ensure
+        /// The returned <see cref="Promise"/> may be completed on a background thread. If you need to ensure
         /// the continuation executes on a particular context, append <see cref="ConfigureAwait(ContinuationOptions)"/>.
         /// </remarks>
         public static Promise Delay(TimeSpan delay, CancelationToken cancelationToken)
@@ -520,9 +520,9 @@ namespace Proto.Promises
         /// <exception cref="ArgumentNullException">The <paramref name="timerFactory"/> argument is <see langword="null"/>.</exception>
         /// <remarks>
         /// If the <paramref name="cancelationToken"/> is canceled before the specified time delay,
-        /// the returned <see cref="Promise"/> will be canceled. Otherwise, the <see cref="Promise"/> wil be resolved.
+        /// the returned <see cref="Promise"/> will be canceled. Otherwise, the <see cref="Promise"/> will be resolved.
         /// <para/>
-        /// The returned <see cref="Promise"/> may be resolved on a background thread. If you need to ensure
+        /// The returned <see cref="Promise"/> may be completed on a background thread. If you need to ensure
         /// the continuation executes on a particular context, append <see cref="ConfigureAwait(ContinuationOptions)"/>.
         /// </remarks>
         public static Promise Delay(TimeSpan delay, TimerFactory timerFactory, CancelationToken cancelationToken)

@@ -6,9 +6,11 @@
 
 #pragma warning disable IDE0074 // Use compound assignment
 
+using Proto.Timers;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Proto.Promises
 {
@@ -272,23 +274,61 @@ namespace Proto.Promises
 
                 internal static Promise<TResult> WaitAsync(Promise<TResult> _this, CancelationToken cancelationToken)
                 {
-                    if (_this._ref == null)
+                    if (cancelationToken.IsCancelationRequested)
                     {
-                        return cancelationToken.IsCancelationRequested
-                            ? Promise<TResult>.Canceled()
-                            : _this;
+                        return Canceled(_this._ref, _this._id);
                     }
-                    PromiseRef<TResult> promise;
-                    if (cancelationToken.CanBeCanceled)
+                    if (_this._ref?.State != Promise.State.Pending || !cancelationToken.CanBeCanceled)
                     {
-                        var p = PromiseDuplicateCancel<TResult>.GetOrCreate();
-                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
+                        return Duplicate(_this);
                     }
-                    else
-                    {
-                        promise = _this._ref.GetDuplicateT(_this._id);
-                    }
+                    var promise = WaitAsyncWithCancelationPromise<TResult>.GetOrCreate();
+                    _this._ref.HookupCancelablePromise(promise, _this._id, cancelationToken, ref promise._cancelationHelper);
                     return new Promise<TResult>(promise, promise.Id, _this._result);
+                }
+
+                internal static Promise<TResult> WaitAsync(Promise<TResult> _this, TimeSpan timeout, TimerFactory timerFactory)
+                {
+                    if (_this._ref?.State != Promise.State.Pending || timeout == Timeout.InfiniteTimeSpan)
+                    {
+                        return Duplicate(_this);
+                    }
+                    if (timeout == TimeSpan.Zero)
+                    {
+                        _this._ref?.MaybeMarkAwaitedAndDispose(_this._id);
+                        return Promise<TResult>.Rejected(new TimeoutException());
+                    }
+                    var promise = WaitAsyncWithTimeoutPromise<TResult>.GetOrCreate(timeout, timerFactory);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise<TResult>(promise, promise.Id);
+                }
+
+                internal static Promise<TResult> WaitAsync(Promise<TResult> _this, TimeSpan timeout, TimerFactory timerFactory, CancelationToken cancelationToken)
+                {
+                    if (!cancelationToken.CanBeCanceled)
+                    {
+                        return WaitAsync(_this, timeout, timerFactory);
+                    }
+                    if (timeout == Timeout.InfiniteTimeSpan)
+                    {
+                        return WaitAsync(_this, cancelationToken);
+                    }
+
+                    if (cancelationToken.IsCancelationRequested)
+                    {
+                        return Canceled(_this._ref, _this._id);
+                    }
+                    if (_this._ref?.State != Promise.State.Pending)
+                    {
+                        return Duplicate(_this);
+                    }
+                    if (timeout == TimeSpan.Zero)
+                    {
+                        _this._ref?.MaybeMarkAwaitedAndDispose(_this._id);
+                        return Promise<TResult>.Rejected(new TimeoutException());
+                    }
+                    var promise = WaitAsyncWithTimeoutAndCancelationPromise<TResult>.GetOrCreateAndHookup(_this._ref, _this._id, timeout, timerFactory, cancelationToken);
+                    return new Promise<TResult>(promise, promise.Id);
                 }
 
                 internal static Promise<TResult> ConfigureContinuation(Promise<TResult> _this, ContinuationOptions continuationOptions)
@@ -778,22 +818,60 @@ namespace Proto.Promises
 
                 internal static Promise WaitAsync(Promise _this, CancelationToken cancelationToken)
                 {
-                    if (_this._ref == null)
+                    if (cancelationToken.IsCancelationRequested)
                     {
-                        return cancelationToken.IsCancelationRequested
-                            ? Promise.Canceled()
-                            : _this;
+                        return Canceled(_this._ref, _this._id);
                     }
-                    PromiseRefBase promise;
-                    if (cancelationToken.CanBeCanceled)
+                    if (_this._ref?.State != Promise.State.Pending || !cancelationToken.CanBeCanceled)
                     {
-                        var p = PromiseDuplicateCancel<VoidResult>.GetOrCreate();
-                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
+                        return Duplicate(_this);
                     }
-                    else
+                    var promise = WaitAsyncWithCancelationPromise<VoidResult>.GetOrCreate();
+                    _this._ref.HookupCancelablePromise(promise, _this._id, cancelationToken, ref promise._cancelationHelper);
+                    return new Promise(promise, promise.Id);
+                }
+
+                internal static Promise WaitAsync(Promise _this, TimeSpan timeout, TimerFactory timerFactory)
+                {
+                    if (_this._ref?.State != Promise.State.Pending || timeout == Timeout.InfiniteTimeSpan)
                     {
-                        promise = _this._ref.GetDuplicate(_this._id);
+                        return Duplicate(_this);
                     }
+                    if (timeout == TimeSpan.Zero)
+                    {
+                        _this._ref?.MaybeMarkAwaitedAndDispose(_this._id);
+                        return Promise.Rejected(new TimeoutException());
+                    }
+                    var promise = WaitAsyncWithTimeoutPromise<VoidResult>.GetOrCreate(timeout, timerFactory);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise(promise, promise.Id);
+                }
+
+                internal static Promise WaitAsync(Promise _this, TimeSpan timeout, TimerFactory timerFactory, CancelationToken cancelationToken)
+                {
+                    if (!cancelationToken.CanBeCanceled)
+                    {
+                        return WaitAsync(_this, timeout, timerFactory);
+                    }
+                    if (timeout == Timeout.InfiniteTimeSpan)
+                    {
+                        return WaitAsync(_this, cancelationToken);
+                    }
+
+                    if (cancelationToken.IsCancelationRequested)
+                    {
+                        return Canceled(_this._ref, _this._id);
+                    }
+                    if (_this._ref?.State != Promise.State.Pending)
+                    {
+                        return Duplicate(_this);
+                    }
+                    if (timeout == TimeSpan.Zero)
+                    {
+                        _this._ref?.MaybeMarkAwaitedAndDispose(_this._id);
+                        return Promise.Rejected(new TimeoutException());
+                    }
+                    var promise = WaitAsyncWithTimeoutAndCancelationPromise<VoidResult>.GetOrCreateAndHookup(_this._ref, _this._id, timeout, timerFactory, cancelationToken);
                     return new Promise(promise, promise.Id);
                 }
 

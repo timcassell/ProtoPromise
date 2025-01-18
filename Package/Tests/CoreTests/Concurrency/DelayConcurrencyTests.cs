@@ -16,6 +16,40 @@ using System.Threading;
 
 namespace ProtoPromiseTests.Concurrency
 {
+    internal class FakeConcurrentTimerFactory : TimerFactory
+    {
+        private class FakeTimerSource : ITimerSource
+        {
+            private readonly Promise.Deferred deferred = Promise.NewDeferred();
+            private TimerCallback _callback;
+            private object _state;
+
+            public FakeTimerSource(TimerCallback callback, object state)
+            {
+                _callback = callback;
+                _state = state;
+            }
+
+            void ITimerSource.Change(TimeSpan dueTime, TimeSpan period, int token) { }
+
+            Promise ITimerSource.DisposeAsync(int token)
+                => deferred.Promise;
+
+            internal void Invoke()
+            {
+                _callback.Invoke(_state);
+                deferred.Resolve();
+            }
+        }
+
+        public override Proto.Timers.Timer CreateTimer(TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
+        {
+            var fakeTimer = new FakeTimerSource(callback, state);
+            TestHelper._backgroundContext.Post(obj => obj.UnsafeAs<FakeTimerSource>().Invoke(), fakeTimer);
+            return new Proto.Timers.Timer(fakeTimer, 0);
+        }
+    }
+
     public class DelayConcurrencyTests
     {
         [SetUp]
@@ -30,42 +64,8 @@ namespace ProtoPromiseTests.Concurrency
             TestHelper.Cleanup();
         }
 
-        private class FakeTimerFactory : TimerFactory
-        {
-            private class FakeTimerSource : ITimerSource
-            {
-                private readonly Promise.Deferred deferred = Promise.NewDeferred();
-                private TimerCallback _callback;
-                private object _state;
-
-                public FakeTimerSource(TimerCallback callback, object state)
-                {
-                    _callback = callback;
-                    _state = state;
-                }
-
-                void ITimerSource.Change(TimeSpan dueTime, TimeSpan period, int token) { }
-
-                Promise ITimerSource.DisposeAsync(int token)
-                    => deferred.Promise;
-
-                internal void Invoke()
-                {
-                    _callback.Invoke(_state);
-                    deferred.Resolve();
-                }
-            }
-
-            public override Proto.Timers.Timer CreateTimer(TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
-            {
-                var fakeTimer = new FakeTimerSource(callback, state);
-                TestHelper._backgroundContext.Post(obj => obj.UnsafeAs<FakeTimerSource>().Invoke(), fakeTimer);
-                return new Proto.Timers.Timer(fakeTimer, 0);
-            }
-        }
-
         [Test]
-        public void PromiseDelay()
+        public void PromiseDelay_Concurrent()
         {
             var bag = new ConcurrentBag<Promise>();
             // 1 thread for call to Promise.Delay, 1 thread for timer callback.
@@ -87,10 +87,10 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test]
-        public void PromiseDelay_WithFakeTimerFactory()
+        public void PromiseDelay_WithFakeTimerFactory_Concurrent()
         {
             var bag = new ConcurrentBag<Promise>();
-            var fakeTimerFactory = new FakeTimerFactory();
+            var fakeTimerFactory = new FakeConcurrentTimerFactory();
             // 1 thread for call to Promise.Delay, 1 thread for timer callback.
             int concurrencyFactor = Environment.ProcessorCount / 2;
             var delayCalls = Enumerable.Repeat<Action>(() => bag.Add(Promise.Delay(TimeSpan.FromMilliseconds(1), fakeTimerFactory)), concurrencyFactor);
@@ -110,7 +110,7 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test]
-        public void PromiseDelay_WithCancelationToken()
+        public void PromiseDelay_WithCancelationToken_Concurrent()
         {
             var bag = new ConcurrentBag<Promise>();
             // 1 thread for call to Promise.Delay, 1 thread for timer callback, 1 thread for cancelation.
@@ -157,10 +157,10 @@ namespace ProtoPromiseTests.Concurrency
         }
 
         [Test]
-        public void PromiseDelay_WithTimerFactoryAndCancelationToken()
+        public void PromiseDelay_WithTimerFactoryAndCancelationToken_Concurrent()
         {
             var bag = new ConcurrentBag<Promise>();
-            var fakeTimerFactory = new FakeTimerFactory();
+            var fakeTimerFactory = new FakeConcurrentTimerFactory();
             // 1 thread for call to Promise.Delay, 1 thread for timer callback, 1 thread for cancelation.
             int concurrencyFactor = Environment.ProcessorCount / 3;
             var cancelationSources = new CancelationSource[concurrencyFactor];

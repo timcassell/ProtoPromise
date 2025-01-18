@@ -317,7 +317,7 @@ namespace Proto.Promises
         {
             // Some objects could be used on a ThreadPool thread that we can't control, like Promise.Delay using system timer.
             // Wait a bit of time for it to settle before asserting.
-            System.Threading.SpinWait.SpinUntil(() => s_inUseObjects.Count == 0, TimeSpan.FromSeconds(Environment.ProcessorCount));
+            System.Threading.SpinWait.SpinUntil(() => s_inUseObjects.Count == 0, TimeSpan.FromSeconds(1));
             lock (s_pooledObjects)
             {
                 if (s_inUseObjects.Count > 0)

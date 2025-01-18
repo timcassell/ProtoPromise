@@ -7,6 +7,7 @@
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 using Proto.Promises.CompilerServices;
+using Proto.Timers;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -155,11 +156,60 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a new <see cref="Promise{T}"/> that inherits the state of this, or will be canceled if/when the <paramref name="cancelationToken"/> is canceled before this is complete.
         /// </summary>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> to monitor for a cancelation request.</param>
         [MethodImpl(Internal.InlineOption)]
         public Promise<T> WaitAsync(CancelationToken cancelationToken)
         {
             ValidateOperation(1);
             return Internal.PromiseRefBase.CallbackHelperResult<T>.WaitAsync(this, cancelationToken);
+        }
+
+        /// <summary>
+        /// Returns a new <see cref="Promise{T}"/> that inherits the state of this, or will be rejected with a <see cref="TimeoutException"/>
+        /// if/when the <paramref name="timeout"/> has elapsed before this is complete.
+        /// </summary>
+        /// <param name="timeout">The timeout after which the returned <see cref="Promise{T}"/> should be rejected with a <see cref="TimeoutException"/> if it hasn't otherwise completed.</param>
+        [MethodImpl(Internal.InlineOption)]
+        public Promise<T> WaitAsync(TimeSpan timeout)
+            => WaitAsync(timeout, TimerFactory.System);
+
+        /// <summary>
+        /// Returns a new <see cref="Promise{T}"/> that inherits the state of this, or will be rejected with a <see cref="TimeoutException"/>
+        /// if/when the <paramref name="timeout"/> has elapsed, or will be canceled if/when the <paramref name="cancelationToken"/> is canceled, before this is complete.
+        /// </summary>
+        /// <param name="timeout">The timeout after which the returned <see cref="Promise{T}"/> should be rejected with a <see cref="TimeoutException"/> if it hasn't otherwise completed.</param>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> to monitor for a cancelation request.</param>
+        [MethodImpl(Internal.InlineOption)]
+        public Promise<T> WaitAsync(TimeSpan timeout, CancelationToken cancelationToken)
+            => WaitAsync(timeout, TimerFactory.System, cancelationToken);
+
+        /// <summary>
+        /// Returns a new <see cref="Promise{T}"/> that inherits the state of this, or will be rejected with a <see cref="TimeoutException"/>
+        /// if/when the <paramref name="timeout"/> has elapsed before this is complete.
+        /// </summary>
+        /// <param name="timeout">The timeout after which the returned <see cref="Promise{T}"/> should be rejected with a <see cref="TimeoutException"/> if it hasn't otherwise completed.</param>
+        /// <param name="timerFactory">The <see cref="TimerFactory"/> with which to interpet <paramref name="timeout"/>.</param>
+        [MethodImpl(Internal.InlineOption)]
+        public Promise<T> WaitAsync(TimeSpan timeout, TimerFactory timerFactory)
+        {
+            ValidateOperation(1);
+            ValidateArgument(timerFactory, nameof(timerFactory), 1);
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.WaitAsync(this, timeout, timerFactory);
+        }
+
+        /// <summary>
+        /// Returns a new <see cref="Promise{T}"/> that inherits the state of this, or will be rejected with a <see cref="TimeoutException"/>
+        /// if/when the <paramref name="timeout"/> has elapsed, or will be canceled if/when the <paramref name="cancelationToken"/> is canceled, before this is complete.
+        /// </summary>
+        /// <param name="timeout">The timeout after which the returned <see cref="Promise{T}"/> should be rejected with a <see cref="TimeoutException"/> if it hasn't otherwise completed.</param>
+        /// <param name="timerFactory">The <see cref="TimerFactory"/> with which to interpet <paramref name="timeout"/>.</param>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> to monitor for a cancelation request.</param>
+        [MethodImpl(Internal.InlineOption)]
+        public Promise<T> WaitAsync(TimeSpan timeout, TimerFactory timerFactory, CancelationToken cancelationToken)
+        {
+            ValidateOperation(1);
+            ValidateArgument(timerFactory, nameof(timerFactory), 1);
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.WaitAsync(this, timeout, timerFactory, cancelationToken);
         }
 
         /// <summary>
