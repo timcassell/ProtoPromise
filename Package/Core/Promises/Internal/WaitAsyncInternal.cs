@@ -88,7 +88,6 @@ namespace Proto.Promises
                 internal const int Initial = 0;
                 internal const int Waiting = 1;
                 internal const int Completed = 2;
-
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
