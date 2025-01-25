@@ -205,7 +205,7 @@ namespace Proto.Promises
 
                     try
                     {
-                        if (timerDisposePromise._ref == null || timerDisposePromise._ref.State != Promise.State.Pending)
+                        if (timerDisposePromise._ref?.State != Promise.State.Pending)
                         {
                             timerDisposePromise._ref?.MaybeMarkAwaitedAndDispose(timerDisposePromise._id);
                             // Same as MaybeDispose, but without an extra branch, since we know this isn't done yet.
@@ -379,7 +379,7 @@ namespace Proto.Promises
 
                     try
                     {
-                        if (timerDisposePromise._ref == null || timerDisposePromise._ref.State != Promise.State.Pending)
+                        if (timerDisposePromise._ref?.State != Promise.State.Pending)
                         {
                             timerDisposePromise._ref?.MaybeMarkAwaitedAndDispose(timerDisposePromise._id);
                             // Same as MaybeDispose, but without an extra branch, since we know this isn't done yet.

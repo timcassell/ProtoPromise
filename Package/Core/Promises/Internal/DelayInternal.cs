@@ -148,7 +148,7 @@ namespace Proto.Promises
 
                     // The _timer field is assigned before the cancelation registration is hooked up, so we know it's valid here.
                     var timerDisposePromise = _timer.DisposeAsync();
-                    if (timerDisposePromise._ref == null || timerDisposePromise._ref.State != Promise.State.Pending)
+                    if (timerDisposePromise._ref?.State != Promise.State.Pending)
                     {
                         timerDisposePromise._ref?.MaybeMarkAwaitedAndDispose(timerDisposePromise._id);
                         HandleNextInternal(Promise.State.Canceled);
