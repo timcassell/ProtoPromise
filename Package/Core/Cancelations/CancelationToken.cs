@@ -253,7 +253,7 @@ namespace Proto.Promises
         /// </summary>
         /// <returns>A <see cref="System.Threading.CancellationToken"/> that will be canceled when this is canceled.</returns>
         public System.Threading.CancellationToken ToCancellationToken()
-            => Internal.CancelationRef.GetCancellationToken(_ref, _id);
+            => _ref?.GetCancellationToken(_id) ?? default;
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="CancelationToken"/>.</summary>
         public bool Equals(CancelationToken other)

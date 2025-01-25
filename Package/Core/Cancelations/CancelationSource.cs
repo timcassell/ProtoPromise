@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Timers;
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -25,13 +26,6 @@ namespace Proto.Promises
         private readonly int _sourceId;
         private readonly int _tokenId;
 
-        /// <summary>
-        /// Create a new <see cref="CancelationSource"/>.
-        /// <para/>Note: the new <see cref="CancelationSource"/> must be disposed when you are finished with it.
-        /// </summary>
-        public static CancelationSource New()
-            => new CancelationSource(Internal.CancelationRef.GetOrCreate());
-
         private CancelationSource(Internal.CancelationRef cancelationRef)
         {
             _ref = cancelationRef;
@@ -40,66 +34,202 @@ namespace Proto.Promises
         }
 
         /// <summary>
-        /// Create a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when the given token is canceled, whichever is first.
-        /// <para/>Note: the new <see cref="CancelationSource"/> still must be disposed when you are finished with it.
+        /// Create a new <see cref="CancelationSource"/>.
+        /// <para/>Note: the new <see cref="CancelationSource"/> must be disposed when you are finished with it.
+        /// </summary>
+        /// <returns>A new <see cref="CancelationSource"/>.</returns>
+        public static CancelationSource New()
+            => new CancelationSource(Internal.CancelationRef.GetOrCreate());
+
+        /// <summary>
+        /// Create a new <see cref="CancelationSource"/> that will be canceled after the specified <paramref name="delay"/>.
+        /// <para/>Note: the new <see cref="CancelationSource"/> must be disposed when you are finished with it.
+        /// </summary>
+        /// <param name="delay">The time interval to wait before canceling the <see cref="CancelationSource"/>.</param>
+        /// <returns>A new <see cref="CancelationSource"/>.</returns>
+        public static CancelationSource New(TimeSpan delay)
+            => New(delay, Promise.Config.DefaultTimerFactory);
+
+        /// <summary>
+        /// Create a new <see cref="CancelationSource"/> that will be canceled after the specified <paramref name="delay"/>.
+        /// <para/>Note: the new <see cref="CancelationSource"/> must be disposed when you are finished with it.
+        /// </summary>
+        /// <param name="delay">The time interval to wait before canceling the <see cref="CancelationSource"/>.</param>
+        /// <param name="timerFactory">The <see cref="TimerFactory"/> with which to interpret <paramref name="delay"/>.</param>
+        /// <returns>A new <see cref="CancelationSource"/>.</returns>
+        public static CancelationSource New(TimeSpan delay, TimerFactory timerFactory)
+            => new CancelationSource(Internal.CancelationRef.GetOrCreate(delay, timerFactory));
+
+        /// <summary>
+        /// Create a new <see cref="CancelationSource"/> that will be canceled when the given token is canceled.
+        /// <para/>Note: the new <see cref="CancelationSource"/> must be disposed when you are finished with it.
         /// </summary>
         /// <param name="token">The cancelation token to observe.</param>
         /// <returns>A new <see cref="CancelationSource"/> that is linked to the source token.</returns>
         public static CancelationSource New(CancelationToken token)
         {
-            CancelationSource newCancelationSource = New();
-            newCancelationSource._ref.MaybeLinkToken(token);
-            return newCancelationSource;
+            var source = New();
+            source._ref.MaybeLinkToken(token);
+            return source;
         }
 
         /// <summary>
-        /// Create a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when any of the given tokens are canceled, whichever is first.
-        /// <para/>Note: the new <see cref="CancelationSource"/> still must be disposed when you are finished with it.
+        /// Create a new <see cref="CancelationSource"/> that will be canceled when the given token is canceled or after the specified <paramref name="delay"/>.
+        /// <para/>Note: the new <see cref="CancelationSource"/> must be disposed when you are finished with it.
+        /// </summary>
+        /// <param name="delay">The time interval to wait before canceling the <see cref="CancelationSource"/>.</param>
+        /// <param name="token">The cancelation token to observe.</param>
+        /// <returns>A new <see cref="CancelationSource"/> that is linked to the source token.</returns>
+        public static CancelationSource New(TimeSpan delay, CancelationToken token)
+            => New(delay, Promise.Config.DefaultTimerFactory, token);
+
+        /// <summary>
+        /// Create a new <see cref="CancelationSource"/> that will be canceled after the specified <paramref name="delay"/> or when the given token is canceled.
+        /// <para/>Note: the new <see cref="CancelationSource"/> must be disposed when you are finished with it.
+        /// </summary>
+        /// <param name="delay">The time interval to wait before canceling the <see cref="CancelationSource"/>.</param>
+        /// <param name="timerFactory">The <see cref="TimerFactory"/> with which to interpret <paramref name="delay"/>.</param>
+        /// <param name="token">The cancelation token to observe.</param>
+        /// <returns>A new <see cref="CancelationSource"/> that is linked to the source token.</returns>
+        public static CancelationSource New(TimeSpan delay, TimerFactory timerFactory, CancelationToken token)
+        {
+            var source = New(delay, timerFactory);
+            source._ref.MaybeLinkToken(token);
+            return source;
+        }
+
+        /// <summary>
+        /// Create a new <see cref="CancelationSource"/> that will be canceled when any of the given tokens are canceled.
+        /// <para/>Note: the new <see cref="CancelationSource"/> must be disposed when you are finished with it.
         /// </summary>
         /// <param name="token1">The first cancelation token to observe.</param>
         /// <param name="token2">The second cancelation token to observe.</param>
-        /// <returns>A new <see cref="CancelationSource"/> that is linked to the source token.</returns>
+        /// <returns>A new <see cref="CancelationSource"/> that is linked to the source tokens.</returns>
         public static CancelationSource New(CancelationToken token1, CancelationToken token2)
         {
-            CancelationSource newCancelationSource = New();
-            newCancelationSource._ref.MaybeLinkToken(token1);
-            newCancelationSource._ref.MaybeLinkToken(token2);
-            return newCancelationSource;
+            var source = New();
+            source._ref.MaybeLinkToken(token1);
+            source._ref.MaybeLinkToken(token2);
+            return source;
         }
 
         /// <summary>
-        /// Create a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when any of the given tokens are canceled, whichever is first.
-        /// <para/>Note: the new <see cref="CancelationSource"/> still must be disposed when you are finished with it.
+        /// Create a new <see cref="CancelationSource"/> that will be canceled after the specified <paramref name="delay"/> or when any of the given tokens are canceled.
+        /// <para/>Note: the new <see cref="CancelationSource"/> must be disposed when you are finished with it.
+        /// </summary>
+        /// <param name="delay">The time interval to wait before canceling the <see cref="CancelationSource"/>.</param>
+        /// <param name="token1">The first cancelation token to observe.</param>
+        /// <param name="token2">The second cancelation token to observe.</param>
+        /// <returns>A new <see cref="CancelationSource"/> that is linked to the source tokens.</returns>
+        public static CancelationSource New(TimeSpan delay, CancelationToken token1, CancelationToken token2)
+            => New(delay, Promise.Config.DefaultTimerFactory, token1, token2);
+
+        /// <summary>
+        /// Create a new <see cref="CancelationSource"/> that will be canceled after the specified <paramref name="delay"/> or when any of the given tokens are canceled.
+        /// <para/>Note: the new <see cref="CancelationSource"/> must be disposed when you are finished with it.
+        /// </summary>
+        /// <param name="delay">The time interval to wait before canceling the <see cref="CancelationSource"/>.</param>
+        /// <param name="timerFactory">The <see cref="TimerFactory"/> with which to interpret <paramref name="delay"/>.</param>
+        /// <param name="token1">The first cancelation token to observe.</param>
+        /// <param name="token2">The second cancelation token to observe.</param>
+        /// <returns>A new <see cref="CancelationSource"/> that is linked to the source tokens.</returns>
+        public static CancelationSource New(TimeSpan delay, TimerFactory timerFactory, CancelationToken token1, CancelationToken token2)
+        {
+            var source = New(delay, timerFactory);
+            source._ref.MaybeLinkToken(token1);
+            source._ref.MaybeLinkToken(token2);
+            return source;
+        }
+
+        /// <summary>
+        /// Create a new <see cref="CancelationSource"/> that will be canceled when any of the given tokens are canceled.
+        /// <para/>Note: the new <see cref="CancelationSource"/> must be disposed when you are finished with it.
         /// </summary>
         /// <param name="tokens">An array that contains the cancelation token instances to observe.</param>
-        /// <returns>A new <see cref="CancelationSource"/> that is linked to the source token.</returns>
+        /// <returns>A new <see cref="CancelationSource"/> that is linked to the source tokens.</returns>
         public static CancelationSource New(params CancelationToken[] tokens)
         {
-            CancelationSource newCancelationSource = New();
+            var source = New();
             for (int i = 0, max = tokens.Length; i < max; ++i)
             {
-                newCancelationSource._ref.MaybeLinkToken(tokens[i]);
+                source._ref.MaybeLinkToken(tokens[i]);
             }
-            return newCancelationSource;
+            return source;
+        }
+
+        /// <summary>
+        /// Create a new <see cref="CancelationSource"/> that will be canceled after the specified <paramref name="delay"/> or when any of the given tokens are canceled.
+        /// <para/>Note: the new <see cref="CancelationSource"/> must be disposed when you are finished with it.
+        /// </summary>
+        /// <param name="delay">The time interval to wait before canceling the <see cref="CancelationSource"/>.</param>
+        /// <param name="tokens">An array that contains the cancelation token instances to observe.</param>
+        /// <returns>A new <see cref="CancelationSource"/> that is linked to the source tokens.</returns>
+        public static CancelationSource New(TimeSpan delay, params CancelationToken[] tokens)
+            => New(delay, Promise.Config.DefaultTimerFactory, tokens);
+
+        /// <summary>
+        /// Create a new <see cref="CancelationSource"/> that will be canceled after the specified <paramref name="delay"/> or when any of the given tokens are canceled.
+        /// <para/>Note: the new <see cref="CancelationSource"/> must be disposed when you are finished with it.
+        /// </summary>
+        /// <param name="delay">The time interval to wait before canceling the <see cref="CancelationSource"/>.</param>
+        /// <param name="timerFactory">The <see cref="TimerFactory"/> with which to interpret <paramref name="delay"/>.</param>
+        /// <param name="tokens">An array that contains the cancelation token instances to observe.</param>
+        /// <returns>A new <see cref="CancelationSource"/> that is linked to the source tokens.</returns>
+        public static CancelationSource New(TimeSpan delay, TimerFactory timerFactory, params CancelationToken[] tokens)
+        {
+            var source = New(delay, timerFactory);
+            for (int i = 0, max = tokens.Length; i < max; ++i)
+            {
+                source._ref.MaybeLinkToken(tokens[i]);
+            }
+            return source;
         }
 
         // ReadOnlySpan<T> is not available in Unity netstandard2.0, and we can't include nuget package dependencies in Unity packages,
         // so we only include this in the nuget package and netstandard2.1+.
 #if !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
         /// <summary>
-        /// Create a new <see cref="CancelationSource"/> that will be canceled either when you cancel it, or when any of the given tokens are canceled, whichever is first.
-        /// <para/>Note: the new <see cref="CancelationSource"/> still must be disposed when you are finished with it.
+        /// Create a new <see cref="CancelationSource"/> that will be canceled when any of the given tokens are canceled.
+        /// <para/>Note: the new <see cref="CancelationSource"/> must be disposed when you are finished with it.
         /// </summary>
         /// <param name="tokens">A <see cref="ReadOnlySpan{T}"/> that contains the cancelation token instances to observe.</param>
-        /// <returns>A new <see cref="CancelationSource"/> that is linked to the source token.</returns>
+        /// <returns>A new <see cref="CancelationSource"/> that is linked to the source tokens.</returns>
         public static CancelationSource New(ReadOnlySpan<CancelationToken> tokens)
         {
-            CancelationSource newCancelationSource = New();
+            var source = New();
             for (int i = 0, max = tokens.Length; i < max; ++i)
             {
-                newCancelationSource._ref.MaybeLinkToken(tokens[i]);
+                source._ref.MaybeLinkToken(tokens[i]);
             }
-            return newCancelationSource;
+            return source;
+        }
+
+        /// <summary>
+        /// Create a new <see cref="CancelationSource"/> that will be canceled after the specified <paramref name="delay"/> or when any of the given tokens are canceled.
+        /// <para/>Note: the new <see cref="CancelationSource"/> must be disposed when you are finished with it.
+        /// </summary>
+        /// <param name="delay">The time interval to wait before canceling the <see cref="CancelationSource"/>.</param>
+        /// <param name="tokens">A <see cref="ReadOnlySpan{T}"/> that contains the cancelation token instances to observe.</param>
+        /// <returns>A new <see cref="CancelationSource"/> that is linked to the source tokens.</returns>
+        public static CancelationSource New(TimeSpan delay, ReadOnlySpan<CancelationToken> tokens)
+            => New(delay, Promise.Config.DefaultTimerFactory, tokens);
+
+        /// <summary>
+        /// Create a new <see cref="CancelationSource"/> that will be canceled after the specified <paramref name="delay"/> or when any of the given tokens are canceled.
+        /// <para/>Note: the new <see cref="CancelationSource"/> must be disposed when you are finished with it.
+        /// </summary>
+        /// <param name="delay">The time interval to wait before canceling the <see cref="CancelationSource"/>.</param>
+        /// <param name="timerFactory">The <see cref="TimerFactory"/> with which to interpret <paramref name="delay"/>.</param>
+        /// <param name="tokens">A <see cref="ReadOnlySpan{T}"/> that contains the cancelation token instances to observe.</param>
+        /// <returns>A new <see cref="CancelationSource"/> that is linked to the source tokens.</returns>
+        public static CancelationSource New(TimeSpan delay, TimerFactory timerFactory, ReadOnlySpan<CancelationToken> tokens)
+        {
+            var source = New(delay, timerFactory);
+            for (int i = 0, max = tokens.Length; i < max; ++i)
+            {
+                source._ref.MaybeLinkToken(tokens[i]);
+            }
+            return source;
         }
 #endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
 
@@ -144,6 +274,15 @@ namespace Proto.Promises
         /// <exception cref="NullReferenceException">This is a default value.</exception>
         public void Cancel()
             => _ref.Cancel(_sourceId);
+
+        /// <summary>
+        /// Schedules a cancel operation on this <see cref="CancelationSource"/>.
+        /// </summary>
+        /// <param name="delay">The time interval to wait before canceling this <see cref="CancelationSource"/>.</param>
+        /// <exception cref="ObjectDisposedException">This was disposed.</exception>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
+        public void CancelAfter(TimeSpan delay)
+            => _ref.CancelAfter(delay, _sourceId);
 
         /// <summary>
         /// Try to release all resources used by this <see cref="CancelationSource"/>. This instance will no longer be valid.
