@@ -1084,7 +1084,7 @@ namespace ProtoPromiseTests.Concurrency
             var cancelationRegistration2 = default(CancelationRegistration);
 
             // Can't use ExecuteParallelActionsWithOffsets since 3^23 would take forever.
-            new ThreadHelper().ExecuteParallelActions(ThreadHelper.multiExecutionCount,
+            new ThreadHelper().ExecuteParallelActions(100,
                  // Setup
                  () =>
                  {
