@@ -171,7 +171,7 @@ namespace Proto.Promises
         /// <param name="timeout">The timeout after which the returned <see cref="Promise{T}"/> should be rejected with a <see cref="TimeoutException"/> if it hasn't otherwise completed.</param>
         [MethodImpl(Internal.InlineOption)]
         public Promise<T> WaitAsync(TimeSpan timeout)
-            => WaitAsync(timeout, TimerFactory.System);
+            => WaitAsync(timeout, Promise.Config.DefaultTimerFactory);
 
         /// <summary>
         /// Returns a new <see cref="Promise{T}"/> that inherits the state of this, or will be rejected with a <see cref="TimeoutException"/>
@@ -181,7 +181,7 @@ namespace Proto.Promises
         /// <param name="cancelationToken">The <see cref="CancelationToken"/> to monitor for a cancelation request.</param>
         [MethodImpl(Internal.InlineOption)]
         public Promise<T> WaitAsync(TimeSpan timeout, CancelationToken cancelationToken)
-            => WaitAsync(timeout, TimerFactory.System, cancelationToken);
+            => WaitAsync(timeout, Promise.Config.DefaultTimerFactory, cancelationToken);
 
         /// <summary>
         /// Returns a new <see cref="Promise{T}"/> that inherits the state of this, or will be rejected with a <see cref="TimeoutException"/>
