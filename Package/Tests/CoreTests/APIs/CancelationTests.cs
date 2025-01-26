@@ -9,6 +9,7 @@
 
 using NUnit.Framework;
 using Proto.Promises;
+using Proto.Timers;
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -37,6 +38,7 @@ namespace ProtoPromiseTests.APIs
                 CancelationSource cancelationSource = new CancelationSource();
                 Assert.Catch<NullReferenceException>(() => cancelationSource.Cancel());
                 Assert.Catch<NullReferenceException>(() => cancelationSource.Dispose());
+                Assert.Catch<NullReferenceException>(() => cancelationSource.CancelAfter(Timeout.InfiniteTimeSpan));
             }
 
             [Test]
@@ -46,12 +48,14 @@ namespace ProtoPromiseTests.APIs
                 cancelationSource.Dispose();
                 Assert.Catch<ObjectDisposedException>(() => cancelationSource.Cancel());
                 Assert.Catch<ObjectDisposedException>(() => cancelationSource.Dispose());
+                Assert.Catch<ObjectDisposedException>(() => cancelationSource.CancelAfter(Timeout.InfiniteTimeSpan));
             }
 
             [Test]
             public void CancelationSourceNewIsValid()
             {
                 CancelationSource cancelationSource = CancelationSource.New();
+                cancelationSource.CancelAfter(Timeout.InfiniteTimeSpan);
                 cancelationSource.Dispose();
             }
 
@@ -60,6 +64,7 @@ namespace ProtoPromiseTests.APIs
             {
                 CancelationSource cancelationSource = CancelationSource.New();
                 cancelationSource.Cancel();
+                cancelationSource.CancelAfter(Timeout.InfiniteTimeSpan);
                 cancelationSource.Dispose();
             }
 
@@ -689,6 +694,276 @@ namespace ProtoPromiseTests.APIs
                 CancelationSource cancelationSource2 = CancelationSource.New(cancelationSource1.Token, cancelationSource1.Token);
                 cancelationSource2.Dispose();
                 cancelationSource1.Dispose();
+            }
+
+#if !UNITY_WEBGL
+            [Test]
+            public void CancelationSourceIsCanceledAfterDelay(
+                [Values(-1, 0, 1)] int initMilliseconds,
+                [Values(-1, 0, 1)] int afterMilliseconds)
+            {
+                if (initMilliseconds < 0 && afterMilliseconds < 0)
+                {
+                    Assert.Ignore();
+                }
+
+                var cancelationSource = CancelationSource.New(TimeSpan.FromMilliseconds(initMilliseconds));
+                if (afterMilliseconds >= 0)
+                {
+                    cancelationSource.CancelAfter(TimeSpan.FromMilliseconds(afterMilliseconds));
+                }
+                Assert.True(SpinWait.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1)));
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void CancelationSourceIsCanceledAfterDelay_LinkedToken(
+                [Values(-1, 0, 1)] int initMilliseconds,
+                [Values(-1, 0, 1)] int afterMilliseconds,
+                [Values] CancelationType linkedCancelType)
+            {
+                if (initMilliseconds < 0 && afterMilliseconds < 0)
+                {
+                    Assert.Ignore();
+                }
+
+                var linkedCancelationSource = CancelationSource.New();
+                var linkedCancelationToken = linkedCancelType == CancelationType.None ? CancelationToken.None
+                    : linkedCancelType == CancelationType.Immediate ? CancelationToken.Canceled()
+                    : linkedCancelationSource.Token;
+                var cancelationSource = CancelationSource.New(TimeSpan.FromMilliseconds(initMilliseconds), linkedCancelationToken);
+                if (afterMilliseconds >= 0)
+                {
+                    cancelationSource.CancelAfter(TimeSpan.FromMilliseconds(afterMilliseconds));
+                }
+                Thread.Sleep(2);
+                linkedCancelationSource.Cancel();
+                Assert.True(SpinWait.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1)));
+                cancelationSource.Dispose();
+                linkedCancelationSource.Dispose();
+            }
+
+            [Test]
+            public void CancelationSourceIsCanceledAfterDelay_LinkedTokens2(
+                [Values(-1, 0, 1)] int initMilliseconds,
+                [Values(-1, 0, 1)] int afterMilliseconds,
+                [Values] CancelationType linkedCancelType1,
+                [Values] CancelationType linkedCancelType2)
+            {
+                if (initMilliseconds < 0 && afterMilliseconds < 0)
+                {
+                    Assert.Ignore();
+                }
+
+                var linkedCancelationSource1 = CancelationSource.New();
+                var linkedCancelationSource2 = CancelationSource.New();
+                var linkedCancelationToken1 = linkedCancelType1 == CancelationType.None ? CancelationToken.None
+                    : linkedCancelType1 == CancelationType.Immediate ? CancelationToken.Canceled()
+                    : linkedCancelationSource1.Token;
+                var linkedCancelationToken2 = linkedCancelType2 == CancelationType.None ? CancelationToken.None
+                    : linkedCancelType2 == CancelationType.Immediate ? CancelationToken.Canceled()
+                    : linkedCancelationSource1.Token;
+                var cancelationSource = CancelationSource.New(TimeSpan.FromMilliseconds(initMilliseconds), linkedCancelationToken1, linkedCancelationToken2);
+                if (afterMilliseconds >= 0)
+                {
+                    cancelationSource.CancelAfter(TimeSpan.FromMilliseconds(afterMilliseconds));
+                }
+                Thread.Sleep(2);
+                linkedCancelationSource1.Cancel();
+                linkedCancelationSource2.Cancel();
+                Assert.True(SpinWait.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1)));
+                cancelationSource.Dispose();
+                linkedCancelationSource1.Dispose();
+                linkedCancelationSource2.Dispose();
+            }
+
+            [Test]
+            public void CancelationSourceIsCanceledAfterDelay_LinkedTokens3(
+                [Values(-1, 0, 1)] int initMilliseconds,
+                [Values(-1, 0, 1)] int afterMilliseconds,
+                [Values] CancelationType linkedCancelType1,
+                [Values] CancelationType linkedCancelType2,
+                [Values] CancelationType linkedCancelType3)
+            {
+                if (initMilliseconds < 0 && afterMilliseconds < 0)
+                {
+                    Assert.Ignore();
+                }
+
+                var linkedCancelationSource1 = CancelationSource.New();
+                var linkedCancelationSource2 = CancelationSource.New();
+                var linkedCancelationSource3 = CancelationSource.New();
+                var linkedCancelationToken1 = linkedCancelType1 == CancelationType.None ? CancelationToken.None
+                    : linkedCancelType1 == CancelationType.Immediate ? CancelationToken.Canceled()
+                    : linkedCancelationSource1.Token;
+                var linkedCancelationToken2 = linkedCancelType2 == CancelationType.None ? CancelationToken.None
+                    : linkedCancelType2 == CancelationType.Immediate ? CancelationToken.Canceled()
+                    : linkedCancelationSource1.Token;
+                var linkedCancelationToken3 = linkedCancelType3 == CancelationType.None ? CancelationToken.None
+                    : linkedCancelType3 == CancelationType.Immediate ? CancelationToken.Canceled()
+                    : linkedCancelationSource1.Token;
+                var cancelationSource = CancelationSource.New(TimeSpan.FromMilliseconds(initMilliseconds), linkedCancelationToken1, linkedCancelationToken2, linkedCancelationToken3);
+                if (afterMilliseconds >= 0)
+                {
+                    cancelationSource.CancelAfter(TimeSpan.FromMilliseconds(afterMilliseconds));
+                }
+                Thread.Sleep(2);
+                linkedCancelationSource1.Cancel();
+                linkedCancelationSource2.Cancel();
+                linkedCancelationSource3.Cancel();
+                Assert.True(SpinWait.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1)));
+                cancelationSource.Dispose();
+                linkedCancelationSource1.Dispose();
+                linkedCancelationSource2.Dispose();
+                linkedCancelationSource3.Dispose();
+            }
+#endif
+
+            [Test]
+            public void CancelationSourceIsCanceledAfterDelay_TimerFactory(
+                [Values(-1, 0, 1)] int initMilliseconds,
+                [Values(-1, 0, 1)] int afterMilliseconds,
+                [Values] TimerFactoryType timerFactoryType)
+            {
+                if (initMilliseconds < 0 && afterMilliseconds < 0)
+                {
+                    Assert.Ignore();
+                }
+
+                FakeTimerFactory fakeFactory = timerFactoryType == TimerFactoryType.FakeDelayed
+                    ? new FakeDelayedTimerFactory()
+                    : (FakeTimerFactory) new FakeImmediateTimerFactory();
+                var cancelationSource = CancelationSource.New(TimeSpan.FromMilliseconds(initMilliseconds), timerFactoryType == 0 ? TimerFactory.System : fakeFactory);
+                if (afterMilliseconds >= 0)
+                {
+                    cancelationSource.CancelAfter(TimeSpan.FromMilliseconds(afterMilliseconds));
+                }
+                fakeFactory.Invoke();
+                Assert.True(SpinWait.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1)));
+                cancelationSource.Dispose();
+            }
+
+            [Test]
+            public void CancelationSourceIsCanceledAfterDelay_TimerFactory_LinkedToken(
+                [Values(-1, 0, 1)] int initMilliseconds,
+                [Values(-1, 0, 1)] int afterMilliseconds,
+                [Values] TimerFactoryType timerFactoryType,
+                [Values] CancelationType linkedCancelType)
+            {
+                if (initMilliseconds < 0 && afterMilliseconds < 0)
+                {
+                    Assert.Ignore();
+                }
+
+                FakeTimerFactory fakeFactory = timerFactoryType == TimerFactoryType.FakeDelayed
+                    ? new FakeDelayedTimerFactory()
+                    : (FakeTimerFactory) new FakeImmediateTimerFactory();
+                var linkedCancelationSource = CancelationSource.New();
+                var linkedCancelationToken = linkedCancelType == CancelationType.None ? CancelationToken.None
+                    : linkedCancelType == CancelationType.Immediate ? CancelationToken.Canceled()
+                    : linkedCancelationSource.Token;
+                var cancelationSource = CancelationSource.New(TimeSpan.FromMilliseconds(initMilliseconds),
+                    timerFactoryType == 0 ? TimerFactory.System : fakeFactory,
+                    linkedCancelationToken);
+                if (afterMilliseconds >= 0)
+                {
+                    cancelationSource.CancelAfter(TimeSpan.FromMilliseconds(afterMilliseconds));
+                }
+                Thread.Sleep(2);
+                fakeFactory.Invoke();
+                linkedCancelationSource.Cancel();
+                Assert.True(SpinWait.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1)));
+                cancelationSource.Dispose();
+                linkedCancelationSource.Dispose();
+            }
+
+            [Test]
+            public void CancelationSourceIsCanceledAfterDelay_TimerFactory_LinkedTokens2(
+                [Values(-1, 0, 1)] int initMilliseconds,
+                [Values(-1, 0, 1)] int afterMilliseconds,
+                [Values] TimerFactoryType timerFactoryType,
+                [Values] CancelationType linkedCancelType1,
+                [Values] CancelationType linkedCancelType2)
+            {
+                if (initMilliseconds < 0 && afterMilliseconds < 0)
+                {
+                    Assert.Ignore();
+                }
+
+                FakeTimerFactory fakeFactory = timerFactoryType == TimerFactoryType.FakeDelayed
+                    ? new FakeDelayedTimerFactory()
+                    : (FakeTimerFactory) new FakeImmediateTimerFactory();
+                var linkedCancelationSource1 = CancelationSource.New();
+                var linkedCancelationSource2 = CancelationSource.New();
+                var linkedCancelationToken1 = linkedCancelType1 == CancelationType.None ? CancelationToken.None
+                    : linkedCancelType1 == CancelationType.Immediate ? CancelationToken.Canceled()
+                    : linkedCancelationSource1.Token;
+                var linkedCancelationToken2 = linkedCancelType2 == CancelationType.None ? CancelationToken.None
+                    : linkedCancelType2 == CancelationType.Immediate ? CancelationToken.Canceled()
+                    : linkedCancelationSource1.Token;
+                var cancelationSource = CancelationSource.New(TimeSpan.FromMilliseconds(initMilliseconds),
+                    timerFactoryType == 0 ? TimerFactory.System : fakeFactory,
+                    linkedCancelationToken1, linkedCancelationToken2);
+                if (afterMilliseconds >= 0)
+                {
+                    cancelationSource.CancelAfter(TimeSpan.FromMilliseconds(afterMilliseconds));
+                }
+                Thread.Sleep(2);
+                fakeFactory.Invoke();
+                linkedCancelationSource1.Cancel();
+                linkedCancelationSource2.Cancel();
+                Assert.True(SpinWait.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1)));
+                cancelationSource.Dispose();
+                linkedCancelationSource1.Dispose();
+                linkedCancelationSource2.Dispose();
+            }
+
+            [Test]
+            public void CancelationSourceIsCanceledAfterDelay_TimerFactory_LinkedTokens3(
+                [Values(-1, 0, 1)] int initMilliseconds,
+                [Values(-1, 0, 1)] int afterMilliseconds,
+                [Values] TimerFactoryType timerFactoryType,
+                [Values] CancelationType linkedCancelType1,
+                [Values] CancelationType linkedCancelType2,
+                [Values] CancelationType linkedCancelType3)
+            {
+                if (initMilliseconds < 0 && afterMilliseconds < 0)
+                {
+                    Assert.Ignore();
+                }
+
+                FakeTimerFactory fakeFactory = timerFactoryType == TimerFactoryType.FakeDelayed
+                    ? new FakeDelayedTimerFactory()
+                    : (FakeTimerFactory) new FakeImmediateTimerFactory();
+                var linkedCancelationSource1 = CancelationSource.New();
+                var linkedCancelationSource2 = CancelationSource.New();
+                var linkedCancelationSource3 = CancelationSource.New();
+                var linkedCancelationToken1 = linkedCancelType1 == CancelationType.None ? CancelationToken.None
+                    : linkedCancelType1 == CancelationType.Immediate ? CancelationToken.Canceled()
+                    : linkedCancelationSource1.Token;
+                var linkedCancelationToken2 = linkedCancelType2 == CancelationType.None ? CancelationToken.None
+                    : linkedCancelType2 == CancelationType.Immediate ? CancelationToken.Canceled()
+                    : linkedCancelationSource1.Token;
+                var linkedCancelationToken3 = linkedCancelType3 == CancelationType.None ? CancelationToken.None
+                    : linkedCancelType3 == CancelationType.Immediate ? CancelationToken.Canceled()
+                    : linkedCancelationSource1.Token;
+                var cancelationSource = CancelationSource.New(TimeSpan.FromMilliseconds(initMilliseconds),
+                    timerFactoryType == 0 ? TimerFactory.System : fakeFactory,
+                    linkedCancelationToken1, linkedCancelationToken2, linkedCancelationToken3);
+                if (afterMilliseconds >= 0)
+                {
+                    cancelationSource.CancelAfter(TimeSpan.FromMilliseconds(afterMilliseconds));
+                }
+                Thread.Sleep(2);
+                fakeFactory.Invoke();
+                linkedCancelationSource1.Cancel();
+                linkedCancelationSource2.Cancel();
+                linkedCancelationSource3.Cancel();
+                Assert.True(SpinWait.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1)));
+                cancelationSource.Dispose();
+                linkedCancelationSource1.Dispose();
+                linkedCancelationSource2.Dispose();
+                linkedCancelationSource3.Dispose();
             }
         }
 

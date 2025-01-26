@@ -33,8 +33,11 @@ namespace ProtoPromiseTests.APIs
 
         public override Proto.Timers.Timer CreateTimer(TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
         {
-            _callback = callback;
-            _state = state;
+            lock (this)
+            {
+                _callback = callback;
+                _state = state;
+            }
             return new Proto.Timers.Timer(this, 0);
         }
 
@@ -42,13 +45,25 @@ namespace ProtoPromiseTests.APIs
 
         Promise ITimerSource.DisposeAsync(int token)
         {
-            _callback = null;
-            _state = null;
+            lock (this)
+            {
+                _callback = null;
+                _state = null;
+            }
             return Promise.Resolved();
         }
 
         internal override void Invoke()
-            => _callback?.Invoke(_state);
+        {
+            TimerCallback callback;
+            object state;
+            lock (this)
+            {
+                callback = _callback;
+                state = _state;
+            }
+            callback?.Invoke(state);
+        }
     }
 
     public class FakeImmediateTimerFactory : FakeTimerFactory, ITimerSource

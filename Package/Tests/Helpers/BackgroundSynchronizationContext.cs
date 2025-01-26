@@ -14,7 +14,8 @@ namespace ProtoPromiseTests
         private sealed class ThreadRunner
         {
             // Pool threads globally because creating new threads is expensive.
-            private static readonly Stack<ThreadRunner> _pool = new Stack<ThreadRunner>();
+            private static readonly Stack<ThreadRunner> s_pool = new Stack<ThreadRunner>();
+            private static int s_threadCounter;
 
             private BackgroundSynchronizationContext _owner;
             private readonly object _locker = new object();
@@ -26,12 +27,12 @@ namespace ProtoPromiseTests
                 Interlocked.Increment(ref owner._runningActionCount);
                 bool reused = false;
                 ThreadRunner threadRunner = null;
-                lock (_pool)
+                lock (s_pool)
                 {
-                    if (_pool.Count > 0)
+                    if (s_pool.Count > 0)
                     {
                         reused = true;
-                        threadRunner = _pool.Pop();
+                        threadRunner = s_pool.Pop();
                     }
                 }
                 if (!reused)
@@ -50,7 +51,11 @@ namespace ProtoPromiseTests
                     else
                     {
                         // Thread will never be garbage collected until the application terminates.
-                        new Thread(threadRunner.ThreadAction) { IsBackground = true }.Start();
+                        new Thread(threadRunner.ThreadAction)
+                        {
+                            IsBackground = true,
+                            Name = $"TestBackgroundContext_{Interlocked.Increment(ref s_threadCounter)}"
+                        }.Start();
                     }
                 }
             }
@@ -72,9 +77,9 @@ namespace ProtoPromiseTests
                     Interlocked.Decrement(ref owner._runningActionCount);
                     lock (_locker)
                     {
-                        lock (_pool)
+                        lock (s_pool)
                         {
-                            _pool.Push(this);
+                            s_pool.Push(this);
                         }
                         Monitor.Wait(_locker);
                     }
