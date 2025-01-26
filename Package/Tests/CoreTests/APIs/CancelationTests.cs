@@ -728,9 +728,9 @@ namespace ProtoPromiseTests.APIs
                 }
 
                 var linkedCancelationSource = CancelationSource.New();
-                var linkedCancelationToken = linkedCancelType == CancelationType.None ? CancelationToken.None
-                    : linkedCancelType == CancelationType.Immediate ? CancelationToken.Canceled()
-                    : linkedCancelationSource.Token;
+                var linkedCancelationToken = linkedCancelType == CancelationType.Deferred
+                    ? linkedCancelationSource.Token
+                    : new CancelationToken(linkedCancelType == CancelationType.Immediate);
                 var cancelationSource = CancelationSource.New(TimeSpan.FromMilliseconds(initMilliseconds), linkedCancelationToken);
                 if (afterMilliseconds >= 0)
                 {
@@ -757,12 +757,12 @@ namespace ProtoPromiseTests.APIs
 
                 var linkedCancelationSource1 = CancelationSource.New();
                 var linkedCancelationSource2 = CancelationSource.New();
-                var linkedCancelationToken1 = linkedCancelType1 == CancelationType.None ? CancelationToken.None
-                    : linkedCancelType1 == CancelationType.Immediate ? CancelationToken.Canceled()
-                    : linkedCancelationSource1.Token;
-                var linkedCancelationToken2 = linkedCancelType2 == CancelationType.None ? CancelationToken.None
-                    : linkedCancelType2 == CancelationType.Immediate ? CancelationToken.Canceled()
-                    : linkedCancelationSource1.Token;
+                var linkedCancelationToken1 = linkedCancelType1 == CancelationType.Deferred
+                    ? linkedCancelationSource1.Token
+                    : new CancelationToken(linkedCancelType1 == CancelationType.Immediate);
+                var linkedCancelationToken2 = linkedCancelType2 == CancelationType.Deferred
+                    ? linkedCancelationSource2.Token
+                    : new CancelationToken(linkedCancelType2 == CancelationType.Immediate);
                 var cancelationSource = CancelationSource.New(TimeSpan.FromMilliseconds(initMilliseconds), linkedCancelationToken1, linkedCancelationToken2);
                 if (afterMilliseconds >= 0)
                 {
@@ -793,15 +793,15 @@ namespace ProtoPromiseTests.APIs
                 var linkedCancelationSource1 = CancelationSource.New();
                 var linkedCancelationSource2 = CancelationSource.New();
                 var linkedCancelationSource3 = CancelationSource.New();
-                var linkedCancelationToken1 = linkedCancelType1 == CancelationType.None ? CancelationToken.None
-                    : linkedCancelType1 == CancelationType.Immediate ? CancelationToken.Canceled()
-                    : linkedCancelationSource1.Token;
-                var linkedCancelationToken2 = linkedCancelType2 == CancelationType.None ? CancelationToken.None
-                    : linkedCancelType2 == CancelationType.Immediate ? CancelationToken.Canceled()
-                    : linkedCancelationSource1.Token;
-                var linkedCancelationToken3 = linkedCancelType3 == CancelationType.None ? CancelationToken.None
-                    : linkedCancelType3 == CancelationType.Immediate ? CancelationToken.Canceled()
-                    : linkedCancelationSource1.Token;
+                var linkedCancelationToken1 = linkedCancelType1 == CancelationType.Deferred
+                    ? linkedCancelationSource1.Token
+                    : new CancelationToken(linkedCancelType1 == CancelationType.Immediate);
+                var linkedCancelationToken2 = linkedCancelType2 == CancelationType.Deferred
+                    ? linkedCancelationSource2.Token
+                    : new CancelationToken(linkedCancelType2 == CancelationType.Immediate);
+                var linkedCancelationToken3 = linkedCancelType3 == CancelationType.Deferred
+                    ? linkedCancelationSource3.Token
+                    : new CancelationToken(linkedCancelType3 == CancelationType.Immediate);
                 var cancelationSource = CancelationSource.New(TimeSpan.FromMilliseconds(initMilliseconds), linkedCancelationToken1, linkedCancelationToken2, linkedCancelationToken3);
                 if (afterMilliseconds >= 0)
                 {
@@ -859,9 +859,9 @@ namespace ProtoPromiseTests.APIs
                     ? new FakeDelayedTimerFactory()
                     : (FakeTimerFactory) new FakeImmediateTimerFactory();
                 var linkedCancelationSource = CancelationSource.New();
-                var linkedCancelationToken = linkedCancelType == CancelationType.None ? CancelationToken.None
-                    : linkedCancelType == CancelationType.Immediate ? CancelationToken.Canceled()
-                    : linkedCancelationSource.Token;
+                var linkedCancelationToken = linkedCancelType == CancelationType.Deferred
+                    ? linkedCancelationSource.Token
+                    : new CancelationToken(linkedCancelType == CancelationType.Immediate);
                 var cancelationSource = CancelationSource.New(TimeSpan.FromMilliseconds(initMilliseconds),
                     timerFactoryType == 0 ? TimerFactory.System : fakeFactory,
                     linkedCancelationToken);
@@ -895,12 +895,12 @@ namespace ProtoPromiseTests.APIs
                     : (FakeTimerFactory) new FakeImmediateTimerFactory();
                 var linkedCancelationSource1 = CancelationSource.New();
                 var linkedCancelationSource2 = CancelationSource.New();
-                var linkedCancelationToken1 = linkedCancelType1 == CancelationType.None ? CancelationToken.None
-                    : linkedCancelType1 == CancelationType.Immediate ? CancelationToken.Canceled()
-                    : linkedCancelationSource1.Token;
-                var linkedCancelationToken2 = linkedCancelType2 == CancelationType.None ? CancelationToken.None
-                    : linkedCancelType2 == CancelationType.Immediate ? CancelationToken.Canceled()
-                    : linkedCancelationSource1.Token;
+                var linkedCancelationToken1 = linkedCancelType1 == CancelationType.Deferred
+                    ? linkedCancelationSource1.Token
+                    : new CancelationToken(linkedCancelType1 == CancelationType.Immediate);
+                var linkedCancelationToken2 = linkedCancelType2 == CancelationType.Deferred
+                    ? linkedCancelationSource2.Token
+                    : new CancelationToken(linkedCancelType2 == CancelationType.Immediate);
                 var cancelationSource = CancelationSource.New(TimeSpan.FromMilliseconds(initMilliseconds),
                     timerFactoryType == 0 ? TimerFactory.System : fakeFactory,
                     linkedCancelationToken1, linkedCancelationToken2);
@@ -938,15 +938,15 @@ namespace ProtoPromiseTests.APIs
                 var linkedCancelationSource1 = CancelationSource.New();
                 var linkedCancelationSource2 = CancelationSource.New();
                 var linkedCancelationSource3 = CancelationSource.New();
-                var linkedCancelationToken1 = linkedCancelType1 == CancelationType.None ? CancelationToken.None
-                    : linkedCancelType1 == CancelationType.Immediate ? CancelationToken.Canceled()
-                    : linkedCancelationSource1.Token;
-                var linkedCancelationToken2 = linkedCancelType2 == CancelationType.None ? CancelationToken.None
-                    : linkedCancelType2 == CancelationType.Immediate ? CancelationToken.Canceled()
-                    : linkedCancelationSource1.Token;
-                var linkedCancelationToken3 = linkedCancelType3 == CancelationType.None ? CancelationToken.None
-                    : linkedCancelType3 == CancelationType.Immediate ? CancelationToken.Canceled()
-                    : linkedCancelationSource1.Token;
+                var linkedCancelationToken1 = linkedCancelType1 == CancelationType.Deferred
+                    ? linkedCancelationSource1.Token
+                    : new CancelationToken(linkedCancelType1 == CancelationType.Immediate);
+                var linkedCancelationToken2 = linkedCancelType2 == CancelationType.Deferred
+                    ? linkedCancelationSource2.Token
+                    : new CancelationToken(linkedCancelType2 == CancelationType.Immediate);
+                var linkedCancelationToken3 = linkedCancelType3 == CancelationType.Deferred
+                    ? linkedCancelationSource3.Token
+                    : new CancelationToken(linkedCancelType3 == CancelationType.Immediate);
                 var cancelationSource = CancelationSource.New(TimeSpan.FromMilliseconds(initMilliseconds),
                     timerFactoryType == 0 ? TimerFactory.System : fakeFactory,
                     linkedCancelationToken1, linkedCancelationToken2, linkedCancelationToken3);

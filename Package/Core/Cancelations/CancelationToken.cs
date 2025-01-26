@@ -23,6 +23,30 @@ namespace Proto.Promises
         internal readonly Internal.CancelationRef _ref;
         internal readonly int _id;
 
+        [MethodImpl(Internal.InlineOption)]
+        internal CancelationToken(Internal.CancelationRef cancelationRef, int tokenId)
+        {
+            _ref = cancelationRef;
+            _id = tokenId;
+        }
+
+        /// <summary>
+        /// Creates a <see cref="CancelationToken"/> that will forever be in the provided canceled state.
+        /// </summary>
+        /// <param name="canceled">The canceled state for the token.</param>
+        /// <remarks>
+        /// Tokens created with this constructor will remain in the canceled state specified by the <paramref name="canceled"/> parameter.
+        /// <para/>
+        /// If <paramref name="canceled"/> is <see langword="false"/>, both <see cref="CanBeCanceled"/> and <see cref="IsCancelationRequested"/> will be <see langword="false"/>.
+        /// <para/>
+        /// If <paramref name="canceled"/> is <see langword="true"/>, both <see cref="CanBeCanceled"/> and <see cref="IsCancelationRequested"/> will be <see langword="true"/>.
+        /// </remarks>
+        [MethodImpl(Internal.InlineOption)]
+        public CancelationToken(bool canceled)
+        {
+            this = canceled ? Canceled() : None;
+        }
+
         /// <summary>
         /// Returns an empty <see cref="CancelationToken"/>.
         /// </summary>
@@ -30,12 +54,6 @@ namespace Proto.Promises
         {
             [MethodImpl(Internal.InlineOption)]
             get => default;
-        }
-
-        internal CancelationToken(Internal.CancelationRef cancelationRef, int tokenId)
-        {
-            _ref = cancelationRef;
-            _id = tokenId;
         }
 
         /// <summary>
