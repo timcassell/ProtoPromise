@@ -81,20 +81,21 @@ namespace Proto.Promises
 
             static CancelationRef()
             {
-                // Set _userRetainIncrementor to 0 so _userRetainCounter will never overflow.
-                s_canceledSentinel = new CancelationRef(0) { _states = States.Canceled | States.NotifyComplete, _internalRetainCounter = 1, _tokenId = -1 };
+                s_canceledSentinel = new CancelationRef()
+                {
+                    _states = States.CanceledAndNotifyComplete,
+                    _internalRetainCounter = 1,
+                    // 0 so _userRetainCounter will never overflow.
+                    _userRetainIncrement = 0,
+                    _tokenId = -1
+                };
 #pragma warning disable CA1816 // Dispose methods should call SuppressFinalize
                 // If we don't suppress, the finalizer can run when the AppDomain is unloaded, causing a NullReferenceException. This happens in Unity when switching between editmode and playmode.
                 GC.SuppressFinalize(s_canceledSentinel);
 #pragma warning restore CA1816 // Dispose methods should call SuppressFinalize
             }
 
-            private CancelationRef() : this(1) { }
-
-            private CancelationRef(byte userRetainIncrementor)
-            {
-                _userRetainIncrementor = userRetainIncrementor;
-            }
+            private CancelationRef() { }
 
             ~CancelationRef()
             {
@@ -163,7 +164,7 @@ namespace Proto.Promises
             private int _sourceId = 1;
             private int _tokenId = 1;
             private uint _userRetainCounter;
-            private readonly byte _userRetainIncrementor; // 0 for s_canceledSentinel, 1 for all others.
+            private byte _userRetainIncrement; // 0 for s_canceledSentinel and _linkedToBclToken, 1 for all others.
             private byte _internalRetainCounter;
             internal bool _linkedToBclToken;
             // There is no Volatile.Read API for enums, so we have to make the field volatile.
@@ -213,10 +214,11 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            private void Initialize(bool linkedToBclToken)
+            private void Initialize(bool linkedToBclToken, byte userRetainIncrement)
             {
                 ResetLinkedListSentinel();
                 _internalRetainCounter = 1; // 1 for Dispose.
+                _userRetainIncrement = userRetainIncrement;
                 _linkedToBclToken = linkedToBclToken;
                 _states = States.Pending;
                 SetCreatedStacktrace(this, 2);
@@ -235,7 +237,7 @@ namespace Proto.Promises
             internal static CancelationRef GetOrCreate()
             {
                 var cancelRef = GetFromPoolOrCreate();
-                cancelRef.Initialize(false);
+                cancelRef.Initialize(false, 1);
                 return cancelRef;
             }
 
@@ -451,6 +453,7 @@ namespace Proto.Promises
                 }
 
                 ThrowIfInPool(this);
+                CancelationCallbackNodeBase node;
                 // TODO: Unity hasn't adopted .Net 6+ yet, and they usually use different compilation symbols than .Net SDK, so we'll have to update the compilation symbols here once Unity finally does adopt it.
 #if NET6_0_OR_GREATER
                 // This is only necessary in .Net 6 or later, since `CancellationTokenSource.TryReset()` was added.
@@ -473,56 +476,78 @@ namespace Proto.Promises
                         }
                         else
                         {
+                            // Set disposed state to prevent adding more callback nodes.
+                            // We don't call Dispose here to prevent pooling this object, since it's tied to the bcl source.
+                            _states = states | States.Disposed;
                             UnregisterAll();
                             _smallFields._locker.Exit();
                         }
                         return isCanceled;
                     }
 
-                    // If we are unable to unregister, it means the source had TryReset() called on it, or the token was canceled on another thread (and the other thread may be waiting on the lock).
-                    if (!_bclRegistration.Unregister())
+                    static bool RefreshRegistrationAndGetIsCancellationRequested(CancelationRef cancelationRef, System.Threading.CancellationToken cancellationToken, out bool unregistered)
                     {
-                        if (token.IsCancellationRequested)
+                        unregistered = cancelationRef._bclRegistration.Unregister();
+                        if (cancellationToken.IsCancellationRequested)
                         {
-                            _smallFields._locker.Exit();
-                            nodeCreator.Invoke();
                             return true;
                         }
-                        UnregisterAll();
-                    }
-                    // Callback could be invoked synchronously if the token is canceled on another thread,
-                    // so we set a flag to prevent a deadlock, then check the flag again after the hookup to see if it was invoked.
-                    ts_isLinkingToBclToken = true;
-                    _bclRegistration = token.UnsafeRegister(cancelRef =>
-                    {
-                        // This could be invoked synchronously if the token is canceled, so we check the flag to prevent a deadlock.
-                        if (ts_isLinkingToBclToken)
+                        else if (!unregistered)
                         {
-                            // Reset the flag so that we can tell that this was invoked synchronously.
-                            ts_isLinkingToBclToken = false;
-                            return;
+                            // If we were unable to unregister, it means the source had TryReset() called on it,
+                            // or the source was disposed or canceled on another thread (and the other thread may be waiting on the lock).
+                            // We already checked the cancelation state, so we know it was either disposed or reset, in which case we need to remove current listeners.
+                            cancelationRef.UnregisterAll();
                         }
-                        cancelRef.UnsafeAs<CancelationRef>().CancelUnsafe();
-                    }, this);
 
-                    if (!ts_isLinkingToBclToken)
+                        // The callback could be invoked synchronously if the token is canceled on another thread,
+                        // so we set a flag to prevent a deadlock, then check the flag again after the hookup to see if it was invoked.
+                        ts_isLinkingToBclToken = true;
+                        cancelationRef._bclRegistration = cancellationToken.UnsafeRegister(obj =>
+                        {
+                            // This could be invoked synchronously if the token is canceled, so we check the flag to prevent a deadlock.
+                            if (ts_isLinkingToBclToken)
+                            {
+                                // Reset the flag so that we can tell that this was invoked synchronously.
+                                ts_isLinkingToBclToken = false;
+                                return;
+                            }
+                            obj.UnsafeAs<CancelationRef>().CancelUnsafe();
+                        }, cancelationRef);
+
+                        bool isCanceled = !ts_isLinkingToBclToken;
+                        ts_isLinkingToBclToken = false;
+                        return isCanceled;
+                    }
+
+                    if (RefreshRegistrationAndGetIsCancellationRequested(this, token, out bool unregistered))
                     {
-                        // Hook up the node instead of invoking since it might throw, and we need all registered callbacks to be invoked.
-                        var node = nodeCreator.CreateNode(this, tokenId);
-                        InsertPrevious(node);
-                        InvokeCallbacksAlreadyLocked();
+                        // The source was already canceled.
+                        if (unregistered)
+                        {
+                            // Hook up the node instead of invoking directly since it might throw, and we need all registered callbacks to be invoked.
+                            node = nodeCreator.CreateNode(this, tokenId);
+                            InsertPrevious(node);
+                            InvokeCallbacksAlreadyLocked();
+                        }
+                        else
+                        {
+                            // All previous listeners were removed. We can simply set the flags and invoke the new callback here.
+                            _states = states | States.CanceledAndNotifyComplete;
+                            _smallFields._locker.Exit();
+                            nodeCreator.Invoke();
+                        }
                         return true;
                     }
-                    ts_isLinkingToBclToken = false;
+
+                    // There is a race condition where it is possible the source was disposed on another thread without being canceled.
+                    // This case is benign, we will simply be creating a callback node that will never be invoked.
                 }
 #endif
-
-                {
-                    var node = nodeCreator.CreateNode(this, tokenId);
-                    InsertPrevious(node);
-                    _smallFields._locker.Exit();
-                    return true;
-                }
+                node = nodeCreator.CreateNode(this, tokenId);
+                InsertPrevious(node);
+                _smallFields._locker.Exit();
+                return true;
             }
 
             private void InsertPrevious(CancelationCallbackNodeBase node)
@@ -734,7 +759,7 @@ namespace Proto.Promises
                 ThrowIfInPool(this);
                 checked
                 {
-                    _userRetainCounter += _userRetainIncrementor;
+                    _userRetainCounter += _userRetainIncrement;
                 }
                 _smallFields._locker.Exit();
                 return true;
@@ -751,7 +776,7 @@ namespace Proto.Promises
                 }
                 checked
                 {
-                    if ((_userRetainCounter -= _userRetainIncrementor) == 0 & _internalRetainCounter == 0)
+                    if ((_userRetainCounter -= _userRetainIncrement) == 0 & _internalRetainCounter == 0)
                     {
                         unchecked
                         {
@@ -1400,7 +1425,7 @@ namespace Proto.Promises
                 var cancelRef = GetFromPoolOrCreate();
                 cancelRef._next = null;
 #endif
-                cancelRef.Initialize(true);
+                cancelRef.Initialize(true, 0);
                 cancelRef._bclSource = source;
                 return cancelRef;
             }
