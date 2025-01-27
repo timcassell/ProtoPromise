@@ -34,19 +34,19 @@ See [Guides](https://github.com/timcassell/ProtoPromise/tree/master/Docs/Guides)
 
 Compare performance to other async libraries:
 
-| Type         | Pending | Mean       | Allocated | Survived |
-|------------- |-------- |-----------:|----------:|---------:|
-| ProtoPromise | False   |   172.6 ns |         - |        - |
-| Task         | False   |   260.9 ns |     192 B |        - |
-| UniTask      | False   |   306.8 ns |         - |        - |
-| UnityFxAsync | False   |   368.6 ns |     360 B |        - |
-| ValueTask    | False   |   337.4 ns |         - |        - |
-|              |         |            |           |          |
-| ProtoPromise | True    | 1,402.3 ns |         - |    648 B |
-| Task         | True    | 2,110.8 ns |    1120 B |        - |
-| UniTask      | True    | 1,817.7 ns |         - |    744 B |
-| UnityFxAsync | True    | 1,998.2 ns |    1952 B |        - |
-| ValueTask    | True    | 2,486.9 ns |     968 B |     40 B |
+| Type         | Pending | Mean      | Allocated | Survived |
+|------------- |-------- |----------:|----------:|---------:|
+| ProtoPromise | False   |  37.56 ns |         - |        - |
+| Task         | False   |  49.97 ns |     192 B |        - |
+| UniTask      | False   |  81.06 ns |         - |        - |
+| UnityFxAsync | False   |  62.05 ns |     360 B |        - |
+| ValueTask    | False   |  70.66 ns |         - |        - |
+|              |         |           |           |          |
+| ProtoPromise | True    | 401.37 ns |         - |    624 B |
+| Task         | True    | 455.15 ns |    1120 B |        - |
+| UniTask      | True    | 478.92 ns |         - |    744 B |
+| UnityFxAsync | True    | 433.54 ns |    1952 B |        - |
+| ValueTask    | True    | 498.24 ns |     968 B |     40 B |
 
 See the [C# Asynchronous Benchmarks Repo](https://github.com/timcassell/CSharpAsynchronousBenchmarks) for a full performance comparison.
 
