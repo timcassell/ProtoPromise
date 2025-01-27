@@ -94,7 +94,7 @@ namespace Proto.Promises
                 PrepareEarlyDispose();
                 base.Dispose();
                 ClearReferences(ref _current);
-                _disposed = true;
+                _enumerableDisposed = true;
                 ObjectPool.MaybeRepool(this);
             }
 

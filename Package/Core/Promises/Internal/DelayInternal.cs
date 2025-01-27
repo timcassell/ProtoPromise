@@ -39,6 +39,11 @@ namespace Proto.Promises
                     using (SuppressExecutionContextFlow())
                     {
                         var timer = timerFactory.CreateTimer(obj => obj.UnsafeAs<DelayPromise>().OnTimerCallback(), promise, delay, Timeout.InfiniteTimeSpan);
+                        if (timer == default)
+                        {
+                            Discard(promise);
+                            throw new InvalidReturnException("timerFactory returned a default Timer.", GetFormattedStacktrace(2));
+                        }
                         promise._timerToken = timer._token;
                         promise._timerSource = timer._timerSource;
                     }
@@ -67,6 +72,14 @@ namespace Proto.Promises
 
                 private void OnTimerCallback()
                 {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    // Due to object pooling, this is not a fool-proof check, but object pooling is disabled in DEBUG mode.
+                    // It's good enough to protect against accidental non-compliant timer implementations.
+                    if (_disposed)
+                    {
+                        throw new InvalidOperationException("Timer callback may not be invoked after its DisposeAsync Promise has completed.", GetFormattedStacktrace(1));
+                    }
+#endif
                     MaybeDisposeTimer();
                     HandleNextInternal(Promise.State.Resolved);
                 }
@@ -96,6 +109,11 @@ namespace Proto.Promises
                     using (SuppressExecutionContextFlow())
                     {
                         promise._timer = timerFactory.CreateTimer(obj => obj.UnsafeAs<DelayWithCancelationPromise>().OnTimerCallback(), promise, delay, Timeout.InfiniteTimeSpan);
+                        if (promise._timer == default)
+                        {
+                            Discard(promise);
+                            throw new InvalidReturnException("timerFactory returned a default Timer.", GetFormattedStacktrace(2));
+                        }
                     }
                     // IMPORTANT - must register cancelation callback after everything else.
                     promise._cancelationHelper.Register(cancelationToken, promise);
@@ -126,7 +144,16 @@ namespace Proto.Promises
 
                 private void OnTimerCallback()
                 {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    // Due to object pooling, this is not a fool-proof check, but object pooling is disabled in DEBUG mode.
+                    // It's good enough to protect against accidental non-compliant timer implementations.
+                    if (_disposed)
+                    {
+                        throw new InvalidOperationException("Timer callback may not be invoked after its DisposeAsync Promise has completed.", GetFormattedStacktrace(1));
+                    }
+#endif
                     ThrowIfInPool(this);
+
                     if (_cancelationHelper.TrySetCompleted())
                     {
                         MaybeDisposeFields();

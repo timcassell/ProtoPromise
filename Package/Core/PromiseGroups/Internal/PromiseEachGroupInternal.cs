@@ -129,7 +129,7 @@ namespace Proto.Promises
                         return Promise.Resolved();
                     }
 
-                    _disposed = true;
+                    _enumerableDisposed = true;
                     if (_cancelationHelper.TrySetCompleted())
                     {
                         CancelGroup();
@@ -180,7 +180,7 @@ namespace Proto.Promises
                 internal override void MaybeDispose()
                 {
                     // This is called on every MoveNextAsync, we only fully dispose and return to pool after DisposeAsync is called.
-                    if (_disposed)
+                    if (_enumerableDisposed)
                     {
                         Dispose();
                     }

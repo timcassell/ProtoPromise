@@ -86,7 +86,7 @@ namespace Proto.Promises
                     // MoveNextAsync/DisposeAsync may have completed synchronously, or not called at all.
                     PrepareEarlyDispose();
                     base.Dispose();
-                    _disposed = true;
+                    _enumerableDisposed = true;
                     ClearReferences(ref _current);
                     _cancelationHelper = default;
                     _queue.Dispose();

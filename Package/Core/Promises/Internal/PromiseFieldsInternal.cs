@@ -142,6 +142,9 @@ namespace Proto.Promises
 #if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
             internal bool _ignoreValueTaskContextScheduling;
 #endif
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            protected bool _disposed;
+#endif
 
             partial class PromiseRef<TResult> : PromiseRefBase
             {

@@ -126,6 +126,9 @@ namespace Proto.Promises
 #if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
                 _ignoreValueTaskContextScheduling = false;
 #endif
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                _disposed = false;
+#endif
             }
 
             [MethodImpl(InlineOption)]
@@ -161,6 +164,7 @@ namespace Proto.Promises
                 {
                     throw new System.InvalidOperationException("Promise disposed without being awaited or forgotten: " + this);
                 }
+                _disposed = true;
 #endif
                 IncrementPromiseIdAndClearPrevious();
             }

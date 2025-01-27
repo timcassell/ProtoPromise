@@ -258,6 +258,11 @@ namespace Proto.Promises
                     using (SuppressExecutionContextFlow())
                     {
                         cancelRef._timer = timerFactory.CreateTimer(obj => obj.UnsafeAs<CancelationRef>().CancelUnsafe(), cancelRef, delay, Timeout.InfiniteTimeSpan);
+                        if (cancelRef._timer == default)
+                        {
+                            Discard(cancelRef);
+                            throw new InvalidReturnException("timerFactory returned a default Timer.", GetFormattedStacktrace(2));
+                        }
                     }
                 }
                 return cancelRef;
@@ -589,6 +594,18 @@ namespace Proto.Promises
                 }
             }
 
+            private void OnTimerCallback()
+            {
+                // Due to object pooling, this is not a fool-proof check. But it's good enough to protect against accidental non-compliant timer implementations,
+                // as object pooling is disabled in DEBUG mode, and it's still possible to catch the improper call while this is in the pool.
+                if (_timer == default)
+                {
+                    throw new InvalidOperationException("Timer callback may not be invoked after its DisposeAsync Promise has completed.", GetFormattedStacktrace(1));
+                }
+
+                CancelUnsafe();
+            }
+
             // Internal Cancel method skipping the disposed check.
             internal void CancelUnsafe()
             {
@@ -699,10 +716,10 @@ namespace Proto.Promises
 
             private void DisposeTimer(Timers.Timer timer)
             {
-                _timer = default;
                 var timerDisposePromise = timer.DisposeAsync();
                 if (timerDisposePromise._ref?.State != Promise.State.Pending)
                 {
+                    _timer = default;
                     timerDisposePromise._ref?.MaybeMarkAwaitedAndDispose(timerDisposePromise._id);
                     MaybeResetAndRepool();
                 }
@@ -716,6 +733,7 @@ namespace Proto.Promises
             {
                 // The timer dispose promise is complete.
                 ThrowIfInPool(this);
+                _timer = default;
                 handler.SetCompletionState(state);
                 handler.MaybeReportUnhandledAndDispose(state);
                 MaybeResetAndRepool();
