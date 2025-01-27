@@ -117,6 +117,11 @@ namespace Proto.Promises
                     using (SuppressExecutionContextFlow())
                     {
                         promise._timer = timerFactory.CreateTimer(obj => obj.UnsafeAs<WaitAsyncWithTimeoutPromise<TResult>>().OnTimerCallback(), promise, timeout, Timeout.InfiniteTimeSpan);
+                        if (promise._timer == default)
+                        {
+                            Discard(promise);
+                            throw new InvalidReturnException("timerFactory returned a default Timer.", GetFormattedStacktrace(3));
+                        }
                     }
                     // In a rare race condition, the timer callback could be invoked before the field is assigned.
                     // To avoid an invalid timer disposal, we Interlocked.CompareExchange the wait state, and dispose if it was already invoked.
@@ -165,7 +170,16 @@ namespace Proto.Promises
 
                 private void OnTimerCallback()
                 {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    // Due to object pooling, this is not a fool-proof check, but object pooling is disabled in DEBUG mode.
+                    // It's good enough to protect against accidental non-compliant timer implementations.
+                    if (_disposed)
+                    {
+                        throw new InvalidOperationException("Timer callback may not be invoked after its DisposeAsync Promise has completed.", GetFormattedStacktrace(1));
+                    }
+#endif
                     ThrowIfInPool(this);
+
                     int previousState = Interlocked.Exchange(ref _waitState, WaitAsyncState.Completed);
                     if (previousState == WaitAsyncState.Completed)
                     {
@@ -255,6 +269,11 @@ namespace Proto.Promises
                     using (SuppressExecutionContextFlow())
                     {
                         promise._timer = timerFactory.CreateTimer(obj => obj.UnsafeAs<WaitAsyncWithTimeoutAndCancelationPromise<TResult>>().OnTimerCallback(), promise, timeout, Timeout.InfiniteTimeSpan);
+                        if (promise._timer == default)
+                        {
+                            Discard(promise);
+                            throw new InvalidReturnException("timerFactory returned a default Timer.", GetFormattedStacktrace(3));
+                        }
                     }
                     // IMPORTANT - must register cancelation callback after the timer.
                     promise._cancelationRegistration = cancelationToken.Register(promise);
@@ -288,13 +307,19 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     handler.SetCompletionState(state);
-                    if (Interlocked.Exchange(ref _waitState, WaitAsyncState.Completed) != WaitAsyncState.Waiting)
+                    int previousState = Interlocked.Exchange(ref _waitState, WaitAsyncState.Completed);
+                    if (previousState == WaitAsyncState.Completed)
                     {
                         // This already completed and this is being called from the timer's dispose promise,
                         // or this was timed out or canceled and this is being called from the awaited promise.
                         MaybeDispose();
                         handler.MaybeReportUnhandledAndDispose(state);
                         return;
+                    }
+
+                    if (previousState == WaitAsyncState.Waiting)
+                    {
+                        _cancelationRegistration.Dispose();
                     }
 
                     // The _timer field is assigned before this is hooked up to the awaited promise, so we know it's valid here.
@@ -311,7 +336,16 @@ namespace Proto.Promises
 
                 private void OnTimerCallback()
                 {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    // Due to object pooling, this is not a fool-proof check, but object pooling is disabled in DEBUG mode.
+                    // It's good enough to protect against accidental non-compliant timer implementations.
+                    if (_disposed)
+                    {
+                        throw new InvalidOperationException("Timer callback may not be invoked after its DisposeAsync Promise has completed.", GetFormattedStacktrace(1));
+                    }
+#endif
                     ThrowIfInPool(this);
+
                     int previousState = Interlocked.Exchange(ref _waitState, WaitAsyncState.Completed);
                     if (previousState == WaitAsyncState.Completed)
                     {

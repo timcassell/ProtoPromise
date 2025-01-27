@@ -77,8 +77,10 @@ namespace Proto.Promises
                 internal CancelationToken _cancelationToken;
                 protected T _current;
                 protected int _enumerableId = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
-                protected bool _disposed;
                 protected bool _isStarted;
+#if !(PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE)
+                protected bool _disposed;
+#endif
 
                 internal int EnumerableId
                 {
