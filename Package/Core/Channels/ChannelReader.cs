@@ -33,7 +33,9 @@ namespace Proto.Promises.Channels
         /// <summary>
         /// Gets the current number of items available from the channel.
         /// </summary>
-        public int Count => _channel.ValidateAndGetRef().GetCount(_channel._id);
+        /// <exception cref="ObjectDisposedException">The channel was disposed.</exception>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
+        public int Count => _channel._ref.GetCount(_channel._id);
 
         /// <summary>
         /// Asynchronously waits for data to be available to be read.
@@ -42,6 +44,8 @@ namespace Proto.Promises.Channels
         /// A <see cref="Promise{T}"/> that will resolve with <see langword="true"/> when data is available to be read,
         /// or <see langword="false"/> when the channel is closed.
         /// </returns>
+        /// <exception cref="ObjectDisposedException">The channel was disposed.</exception>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
         public Promise<bool> WaitToReadAsync()
             => WaitToReadAsync(CancelationToken.None, true);
 
@@ -53,6 +57,8 @@ namespace Proto.Promises.Channels
         /// A <see cref="Promise{T}"/> that will resolve with <see langword="true"/> when data is available to be read,
         /// or <see langword="false"/> when the channel is closed.
         /// </returns>
+        /// <exception cref="ObjectDisposedException">The channel was disposed.</exception>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
         public Promise<bool> WaitToReadAsync(bool continueOnCapturedContext)
             => WaitToReadAsync(CancelationToken.None, continueOnCapturedContext);
 
@@ -64,6 +70,8 @@ namespace Proto.Promises.Channels
         /// A <see cref="Promise{T}"/> that will resolve with <see langword="true"/> when data is available to be read,
         /// or <see langword="false"/> when the channel is closed.
         /// </returns>
+        /// <exception cref="ObjectDisposedException">The channel was disposed.</exception>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
         public Promise<bool> WaitToReadAsync(CancelationToken cancelationToken)
             => WaitToReadAsync(cancelationToken, true);
 
@@ -76,27 +84,35 @@ namespace Proto.Promises.Channels
         /// A <see cref="Promise{T}"/> that will resolve with <see langword="true"/> when data is available to be read,
         /// or <see langword="false"/> when the channel is closed.
         /// </returns>
+        /// <exception cref="ObjectDisposedException">The channel was disposed.</exception>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
         public Promise<bool> WaitToReadAsync(CancelationToken cancelationToken, bool continueOnCapturedContext)
-            => _channel.ValidateAndGetRef().WaitToReadAsync(_channel._id, cancelationToken, continueOnCapturedContext);
+            => _channel._ref.WaitToReadAsync(_channel._id, cancelationToken, continueOnCapturedContext);
 
         /// <summary>
         /// Attempts to peek at an item from the channel in a non-blocking manner.
         /// </summary>
         /// <returns>The result of the peek operation.</returns>
+        /// <exception cref="ObjectDisposedException">The channel was disposed.</exception>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
         public ChannelPeekResult<T> TryPeek()
-            => _channel.ValidateAndGetRef().TryPeek(_channel._id);
+            => _channel._ref.TryPeek(_channel._id);
 
         /// <summary>
         /// Attempts to read an item from the channel in a non-blocking manner.
         /// </summary>
         /// <returns>The result of the read operation.</returns>
+        /// <exception cref="ObjectDisposedException">The channel was disposed.</exception>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
         public ChannelReadResult<T> TryRead()
-            => _channel.ValidateAndGetRef().TryRead(_channel._id);
+            => _channel._ref.TryRead(_channel._id);
 
         /// <summary>
         /// Asynchronously reads an item from the channel.
         /// </summary>
         /// <returns>A <see cref="Promise{T}"/> that yields the result of the read operation.</returns>
+        /// <exception cref="ObjectDisposedException">The channel was disposed.</exception>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
         public Promise<ChannelReadResult<T>> ReadAsync()
             => ReadAsync(CancelationToken.None, true);
 
@@ -105,6 +121,8 @@ namespace Proto.Promises.Channels
         /// </summary>
         /// <param name="continueOnCapturedContext">If <see langword="true"/> and data is not immediately available, the async continuation will be executed on the captured context.</param>
         /// <returns>A <see cref="Promise{T}"/> that yields the result of the read operation.</returns>
+        /// <exception cref="ObjectDisposedException">The channel was disposed.</exception>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
         public Promise<ChannelReadResult<T>> ReadAsync(bool continueOnCapturedContext)
             => ReadAsync(CancelationToken.None, continueOnCapturedContext);
 
@@ -113,6 +131,8 @@ namespace Proto.Promises.Channels
         /// </summary>
         /// <param name="cancelationToken">A <see cref="CancelationToken"/> used to cancel the read operation.</param>
         /// <returns>A <see cref="Promise{T}"/> that yields the result of the read operation.</returns>
+        /// <exception cref="ObjectDisposedException">The channel was disposed.</exception>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
         public Promise<ChannelReadResult<T>> ReadAsync(CancelationToken cancelationToken)
             => ReadAsync(cancelationToken, true);
 
@@ -122,13 +142,17 @@ namespace Proto.Promises.Channels
         /// <param name="cancelationToken">A <see cref="CancelationToken"/> used to cancel the read operation.</param>
         /// <param name="continueOnCapturedContext">If <see langword="true"/> and data is not immediately available, the async continuation will be executed on the captured context.</param>
         /// <returns>A <see cref="Promise{T}"/> that yields the result of the read operation.</returns>
+        /// <exception cref="ObjectDisposedException">The channel was disposed.</exception>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
         public Promise<ChannelReadResult<T>> ReadAsync(CancelationToken cancelationToken, bool continueOnCapturedContext)
-            => _channel.ValidateAndGetRef().ReadAsync(_channel._id, cancelationToken, continueOnCapturedContext);
+            => _channel._ref.ReadAsync(_channel._id, cancelationToken, continueOnCapturedContext);
 
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that enables reading all of the data from the channel.
         /// </summary>
         /// <returns>The created <see cref="AsyncEnumerable{T}"/>.</returns>
+        /// <exception cref="ObjectDisposedException">The channel was disposed.</exception>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
         public AsyncEnumerable<T> ReadAllAsync()
             => ReadAllAsync(true);
 
@@ -137,6 +161,8 @@ namespace Proto.Promises.Channels
         /// </summary>
         /// <param name="continueOnCapturedContext">If <see langword="true"/> and data is not immediately available, the async continuations will be executed on the captured context.</param>
         /// <returns>The created <see cref="AsyncEnumerable{T}"/>.</returns>
+        /// <exception cref="ObjectDisposedException">The channel was disposed.</exception>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
         public AsyncEnumerable<T> ReadAllAsync(bool continueOnCapturedContext)
             => AsyncEnumerable<T>.Create(new AsyncIterator(this, continueOnCapturedContext));
 
