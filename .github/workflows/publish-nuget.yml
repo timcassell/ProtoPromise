@@ -6,7 +6,8 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Setup-nuget fails on latest. https://github.com/NuGet/setup-nuget/issues/168
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -73,15 +74,15 @@ jobs:
           cat ProtoPromise.UnityHelpers/2018.3/nuget/ProtoPromise.UnityHelpers.2018.3.nuspec
           cat ProtoPromise.UnityHelpers/2023.1/nuget/ProtoPromise.UnityHelpers.2023.1.nuspec
 
-      - name: Setup nuget
-        uses: nuget/setup-nuget@v1
-        with:
-          nuget-api-key: ${{ secrets.NUGET_API_KEY }}
-
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.X
+
+      - name: Setup nuget
+        uses: nuget/setup-nuget@v2
+        with:
+          nuget-api-key: ${{ secrets.NUGET_API_KEY }}
 
       - name: Build Debug
         run: dotnet build -c Debug /p:IsNugetBuild=true
