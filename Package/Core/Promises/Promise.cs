@@ -6,6 +6,7 @@
 #endif
 
 using Proto.Promises.CompilerServices;
+using Proto.Timers;
 using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -42,32 +43,6 @@ namespace Proto.Promises
         public static implicit operator System.Threading.Tasks.ValueTask(in Promise rhs)
             => rhs.AsValueTask();
 #endif // UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
-
-        /// <summary>
-        /// Gets whether this instance is valid to be awaited.
-        /// </summary>
-        public bool IsValid
-            // I would prefer to have a null ref only valid if the promise was created from Promise.Resolved, but it's more efficient to allow default values to be valid.
-            => _ref?.GetIsValid(_id) != false;
-
-        /// <summary>
-        /// Mark this as awaited and get a new <see cref="Promise"/> that inherits the state of this and can be awaited multiple times until <see cref="Forget"/> is called on it.
-        /// <para/><see cref="Forget"/> must be called when you are finished with it.
-        /// <para/>NOTE: You should not return a preserved <see cref="Promise"/> from a public API. Use <see cref="Duplicate"/> to get a <see cref="Promise"/> that is publicly safe.
-        /// </summary>
-        /// <remarks>This method is obsolete. You should instead use <see cref="GetRetainer"/>.</remarks>
-        [Obsolete("Prefer Promise.GetRetainer()", false), EditorBrowsable(EditorBrowsableState.Never)]
-        public Promise Preserve()
-        {
-            ValidateOperation(1);
-            var r = _ref;
-            if (r == null)
-            {
-                return this;
-            }
-            var newPromise = Internal.PromiseRefBase.PromiseMultiAwait<Internal.VoidResult>.GetOrCreateAndHookup(r, _id);
-            return new Promise(newPromise, newPromise.Id);
-        }
 
         /// <summary>
         /// Mark this as awaited and prevent any further awaits or callbacks on this.
@@ -125,7 +100,7 @@ namespace Proto.Promises
 
         /// <summary>
         /// Mark this as awaited and wait for the operation to complete with a specified timeout, without throwing. <paramref name="resultContainer"/> wraps the completion state and reason.
-        /// <para/>This will return <see langword="true"/> if the operation completed successfully before the timeout expired, <see langword="false"/> otherwise.
+        /// <para/>This will return <see langword="true"/> if the operation completed before the timeout expired, <see langword="false"/> otherwise.
         /// </summary>
         /// <remarks>
         /// If a <see cref="TimeSpan"/> representing -1 millisecond is specified for the timeout parameter, this method blocks indefinitely until the operation is complete.
@@ -143,50 +118,63 @@ namespace Proto.Promises
             return Internal.PromiseSynchronousWaiter.TryWaitForResult(r, _id, timeout, out resultContainer);
         }
 
-
-        /// <summary>
-        /// Mark this as awaited and get a new <see cref="Promise"/> that inherits the state of this and can be awaited once.
-        /// <para/>Preserved promises are unsafe to return from public APIs. Use <see cref="Duplicate"/> to get a <see cref="Promise"/> that is publicly safe.
-        /// <para/><see cref="Duplicate"/> is safe to call even if you are unsure if this is preserved.
-        /// </summary>
-        /// <remarks>This method is obsolete. You should instead use <see cref="GetRetainer"/> with <see cref="Retainer.WaitAsync"/>.</remarks>
-        [Obsolete("Prefer Promise.Retainer.WaitAsync()", false), EditorBrowsable(EditorBrowsableState.Never)]
-        public Promise Duplicate()
-        {
-            ValidateOperation(1);
-            return Internal.PromiseRefBase.CallbackHelperVoid.Duplicate(this);
-        }
-
-        /// <summary>
-        /// Mark this as awaited and schedule the next continuation to execute on the context of the provided option.
-        /// Returns a new <see cref="Promise"/> that inherits the state of this, or will be canceled if/when the <paramref name="cancelationToken"/> is canceled before this is complete.
-        /// </summary>
-        /// <param name="continuationOption">Indicates on which context the next continuation will be executed.</param>
-        /// <param name="forceAsync">If true, forces the next continuation to be invoked asynchronously. If <paramref name="continuationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
-        /// <param name="cancelationToken">If canceled before this is complete, the returned <see cref="Promise"/> will be canceled, and the cancelation will propagate on the context of the provided <paramref name="continuationOption"/>.</param>
-        [Obsolete("Prefer ConfigureAwait", false), EditorBrowsable(EditorBrowsableState.Never)]
-        public Promise WaitAsync(SynchronizationOption continuationOption, bool forceAsync = false, CancelationToken cancelationToken = default)
-            => WaitAsync(cancelationToken).ConfigureContinuation(new ContinuationOptions(continuationOption, forceAsync));
-
-        /// <summary>
-        /// Mark this as awaited and schedule the next continuation to execute on <paramref name="continuationContext"/>.
-        /// Returns a new <see cref="Promise"/> that inherits the state of this, or will be canceled if/when the <paramref name="cancelationToken"/> is canceled before this is complete.
-        /// </summary>
-        /// <param name="continuationContext">The context on which context the next continuation will be executed. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
-        /// <param name="forceAsync">If true, forces the next continuation to be invoked asynchronously.</param>
-        /// <param name="cancelationToken">If canceled before this is complete, the returned <see cref="Promise{T}"/> will be canceled, and the cancelation will propagate on the provided <paramref name="continuationContext"/>.</param>
-        [Obsolete("Prefer ConfigureAwait", false), EditorBrowsable(EditorBrowsableState.Never)]
-        public Promise WaitAsync(SynchronizationContext continuationContext, bool forceAsync = false, CancelationToken cancelationToken = default)
-            => WaitAsync(cancelationToken).ConfigureContinuation(new ContinuationOptions(continuationContext, forceAsync));
-
         /// <summary>
         /// Returns a new <see cref="Promise"/> that inherits the state of this, or will be canceled if/when the <paramref name="cancelationToken"/> is canceled before this is complete.
         /// </summary>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> to monitor for a cancelation request.</param>
         [MethodImpl(Internal.InlineOption)]
         public Promise WaitAsync(CancelationToken cancelationToken)
         {
             ValidateOperation(1);
             return Internal.PromiseRefBase.CallbackHelperVoid.WaitAsync(this, cancelationToken);
+        }
+
+        /// <summary>
+        /// Returns a new <see cref="Promise"/> that inherits the state of this, or will be rejected with a <see cref="TimeoutException"/>
+        /// if/when the <paramref name="timeout"/> has elapsed before this is complete.
+        /// </summary>
+        /// <param name="timeout">The timeout after which the returned <see cref="Promise"/> should be rejected with a <see cref="TimeoutException"/> if it hasn't otherwise completed.</param>
+        [MethodImpl(Internal.InlineOption)]
+        public Promise WaitAsync(TimeSpan timeout)
+            => WaitAsync(timeout, Config.DefaultTimerFactory);
+
+        /// <summary>
+        /// Returns a new <see cref="Promise"/> that inherits the state of this, or will be rejected with a <see cref="TimeoutException"/>
+        /// if/when the <paramref name="timeout"/> has elapsed, or will be canceled if/when the <paramref name="cancelationToken"/> is canceled, before this is complete.
+        /// </summary>
+        /// <param name="timeout">The timeout after which the returned <see cref="Promise"/> should be rejected with a <see cref="TimeoutException"/> if it hasn't otherwise completed.</param>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> to monitor for a cancelation request.</param>
+        [MethodImpl(Internal.InlineOption)]
+        public Promise WaitAsync(TimeSpan timeout, CancelationToken cancelationToken)
+            => WaitAsync(timeout, Config.DefaultTimerFactory, cancelationToken);
+
+        /// <summary>
+        /// Returns a new <see cref="Promise"/> that inherits the state of this, or will be rejected with a <see cref="TimeoutException"/>
+        /// if/when the <paramref name="timeout"/> has elapsed before this is complete.
+        /// </summary>
+        /// <param name="timeout">The timeout after which the returned <see cref="Promise"/> should be rejected with a <see cref="TimeoutException"/> if it hasn't otherwise completed.</param>
+        /// <param name="timerFactory">The <see cref="TimerFactory"/> with which to interpet <paramref name="timeout"/>.</param>
+        [MethodImpl(Internal.InlineOption)]
+        public Promise WaitAsync(TimeSpan timeout, TimerFactory timerFactory)
+        {
+            ValidateOperation(1);
+            ValidateArgument(timerFactory, nameof(timerFactory), 1);
+            return Internal.PromiseRefBase.CallbackHelperVoid.WaitAsync(this, timeout, timerFactory);
+        }
+
+        /// <summary>
+        /// Returns a new <see cref="Promise"/> that inherits the state of this, or will be rejected with a <see cref="TimeoutException"/>
+        /// if/when the <paramref name="timeout"/> has elapsed, or will be canceled if/when the <paramref name="cancelationToken"/> is canceled, before this is complete.
+        /// </summary>
+        /// <param name="timeout">The timeout after which the returned <see cref="Promise"/> should be rejected with a <see cref="TimeoutException"/> if it hasn't otherwise completed.</param>
+        /// <param name="timerFactory">The <see cref="TimerFactory"/> with which to interpet <paramref name="timeout"/>.</param>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> to monitor for a cancelation request.</param>
+        [MethodImpl(Internal.InlineOption)]
+        public Promise WaitAsync(TimeSpan timeout, TimerFactory timerFactory, CancelationToken cancelationToken)
+        {
+            ValidateOperation(1);
+            ValidateArgument(timerFactory, nameof(timerFactory), 1);
+            return Internal.PromiseRefBase.CallbackHelperVoid.WaitAsync(this, timeout, timerFactory, cancelationToken);
         }
 
         /// <summary>
@@ -255,15 +243,13 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is resolved, the new <see cref="Promise"/> will be resolved.
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
-        public Promise CatchCancelation(Action onCanceled, CancelationToken cancelationToken = default)
+        public Promise CatchCancelation(Action onCanceled)
         {
             ValidateOperation(1);
             ValidateArgument(onCanceled, nameof(onCanceled), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.AddCancel(this, Internal.PromiseRefBase.DelegateWrapper.Create(onCanceled), cancelationToken);
+            return Internal.PromiseRefBase.CallbackHelperVoid.AddCancel(this, Internal.PromiseRefBase.DelegateWrapper.Create(onCanceled));
         }
 
         /// <summary>
@@ -272,15 +258,13 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is resolved, the new <see cref="Promise"/> will be resolved.
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
-        public Promise CatchCancelation(Func<Promise> onCanceled, CancelationToken cancelationToken = default)
+        public Promise CatchCancelation(Func<Promise> onCanceled)
         {
             ValidateOperation(1);
             ValidateArgument(onCanceled, nameof(onCanceled), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.AddCancelWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onCanceled), cancelationToken);
+            return Internal.PromiseRefBase.CallbackHelperVoid.AddCancelWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onCanceled));
         }
 
         #region Resolve Callbacks
@@ -290,15 +274,13 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise Then(Action onResolved, CancelationToken cancelationToken = default)
+        public Promise Then(Action onResolved)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.AddResolve(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), cancelationToken);
+            return Internal.PromiseRefBase.CallbackHelperVoid.AddResolve(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved));
         }
 
         /// <summary>
@@ -307,15 +289,13 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<TResult> onResolved, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TResult>(Func<TResult> onResolved)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolve(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), cancelationToken);
+            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolve(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved));
         }
 
         /// <summary>
@@ -324,15 +304,13 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise Then(Func<Promise> onResolved, CancelationToken cancelationToken = default)
+        public Promise Then(Func<Promise> onResolved)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), cancelationToken);
+            return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved));
         }
 
         /// <summary>
@@ -341,15 +319,13 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), cancelationToken);
+            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved));
         }
         #endregion
 
@@ -360,16 +336,14 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Catch(Action onRejected, CancelationToken cancelationToken = default)
+        public Promise Catch(Action onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid
-                .AddResolveReject(this, Internal.PromiseRefBase.DelegateWrapper.CreatePassthrough(), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
+                .AddResolveReject(this, Internal.PromiseRefBase.DelegateWrapper.CreatePassthrough(), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -379,16 +353,14 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Catch<TReject>(Action<TReject> onRejected, CancelationToken cancelationToken = default)
+        public Promise Catch<TReject>(Action<TReject> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid
-                .AddResolveReject(this, Internal.PromiseRefBase.DelegateWrapper.CreatePassthrough(), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
+                .AddResolveReject(this, Internal.PromiseRefBase.DelegateWrapper.CreatePassthrough(), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -397,16 +369,14 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Catch(Func<Promise> onRejected, CancelationToken cancelationToken = default)
+        public Promise Catch(Func<Promise> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid
-                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.CreatePassthrough(), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
+                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.CreatePassthrough(), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -416,16 +386,14 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Catch<TReject>(Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default)
+        public Promise Catch<TReject>(Func<TReject, Promise> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid
-                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.CreatePassthrough(), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
+                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.CreatePassthrough(), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
         #endregion
 
@@ -437,17 +405,15 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then(Action onResolved, Action onRejected, CancelationToken cancelationToken = default)
+        public Promise Then(Action onResolved, Action onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid
-                .AddResolveReject(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
+                .AddResolveReject(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -458,17 +424,15 @@ namespace Proto.Promises
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TReject>(Action onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TReject>(Action onResolved, Action<TReject> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid
-                .AddResolveReject(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
+                .AddResolveReject(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -478,17 +442,15 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<TResult> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TResult>(Func<TResult> onResolved, Func<TResult> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>
-                .AddResolveReject(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
+                .AddResolveReject(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -499,17 +461,15 @@ namespace Proto.Promises
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult, TReject>(Func<TResult> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TResult, TReject>(Func<TResult> onResolved, Func<TReject, TResult> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>
-                .AddResolveReject(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
+                .AddResolveReject(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -519,17 +479,15 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then(Func<Promise> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then(Func<Promise> onResolved, Func<Promise> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid
-                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
+                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -540,17 +498,15 @@ namespace Proto.Promises
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TReject>(Func<Promise> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TReject>(Func<Promise> onResolved, Func<TReject, Promise> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid
-                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
+                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -560,17 +516,15 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>
-                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
+                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -581,17 +535,15 @@ namespace Proto.Promises
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult, TReject>(Func<Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TResult, TReject>(Func<Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>
-                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
+                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -601,17 +553,15 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then(Action onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then(Action onResolved, Func<Promise> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid
-                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
+                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -622,17 +572,15 @@ namespace Proto.Promises
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TReject>(Action onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TReject>(Action onResolved, Func<TReject, Promise> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid
-                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
+                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -642,17 +590,15 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<TResult> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TResult>(Func<TResult> onResolved, Func<Promise<TResult>> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>
-                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
+                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -663,17 +609,15 @@ namespace Proto.Promises
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult, TReject>(Func<TResult> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TResult, TReject>(Func<TResult> onResolved, Func<TReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>
-                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
+                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -683,17 +627,15 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then(Func<Promise> onResolved, Action onRejected, CancelationToken cancelationToken = default)
+        public Promise Then(Func<Promise> onResolved, Action onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid
-                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
+                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -704,17 +646,15 @@ namespace Proto.Promises
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TReject>(Func<Promise> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TReject>(Func<Promise> onResolved, Action<TReject> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid
-                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
+                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -724,17 +664,15 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TResult>(Func<Promise<TResult>> onResolved, Func<TResult> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>
-                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
+                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -745,21 +683,71 @@ namespace Proto.Promises
         /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TResult, TReject>(Func<Promise<TResult>> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TResult, TReject>(Func<Promise<TResult>> onResolved, Func<TReject, TResult> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>
-                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected), cancelationToken);
+                .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
         #endregion
 
         #region Continue Callbacks
+        /// <summary>
+        /// Add a continuation callback. Returns a new <see cref="Promise"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// </summary>
+        public Promise ContinueWith(Action<ResultContainer> onContinue)
+        {
+            ValidateOperation(1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
+
+            return Internal.PromiseRefBase.CallbackHelperVoid.AddContinue(this, Internal.PromiseRefBase.DelegateWrapper.Create(onContinue));
+        }
+
+        /// <summary>
+        /// Add a continuation callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// </summary>
+        public Promise<TResult> ContinueWith<TResult>(Func<ResultContainer, TResult> onContinue)
+        {
+            ValidateOperation(1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
+
+            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddContinue(this, Internal.PromiseRefBase.DelegateWrapper.Create(onContinue));
+        }
+
+        /// <summary>
+        /// Add a continuation callback. Returns a new <see cref="Promise"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// </summary>
+        public Promise ContinueWith(Func<ResultContainer, Promise> onContinue)
+        {
+            ValidateOperation(1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
+
+            return Internal.PromiseRefBase.CallbackHelperVoid.AddContinueWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onContinue));
+        }
+
+        /// <summary>
+        /// Add a continuation callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// </summary>
+        public Promise<TResult> ContinueWith<TResult>(Func<ResultContainer, Promise<TResult>> onContinue)
+        {
+            ValidateOperation(1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
+
+            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddContinueWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onContinue));
+        }
+
         /// <summary>
         /// Add a continuation callback. Returns a new <see cref="Promise"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will be resolved when it returns.
@@ -866,15 +854,13 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is resolved, the new <see cref="Promise"/> will be resolved.
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
-        public Promise CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel> onCanceled, CancelationToken cancelationToken = default)
+        public Promise CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel> onCanceled)
         {
             ValidateOperation(1);
             ValidateArgument(onCanceled, nameof(onCanceled), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.AddCancel(this, Internal.PromiseRefBase.DelegateWrapper.Create(cancelCaptureValue, onCanceled), cancelationToken);
+            return Internal.PromiseRefBase.CallbackHelperVoid.AddCancel(this, Internal.PromiseRefBase.DelegateWrapper.Create(cancelCaptureValue, onCanceled));
         }
 
         /// <summary>
@@ -883,15 +869,13 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
         /// <para/>If/when this is resolved, the new <see cref="Promise"/> will be resolved.
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
-        /// 
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onCanceled"/> will not be invoked.
         /// </summary>
-        public Promise CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Func<TCaptureCancel, Promise> onCanceled, CancelationToken cancelationToken = default)
+        public Promise CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Func<TCaptureCancel, Promise> onCanceled)
         {
             ValidateOperation(1);
             ValidateArgument(onCanceled, nameof(onCanceled), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.AddCancelWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(cancelCaptureValue, onCanceled), cancelationToken);
+            return Internal.PromiseRefBase.CallbackHelperVoid.AddCancelWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(cancelCaptureValue, onCanceled));
         }
 
         #region Resolve Callbacks
@@ -901,15 +885,13 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.AddResolve(this, Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved), cancelationToken);
+            return Internal.PromiseRefBase.CallbackHelperVoid.AddResolve(this, Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved));
         }
 
         /// <summary>
@@ -918,15 +900,13 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolve(this, Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved), cancelationToken);
+            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolve(this, Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved));
         }
 
         /// <summary>
@@ -935,15 +915,13 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved), cancelationToken);
+            return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved));
         }
 
         /// <summary>
@@ -952,15 +930,13 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is rejected with any reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved), cancelationToken);
+            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved));
         }
         #endregion
 
@@ -971,18 +947,15 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Catch<TCaptureReject>(TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default)
+        public Promise Catch<TCaptureReject>(TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.CreatePassthrough(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -992,18 +965,15 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Catch<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default)
+        public Promise Catch<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.CreatePassthrough(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1012,18 +982,15 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Catch<TCaptureReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default)
+        public Promise Catch<TCaptureReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.CreatePassthrough(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1033,18 +1000,15 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Catch<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default)
+        public Promise Catch<TCaptureReject, TReject>(TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onRejected, nameof(onRejected), 1);
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.CreatePassthrough(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
         #endregion
 
@@ -1056,10 +1020,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Action onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Action onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1067,8 +1029,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -1078,10 +1039,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureReject>(Action onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureReject>(Action onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1089,8 +1048,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1100,10 +1058,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1111,8 +1067,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1123,10 +1078,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Action<TReject> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1134,8 +1087,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -1146,10 +1098,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureReject, TReject>(Action onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureReject, TReject>(Action onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1157,8 +1107,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1169,10 +1118,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1180,8 +1127,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1191,10 +1137,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TResult> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1202,8 +1146,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -1213,10 +1156,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureReject, TResult>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureReject, TResult>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1224,8 +1165,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1235,10 +1175,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1246,8 +1184,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1258,10 +1195,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TReject, TResult> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1269,8 +1204,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -1281,10 +1215,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1292,8 +1224,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1304,10 +1235,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1315,8 +1244,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveReject(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1326,10 +1254,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Func<Promise> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1337,8 +1263,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -1348,10 +1273,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1359,8 +1282,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1370,10 +1292,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1381,8 +1301,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1393,10 +1312,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Func<TReject, Promise> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1404,8 +1321,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -1416,10 +1332,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureReject, TReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureReject, TReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1427,8 +1341,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1439,10 +1352,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1450,8 +1361,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1461,10 +1371,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<Promise<TResult>> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1472,8 +1380,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -1483,10 +1390,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureReject, TResult>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureReject, TResult>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1494,8 +1399,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1505,10 +1409,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1516,8 +1418,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1528,10 +1429,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1539,8 +1438,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -1551,10 +1449,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1562,8 +1458,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1574,10 +1469,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1585,8 +1478,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1596,10 +1488,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Func<Promise> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Func<Promise> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1607,8 +1497,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -1618,10 +1507,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureReject>(Action onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureReject>(Action onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1629,8 +1516,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1640,10 +1526,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1651,8 +1535,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1663,10 +1546,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Func<TReject, Promise> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, Func<TReject, Promise> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1674,8 +1555,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -1686,10 +1566,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureReject, TReject>(Action onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureReject, TReject>(Action onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1697,8 +1575,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1709,10 +1586,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Action<TCaptureResolve> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1720,8 +1595,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1731,10 +1605,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<Promise<TResult>> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1742,8 +1614,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -1753,10 +1624,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureReject, TResult>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureReject, TResult>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1764,8 +1633,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1775,10 +1643,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1786,8 +1652,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1798,10 +1663,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, Func<TReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1809,8 +1672,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -1821,10 +1683,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1832,8 +1692,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1844,10 +1703,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, TResult> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, Promise<TResult>> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1855,8 +1712,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1866,10 +1722,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise"/> will be resolved when it returns.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Action onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureResolve>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Action onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1877,8 +1731,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -1888,10 +1741,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1899,8 +1750,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1910,10 +1760,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise"/> will be resolved when it returns.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureResolve, TCaptureReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1921,8 +1769,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1933,10 +1780,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Action<TReject> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureResolve, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, Action<TReject> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1944,8 +1789,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -1956,10 +1800,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureReject, TReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureReject, TReject>(Func<Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1967,8 +1809,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -1979,10 +1820,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected, CancelationToken cancelationToken = default)
+        public Promise Then<TCaptureResolve, TCaptureReject, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise> onResolved, TCaptureReject rejectCaptureValue, Action<TCaptureReject, TReject> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -1990,8 +1829,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperVoid.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -2001,10 +1839,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TResult> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureResolve, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TResult> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -2012,8 +1848,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -2023,10 +1858,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureReject, TResult>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureReject, TResult>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -2034,8 +1867,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -2045,10 +1877,8 @@ namespace Proto.Promises
         /// <para/>If/when this is rejected with any reason, <paramref name="onRejected"/> will be invoked with <paramref name="rejectCaptureValue"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TResult> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -2056,8 +1886,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -2068,10 +1897,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TReject, TResult> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureResolve, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, Func<TReject, TResult> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -2079,8 +1906,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
 
         /// <summary>
@@ -2091,10 +1917,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureReject, TResult, TReject>(Func<Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -2102,8 +1926,7 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
 
         /// <summary>
@@ -2114,10 +1937,8 @@ namespace Proto.Promises
         /// If it throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>.
         /// If this is rejected with any other reason, the new <see cref="Promise{T}"/> will be rejected with the same reason.
         /// <para/>If/when this is canceled, the new <see cref="Promise{T}"/> will be canceled.
-        ///
-        /// <para/>If the <paramref name="cancelationToken"/> is canceled while this is pending, the new <see cref="Promise{T}"/> will be canceled, and <paramref name="onResolved"/> and <paramref name="onRejected"/> will not be invoked.
         /// </summary>
-        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected, CancelationToken cancelationToken = default)
+        public Promise<TResult> Then<TCaptureResolve, TCaptureReject, TResult, TReject>(TCaptureResolve resolveCaptureValue, Func<TCaptureResolve, Promise<TResult>> onResolved, TCaptureReject rejectCaptureValue, Func<TCaptureReject, TReject, TResult> onRejected)
         {
             ValidateOperation(1);
             ValidateArgument(onResolved, nameof(onResolved), 1);
@@ -2125,12 +1946,63 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddResolveRejectWait(this,
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
-                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected),
-                cancelationToken);
+                Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
         #endregion
 
         #region Continue Callbacks
+        /// <summary>
+        /// Capture a value and add a continuation callback. Returns a new <see cref="Promise"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with <paramref name="continueCaptureValue"/> and the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will be resolved when it returns.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// </summary>
+        public Promise ContinueWith<TCapture>(TCapture continueCaptureValue, Action<TCapture, ResultContainer> onContinue)
+        {
+            ValidateOperation(1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
+
+            return Internal.PromiseRefBase.CallbackHelperVoid.AddContinue(this, Internal.PromiseRefBase.DelegateWrapper.Create(continueCaptureValue, onContinue));
+        }
+
+        /// <summary>
+        /// Capture a value and add a continuation callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with <paramref name="continueCaptureValue"/> and the <see cref="ResultContainer"/>, and the new <see cref="Promise{T}"/> will be resolved with the returned value.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// </summary>
+        public Promise<TResult> ContinueWith<TCapture, TResult>(TCapture continueCaptureValue, Func<TCapture, ResultContainer, TResult> onContinue)
+        {
+            ValidateOperation(1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
+
+            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddContinue(this, Internal.PromiseRefBase.DelegateWrapper.Create(continueCaptureValue, onContinue));
+        }
+
+        /// <summary>
+        /// Capture a value and add a continuation callback. Returns a new <see cref="Promise"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with <paramref name="continueCaptureValue"/> and the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will adopt the state of the returned <see cref="Promise"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// </summary>
+        public Promise ContinueWith<TCapture>(TCapture continueCaptureValue, Func<TCapture, ResultContainer, Promise> onContinue)
+        {
+            ValidateOperation(1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
+
+            return Internal.PromiseRefBase.CallbackHelperVoid.AddContinueWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(continueCaptureValue, onContinue));
+        }
+
+        /// <summary>
+        /// Add a continuation callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="TResult"/>.
+        /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with <paramref name="continueCaptureValue"/> and the <see cref="ResultContainer"/>, and the new <see cref="Promise{T}"/> will adopt the state of the returned <see cref="Promise{T}"/>.
+        /// If if throws an <see cref="Exception"/>, the new <see cref="Promise{T}"/> will be rejected with that <see cref="Exception"/>, unless it is a Special Exception (see README).
+        /// </summary>
+        public Promise<TResult> ContinueWith<TCapture, TResult>(TCapture continueCaptureValue, Func<TCapture, ResultContainer, Promise<TResult>> onContinue)
+        {
+            ValidateOperation(1);
+            ValidateArgument(onContinue, nameof(onContinue), 1);
+
+            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.AddContinueWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(continueCaptureValue, onContinue));
+        }
+
         /// <summary>
         /// Capture a value and add a continuation callback. Returns a new <see cref="Promise"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with <paramref name="continueCaptureValue"/> and the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will be resolved when it returns.
@@ -2205,7 +2077,7 @@ namespace Proto.Promises
         /// <summary>Returns the hash code for this instance.</summary>
         [MethodImpl(Internal.InlineOption)]
         public override int GetHashCode()
-            => Internal.BuildHashCode(_ref, _id.GetHashCode(), 0);
+            => HashCode.Combine(_ref, _id);
 
         /// <summary>Returns a value indicating whether two <see cref="Promise"/> values are equal.</summary>
         [MethodImpl(Internal.InlineOption)]

@@ -23,6 +23,11 @@ namespace Proto.Promises
         {
             volatile private int _locker;
 
+            [MethodImpl(InlineOption)]
+            internal bool TryEnter()
+                => Interlocked.Exchange(ref _locker, 1) == 0;
+
+            [MethodImpl(InlineOption)]
             internal void Enter()
             {
                 if (!TryEnter())
@@ -31,18 +36,39 @@ namespace Proto.Promises
                 }
             }
 
-            [MethodImpl(InlineOption)]
-            internal bool TryEnter()
-                => Interlocked.Exchange(ref _locker, 1) == 0;
-
             [MethodImpl(MethodImplOptions.NoInlining)]
             private void EnterCore()
             {
-                // Spin until we successfully get lock.
+                // Spin until we acquire the lock.
                 var spinner = new SpinWait();
                 do
                 {
                     spinner.SpinOnce();
+                }
+                while (!TryEnter());
+            }
+
+            /// <summary>
+            /// Used to enter the lock without putting the thread to sleep for very long.
+            /// This should only be used when all operations protected by the lock are very short.
+            /// </summary>
+            [MethodImpl(InlineOption)]
+            internal void EnterWithoutSleep1()
+            {
+                if (!TryEnter())
+                {
+                    EnterWithoutSleep1Core();
+                }
+            }
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private void EnterWithoutSleep1Core()
+            {
+                // Spin until we acquire the lock.
+                var spinner = new SpinWait();
+                do
+                {
+                    spinner.SpinOnce(sleep1Threshold: -1);
                 }
                 while (!TryEnter());
             }

@@ -122,8 +122,8 @@ namespace Proto.Promises
             {
                 PrepareEarlyDispose();
                 base.Dispose();
-                _current = default;
-                _disposed = true;
+                ClearReferences(ref _current);
+                _enumerableDisposed = true;
                 ObjectPool.MaybeRepool(this);
             }
 

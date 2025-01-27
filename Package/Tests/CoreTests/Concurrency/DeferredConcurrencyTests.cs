@@ -34,18 +34,22 @@ namespace ProtoPromiseTests.Concurrency
             deferred.Promise
                 .Then(() => { Interlocked.Increment(ref invokedCount); })
                 .Forget();
-            int failedTryResolveCount = 0;
+            int failedResolveCount = 0;
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(() =>
             {
-                if (!deferred.TryResolve())
+                try
                 {
-                    Interlocked.Increment(ref failedTryResolveCount);
+                    deferred.Resolve();
+                }
+                catch (InvalidOperationException)
+                {
+                    Interlocked.Increment(ref failedResolveCount);
                 }
             });
 
-            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
+            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedResolveCount); // Resolve should succeed once.
             Assert.AreEqual(1, invokedCount);
         }
 
@@ -57,18 +61,22 @@ namespace ProtoPromiseTests.Concurrency
             deferred.Promise
                 .Then(v => { Interlocked.Increment(ref invokedCount); })
                 .Forget();
-            int failedTryResolveCount = 0;
+            int failedResolveCount = 0;
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(() =>
             {
-                if (!deferred.TryResolve(1))
+                try
                 {
-                    Interlocked.Increment(ref failedTryResolveCount);
+                    deferred.Resolve(1);
+                }
+                catch (InvalidOperationException)
+                {
+                    Interlocked.Increment(ref failedResolveCount);
                 }
             });
 
-            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
+            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedResolveCount); // Resolve should succeed once.
             Assert.AreEqual(1, invokedCount);
         }
 
@@ -80,18 +88,22 @@ namespace ProtoPromiseTests.Concurrency
             deferred.Promise
                 .Catch(() => { Interlocked.Increment(ref invokedCount); })
                 .Forget();
-            int failedTryResolveCount = 0;
+            int failedRejectCount = 0;
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(() =>
             {
-                if (!deferred.TryReject("Reject"))
+                try
                 {
-                    Interlocked.Increment(ref failedTryResolveCount);
+                    deferred.Reject("Reject");
+                }
+                catch (InvalidOperationException)
+                {
+                    Interlocked.Increment(ref failedRejectCount);
                 }
             });
 
-            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
+            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedRejectCount); // Reject should succeed once.
             Assert.AreEqual(1, invokedCount);
         }
 
@@ -103,18 +115,22 @@ namespace ProtoPromiseTests.Concurrency
             deferred.Promise
                 .Catch(() => { Interlocked.Increment(ref invokedCount); })
                 .Forget();
-            int failedTryResolveCount = 0;
+            int failedRejectCount = 0;
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(() =>
             {
-                if (!deferred.TryReject("Reject"))
+                try
                 {
-                    Interlocked.Increment(ref failedTryResolveCount);
+                    deferred.Reject("Reject");
+                }
+                catch (InvalidOperationException)
+                {
+                    Interlocked.Increment(ref failedRejectCount);
                 }
             });
 
-            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
+            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedRejectCount); // Reject should succeed once.
             Assert.AreEqual(1, invokedCount);
         }
 
@@ -126,18 +142,22 @@ namespace ProtoPromiseTests.Concurrency
             deferred.Promise
                 .CatchCancelation(() => { Interlocked.Increment(ref invokedCount); })
                 .Forget();
-            int failedTryResolveCount = 0;
+            int failedCancelCount = 0;
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(() =>
             {
-                if (!deferred.TryCancel())
+                try
                 {
-                    Interlocked.Increment(ref failedTryResolveCount);
+                    deferred.Cancel();
+                }
+                catch (InvalidOperationException)
+                {
+                    Interlocked.Increment(ref failedCancelCount);
                 }
             });
 
-            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
+            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedCancelCount); // Cancel should succeed once.
             Assert.AreEqual(1, invokedCount);
         }
 
@@ -149,18 +169,22 @@ namespace ProtoPromiseTests.Concurrency
             deferred.Promise
                 .CatchCancelation(() => { Interlocked.Increment(ref invokedCount); })
                 .Forget();
-            int failedTryResolveCount = 0;
+            int failedCancelCount = 0;
 
             var threadHelper = new ThreadHelper();
             threadHelper.ExecuteMultiActionParallel(() =>
             {
-                if (!deferred.TryCancel())
+                try
                 {
-                    Interlocked.Increment(ref failedTryResolveCount);
+                    deferred.Cancel();
+                }
+                catch (InvalidOperationException)
+                {
+                    Interlocked.Increment(ref failedCancelCount);
                 }
             });
 
-            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedTryResolveCount); // TryResolve should succeed once.
+            Assert.AreEqual(ThreadHelper.multiExecutionCount - 1, failedCancelCount); // Cancel should succeed once.
             Assert.AreEqual(1, invokedCount);
         }
 

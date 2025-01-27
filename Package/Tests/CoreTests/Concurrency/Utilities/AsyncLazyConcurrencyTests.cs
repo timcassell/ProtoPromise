@@ -64,7 +64,10 @@ namespace ProtoPromiseTests.Concurrency.Utilities
                 {
                     TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
                     Assert.AreEqual(1, invokedCount);
-                    deferred.TryResolve(expectedResult);
+                    if (waitForDeferred)
+                    {
+                        deferred.Resolve(expectedResult);
+                    }
                     Assert.AreEqual(1, invokedCount);
                 },
                 // parallel actions, repeated to generate offsets
@@ -89,7 +92,7 @@ namespace ProtoPromiseTests.Concurrency.Utilities
                     .Forget();
             };
 
-            new ThreadHelper().ExecuteParallelActionsWithOffsets(true, // Repeat the parallel actions for as many available hardware threads.
+            new ThreadHelper().ExecuteParallelActionsWithOffsets(false,
                 // setup
                 () =>
                 {
@@ -108,7 +111,7 @@ namespace ProtoPromiseTests.Concurrency.Utilities
                     Assert.AreEqual(1, invokedCount);
                 },
                 // parallel actions
-                () => deferred.TryResolve(expectedResult),
+                () => deferred.Resolve(expectedResult),
                 // repeated to generate offsets
                 parallelAction,
                 parallelAction,

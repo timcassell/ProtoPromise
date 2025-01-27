@@ -8,6 +8,7 @@
 #pragma warning disable IDE0270 // Use coalesce expression
 
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -26,8 +27,8 @@ namespace Proto.Promises
         public readonly struct DeferredBase : ICancelable, IEquatable<DeferredBase>
         {
             private readonly Internal.IDeferredPromise _ref;
-            private readonly short _promiseId;
             private readonly int _deferredId;
+            private readonly short _promiseId;
 
             /// <summary>
             /// The attached <see cref="Promises.Promise"/> that this controls.
@@ -41,7 +42,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG // If the reference is null, this is invalid. We only check in DEBUG mode for performance.
                     if (_this == null)
                     {
-                        throw new InvalidOperationException("DeferredBase.Promise: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                        throw new NullReferenceException();
                     }
 #endif
                     return new Promise((Internal.PromiseRefBase) _this, _promiseId);
@@ -51,6 +52,8 @@ namespace Proto.Promises
             /// <summary>
             /// Get whether or not this instance and the attached <see cref="Promise"/> are valid.
             /// </summary>
+            [Obsolete("Due to object pooling, this property is inherently unsafe. Prefer != default, and remember to set your Deferred fields to default when you complete them.", false)]
+            [EditorBrowsable(EditorBrowsableState.Never)]
             public bool IsValid
             {
                 [MethodImpl(Internal.InlineOption)]
@@ -60,6 +63,8 @@ namespace Proto.Promises
             /// <summary>
             /// Get whether or not this instance is valid and the attached <see cref="Promise"/> is still pending.
             /// </summary>
+            [Obsolete("Due to object pooling, this property is inherently unsafe. Prefer != default, and remember to set your Deferred fields to default when you complete them.", false)]
+            [EditorBrowsable(EditorBrowsableState.Never)]
             public bool IsValidAndPending
             {
                 [MethodImpl(Internal.InlineOption)]
@@ -116,13 +121,14 @@ namespace Proto.Promises
             /// <summary>
             /// Reject the linked <see cref="Promise"/> with <paramref name="reason"/>.
             /// </summary>
-            /// <exception cref="InvalidOperationException"/>
+            /// <exception cref="InvalidOperationException">This was already completed.</exception>
+            /// <exception cref="NullReferenceException">This is a default value.</exception>
             public void Reject<TReject>(TReject reason)
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) != true)
+                if (!_this.TryIncrementDeferredId(_deferredId))
                 {
-                    throw new InvalidOperationException("DeferredBase.Reject: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace(1));
                 }
                 _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
             }
@@ -131,6 +137,7 @@ namespace Proto.Promises
             /// Try to reject the linked <see cref="Promise"/> with <paramref name="reason"/>.
             /// <para/> Returns true if successful, false otherwise.
             /// </summary>
+            [Obsolete("Prefer != default and Reject.", false), EditorBrowsable(EditorBrowsableState.Never)]
             public bool TryReject<TReject>(TReject reason)
             {
                 var _this = _ref;
@@ -145,14 +152,15 @@ namespace Proto.Promises
             /// <summary>
             /// Cancel the linked <see cref="Promise"/>.
             /// </summary>
-            /// <exception cref="InvalidOperationException"/>
+            /// <exception cref="InvalidOperationException">This was already completed.</exception>
+            /// <exception cref="NullReferenceException">This is a default value.</exception>
             [MethodImpl(Internal.InlineOption)]
             public void Cancel()
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) != true)
+                if (!_this.TryIncrementDeferredId(_deferredId))
                 {
-                    throw new InvalidOperationException("DeferredBase.Cancel: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace(1));
                 }
                 _this.CancelDirect();
             }
@@ -161,7 +169,7 @@ namespace Proto.Promises
             /// Try to cancel the linked <see cref="Promise"/>.
             /// <para/> Returns true if successful, false otherwise.
             /// </summary>
-            [MethodImpl(Internal.InlineOption)]
+            [Obsolete("Prefer != default and Cancel.", false), EditorBrowsable(EditorBrowsableState.Never)]
             public bool TryCancel()
             {
                 var _this = _ref;
@@ -185,7 +193,7 @@ namespace Proto.Promises
             /// <summary>Returns the hash code for this instance.</summary>
             [MethodImpl(Internal.InlineOption)]
             public override int GetHashCode()
-                => Internal.BuildHashCode(_ref, _deferredId.GetHashCode(), _promiseId.GetHashCode());
+                => HashCode.Combine(_ref, _deferredId, _promiseId);
 
             /// <summary>Returns a value indicating whether two <see cref="DeferredBase"/> values are equal.</summary>
             [MethodImpl(Internal.InlineOption)]
@@ -209,8 +217,8 @@ namespace Proto.Promises
         public readonly struct Deferred : ICancelable, IEquatable<Deferred>
         {
             internal readonly Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult> _ref;
-            internal readonly short _promiseId;
             internal readonly int _deferredId;
+            internal readonly short _promiseId;
 
             /// <summary>
             /// The attached <see cref="Promises.Promise"/> that this controls.
@@ -234,6 +242,8 @@ namespace Proto.Promises
             /// <summary>
             /// Get whether or not this instance and the attached <see cref="Promise"/> are valid.
             /// </summary>
+            [Obsolete("Due to object pooling, this property is inherently unsafe. Prefer != default, and remember to set your Deferred fields to default when you complete them.", false)]
+            [EditorBrowsable(EditorBrowsableState.Never)]
             public bool IsValid
             {
                 [MethodImpl(Internal.InlineOption)]
@@ -243,6 +253,8 @@ namespace Proto.Promises
             /// <summary>
             /// Get whether or not this instance is valid and the attached <see cref="Promise"/> is still pending.
             /// </summary>
+            [Obsolete("Due to object pooling, this property is inherently unsafe. Prefer != default, and remember to set your Deferred fields to default when you complete them.", false)]
+            [EditorBrowsable(EditorBrowsableState.Never)]
             public bool IsValidAndPending
             {
                 [MethodImpl(Internal.InlineOption)]
@@ -270,14 +282,15 @@ namespace Proto.Promises
             /// <summary>
             /// Resolve the linked <see cref="Promise"/>.
             /// </summary>
-            /// <exception cref="InvalidOperationException"/>
+            /// <exception cref="InvalidOperationException">This was already completed.</exception>
+            /// <exception cref="NullReferenceException">This is a default value.</exception>
             [MethodImpl(Internal.InlineOption)]
             public void Resolve()
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) != true)
+                if (!_this.TryIncrementDeferredId(_deferredId))
                 {
-                    throw new InvalidOperationException("Deferred.Resolve: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace(1));
                 }
                 _this.ResolveDirectVoid();
             }
@@ -286,20 +299,29 @@ namespace Proto.Promises
             /// Try to resolve the linked <see cref="Promise"/>.
             /// <para/> Returns true if successful, false otherwise.
             /// </summary>
-            [MethodImpl(Internal.InlineOption)]
+            [Obsolete("Prefer != default and Resolve.", false), EditorBrowsable(EditorBrowsableState.Never)]
             public bool TryResolve()
-                => Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult>.TryResolveVoid(_ref, _deferredId);
+            {
+                var _this = _ref;
+                if (_this?.TryIncrementDeferredId(_deferredId) == true)
+                {
+                    _this.ResolveDirectVoid();
+                    return true;
+                }
+                return false;
+            }
 
             /// <summary>
             /// Reject the linked <see cref="Promise"/> with <paramref name="reason"/>.
             /// </summary>
-            /// <exception cref="InvalidOperationException"/>
+            /// <exception cref="InvalidOperationException">This was already completed.</exception>
+            /// <exception cref="NullReferenceException">This is a default value.</exception>
             public void Reject<TReject>(TReject reason)
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) != true)
+                if (!_this.TryIncrementDeferredId(_deferredId))
                 {
-                    throw new InvalidOperationException("Deferred.Reject: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace(1));
                 }
                 _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
             }
@@ -308,6 +330,7 @@ namespace Proto.Promises
             /// Try to reject the linked <see cref="Promise"/> with <paramref name="reason"/>.
             /// <para/> Returns true if successful, false otherwise.
             /// </summary>
+            [Obsolete("Prefer != default and Reject.", false), EditorBrowsable(EditorBrowsableState.Never)]
             public bool TryReject<TReject>(TReject reason)
             {
                 var _this = _ref;
@@ -322,14 +345,15 @@ namespace Proto.Promises
             /// <summary>
             /// Cancel the linked <see cref="Promise"/>.
             /// </summary>
-            /// <exception cref="InvalidOperationException"/>
+            /// <exception cref="InvalidOperationException">This was already completed.</exception>
+            /// <exception cref="NullReferenceException">This is a default value.</exception>
             [MethodImpl(Internal.InlineOption)]
             public void Cancel()
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) != true)
+                if (!_this.TryIncrementDeferredId(_deferredId))
                 {
-                    throw new InvalidOperationException("Deferred.Cancel: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace(1));
                 }
                 _this.CancelDirect();
             }
@@ -338,7 +362,7 @@ namespace Proto.Promises
             /// Try to cancel the linked <see cref="Promise"/>.
             /// <para/> Returns true if successful, false otherwise.
             /// </summary>
-            [MethodImpl(Internal.InlineOption)]
+            [Obsolete("Prefer != default and Cancel.", false), EditorBrowsable(EditorBrowsableState.Never)]
             public bool TryCancel()
             {
                 var _this = _ref;
@@ -376,7 +400,7 @@ namespace Proto.Promises
             /// <summary>Returns the hash code for this instance.</summary>
             [MethodImpl(Internal.InlineOption)]
             public override int GetHashCode()
-                => Internal.BuildHashCode(_ref, _deferredId.GetHashCode(), _promiseId.GetHashCode());
+                => HashCode.Combine(_ref, _deferredId, _promiseId);
 
             /// <summary>Returns a value indicating whether two <see cref="Deferred"/> values are equal.</summary>
             [MethodImpl(Internal.InlineOption)]
@@ -403,8 +427,8 @@ namespace Proto.Promises
         public readonly struct Deferred : ICancelable, IEquatable<Deferred>
         {
             internal readonly Internal.PromiseRefBase.DeferredPromise<T> _ref;
-            internal readonly short _promiseId;
             internal readonly int _deferredId;
+            internal readonly short _promiseId;
 
             /// <summary>
             /// The attached <see cref="Promise{T}"/> that this controls.
@@ -428,6 +452,8 @@ namespace Proto.Promises
             /// <summary>
             /// Get whether or not this instance and the attached <see cref="Promise"/> are valid.
             /// </summary>
+            [Obsolete("Due to object pooling, this property is inherently unsafe. Prefer != default, and remember to set your Deferred fields to default when you complete them.", false)]
+            [EditorBrowsable(EditorBrowsableState.Never)]
             public bool IsValid
             {
                 [MethodImpl(Internal.InlineOption)]
@@ -437,6 +463,8 @@ namespace Proto.Promises
             /// <summary>
             /// Get whether or not this instance is valid and the attached <see cref="Promise"/> is still pending.
             /// </summary>
+            [Obsolete("Due to object pooling, this property is inherently unsafe. Prefer != default, and remember to set your Deferred fields to default when you complete them.", false)]
+            [EditorBrowsable(EditorBrowsableState.Never)]
             public bool IsValidAndPending
             {
                 [MethodImpl(Internal.InlineOption)]
@@ -464,14 +492,15 @@ namespace Proto.Promises
             /// <summary>
             /// Resolve the linked <see cref="Promise"/> with <paramref name="value"/>.
             /// </summary>
-            /// <exception cref="InvalidOperationException"/>
+            /// <exception cref="InvalidOperationException">This was already completed.</exception>
+            /// <exception cref="NullReferenceException">This is a default value.</exception>
             [MethodImpl(Internal.InlineOption)]
             public void Resolve(T value)
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) != true)
+                if (!_this.TryIncrementDeferredId(_deferredId))
                 {
-                    throw new InvalidOperationException("Deferred.Resolve: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace(1));
                 }
                 _this.ResolveDirect(value);
             }
@@ -480,20 +509,29 @@ namespace Proto.Promises
             /// Try to resolve the linked <see cref="Promise"/> with <paramref name="value"/>.
             /// <para/> Returns true if successful, false otherwise.
             /// </summary>
-            [MethodImpl(Internal.InlineOption)]
+            [Obsolete("Prefer != default and Resolve.", false), EditorBrowsable(EditorBrowsableState.Never)]
             public bool TryResolve(T value)
-                => Internal.PromiseRefBase.DeferredPromise<T>.TryResolve(_ref, _deferredId, value);
+            {
+                var _this = _ref;
+                if (_this?.TryIncrementDeferredId(_deferredId) == true)
+                {
+                    _this.ResolveDirect(value);
+                    return true;
+                }
+                return false;
+            }
 
             /// <summary>
             /// Reject the linked <see cref="Promise"/> with <paramref name="reason"/>.
             /// </summary>
-            /// <exception cref="InvalidOperationException"/>
+            /// <exception cref="InvalidOperationException">This was already completed.</exception>
+            /// <exception cref="NullReferenceException">This is a default value.</exception>
             public void Reject<TReject>(TReject reason)
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) != true)
+                if (!_this.TryIncrementDeferredId(_deferredId))
                 {
-                    throw new InvalidOperationException("Deferred.Reject: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace(1));
                 }
                 _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
             }
@@ -502,6 +540,7 @@ namespace Proto.Promises
             /// Try to reject the linked <see cref="Promise"/> with <paramref name="reason"/>.
             /// <para/> Returns true if successful, false otherwise.
             /// </summary>
+            [Obsolete("Prefer != default and Reject.", false), EditorBrowsable(EditorBrowsableState.Never)]
             public bool TryReject<TReject>(TReject reason)
             {
                 var _this = _ref;
@@ -516,14 +555,15 @@ namespace Proto.Promises
             /// <summary>
             /// Cancel the linked <see cref="Promise"/>.
             /// </summary>
-            /// <exception cref="InvalidOperationException"/>
+            /// <exception cref="InvalidOperationException">This was already completed.</exception>
+            /// <exception cref="NullReferenceException">This is a default value.</exception>
             [MethodImpl(Internal.InlineOption)]
             public void Cancel()
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) != true)
+                if (!_this.TryIncrementDeferredId(_deferredId))
                 {
-                    throw new InvalidOperationException("Deferred.Cancel: instance is not valid or already complete.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace(1));
                 }
                 _this.CancelDirect();
             }
@@ -532,7 +572,7 @@ namespace Proto.Promises
             /// Try to cancel the linked <see cref="Promise"/>.
             /// <para/> Returns true if successful, false otherwise.
             /// </summary>
-            [MethodImpl(Internal.InlineOption)]
+            [Obsolete("Prefer != default and Cancel.", false), EditorBrowsable(EditorBrowsableState.Never)]
             public bool TryCancel()
             {
                 var _this = _ref;
@@ -570,7 +610,7 @@ namespace Proto.Promises
             /// <summary>Returns the hash code for this instance.</summary>
             [MethodImpl(Internal.InlineOption)]
             public override int GetHashCode()
-                => Internal.BuildHashCode(_ref, _deferredId.GetHashCode(), _promiseId.GetHashCode());
+                => HashCode.Combine(_ref, _deferredId, _promiseId);
 
             /// <summary>Returns a value indicating whether two <see cref="Deferred"/> values are equal.</summary>
             [MethodImpl(Internal.InlineOption)]

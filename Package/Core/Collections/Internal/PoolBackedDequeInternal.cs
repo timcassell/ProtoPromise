@@ -5,12 +5,7 @@
 #endif
 
 using System;
-// ArrayPool for old runtime is in Proto.Promises.Collections namespace.
-#if (NETCOREAPP || NETSTANDARD2_0_OR_GREATER || UNITY_2021_2_OR_NEWER)
 using System.Buffers;
-#else
-using Proto.Promises.Collections;
-#endif
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -38,19 +33,19 @@ namespace Proto.Promises.Collections
             get => _size;
         }
 
-        public bool IsEmpty
+        internal bool IsEmpty
         {
             [MethodImpl(Internal.InlineOption)]
             get => _size == 0;
         }
 
-        public bool IsNotEmpty
+        internal bool IsNotEmpty
         {
             [MethodImpl(Internal.InlineOption)]
             get => _size != 0;
         }
 
-        public void EnqueueTail(T item)
+        internal void EnqueueTail(T item)
         {
             if (_size == _array.Length)
             {
@@ -66,7 +61,7 @@ namespace Proto.Promises.Collections
         }
 
         //// Uncomment if/when enqueueing at the head is needed
-        //public void EnqueueHead(T item)
+        //internal void EnqueueHead(T item)
         //{
         //    if (_size == _array.Length)
         //    {
@@ -78,12 +73,12 @@ namespace Proto.Promises.Collections
         //    _size++;
         //}
 
-        public T DequeueHead()
+        internal T DequeueHead()
         {
             Debug.Assert(!IsEmpty); // caller's responsibility to make sure there are elements remaining
 
             T item = _array[_head];
-            _array[_head] = default;
+            Internal.ClearReferences(ref _array[_head]);
 
             if (++_head == _array.Length)
             {
@@ -94,14 +89,14 @@ namespace Proto.Promises.Collections
             return item;
         }
 
-        public T PeekHead()
+        internal T PeekHead()
         {
             Debug.Assert(!IsEmpty); // caller's responsibility to make sure there are elements remaining
             return _array[_head];
         }
 
         //// Uncomment if/when peeking at the tail is needed
-        //public T PeekTail()
+        //internal T PeekTail()
         //{
         //    Debug.Assert(!IsEmpty); // caller's responsibility to make sure there are elements remaining
         //    var index = _tail - 1;
@@ -112,7 +107,7 @@ namespace Proto.Promises.Collections
         //    return _array[index];
         //}
 
-        public T DequeueTail()
+        internal T DequeueTail()
         {
             Debug.Assert(!IsEmpty); // caller's responsibility to make sure there are elements remaining
 
@@ -122,7 +117,7 @@ namespace Proto.Promises.Collections
             }
 
             T item = _array[_tail];
-            _array[_tail] = default;
+            Internal.ClearReferences(ref _array[_tail]);
 
             _size--;
             return item;
@@ -146,14 +141,14 @@ namespace Proto.Promises.Collections
             if (_head < _tail)
             {
                 Array.Copy(_array, _head, newArray, 0, _size);
-                Array.Clear(_array, _head, _size);
+                Internal.ClearReferences(_array, _head, _size);
             }
             else
             {
                 Array.Copy(_array, _head, newArray, 0, _array.Length - _head);
                 Array.Copy(_array, 0, newArray, _array.Length - _head, _tail);
-                Array.Clear(_array, _head, _array.Length - _head);
-                Array.Clear(_array, 0, _tail);
+                Internal.ClearReferences(_array, _head, _array.Length - _head);
+                Internal.ClearReferences(_array, 0, _tail);
             }
 
             ArrayPool<T>.Shared.Return(_array, false);
@@ -164,20 +159,26 @@ namespace Proto.Promises.Collections
 
         public void Dispose()
         {
-            if (_size > 0)
+#if NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NETCOREAPP2_0_OR_GREATER
+            if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+#endif
             {
-                if (_head < _tail)
+                if (_size > 0)
                 {
-                    Array.Clear(_array, _head, _size);
-                }
-                else
-                {
-                    Array.Clear(_array, _head, _array.Length - _head);
-                    Array.Clear(_array, 0, _tail);
+                    if (_head < _tail)
+                    {
+                        Array.Clear(_array, _head, _size);
+                    }
+                    else
+                    {
+                        Array.Clear(_array, _head, _array.Length - _head);
+                        Array.Clear(_array, 0, _tail);
+                    }
                 }
             }
 
             ArrayPool<T>.Shared.Return(_array, false);
+            this = default;
         }
     }
 }

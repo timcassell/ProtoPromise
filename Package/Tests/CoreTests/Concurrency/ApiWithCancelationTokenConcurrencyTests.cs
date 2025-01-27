@@ -194,10 +194,10 @@ namespace ProtoPromiseTests.Concurrency
             var threadHelper = new ThreadHelper();
             foreach (var action in new Func<Promise, CancelationToken, Promise>[]
                 {
-                    (promise, token) => promise.CatchCancelation(() => { }, token),
-                    (promise, token) => promise.CatchCancelation(1, cv => { }, token),
-                    (promise, token) => promise.CatchCancelation(() => Promise.Resolved(), token),
-                    (promise, token) => promise.CatchCancelation(1, cv => Promise.Resolved(), token),
+                    (promise, token) => promise.WaitAsync(token).CatchCancelation(() => { }),
+                    (promise, token) => promise.WaitAsync(token).CatchCancelation(1, cv => { }),
+                    (promise, token) => promise.WaitAsync(token).CatchCancelation(() => Promise.Resolved()),
+                    (promise, token) => promise.WaitAsync(token).CatchCancelation(1, cv => Promise.Resolved()),
                 })
             {
                 threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -233,10 +233,10 @@ namespace ProtoPromiseTests.Concurrency
             var threadHelper = new ThreadHelper();
             foreach (var action in new Func<Promise<int>, CancelationToken, Promise<int>>[]
                 {
-                    (promise, token) => promise.CatchCancelation(() => 1, token),
-                    (promise, token) => promise.CatchCancelation(1, cv => 1, token),
-                    (promise, token) => promise.CatchCancelation(() => Promise.Resolved(1), token),
-                    (promise, token) => promise.CatchCancelation(1, cv => Promise.Resolved(1), token),
+                    (promise, token) => promise.WaitAsync(token).CatchCancelation(() => 1),
+                    (promise, token) => promise.WaitAsync(token).CatchCancelation(1, cv => 1),
+                    (promise, token) => promise.WaitAsync(token).CatchCancelation(() => Promise.Resolved(1)),
+                    (promise, token) => promise.WaitAsync(token).CatchCancelation(1, cv => Promise.Resolved(1)),
                 })
             {
                 threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -456,10 +456,10 @@ namespace ProtoPromiseTests.Concurrency
             var threadHelper = new ThreadHelper();
             foreach (var action in new Func<Promise, CancelationToken, Promise>[]
                 {
-                    (p, token) => p.CatchCancelation(() => { }, token),
-                    (p, token) => p.CatchCancelation(1, cv => { }, token),
-                    (p, token) => p.CatchCancelation(() => Promise.Resolved(), token),
-                    (p, token) => p.CatchCancelation(1, cv => Promise.Resolved(), token),
+                    (p, token) => p.WaitAsync(token).CatchCancelation(() => { }),
+                    (p, token) => p.WaitAsync(token).CatchCancelation(1, cv => { }),
+                    (p, token) => p.WaitAsync(token).CatchCancelation(() => Promise.Resolved()),
+                    (p, token) => p.WaitAsync(token).CatchCancelation(1, cv => Promise.Resolved()),
                 })
             {
                 threadHelper.ExecuteParallelActionsWithOffsets(false,
@@ -503,10 +503,10 @@ namespace ProtoPromiseTests.Concurrency
             var threadHelper = new ThreadHelper();
             foreach (var action in new Func<Promise<int>, CancelationToken, Promise<int>>[]
                 {
-                    (p, token) => p.CatchCancelation(() => 1, token),
-                    (p, token) => p.CatchCancelation(1, cv => 1, token),
-                    (p, token) => p.CatchCancelation(() => Promise.Resolved(1), token),
-                    (p, token) => p.CatchCancelation(1, cv => Promise.Resolved(1), token),
+                    (p, token) => p.WaitAsync(token).CatchCancelation(() => 1),
+                    (p, token) => p.WaitAsync(token).CatchCancelation(1, cv => 1),
+                    (p, token) => p.WaitAsync(token).CatchCancelation(() => Promise.Resolved(1)),
+                    (p, token) => p.WaitAsync(token).CatchCancelation(1, cv => Promise.Resolved(1)),
                 })
             {
                 threadHelper.ExecuteParallelActionsWithOffsets(false,

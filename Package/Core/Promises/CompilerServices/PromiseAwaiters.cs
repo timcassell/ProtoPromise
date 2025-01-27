@@ -119,7 +119,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public readonly partial struct PromiseAwaiterVoid : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
+        public readonly partial struct PromiseAwaiterVoid : ICriticalNotifyCompletion, Internal.IPromiseAwareAwaiter
         {
             private readonly Promise _promise;
 
@@ -189,7 +189,7 @@ namespace Proto.Promises
             }
 
             [MethodImpl(Internal.InlineOption)]
-            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
+            void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
                 => asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
@@ -206,7 +206,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public readonly partial struct PromiseAwaiter<T> : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
+        public readonly partial struct PromiseAwaiter<T> : ICriticalNotifyCompletion, Internal.IPromiseAwareAwaiter
         {
             private readonly Promise<T> _promise;
 
@@ -275,7 +275,7 @@ namespace Proto.Promises
                 => OnCompleted(continuation);
 
             [MethodImpl(Internal.InlineOption)]
-            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
+            void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
                 => asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
 
             static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
@@ -292,7 +292,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public readonly partial struct PromiseNoThrowAwaiterVoid : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
+        public readonly partial struct PromiseNoThrowAwaiterVoid : ICriticalNotifyCompletion, Internal.IPromiseAwareAwaiter
         {
             private readonly Promise _promise;
 
@@ -360,7 +360,7 @@ namespace Proto.Promises
                 => OnCompleted(continuation);
 
             [MethodImpl(Internal.InlineOption)]
-            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
+            void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
                 => asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
 
             /// <summary>
@@ -386,7 +386,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        public readonly partial struct PromiseNoThrowAwaiter<T> : ICriticalNotifyCompletion, Internal.IPromiseAwaiter
+        public readonly partial struct PromiseNoThrowAwaiter<T> : ICriticalNotifyCompletion, Internal.IPromiseAwareAwaiter
         {
             private readonly Promise<T> _promise;
 
@@ -454,7 +454,7 @@ namespace Proto.Promises
                 => OnCompleted(continuation);
 
             [MethodImpl(Internal.InlineOption)]
-            void Internal.IPromiseAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
+            void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
                 => asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
 
             /// <summary>

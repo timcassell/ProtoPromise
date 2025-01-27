@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Promises.Collections;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -26,13 +27,11 @@ namespace Proto.Promises
 
                 private CancelationRef _cancelationRef; // Store the reference directly instead of CancelationSource struct to reduce memory.
                 private Exception _cancelationException; // In case a cancelation token callback throws, we have to store it to rethrow it from DisposeAsync.
-                private CancelationRegistration _cancelationRegistration;
-                // This must not be readonly.
-                private PoolBackedQueue<TResult> _queue;
+                // These must not be readonly.
+                private CancelationHelper _cancelationHelper;
+                private PoolBackedDeque<TResult> _queue;
                 private int _remaining;
-                private int _retainCount;
                 private bool _isMoveNextAsyncPending;
-                private bool _isIterationCanceled;
                 private bool _suppressUnobservedRejections;
 
                 private EachPromiseGroup() { }
@@ -53,9 +52,9 @@ namespace Proto.Promises
 
                     var enumerable = GetOrCreate();
                     enumerable.Reset();
-                    enumerable._queue = new PoolBackedQueue<TResult>(0);
+                    enumerable._queue = new PoolBackedDeque<TResult>(0);
                     enumerable._cancelationRef = cancelationRef;
-                    enumerable._isIterationCanceled = false;
+                    enumerable._cancelationHelper.Reset(0);
                     return enumerable;
                 }
 
@@ -68,7 +67,7 @@ namespace Proto.Promises
                 {
                     lock (this)
                     {
-                        _queue.Enqueue(result);
+                        _queue.EnqueueTail(result);
                     }
                 }
 
@@ -83,17 +82,17 @@ namespace Proto.Promises
                     // This method is called after all promises have been hooked up to this.
                     _suppressUnobservedRejections = suppressUnobservedRejections;
                     _remaining = totalCount;
-                    // _retainCount starts at 0 and is decremented every time an added promise completes.
+                    // The retain counter starts at 0 and is decremented every time an added promise completes.
                     // We add back the number of pending promises that were added, plus 1 extra retain for DisposeAsync,
                     // and when the count goes back to 0, this is complete.
-                    Interlocked.Add(ref _retainCount, unchecked(pendingCount + 1));
+                    _cancelationHelper.RetainUnchecked(unchecked(pendingCount + 1));
                 }
 
                 private void CancelGroup()
                 {
                     try
                     {
-                        _cancelationRef.Cancel();
+                        _cancelationRef.CancelUnsafe();
                     }
                     catch (Exception e)
                     {
@@ -106,10 +105,11 @@ namespace Proto.Promises
                     ValidateNoPending();
 
                     base.Dispose();
-                    _current = default;
+                    ClearReferences(ref _current);
                     _cancelationException = null;
-                    _cancelationRef.TryDispose(_cancelationRef.SourceId);
+                    _cancelationRef.DisposeUnsafe();
                     _cancelationRef = null;
+                    _cancelationHelper = default;
                     _queue.Dispose();
                     _queue = default;
                     ObjectPool.MaybeRepool(this);
@@ -129,16 +129,18 @@ namespace Proto.Promises
                         return Promise.Resolved();
                     }
 
-                    _disposed = true;
-                    CancelGroup();
-                    _cancelationRegistration.Dispose();
-                    _cancelationRegistration = default;
+                    _enumerableDisposed = true;
+                    if (_cancelationHelper.TrySetCompleted())
+                    {
+                        CancelGroup();
+                    }
+                    _cancelationHelper.UnregisterAndWait();
 
                     // We have to reset this before decrementing _retainCount, or else MaybeHandleDisposeAsync could be called on another thread,
                     // causing the async state machine to be moved forward too early.
                     ResetForNextAwait();
 
-                    if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCount, -1) != 0)
+                    if (!_cancelationHelper.TryRelease())
                     {
                         return new Promise(this, Id);
                     }
@@ -161,9 +163,9 @@ namespace Proto.Promises
                         : new List<Exception>() { _cancelationException };
                     if (!_suppressUnobservedRejections)
                     {
-                        while (_queue.TryDequeue(out var result))
+                        while (_queue.IsNotEmpty)
                         {
-                            var rejectContainer = result.RejectContainer;
+                            var rejectContainer = _queue.DequeueHead().RejectContainer;
                             if (rejectContainer != null)
                             {
                                 RecordException(rejectContainer.GetValueAsException(), ref exceptions);
@@ -178,7 +180,7 @@ namespace Proto.Promises
                 internal override void MaybeDispose()
                 {
                     // This is called on every MoveNextAsync, we only fully dispose and return to pool after DisposeAsync is called.
-                    if (_disposed)
+                    if (_enumerableDisposed)
                     {
                         Dispose();
                     }
@@ -194,7 +196,7 @@ namespace Proto.Promises
                     if (!_isStarted)
                     {
                         _isStarted = true;
-                        _cancelationToken.TryRegisterWithoutImmediateInvoke<ICancelable>(this, out _cancelationRegistration, out bool alreadyCanceled);
+                        _cancelationHelper.RegisterWithoutImmediateInvoke(_cancelationToken, this, out bool alreadyCanceled);
                         if (alreadyCanceled)
                         {
                             _enumerableId = id;
@@ -206,7 +208,7 @@ namespace Proto.Promises
                         _enumerableId = id;
                         return Promise.Resolved(false);
                     }
-                    else if (_cancelationToken.IsCancelationRequested | _isIterationCanceled)
+                    else if (_cancelationHelper.IsCompleted)
                     {
                         _enumerableId = id;
                         return Promise<bool>.Canceled();
@@ -215,14 +217,13 @@ namespace Proto.Promises
 
                     // Reset this before entering the lock so that we're not spending extra time inside the lock.
                     ResetForNextAwait();
-                    bool pending;
                     lock (this)
                     {
-                        _isMoveNextAsyncPending = pending = !_queue.TryDequeue(out _current);
-                    }
-                    if (pending)
-                    {
-                        return new Promise<bool>(this, Id);
+                        if (_isMoveNextAsyncPending = _queue.IsEmpty)
+                        {
+                            return new Promise<bool>(this, Id);
+                        }
+                        _current = _queue.DequeueHead();
                     }
                     _enumerableId = id;
                     return Promise.Resolved(true);
@@ -245,7 +246,7 @@ namespace Proto.Promises
                             _isMoveNextAsyncPending = false;
                             goto HandleNext;
                         }
-                        _queue.Enqueue(result);
+                        _queue.EnqueueTail(result);
                     }
                     MaybeHandleDisposeAsync();
                     return;
@@ -254,13 +255,13 @@ namespace Proto.Promises
                     --_enumerableId;
                     _result = true;
                     _current = result;
-                    Interlocked.Decrement(ref _retainCount);
+                    _cancelationHelper.TryReleaseUnchecked();
                     HandleNextInternal(Promise.State.Resolved);
                 }
 
                 private void MaybeHandleDisposeAsync()
                 {
-                    if (Interlocked.Decrement(ref _retainCount) != 0)
+                    if (!_cancelationHelper.TryReleaseUnchecked())
                     {
                         return;
                     }
@@ -272,13 +273,17 @@ namespace Proto.Promises
                         return;
                     }
 
-                    _rejectContainer = CreateRejectContainer(exception, int.MinValue, null, this);
+                    RejectContainer = CreateRejectContainer(exception, int.MinValue, null, this);
                     HandleNextInternal(Promise.State.Rejected);
                 }
 
                 void ICancelable.Cancel()
                 {
-                    _isIterationCanceled = true;
+                    if (!_cancelationHelper.TrySetCompleted())
+                    {
+                        return;
+                    }
+
                     CancelGroup();
 
                     lock (this)

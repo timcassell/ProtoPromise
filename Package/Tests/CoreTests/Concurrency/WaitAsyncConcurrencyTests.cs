@@ -2,6 +2,7 @@
 
 using NUnit.Framework;
 using Proto.Promises;
+using Proto.Timers;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -28,7 +29,7 @@ namespace ProtoPromiseTests.Concurrency
             Await
         }
 
-        private static IEnumerable<TestCaseData> GetArgs()
+        private static IEnumerable<TestCaseData> GetArgs_CancelationToken()
         {
             var waitAsyncPlaces = new ActionPlace[]
             {
@@ -65,10 +66,8 @@ namespace ProtoPromiseTests.Concurrency
             yield return ActionPlace.InTeardown;
         }
 
-        private readonly TimeSpan timeout = TimeSpan.FromSeconds(2);
-
-        [Test, TestCaseSource(nameof(GetArgs))]
-        public void WaitAsync_Concurrent_void(
+        [Test, TestCaseSource(nameof(GetArgs_CancelationToken))]
+        public void WaitAsync_CancelationToken_Concurrent_void(
             ActionPlace waitAsyncSubscribePlace,
             ActionPlace continuePlace,
             bool withCancelation,
@@ -170,15 +169,18 @@ namespace ProtoPromiseTests.Concurrency
                     }
 
                     TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
-                    TestHelper.SpinUntil(() => didContinue, timeout, $"didContinue: {didContinue}");
-                    cancelationSource.TryDispose();
+                    TestHelper.SpinUntil(() => didContinue, TimeSpan.FromSeconds(1), $"didContinue: {didContinue}");
+                    if (withCancelation)
+                    {
+                        cancelationSource.Dispose();
+                    }
                 },
                 actions: parallelActions.ToArray()
             );
         }
 
-        [Test, TestCaseSource(nameof(GetArgs))]
-        public void WaitAsync_Concurrent_T(
+        [Test, TestCaseSource(nameof(GetArgs_CancelationToken))]
+        public void WaitAsync_CancelationToken_Concurrent_T(
             ActionPlace waitAsyncSubscribePlace,
             ActionPlace continuePlace,
             bool withCancelation,
@@ -280,8 +282,652 @@ namespace ProtoPromiseTests.Concurrency
                     }
 
                     TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
-                    TestHelper.SpinUntil(() => didContinue, timeout, $"didContinue: {didContinue}");
-                    cancelationSource.TryDispose();
+                    TestHelper.SpinUntil(() => didContinue, TimeSpan.FromSeconds(1), $"didContinue: {didContinue}");
+                    if (withCancelation)
+                    {
+                        cancelationSource.Dispose();
+                    }
+                },
+                actions: parallelActions.ToArray()
+            );
+        }
+
+        [Test]
+        public void WaitAsync_Timeout_Concurrent_void(
+            [Values(0, 1, -1)] int milliseconds,
+            [Values] ContinuationType continuationType)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var timeout = TimeSpan.FromMilliseconds(milliseconds);
+            
+            var deferred = default(Promise.Deferred);
+            bool didContinue = false;
+
+            var parallelActions = new Action[]
+            {
+                () => deferred.Resolve(),
+                () =>
+                {
+                    var promise = deferred.Promise.WaitAsync(timeout);
+                    if (continuationType == ContinuationType.Await)
+                    {
+                        Await().Forget();
+
+                        async Promise Await()
+                        {
+                            try
+                            {
+                                await promise;
+                            }
+                            catch (TimeoutException) { }
+                            finally
+                            {
+                                didContinue = true;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        promise
+                            .ContinueWith(_ => didContinue = true)
+                            .Forget();
+                    }
+                }
+            };
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                setup: () =>
+                {
+                    didContinue = false;
+                    deferred = Promise.NewDeferred();
+                },
+                teardown: () =>
+                {
+                    TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+                    TestHelper.SpinUntil(() => didContinue, TimeSpan.FromSeconds(1), $"didContinue: {didContinue}");
+                },
+                actions: parallelActions
+            );
+        }
+
+        [Test]
+        public void WaitAsync_Timeout_Concurrent_T(
+            [Values(0, 1, -1)] int milliseconds,
+            [Values] ContinuationType continuationType)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var timeout = TimeSpan.FromMilliseconds(milliseconds);
+
+            var deferred = default(Promise<int>.Deferred);
+            bool didContinue = false;
+
+            var parallelActions = new Action[]
+            {
+                () => deferred.Resolve(1),
+                () =>
+                {
+                    var promise = deferred.Promise.WaitAsync(timeout);
+                    if (continuationType == ContinuationType.Await)
+                    {
+                        Await().Forget();
+
+                        async Promise Await()
+                        {
+                            try
+                            {
+                                await promise;
+                            }
+                            catch (TimeoutException) { }
+                            finally
+                            {
+                                didContinue = true;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        promise
+                            .ContinueWith(_ => didContinue = true)
+                            .Forget();
+                    }
+                }
+            };
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                setup: () =>
+                {
+                    didContinue = false;
+                    deferred = Promise<int>.NewDeferred();
+                },
+                teardown: () =>
+                {
+                    TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+                    TestHelper.SpinUntil(() => didContinue, TimeSpan.FromSeconds(1), $"didContinue: {didContinue}");
+                },
+                actions: parallelActions
+            );
+        }
+
+        private static IEnumerable<TestCaseData> GetArgs_WaitAsync_TimeoutFactory()
+        {
+            foreach (int milliseconds in new int[] { 0, 1, -1 })
+            foreach (ContinuationType continuationType in Enum.GetValues(typeof(ContinuationType)))
+            foreach (FakeConcurrentTimerType fakeTimerType in Enum.GetValues(typeof(FakeConcurrentTimerType)))
+            foreach (ActionPlace actionPlace in new ActionPlace[] { ActionPlace.InSetup, ActionPlace.Parallel })
+            {
+                // These timer types rely on the timer being created, so we skip these combinations.
+                if ((fakeTimerType == FakeConcurrentTimerType.Invoke || fakeTimerType == FakeConcurrentTimerType.DisposeWhenInvoked)
+                    // If the time is 0 or -1, WaitAsync skips creating the timer.
+                    // If WaitAsync is called in parallel with cancelations and deferred, the timer might not be created.
+                    && (milliseconds < 1 || actionPlace == ActionPlace.Parallel))
+                {
+                    continue;
+                }
+                yield return new TestCaseData(milliseconds, continuationType, fakeTimerType, actionPlace);
+            }
+        }
+
+        [Test, TestCaseSource(nameof(GetArgs_WaitAsync_TimeoutFactory))]
+        public void WaitAsync_TimeoutFactory_Concurrent_void(
+            int milliseconds,
+            ContinuationType continuationType,
+            FakeConcurrentTimerType fakeTimerType,
+            ActionPlace actionPlace)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var timeout = TimeSpan.FromMilliseconds(milliseconds);
+            var fakeTimerFactory = FakeConcurrentTimerFactory.Create(fakeTimerType);
+
+            var deferred = default(Promise.Deferred);
+            bool didContinue = false;
+
+            void AwaitPromise()
+            {
+                var promise = deferred.Promise.WaitAsync(timeout, fakeTimerFactory);
+                if (continuationType == ContinuationType.Await)
+                {
+                    Await().Forget();
+
+                    async Promise Await()
+                    {
+                        try
+                        {
+                            await promise;
+                        }
+                        catch (TimeoutException) { }
+                        catch (OperationCanceledException) { }
+                        finally
+                        {
+                            didContinue = true;
+                        }
+                    }
+                }
+                else
+                {
+                    promise
+                        .ContinueWith(_ => didContinue = true)
+                        .Forget();
+                }
+            }
+
+            var parallelActions = new List<Action>(3)
+            {
+                () => deferred.Resolve(),
+                fakeTimerFactory.Invoke
+            };
+
+            if (actionPlace == ActionPlace.Parallel)
+            {
+                parallelActions.Add(AwaitPromise);
+            }
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                setup: () =>
+                {
+                    didContinue = false;
+                    deferred = Promise.NewDeferred();
+                    if (actionPlace == ActionPlace.InSetup)
+                    {
+                        AwaitPromise();
+                    }
+                },
+                teardown: () =>
+                {
+                    TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+                    TestHelper.SpinUntil(() => didContinue, TimeSpan.FromSeconds(1), $"didContinue: {didContinue}");
+                },
+                actions: parallelActions.ToArray()
+            );
+        }
+
+        [Test, TestCaseSource(nameof(GetArgs_WaitAsync_TimeoutFactory))]
+        public void WaitAsync_TimeoutFactory_Concurrent_T(
+            int milliseconds,
+            ContinuationType continuationType,
+            FakeConcurrentTimerType fakeTimerType,
+            ActionPlace actionPlace)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var timeout = TimeSpan.FromMilliseconds(milliseconds);
+            var fakeTimerFactory = FakeConcurrentTimerFactory.Create(fakeTimerType);
+
+            var deferred = default(Promise<int>.Deferred);
+            bool didContinue = false;
+
+            void AwaitPromise()
+            {
+                var promise = deferred.Promise.WaitAsync(timeout, fakeTimerFactory);
+                if (continuationType == ContinuationType.Await)
+                {
+                    Await().Forget();
+
+                    async Promise Await()
+                    {
+                        try
+                        {
+                            await promise;
+                        }
+                        catch (TimeoutException) { }
+                        catch (OperationCanceledException) { }
+                        finally
+                        {
+                            didContinue = true;
+                        }
+                    }
+                }
+                else
+                {
+                    promise
+                        .ContinueWith(_ => didContinue = true)
+                        .Forget();
+                }
+            }
+
+            var parallelActions = new List<Action>(3)
+            {
+                () => deferred.Resolve(1),
+                fakeTimerFactory.Invoke
+            };
+
+            if (actionPlace == ActionPlace.Parallel)
+            {
+                parallelActions.Add(AwaitPromise);
+            }
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                setup: () =>
+                {
+                    didContinue = false;
+                    deferred = Promise<int>.NewDeferred();
+                    if (actionPlace == ActionPlace.InSetup)
+                    {
+                        AwaitPromise();
+                    }
+                },
+                teardown: () =>
+                {
+                    TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+                    TestHelper.SpinUntil(() => didContinue, TimeSpan.FromSeconds(1), $"didContinue: {didContinue}");
+                },
+                actions: parallelActions.ToArray()
+            );
+        }
+
+        [Test]
+        public void WaitAsync_Timeout_CancelationToken_Concurrent_void(
+            [Values(0, 1, -1)] int milliseconds,
+            [Values] bool withCancelation,
+            [Values] ContinuationType continuationType)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var timeout = TimeSpan.FromMilliseconds(milliseconds);
+
+            var cancelationSource = default(CancelationSource);
+            var cancelationToken = default(CancelationToken);
+            var deferred = default(Promise.Deferred);
+            bool didContinue = false;
+
+            var parallelActions = new List<Action>(3)
+            {
+                () => deferred.Resolve(),
+                () =>
+                {
+                    var promise = deferred.Promise.WaitAsync(timeout, cancelationToken);
+                    if (continuationType == ContinuationType.Await)
+                    {
+                        Await().Forget();
+
+                        async Promise Await()
+                        {
+                            try
+                            {
+                                await promise;
+                            }
+                            catch (TimeoutException) { }
+                            catch (OperationCanceledException) { }
+                            finally
+                            {
+                                didContinue = true;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        promise
+                            .ContinueWith(_ => didContinue = true)
+                            .Forget();
+                    }
+                }
+            };
+
+            if (withCancelation)
+            {
+                parallelActions.Add(() => cancelationSource.Cancel());
+            }
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                setup: () =>
+                {
+                    didContinue = false;
+                    if (withCancelation)
+                    {
+                        cancelationSource = CancelationSource.New();
+                        cancelationToken = cancelationSource.Token;
+                    }
+                    deferred = Promise.NewDeferred();
+                },
+                teardown: () =>
+                {
+                    TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+                    TestHelper.SpinUntil(() => didContinue, TimeSpan.FromSeconds(1), $"didContinue: {didContinue}");
+                    if (withCancelation)
+                    {
+                        cancelationSource.Dispose();
+                    }
+                },
+                actions: parallelActions.ToArray()
+            );
+        }
+
+        [Test]
+        public void WaitAsync_Timeout_CancelationToken_Concurrent_T(
+            [Values(0, 1, -1)] int milliseconds,
+            [Values] bool withCancelation,
+            [Values] ContinuationType continuationType)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var timeout = TimeSpan.FromMilliseconds(milliseconds);
+
+            var cancelationSource = default(CancelationSource);
+            var cancelationToken = default(CancelationToken);
+            var deferred = default(Promise<int>.Deferred);
+            bool didContinue = false;
+
+            var parallelActions = new List<Action>(3)
+            {
+                () => deferred.Resolve(1),
+                () =>
+                {
+                    var promise = deferred.Promise.WaitAsync(timeout, cancelationToken);
+                    if (continuationType == ContinuationType.Await)
+                    {
+                        Await().Forget();
+
+                        async Promise Await()
+                        {
+                            try
+                            {
+                                await promise;
+                            }
+                            catch (TimeoutException) { }
+                            catch (OperationCanceledException) { }
+                            finally
+                            {
+                                didContinue = true;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        promise
+                            .ContinueWith(_ => didContinue = true)
+                            .Forget();
+                    }
+                }
+            };
+
+            if (withCancelation)
+            {
+                parallelActions.Add(() => cancelationSource.Cancel());
+            }
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                setup: () =>
+                {
+                    didContinue = false;
+                    if (withCancelation)
+                    {
+                        cancelationSource = CancelationSource.New();
+                        cancelationToken = cancelationSource.Token;
+                    }
+                    deferred = Promise<int>.NewDeferred();
+                },
+                teardown: () =>
+                {
+                    TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+                    TestHelper.SpinUntil(() => didContinue, TimeSpan.FromSeconds(1), $"didContinue: {didContinue}");
+                    if (withCancelation)
+                    {
+                        cancelationSource.Dispose();
+                    }
+                },
+                actions: parallelActions.ToArray()
+            );
+        }
+
+        private static IEnumerable<TestCaseData> GetArgs_WaitAsync_TimeoutFactory_CancelationToken()
+        {
+            foreach (int milliseconds in new int[] { 0, 1, -1 })
+            foreach (bool withCancelation in new bool[] { true, false })
+            foreach (ContinuationType continuationType in Enum.GetValues(typeof(ContinuationType)))
+            foreach (FakeConcurrentTimerType fakeTimerType in Enum.GetValues(typeof(FakeConcurrentTimerType)))
+            foreach (ActionPlace actionPlace in new ActionPlace[] { ActionPlace.InSetup, ActionPlace.Parallel })
+            {
+                // These timer types rely on the timer being created, so we skip these combinations.
+                if ((fakeTimerType == FakeConcurrentTimerType.Invoke || fakeTimerType == FakeConcurrentTimerType.DisposeWhenInvoked)
+                    // If the time is 0 or -1, WaitAsync skips creating the timer.
+                    // If WaitAsync is called in parallel with cancelations and deferred, the timer might not be created.
+                    && (milliseconds < 1 || actionPlace == ActionPlace.Parallel))
+                {
+                    continue;
+                }
+                yield return new TestCaseData(milliseconds, withCancelation, continuationType, fakeTimerType, actionPlace);
+            }
+        }
+
+        [Test, TestCaseSource(nameof(GetArgs_WaitAsync_TimeoutFactory_CancelationToken))]
+        public void WaitAsync_TimeoutFactory_CancelationToken_Concurrent_void(
+            int milliseconds,
+            bool withCancelation,
+            ContinuationType continuationType,
+            FakeConcurrentTimerType fakeTimerType,
+            ActionPlace actionPlace)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var timeout = TimeSpan.FromMilliseconds(milliseconds);
+            var fakeTimerFactory = FakeConcurrentTimerFactory.Create(fakeTimerType);
+
+            var cancelationSource = default(CancelationSource);
+            var cancelationToken = default(CancelationToken);
+            var deferred = default(Promise.Deferred);
+            bool didContinue = false;
+
+            void AwaitPromise()
+            {
+                var promise = deferred.Promise.WaitAsync(timeout, fakeTimerFactory, cancelationToken);
+                if (continuationType == ContinuationType.Await)
+                {
+                    Await().Forget();
+
+                    async Promise Await()
+                    {
+                        try
+                        {
+                            await promise;
+                        }
+                        catch (TimeoutException) { }
+                        catch (OperationCanceledException) { }
+                        finally
+                        {
+                            didContinue = true;
+                        }
+                    }
+                }
+                else
+                {
+                    promise
+                        .ContinueWith(_ => didContinue = true)
+                        .Forget();
+                }
+            }
+
+
+            var parallelActions = new List<Action>(4)
+            {
+                () => deferred.Resolve(),
+                fakeTimerFactory.Invoke
+            };
+
+            if (actionPlace == ActionPlace.Parallel)
+            {
+                parallelActions.Add(AwaitPromise);
+            }
+            if (withCancelation)
+            {
+                parallelActions.Add(() => cancelationSource.Cancel());
+            }
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                setup: () =>
+                {
+                    didContinue = false;
+                    if (withCancelation)
+                    {
+                        cancelationSource = CancelationSource.New();
+                        cancelationToken = cancelationSource.Token;
+                    }
+                    deferred = Promise.NewDeferred();
+                    if (actionPlace == ActionPlace.InSetup)
+                    {
+                        AwaitPromise();
+                    }
+                },
+                teardown: () =>
+                {
+                    TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+                    TestHelper.SpinUntil(() => didContinue, TimeSpan.FromSeconds(1), $"didContinue: {didContinue}");
+                    if (withCancelation)
+                    {
+                        cancelationSource.Dispose();
+                    }
+                },
+                actions: parallelActions.ToArray()
+            );
+        }
+
+        [Test, TestCaseSource(nameof(GetArgs_WaitAsync_TimeoutFactory_CancelationToken))]
+        public void WaitAsync_TimeoutFactory_CancelationToken_Concurrent_T(
+            int milliseconds,
+            bool withCancelation,
+            ContinuationType continuationType,
+            FakeConcurrentTimerType fakeTimerType,
+            ActionPlace actionPlace)
+        {
+            var foregroundThread = Thread.CurrentThread;
+            var timeout = TimeSpan.FromMilliseconds(milliseconds);
+            var fakeTimerFactory = FakeConcurrentTimerFactory.Create(fakeTimerType);
+
+            var cancelationSource = default(CancelationSource);
+            var cancelationToken = default(CancelationToken);
+            var deferred = default(Promise<int>.Deferred);
+            bool didContinue = false;
+
+            void AwaitPromise()
+            {
+                var promise = deferred.Promise.WaitAsync(timeout, fakeTimerFactory, cancelationToken);
+                if (continuationType == ContinuationType.Await)
+                {
+                    Await().Forget();
+
+                    async Promise Await()
+                    {
+                        try
+                        {
+                            await promise;
+                        }
+                        catch (TimeoutException) { }
+                        catch (OperationCanceledException) { }
+                        finally
+                        {
+                            didContinue = true;
+                        }
+                    }
+                }
+                else
+                {
+                    promise
+                        .ContinueWith(_ => didContinue = true)
+                        .Forget();
+                }
+            }
+
+
+            var parallelActions = new List<Action>(4)
+            {
+                () => deferred.Resolve(1),
+                fakeTimerFactory.Invoke
+            };
+
+            if (actionPlace == ActionPlace.Parallel)
+            {
+                parallelActions.Add(AwaitPromise);
+            }
+            if (withCancelation)
+            {
+                parallelActions.Add(() => cancelationSource.Cancel());
+            }
+
+            var threadHelper = new ThreadHelper();
+            threadHelper.ExecuteParallelActionsWithOffsets(false,
+                setup: () =>
+                {
+                    didContinue = false;
+                    if (withCancelation)
+                    {
+                        cancelationSource = CancelationSource.New();
+                        cancelationToken = cancelationSource.Token;
+                    }
+                    deferred = Promise<int>.NewDeferred();
+                    if (actionPlace == ActionPlace.InSetup)
+                    {
+                        AwaitPromise();
+                    }
+                },
+                teardown: () =>
+                {
+                    TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
+                    TestHelper.SpinUntil(() => didContinue, TimeSpan.FromSeconds(1), $"didContinue: {didContinue}");
+                    if (withCancelation)
+                    {
+                        cancelationSource.Dispose();
+                    }
                 },
                 actions: parallelActions.ToArray()
             );

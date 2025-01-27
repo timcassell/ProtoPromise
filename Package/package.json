@@ -1,6 +1,6 @@
 {
     "name": "com.timcassell.protopromise",
-    "version": "3.2.0",
+    "version": "3.3.0",
     "unity": "2018.3",
     "displayName": "ProtoPromise",
     "description": "Robust and efficient library for management of asynchronous operations.",

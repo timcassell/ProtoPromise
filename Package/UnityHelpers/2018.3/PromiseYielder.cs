@@ -4,6 +4,9 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0090 // Use 'new(...)'
+#pragma warning disable IDE0251 // Make member 'readonly'
+
 using Proto.Promises.CompilerServices;
 using System;
 using System.Diagnostics;
@@ -20,6 +23,19 @@ namespace Proto.Promises
 #endif
     public static partial class PromiseYielder
     {
+        /// <summary>
+        /// Initializes the components and configuration necessary for operations to execute on Unity's main thread.
+        /// </summary>
+        /// <remarks>
+        /// This usually does not need to be called directly. Unity calls it automatically in a <see cref="RuntimeInitializeOnLoadMethodAttribute"/> function.
+        /// However, the order of execution is not guaranteed, so if you have code that also runs in a <see cref="RuntimeInitializeOnLoadMethodAttribute"/> function
+        /// that requires the initialization to be done, you may call this.
+        /// <para/>
+        /// This will be a no-op if called more than once.
+        /// </remarks>
+        public static void Initialize()
+            => InternalHelper.PromiseBehaviour.Initialize();
+
         /// <summary>
         /// Runs a <see cref="Coroutine"/> that yields the <paramref name="yieldInstruction"/>, and
         /// returns a <see cref="Promise"/> that will resolve after the <paramref name="yieldInstruction"/> has completed.

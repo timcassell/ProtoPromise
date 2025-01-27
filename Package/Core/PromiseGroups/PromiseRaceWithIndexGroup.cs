@@ -124,7 +124,7 @@ namespace Proto.Promises
             // and catch any exceptions to propagate them out of WaitAsync().
             try
             {
-                _cancelationRef.Cancel();
+                _cancelationRef.CancelUnsafe();
             }
             catch (Exception e)
             {
@@ -293,7 +293,7 @@ namespace Proto.Promises
             // and catch any exceptions to propagate them out of WaitAsync().
             try
             {
-                _cancelationRef.Cancel();
+                _cancelationRef.CancelUnsafe();
             }
             catch (Exception e)
             {

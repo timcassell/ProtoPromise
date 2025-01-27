@@ -23,6 +23,30 @@ namespace Proto.Promises
         internal readonly Internal.CancelationRef _ref;
         internal readonly int _id;
 
+        [MethodImpl(Internal.InlineOption)]
+        internal CancelationToken(Internal.CancelationRef cancelationRef, int tokenId)
+        {
+            _ref = cancelationRef;
+            _id = tokenId;
+        }
+
+        /// <summary>
+        /// Creates a <see cref="CancelationToken"/> that will forever be in the provided canceled state.
+        /// </summary>
+        /// <param name="canceled">The canceled state for the token.</param>
+        /// <remarks>
+        /// Tokens created with this constructor will remain in the canceled state specified by the <paramref name="canceled"/> parameter.
+        /// <para/>
+        /// If <paramref name="canceled"/> is <see langword="false"/>, both <see cref="CanBeCanceled"/> and <see cref="IsCancelationRequested"/> will be <see langword="false"/>.
+        /// <para/>
+        /// If <paramref name="canceled"/> is <see langword="true"/>, both <see cref="CanBeCanceled"/> and <see cref="IsCancelationRequested"/> will be <see langword="true"/>.
+        /// </remarks>
+        [MethodImpl(Internal.InlineOption)]
+        public CancelationToken(bool canceled)
+        {
+            this = canceled ? Canceled() : None;
+        }
+
         /// <summary>
         /// Returns an empty <see cref="CancelationToken"/>.
         /// </summary>
@@ -30,12 +54,6 @@ namespace Proto.Promises
         {
             [MethodImpl(Internal.InlineOption)]
             get => default;
-        }
-
-        internal CancelationToken(Internal.CancelationRef cancelationRef, int tokenId)
-        {
-            _ref = cancelationRef;
-            _id = tokenId;
         }
 
         /// <summary>
@@ -52,13 +70,13 @@ namespace Proto.Promises
         /// or if the token is already canceled and it has been retained and not yet released.
         /// </remarks>
         public bool CanBeCanceled
-            => Internal.CancelationRef.CanTokenBeCanceled(_ref, _id);
+            => _ref?.CanTokenBeCanceled(_id) == true;
 
         /// <summary>
         /// Gets whether cancelation has been requested for this token.
         /// </summary>
         public bool IsCancelationRequested
-            => Internal.CancelationRef.IsTokenCanceled(_ref, _id);
+            => _ref?.IsTokenCanceled(_id) == true;
 
         /// <summary>
         /// If cancelation was requested on this token, throws a <see cref="CanceledException"/>.
@@ -77,8 +95,9 @@ namespace Proto.Promises
         /// If this is already canceled, the callback will be invoked immediately and this will return true.
         /// </summary>
         /// <param name="callback">The delegate to be executed when the <see cref="CancelationToken"/> is canceled.</param>
-        /// <param name="cancelationRegistration">The <see cref="CancelationRegistration"/> instance that can be used to unregister the callback.</param>
+        /// <param name="cancelationRegistration">The <see cref="CancelationRegistration"/> instance that can be used to unregister the <paramref name="callback"/>.</param>
         /// <returns>true if <paramref name="callback"/> was registered successfully, false otherwise.</returns>
+        [Obsolete("Prefer CanBeCanceled and Register", false)]
         public bool TryRegister(Action callback, out CancelationRegistration cancelationRegistration)
         {
             ValidateArgument(callback, nameof(callback), 1);
@@ -91,8 +110,9 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="captureValue">The value to pass into <paramref name="callback"/>.</param>
         /// <param name="callback">The delegate to be executed when the <see cref="CancelationToken"/> is canceled.</param>
-        /// <param name="cancelationRegistration">The <see cref="CancelationRegistration"/> instance that can be used to unregister the callback.</param>
+        /// <param name="cancelationRegistration">The <see cref="CancelationRegistration"/> instance that can be used to unregister the <paramref name="callback"/>.</param>
         /// <returns>true if <paramref name="callback"/> was registered successfully, false otherwise.</returns>
+        [Obsolete("Prefer CanBeCanceled and Register", false)]
         public bool TryRegister<TCapture>(TCapture captureValue, Action<TCapture> callback, out CancelationRegistration cancelationRegistration)
         {
             ValidateArgument(callback, nameof(callback), 1);
@@ -104,8 +124,9 @@ namespace Proto.Promises
         /// If this is already canceled, it will be canceled immediately and this will return true.
         /// </summary>
         /// <param name="cancelable">The cancelable to be canceled when the <see cref="CancelationToken"/> is canceled.</param>
-        /// <param name="cancelationRegistration">The <see cref="CancelationRegistration"/> instance that can be used to unregister the callback.</param>
+        /// <param name="cancelationRegistration">The <see cref="CancelationRegistration"/> instance that can be used to unregister the <paramref name="cancelable"/>.</param>
         /// <returns>true if <paramref name="cancelable"/> was registered successfully, false otherwise.</returns>
+        [Obsolete("Prefer CanBeCanceled and Register", false)]
         public bool TryRegister<TCancelable>(TCancelable cancelable, out CancelationRegistration cancelationRegistration) where TCancelable : ICancelable
         {
             ValidateArgument(cancelable, nameof(cancelable), 1);
@@ -117,9 +138,10 @@ namespace Proto.Promises
         /// If this is already canceled, the <paramref name="cancelable"/> will not be invoked and <paramref name="alreadyCanceled"/> will be set to <see langword="true"/>.
         /// </summary>
         /// <param name="cancelable">The cancelable to be canceled when the <see cref="CancelationToken"/> is canceled.</param>
-        /// <param name="cancelationRegistration">The <see cref="CancelationRegistration"/> instance that can be used to unregister the callback.</param>
+        /// <param name="cancelationRegistration">The <see cref="CancelationRegistration"/> instance that can be used to unregister the <paramref name="cancelable"/>.</param>
         /// <param name="alreadyCanceled">If true, this was already canceled and the <paramref name="cancelable"/> will not be invoked.</param>
         /// <returns>true if <paramref name="cancelable"/> was registered successfully or this was already canceled, false otherwise.</returns>
+        [Obsolete("Prefer CanBeCanceled and RegisterWithoutImmediateInvoke", false)]
         public bool TryRegisterWithoutImmediateInvoke<TCancelable>(TCancelable cancelable, out CancelationRegistration cancelationRegistration, out bool alreadyCanceled) where TCancelable : ICancelable
         {
             ValidateArgument(cancelable, nameof(cancelable), 1);
@@ -131,10 +153,12 @@ namespace Proto.Promises
         /// If this is already canceled, the callback will be invoked immediately.
         /// </summary>
         /// <param name="callback">The delegate to be executed when the <see cref="CancelationToken"/> is canceled.</param>
-        /// <returns>The <see cref="CancelationRegistration"/> instance that can be used to unregister the callback.</returns>
+        /// <returns>The <see cref="CancelationRegistration"/> instance that can be used to unregister the <paramref name="callback"/>.</returns>
         public CancelationRegistration Register(Action callback)
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             TryRegister(callback, out var registration);
+#pragma warning restore CS0618 // Type or member is obsolete
             return registration;
         }
 
@@ -144,10 +168,12 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="captureValue">The value to pass into <paramref name="callback"/>.</param>
         /// <param name="callback">The delegate to be executed when the <see cref="CancelationToken"/> is canceled.</param>
-        /// <returns>The <see cref="CancelationRegistration"/> instance that can be used to unregister the callback.</returns>
+        /// <returns>The <see cref="CancelationRegistration"/> instance that can be used to unregister the <paramref name="callback"/>.</returns>
         public CancelationRegistration Register<TCapture>(TCapture captureValue, Action<TCapture> callback)
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             TryRegister(captureValue, callback, out var registration);
+#pragma warning restore CS0618 // Type or member is obsolete
             return registration;
         }
 
@@ -156,10 +182,56 @@ namespace Proto.Promises
         /// If this is already canceled, it will be canceled immediately.
         /// </summary>
         /// <param name="cancelable">The cancelable to be canceled when the <see cref="CancelationToken"/> is canceled.</param>
-        /// <returns>The <see cref="CancelationRegistration"/> instance that can be used to unregister the callback.</returns>
+        /// <returns>The <see cref="CancelationRegistration"/> instance that can be used to unregister the <paramref name="cancelable"/>.</returns>
         public CancelationRegistration Register<TCancelable>(TCancelable cancelable) where TCancelable : ICancelable
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             TryRegister(cancelable, out var registration);
+#pragma warning restore CS0618 // Type or member is obsolete
+            return registration;
+        }
+
+        /// <summary>
+        /// Register a cancelable that will be canceled when this <see cref="CancelationToken"/> is canceled.
+        /// If this is already canceled, the <paramref name="cancelable"/> will not be invoked and <paramref name="alreadyCanceled"/> will be set to <see langword="true"/>.
+        /// </summary>
+        /// <param name="cancelable">The cancelable to be canceled when the <see cref="CancelationToken"/> is canceled.</param>
+        /// <param name="alreadyCanceled">If true, this was already canceled and the <paramref name="cancelable"/> will not be invoked.</param>
+        /// <returns>The <see cref="CancelationRegistration"/> instance that can be used to unregister the <paramref name="cancelable"/>.</returns>
+        public CancelationRegistration RegisterWithoutImmediateInvoke<TCancelable>(TCancelable cancelable, out bool alreadyCanceled) where TCancelable : ICancelable
+        {
+#pragma warning disable CS0618 // Type or member is obsolete
+            TryRegisterWithoutImmediateInvoke(cancelable, out var registration, out alreadyCanceled);
+#pragma warning restore CS0618 // Type or member is obsolete
+            return registration;
+        }
+
+        /// <summary>
+        /// Register a delegate that will be invoked when this <see cref="CancelationToken"/> is canceled.
+        /// If this is already canceled, the callback will be invoked immediately.
+        /// </summary>
+        /// <param name="callback">The delegate to be executed when the <see cref="CancelationToken"/> is canceled.</param>
+        /// <param name="alreadyCanceled">If true, this was already canceled and the <paramref name="callback"/> will not be invoked.</param>
+        /// <returns>The <see cref="CancelationRegistration"/> instance that can be used to unregister the <paramref name="callback"/>.</returns>
+        public CancelationRegistration RegisterWithoutImmediateInvoke(Action callback, out bool alreadyCanceled)
+        {
+            ValidateArgument(callback, nameof(callback), 1);
+            Internal.CancelationRef.TryRegister(_ref, _id, new Internal.CancelDelegateTokenVoid(callback), out var registration, out alreadyCanceled);
+            return registration;
+        }
+
+        /// <summary>
+        /// Capture a value and register a delegate that will be invoked with the captured value when this <see cref="CancelationToken"/> is canceled.
+        /// If this is already canceled, the callback will be invoked immediately.
+        /// </summary>
+        /// <param name="captureValue">The value to pass into <paramref name="callback"/>.</param>
+        /// <param name="callback">The delegate to be executed when the <see cref="CancelationToken"/> is canceled.</param>
+        /// <param name="alreadyCanceled">If true, this was already canceled and the <paramref name="callback"/> will not be invoked.</param>
+        /// <returns>The <see cref="CancelationRegistration"/> instance that can be used to unregister the <paramref name="callback"/>.</returns>
+        public CancelationRegistration RegisterWithoutImmediateInvoke<TCapture>(TCapture captureValue, Action<TCapture> callback, out bool alreadyCanceled)
+        {
+            ValidateArgument(callback, nameof(callback), 1);
+            Internal.CancelationRef.TryRegister(_ref, _id, new Internal.CancelDelegateToken<TCapture>(captureValue, callback), out var registration, out alreadyCanceled);
             return registration;
         }
 
@@ -168,8 +240,11 @@ namespace Proto.Promises
         /// <para/>If successful, allows continued use of this instance, even after the associated <see cref="CancelationSource"/> has been disposed, until this is released.
         /// If successful, this should be paired with a call to <see cref="Release"/>.
         /// </summary>
+        /// <remarks>
+        /// This method returns the same result as <see cref="CanBeCanceled"/>.
+        /// </remarks>
         public bool TryRetain()
-            => Internal.CancelationRef.TryRetainUser(_ref, _id);
+            => _ref?.TryRetainUser(_id) == true;
 
         /// <summary>
         /// Release this instance. Allows resources to be released when the associated <see cref="CancelationSource"/> is disposed (if <see cref="Release"/> has been called for all <see cref="TryRetain"/> calls).
@@ -178,7 +253,7 @@ namespace Proto.Promises
         /// <exception cref="InvalidOperationException"/>
         public void Release()
         {
-            if (!Internal.CancelationRef.TryReleaseUser(_ref, _id))
+            if (_ref?.TryReleaseUser(_id) != true)
             {
                 throw new InvalidOperationException("CancelationToken.Release: you must call Retain before you call Release.", Internal.GetFormattedStacktrace(1));
             }
@@ -196,7 +271,7 @@ namespace Proto.Promises
         /// </summary>
         /// <returns>A <see cref="System.Threading.CancellationToken"/> that will be canceled when this is canceled.</returns>
         public System.Threading.CancellationToken ToCancellationToken()
-            => Internal.CancelationRef.GetCancellationToken(_ref, _id);
+            => _ref?.GetCancellationToken(_id) ?? default;
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="CancelationToken"/>.</summary>
         public bool Equals(CancelationToken other)
@@ -208,7 +283,7 @@ namespace Proto.Promises
 
         /// <summary>Returns the hash code for this instance.</summary>
         public override int GetHashCode()
-            => Internal.BuildHashCode(_ref, _id.GetHashCode(), 0);
+            => HashCode.Combine(_ref, _id);
 
         /// <summary>Returns a value indicating whether two <see cref="CancelationToken"/> values are equal.</summary>
         public static bool operator ==(CancelationToken lhs, CancelationToken rhs)

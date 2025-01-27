@@ -4,13 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
-using System;
-// ArrayPool for old runtime is in Proto.Promises.Collections namespace.
-#if (NETCOREAPP || NETSTANDARD2_0_OR_GREATER || UNITY_2021_2_OR_NEWER)
 using System.Buffers;
-#else
-using Proto.Promises.Collections;
-#endif
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -155,7 +149,7 @@ namespace Proto.Promises.Collections
             Slot[] slots = _slots;
 
             // Loop in case of contention...
-            SpinWait spinner = default;
+            var spinner = new SpinWait();
             while (true)
             {
                 // Get the head at which to try to dequeue.
@@ -189,11 +183,7 @@ namespace Proto.Promises.Collections
                             // peeking.  And we don't update the sequence number,
                             // so that an enqueuer will see it as full and be forced to move to a new segment.
 
-                            // TODO
-                            //if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
-                            {
-                                slots[slotsIndex].item = default;
-                            }
+                            Internal.ClearReferences(ref slots[slotsIndex].item);
                             Volatile.Write(ref slots[slotsIndex].sequenceNumber, currentHead + slots.Length);
                         }
                         return true;
@@ -225,11 +215,7 @@ namespace Proto.Promises.Collections
                     // situation since this thread is waiting for another to write to the slot and
                     // this thread may have to check the same slot multiple times. Spin-wait to avoid
                     // a potential busy-wait, and then try again.
-#if NETCOREAPP3_0_OR_GREATER
                     spinner.SpinOnce(sleep1Threshold: -1);
-#else
-                    spinner.SpinOnce();
-#endif
                 }
                 else
                 {
@@ -257,7 +243,7 @@ namespace Proto.Promises.Collections
             Slot[] slots = _slots;
 
             // Loop in case of contention...
-            SpinWait spinner = default;
+            var spinner = new SpinWait();
             while (true)
             {
                 // Get the head at which to try to peek.
@@ -298,11 +284,7 @@ namespace Proto.Promises.Collections
                     // situation since this thread is waiting for another to write to the slot and
                     // this thread may have to check the same slot multiple times. Spin-wait to avoid
                     // a potential busy-wait, and then try again.
-#if NETCOREAPP3_0_OR_GREATER
                     spinner.SpinOnce(sleep1Threshold: -1);
-#else
-                    spinner.SpinOnce();
-#endif
                 }
                 else
                 {

@@ -33,7 +33,6 @@ namespace ProtoPromiseTests.APIs
         public void PromiseIsValidBeforeAwaited_void()
         {
             var promise = Promise.Resolved();
-            Assert.IsTrue(promise.IsValid);
             promise.Forget();
         }
 
@@ -41,7 +40,6 @@ namespace ProtoPromiseTests.APIs
         public void PromiseIsValidBeforeAwaited_T()
         {
             var promise = Promise.Resolved(42);
-            Assert.IsTrue(promise.IsValid);
             promise.Forget();
         }
 
@@ -50,12 +48,7 @@ namespace ProtoPromiseTests.APIs
         {
             var deferred = Promise.NewDeferred();
             var promise = deferred.Promise;
-
-            Assert.IsTrue(promise.IsValid);
-
             promise.Then(() => { }).Forget();
-
-            Assert.IsFalse(promise.IsValid);
 
 #if PROMISE_DEBUG
             Assert.Throws<InvalidOperationException>(() => promise.GetAwaiter());
@@ -180,12 +173,7 @@ namespace ProtoPromiseTests.APIs
         {
             var deferred = Promise.NewDeferred<int>();
             var promise = deferred.Promise;
-
-            Assert.IsTrue(promise.IsValid);
-
             promise.Then(v => { }).Forget();
-
-            Assert.IsFalse(promise.IsValid);
 
 #if PROMISE_DEBUG
             Assert.Throws<InvalidOperationException>(() => promise.GetAwaiter());

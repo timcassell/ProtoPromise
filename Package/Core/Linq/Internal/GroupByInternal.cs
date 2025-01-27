@@ -47,7 +47,6 @@ namespace Proto.Promises
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
                     // We could do await Lookup<TKey, TElement>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
-                    LookupImpl<TKey, TElement, TEqualityComparer> lookup = default;
                     try
                     {
                         if (!await _asyncEnumerator.MoveNextAsync())
@@ -56,33 +55,34 @@ namespace Proto.Promises
                             return;
                         }
 
-                        lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true);
-                        do
+                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true))
                         {
-                            var item = _asyncEnumerator.Current;
-                            var key = _keySelector.Invoke(item);
-                            var group = lookup.GetOrCreateGrouping(key, true);
+                            do
+                            {
+                                var item = _asyncEnumerator.Current;
+                                var key = _keySelector.Invoke(item);
+                                var group = lookup.GetOrCreateGrouping(key, true);
 
-                            var element = _elementSelector.Invoke(item);
-                            group.Add(element);
-                        } while (await _asyncEnumerator.MoveNextAsync());
-                        // We don't dispose the source enumerator until the owner is disposed.
-                        // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
+                                var element = _elementSelector.Invoke(item);
+                                group.Add(element);
+                            } while (await _asyncEnumerator.MoveNextAsync());
+                            // We don't dispose the source enumerator until the owner is disposed.
+                            // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
-                        // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        var g = lookup._lastGrouping;
-                        do
-                        {
-                            g = g._nextGrouping;
-                            await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
-                        } while (g != lookup._lastGrouping);
+                            // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                            var g = lookup._lastGrouping;
+                            do
+                            {
+                                g = g._nextGrouping;
+                                await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
+                            } while (g != lookup._lastGrouping);
+                        }
 
                         // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
                         await writer.YieldAsync(default).ForLinqExtension();
                     }
                     finally
                     {
-                        lookup.Dispose();
                         await _asyncEnumerator.DisposeAsync();
                     }
                 }
@@ -130,7 +130,6 @@ namespace Proto.Promises
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
                     // We could do await Lookup<TKey, TElement>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
-                    LookupImpl<TKey, TElement, TEqualityComparer> lookup = default;
                     try
                     {
                         if (!await _asyncEnumerator.MoveNextAsync())
@@ -139,30 +138,31 @@ namespace Proto.Promises
                             return;
                         }
 
-                        lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true);
-                        do
+                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true))
                         {
-                            var item = _asyncEnumerator.Current;
-                            var key = _keySelector.Invoke(item);
-                            lookup.GetOrCreateGrouping(key, true).Add(item);
-                        } while (await _asyncEnumerator.MoveNextAsync());
-                        // We don't dispose the source enumerator until the owner is disposed.
-                        // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
+                            do
+                            {
+                                var item = _asyncEnumerator.Current;
+                                var key = _keySelector.Invoke(item);
+                                lookup.GetOrCreateGrouping(key, true).Add(item);
+                            } while (await _asyncEnumerator.MoveNextAsync());
+                            // We don't dispose the source enumerator until the owner is disposed.
+                            // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
-                        // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        var g = lookup._lastGrouping;
-                        do
-                        {
-                            g = g._nextGrouping;
-                            await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
-                        } while (g != lookup._lastGrouping);
+                            // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                            var g = lookup._lastGrouping;
+                            do
+                            {
+                                g = g._nextGrouping;
+                                await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
+                            } while (g != lookup._lastGrouping);
+                        }
 
                         // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
                         await writer.YieldAsync(default).ForLinqExtension();
                     }
                     finally
                     {
-                        lookup.Dispose();
                         await _asyncEnumerator.DisposeAsync();
                     }
                 }
@@ -211,7 +211,6 @@ namespace Proto.Promises
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
                     // We could do await Lookup<TKey, TElement>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
-                    LookupImpl<TKey, TElement, TEqualityComparer> lookup = default;
                     try
                     {
                         if (!await _asyncEnumerator.MoveNextAsync())
@@ -220,33 +219,34 @@ namespace Proto.Promises
                             return;
                         }
 
-                        lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true);
-                        do
+                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true))
                         {
-                            var item = _asyncEnumerator.Current;
-                            var key = await _keySelector.Invoke(item);
-                            var group = lookup.GetOrCreateGrouping(key, true);
+                            do
+                            {
+                                var item = _asyncEnumerator.Current;
+                                var key = await _keySelector.Invoke(item);
+                                var group = lookup.GetOrCreateGrouping(key, true);
 
-                            var element = await _elementSelector.Invoke(item);
-                            group.Add(element);
-                        } while (await _asyncEnumerator.MoveNextAsync());
-                        // We don't dispose the source enumerator until the owner is disposed.
-                        // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
+                                var element = await _elementSelector.Invoke(item);
+                                group.Add(element);
+                            } while (await _asyncEnumerator.MoveNextAsync());
+                            // We don't dispose the source enumerator until the owner is disposed.
+                            // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
-                        // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        var g = lookup._lastGrouping;
-                        do
-                        {
-                            g = g._nextGrouping;
-                            await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
-                        } while (g != lookup._lastGrouping);
+                            // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                            var g = lookup._lastGrouping;
+                            do
+                            {
+                                g = g._nextGrouping;
+                                await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
+                            } while (g != lookup._lastGrouping);
+                        }
 
                         // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
                         await writer.YieldAsync(default).ForLinqExtension();
                     }
                     finally
                     {
-                        lookup.Dispose();
                         await _asyncEnumerator.DisposeAsync();
                     }
                 }
@@ -294,7 +294,6 @@ namespace Proto.Promises
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
                     // We could do await Lookup<TKey, TElement>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
-                    LookupImpl<TKey, TElement, TEqualityComparer> lookup = default;
                     try
                     {
                         if (!await _asyncEnumerator.MoveNextAsync())
@@ -303,30 +302,31 @@ namespace Proto.Promises
                             return;
                         }
 
-                        lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true);
-                        do
+                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true))
                         {
-                            var item = _asyncEnumerator.Current;
-                            var key = await _keySelector.Invoke(item);
-                            lookup.GetOrCreateGrouping(key, true).Add(item);
-                        } while (await _asyncEnumerator.MoveNextAsync());
-                        // We don't dispose the source enumerator until the owner is disposed.
-                        // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
+                            do
+                            {
+                                var item = _asyncEnumerator.Current;
+                                var key = await _keySelector.Invoke(item);
+                                lookup.GetOrCreateGrouping(key, true).Add(item);
+                            } while (await _asyncEnumerator.MoveNextAsync());
+                            // We don't dispose the source enumerator until the owner is disposed.
+                            // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
-                        // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        var g = lookup._lastGrouping;
-                        do
-                        {
-                            g = g._nextGrouping;
-                            await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
-                        } while (g != lookup._lastGrouping);
+                            // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                            var g = lookup._lastGrouping;
+                            do
+                            {
+                                g = g._nextGrouping;
+                                await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
+                            } while (g != lookup._lastGrouping);
+                        }
 
                         // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
                         await writer.YieldAsync(default).ForLinqExtension();
                     }
                     finally
                     {
-                        lookup.Dispose();
                         await _asyncEnumerator.DisposeAsync();
                     }
                 }
@@ -372,10 +372,9 @@ namespace Proto.Promises
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
-                    var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
                     // We could do await Lookup<TKey, TElement>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
-                    LookupImpl<TKey, TElement, TEqualityComparer> lookup = default;
                     try
                     {
                         if (!await _configuredAsyncEnumerator.MoveNextAsync())
@@ -384,34 +383,35 @@ namespace Proto.Promises
                             return;
                         }
 
-                        lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true);
-                        do
+                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true))
                         {
-                            var item = _configuredAsyncEnumerator.Current;
-                            var key = _keySelector.Invoke(item);
-                            var group = lookup.GetOrCreateGrouping(key, true);
+                            do
+                            {
+                                var item = _configuredAsyncEnumerator.Current;
+                                var key = _keySelector.Invoke(item);
+                                var group = lookup.GetOrCreateGrouping(key, true);
 
-                            var element = _elementSelector.Invoke(item);
-                            group.Add(element);
-                        } while (await _configuredAsyncEnumerator.MoveNextAsync());
-                        // We don't dispose the source enumerator until the owner is disposed.
-                        // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
+                                var element = _elementSelector.Invoke(item);
+                                group.Add(element);
+                            } while (await _configuredAsyncEnumerator.MoveNextAsync());
+                            // We don't dispose the source enumerator until the owner is disposed.
+                            // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
-                        // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        var g = lookup._lastGrouping;
-                        do
-                        {
-                            g = g._nextGrouping;
-                            await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
-                        } while (g != lookup._lastGrouping);
+                            // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                            var g = lookup._lastGrouping;
+                            do
+                            {
+                                g = g._nextGrouping;
+                                await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
+                            } while (g != lookup._lastGrouping);
+                        }
 
                         // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
                         await writer.YieldAsync(default).ForLinqExtension();
                     }
                     finally
                     {
-                        joinedCancelationSource.TryDispose();
-                        lookup.Dispose();
+                        maybeJoinedCancelationSource.Dispose();
                         await _configuredAsyncEnumerator.DisposeAsync();
                     }
                 }
@@ -456,10 +456,9 @@ namespace Proto.Promises
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
-                    var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
                     // We could do await Lookup<TKey, TElement>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
-                    LookupImpl<TKey, TElement, TEqualityComparer> lookup = default;
                     try
                     {
                         if (!await _configuredAsyncEnumerator.MoveNextAsync())
@@ -468,31 +467,32 @@ namespace Proto.Promises
                             return;
                         }
 
-                        lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true);
-                        do
+                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true))
                         {
-                            var item = _configuredAsyncEnumerator.Current;
-                            var key = _keySelector.Invoke(item);
-                            lookup.GetOrCreateGrouping(key, true).Add(item);
-                        } while (await _configuredAsyncEnumerator.MoveNextAsync());
-                        // We don't dispose the source enumerator until the owner is disposed.
-                        // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
+                            do
+                            {
+                                var item = _configuredAsyncEnumerator.Current;
+                                var key = _keySelector.Invoke(item);
+                                lookup.GetOrCreateGrouping(key, true).Add(item);
+                            } while (await _configuredAsyncEnumerator.MoveNextAsync());
+                            // We don't dispose the source enumerator until the owner is disposed.
+                            // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
-                        // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        var g = lookup._lastGrouping;
-                        do
-                        {
-                            g = g._nextGrouping;
-                            await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
-                        } while (g != lookup._lastGrouping);
+                            // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                            var g = lookup._lastGrouping;
+                            do
+                            {
+                                g = g._nextGrouping;
+                                await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
+                            } while (g != lookup._lastGrouping);
+                        }
 
                         // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
                         await writer.YieldAsync(default).ForLinqExtension();
                     }
                     finally
                     {
-                        joinedCancelationSource.TryDispose();
-                        lookup.Dispose();
+                        maybeJoinedCancelationSource.Dispose();
                         await _configuredAsyncEnumerator.DisposeAsync();
                     }
                 }
@@ -538,10 +538,9 @@ namespace Proto.Promises
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
-                    var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
                     // We could do await Lookup<TKey, TElement>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
-                    LookupImpl<TKey, TElement, TEqualityComparer> lookup = default;
                     try
                     {
                         if (!await _configuredAsyncEnumerator.MoveNextAsync())
@@ -550,35 +549,36 @@ namespace Proto.Promises
                             return;
                         }
 
-                        lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true);
-                        do
+                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true))
                         {
-                            var item = _configuredAsyncEnumerator.Current;
-                            // In case the key selector changed context, we need to make sure we're on the configured context before invoking the comparer and elementSelector.
-                            var key = await _keySelector.Invoke(item).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
-                            var group = lookup.GetOrCreateGrouping(key, true);
+                            do
+                            {
+                                var item = _configuredAsyncEnumerator.Current;
+                                // In case the key selector changed context, we need to make sure we're on the configured context before invoking the comparer and elementSelector.
+                                var key = await _keySelector.Invoke(item).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
+                                var group = lookup.GetOrCreateGrouping(key, true);
 
-                            var element = await _elementSelector.Invoke(item);
-                            group.Add(element);
-                        } while (await _configuredAsyncEnumerator.MoveNextAsync());
-                        // We don't dispose the source enumerator until the owner is disposed.
-                        // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
+                                var element = await _elementSelector.Invoke(item);
+                                group.Add(element);
+                            } while (await _configuredAsyncEnumerator.MoveNextAsync());
+                            // We don't dispose the source enumerator until the owner is disposed.
+                            // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
-                        // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        var g = lookup._lastGrouping;
-                        do
-                        {
-                            g = g._nextGrouping;
-                            await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
-                        } while (g != lookup._lastGrouping);
+                            // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                            var g = lookup._lastGrouping;
+                            do
+                            {
+                                g = g._nextGrouping;
+                                await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
+                            } while (g != lookup._lastGrouping);
+                        }
 
                         // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
                         await writer.YieldAsync(default).ForLinqExtension();
                     }
                     finally
                     {
-                        joinedCancelationSource.TryDispose();
-                        lookup.Dispose();
+                        maybeJoinedCancelationSource.Dispose();
                         await _configuredAsyncEnumerator.DisposeAsync();
                     }
                 }
@@ -623,10 +623,9 @@ namespace Proto.Promises
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
-                    var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
                     // We could do await Lookup<TKey, TElement>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
-                    LookupImpl<TKey, TElement, TEqualityComparer> lookup = default;
                     try
                     {
                         if (!await _configuredAsyncEnumerator.MoveNextAsync())
@@ -635,32 +634,33 @@ namespace Proto.Promises
                             return;
                         }
 
-                        lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true);
-                        do
+                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true))
                         {
-                            var item = _configuredAsyncEnumerator.Current;
-                            // In case the key selector changed context, we need to make sure we're on the configured context before invoking the comparer.
-                            var key = await _keySelector.Invoke(item).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
-                            lookup.GetOrCreateGrouping(key, true).Add(item);
-                        } while (await _configuredAsyncEnumerator.MoveNextAsync());
-                        // We don't dispose the source enumerator until the owner is disposed.
-                        // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
+                            do
+                            {
+                                var item = _configuredAsyncEnumerator.Current;
+                                // In case the key selector changed context, we need to make sure we're on the configured context before invoking the comparer.
+                                var key = await _keySelector.Invoke(item).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
+                                lookup.GetOrCreateGrouping(key, true).Add(item);
+                            } while (await _configuredAsyncEnumerator.MoveNextAsync());
+                            // We don't dispose the source enumerator until the owner is disposed.
+                            // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
-                        // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                        var g = lookup._lastGrouping;
-                        do
-                        {
-                            g = g._nextGrouping;
-                            await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
-                        } while (g != lookup._lastGrouping);
+                            // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
+                            var g = lookup._lastGrouping;
+                            do
+                            {
+                                g = g._nextGrouping;
+                                await writer.YieldAsync(new Linq.Grouping<TKey, TElement>(g));
+                            } while (g != lookup._lastGrouping);
+                        }
 
                         // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
                         await writer.YieldAsync(default).ForLinqExtension();
                     }
                     finally
                     {
-                        joinedCancelationSource.TryDispose();
-                        lookup.Dispose();
+                        maybeJoinedCancelationSource.Dispose();
                         await _configuredAsyncEnumerator.DisposeAsync();
                     }
                 }

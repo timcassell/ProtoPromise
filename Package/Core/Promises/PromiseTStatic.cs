@@ -566,7 +566,7 @@ namespace Proto.Promises
                 // In order to prevent a race condition with the list being expanded and results being assigned concurrently,
                 // we create the passthroughs and link them together in a queue before creating the return promise
                 // so that we can make sure the list's size is correct before hooking up any promises.
-                var passthroughs = new Internal.ValueLinkedQueue<Internal.PromiseRefBase.PromisePassThroughForAll>(
+                var passthroughs = Internal.ValueLinkedQueue<Internal.PromiseRefBase.PromisePassThroughForAll>.New(
                     Internal.PromiseRefBase.PromisePassThroughForAll.GetOrCreate(p._ref, p._id, index));
                 uint waitCount = 1;
                 while (promises.MoveNext())
@@ -597,14 +597,14 @@ namespace Proto.Promises
                 {
                     valueContainer.RemoveAt(--listSize);
                 }
-                var promise = Internal.PromiseRefBase.GetOrCreateAllPromise(valueContainer, GetAllResultFunc, passthroughs.MoveElementsToStack(), waitCount);
+                var promise = Internal.PromiseRefBase.GetOrCreateAllPromise(valueContainer, GetAllResultFunc, passthroughs.MoveElementsToStackUnsafe(), waitCount);
                 return new Promise<IList<T>>(promise, promise.Id);
             }
         }
 
         [MethodImpl(Internal.InlineOption)]
         private static void GetAllResultContainer(Internal.PromiseRefBase handler, int index, ref IList<ResultContainer> result)
-            => result[index] = new ResultContainer(handler.GetResult<T>(), handler._rejectContainer, handler.State);
+            => result[index] = new ResultContainer(handler.GetResult<T>(), handler.RejectContainer, handler.State);
         
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
         private static unsafe Internal.GetResultDelegate<IList<ResultContainer>> GetAllResultContainerFunc
@@ -756,7 +756,7 @@ namespace Proto.Promises
                 // In order to prevent a race condition with the list being expanded and results being assigned concurrently,
                 // we create the passthroughs and link them together in a queue before creating the return promise
                 // so that we can make sure the list's size is correct before hooking up any promises.
-                var passthroughs = new Internal.ValueLinkedQueue<Internal.PromiseRefBase.PromisePassThroughForAll>(
+                var passthroughs = Internal.ValueLinkedQueue<Internal.PromiseRefBase.PromisePassThroughForAll>.New(
                     Internal.PromiseRefBase.PromisePassThroughForAll.GetOrCreate(p._ref, p._id, index));
                 uint waitCount = 1;
                 while (promises.MoveNext())
@@ -787,7 +787,7 @@ namespace Proto.Promises
                 {
                     valueContainer.RemoveAt(--listSize);
                 }
-                var promise = Internal.PromiseRefBase.GetOrCreateAllSettledPromise(valueContainer, GetAllResultContainerFunc, passthroughs.MoveElementsToStack(), waitCount);
+                var promise = Internal.PromiseRefBase.GetOrCreateAllSettledPromise(valueContainer, GetAllResultContainerFunc, passthroughs.MoveElementsToStackUnsafe(), waitCount);
                 return new Promise<IList<ResultContainer>>(promise, promise.Id);
             }
         }
@@ -878,7 +878,17 @@ namespace Proto.Promises
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public static Promise<T> Canceled()
-            => Internal.CreateCanceled<T>();
+        {
+#if PROMISE_DEBUG
+            // Make a new promise to capture causality trace and help with debugging.
+            var promise = Internal.PromiseRefBase.DeferredPromise<T>.GetOrCreate();
+            promise.CancelDirect();
+#else
+            // Use a singleton promise for efficiency.
+            var promise = Internal.PromiseRefBase.CanceledPromiseSentinel<T>.s_instance;
+#endif
+            return new Promise<T>(promise, promise.Id);
+        }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that is either canceled or rejected with the provided <paramref name="exception"/>.

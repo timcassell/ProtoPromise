@@ -7,6 +7,7 @@
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0251 // Make member 'readonly'
 #pragma warning disable IDE0270 // Use coalesce expression
+#pragma warning disable IDE0290 // Use primary constructor
 
 using System;
 using System.Collections.Generic;
@@ -80,20 +81,21 @@ namespace Proto.Promises
 
             static CancelationRef()
             {
-                // Set _userRetainIncrementor to 0 so _userRetainCounter will never overflow.
-                s_canceledSentinel = new CancelationRef(0) { _state = State.CanceledComplete, _internalRetainCounter = 1, _tokenId = -1 };
+                s_canceledSentinel = new CancelationRef()
+                {
+                    _states = States.CanceledAndNotifyComplete,
+                    _internalRetainCounter = 1,
+                    // 0 so _userRetainCounter will never overflow.
+                    _userRetainIncrement = 0,
+                    _tokenId = -1
+                };
 #pragma warning disable CA1816 // Dispose methods should call SuppressFinalize
                 // If we don't suppress, the finalizer can run when the AppDomain is unloaded, causing a NullReferenceException. This happens in Unity when switching between editmode and playmode.
                 GC.SuppressFinalize(s_canceledSentinel);
 #pragma warning restore CA1816 // Dispose methods should call SuppressFinalize
             }
 
-            private CancelationRef() : this(1) { }
-
-            private CancelationRef(byte userRetainIncrementor)
-            {
-                _userRetainIncrementor = userRetainIncrementor;
-            }
+            private CancelationRef() { }
 
             ~CancelationRef()
             {
@@ -104,19 +106,24 @@ namespace Proto.Promises
                     ReportRejection(new UnreleasedObjectException(message), this);
                 }
                 // We don't check the disposed state if this was linked to a System.Threading.CancellationToken.
-                if (!_linkedToBclToken & _state != State.Disposed)
+                if (!_linkedToBclToken & !HasState(States.Disposed))
                 {
                     // CancelationSource wasn't disposed.
                     ReportRejection(new UnreleasedObjectException("CancelationSource's resources were garbage collected without being disposed."), this);
                 }
             }
 
-            internal enum State : byte
+            [Flags]
+            internal enum States : byte
             {
-                Pending,
-                Disposed,
-                Canceled,
-                CanceledComplete,
+                Pending = 0,
+                ChangingTimer = 1 << 0,
+                Disposed = 1 << 1,
+                Canceled = 1 << 2,
+                NotifyComplete = 1 << 3,
+
+                DisposedAndCanceled = Disposed | Canceled,
+                CanceledAndNotifyComplete = Canceled | NotifyComplete,
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -149,6 +156,7 @@ namespace Proto.Promises
             private static bool ts_isLinkingToBclToken;
 #endif
             internal Thread _executingThread;
+            private Timers.Timer _timer;
             // These must not be readonly.
             private ValueLinkedStack<LinkedCancelationNode> _links = new ValueLinkedStack<LinkedCancelationNode>();
             internal SmallFields _smallFields = SmallFields.Create();
@@ -156,11 +164,11 @@ namespace Proto.Promises
             private int _sourceId = 1;
             private int _tokenId = 1;
             private uint _userRetainCounter;
-            private readonly byte _userRetainIncrementor; // 0 for s_canceledSentinel, 1 for all others.
+            private byte _userRetainIncrement; // 0 for s_canceledSentinel and _linkedToBclToken, 1 for all others.
             private byte _internalRetainCounter;
             internal bool _linkedToBclToken;
             // There is no Volatile.Read API for enums, so we have to make the field volatile.
-            volatile internal State _state;
+            volatile internal States _states;
 
             internal int SourceId
             {
@@ -181,12 +189,38 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            private void Initialize(bool linkedToBclToken)
+            internal bool HasState(States state)
+                => HasState(_states, state);
+
+            [MethodImpl(InlineOption)]
+            private bool IsPending()
+                => IsPending(_states);
+
+            [MethodImpl(InlineOption)]
+            private static bool HasState(States states, States flag)
+                => (states & flag) != 0;
+
+            [MethodImpl(InlineOption)]
+            private static bool IsPending(States states)
+                => !HasState(states, States.DisposedAndCanceled);
+
+            [MethodImpl(InlineOption)]
+            internal bool GetCanBeCanceled()
+            {
+                // True if this is already canceled, or if this has not been disposed.
+                var states = _states;
+                return HasState(states, States.Canceled)
+                    | !HasState(states, States.Disposed);
+            }
+
+            [MethodImpl(InlineOption)]
+            private void Initialize(bool linkedToBclToken, byte userRetainIncrement)
             {
                 ResetLinkedListSentinel();
                 _internalRetainCounter = 1; // 1 for Dispose.
+                _userRetainIncrement = userRetainIncrement;
                 _linkedToBclToken = linkedToBclToken;
-                _state = State.Pending;
+                _states = States.Pending;
                 SetCreatedStacktrace(this, 2);
             }
 
@@ -203,7 +237,34 @@ namespace Proto.Promises
             internal static CancelationRef GetOrCreate()
             {
                 var cancelRef = GetFromPoolOrCreate();
-                cancelRef.Initialize(false);
+                cancelRef.Initialize(false, 1);
+                return cancelRef;
+            }
+
+            [MethodImpl(InlineOption)]
+            internal static CancelationRef GetOrCreate(TimeSpan delay, Timers.TimerFactory timerFactory)
+            {
+                var cancelRef = GetOrCreate();
+                if (delay == TimeSpan.Zero)
+                {
+                    // Immediately canceled.
+                    // We can't return s_canceledSentinel here because it's returned to the user, who is required to dispose it.
+                    // We could add an extra check in Dispose() to do nothing if it's the sentinel object, but it would make the common case more expensive.
+                    cancelRef._states = States.CanceledAndNotifyComplete;
+                }
+                else
+                {
+                    ++cancelRef._internalRetainCounter; // Add an extra internal retain for the timer disposal.
+                    using (SuppressExecutionContextFlow())
+                    {
+                        cancelRef._timer = timerFactory.CreateTimer(obj => obj.UnsafeAs<CancelationRef>().CancelUnsafe(), cancelRef, delay, Timeout.InfiniteTimeSpan);
+                        if (cancelRef._timer == default)
+                        {
+                            Discard(cancelRef);
+                            throw new InvalidReturnException("timerFactory returned a default Timer.", GetFormattedStacktrace(2));
+                        }
+                    }
+                }
                 return cancelRef;
             }
 
@@ -214,35 +275,25 @@ namespace Proto.Promises
                 _previous = this;
             }
 
-            [MethodImpl(InlineOption)]
-            internal static bool IsValidSource(CancelationRef _this, int sourceId)
-                => _this != null && Volatile.Read(ref _this._sourceId) == sourceId;
+            internal bool IsValidSource(int sourceId)
+                => Volatile.Read(ref _sourceId) == sourceId;
 
             [MethodImpl(InlineOption)]
-            internal static bool IsSourceCanceled(CancelationRef _this, int sourceId)
-                => _this != null && _this.IsSourceCanceled(sourceId);
-
-            [MethodImpl(InlineOption)]
-            private bool IsSourceCanceled(int sourceId)
+            internal bool IsSourceCanceled(int sourceId)
                 // Volatile read the state before the id.
-                => _state >= State.Canceled & sourceId == SourceId;
+                => HasState(States.Canceled) & sourceId == SourceId;
 
             [MethodImpl(InlineOption)]
-            internal static bool CanTokenBeCanceled(CancelationRef _this, int tokenId)
-                => _this != null
-                    // Volatile read the state before the id.
-                    && (_this._state != State.Disposed & _this.TokenId == tokenId);
+            internal bool CanTokenBeCanceled(int tokenId)
+                // Volatile read the state before the id.
+                => GetCanBeCanceled() & TokenId == tokenId;
 
             [MethodImpl(InlineOption)]
-            internal static bool IsTokenCanceled(CancelationRef _this, int tokenId)
-                => _this != null && _this.IsTokenCanceled(tokenId);
-
-            [MethodImpl(InlineOption)]
-            private bool IsTokenCanceled(int tokenId)
+            internal bool IsTokenCanceled(int tokenId)
             {
                 // Volatile read the state before everything else.
-                var state = _state;
-                return tokenId == TokenId & (state >= State.Canceled
+                var state = _states;
+                return tokenId == TokenId & (HasState(state, States.Canceled)
                     // TODO: Unity hasn't adopted .Net 6+ yet, and they usually use different compilation symbols than .Net SDK, so we'll have to update the compilation symbols here once Unity finally does adopt it.
 #if NET6_0_OR_GREATER
                     // This is only necessary in .Net 6 or later, since `CancellationTokenSource.TryReset()` was added.
@@ -253,8 +304,8 @@ namespace Proto.Promises
 
             internal void MaybeLinkToken(CancelationToken token)
             {
-                // If the token is invalid, or if this was already canceled from another token, don't hook it up.
-                if (token._ref == null | _state >= State.Canceled)
+                // If the token is not cancelable, or if this is already canceled, don't hook it up.
+                if (token._ref == null | HasState(States.Canceled))
                 {
                     return;
                 }
@@ -272,6 +323,73 @@ namespace Proto.Promises
                 var nodeCreator = new LinkedNodeCreator(other);
                 TryRegister(ref nodeCreator, tokenId);
                 return nodeCreator._node;
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void CancelAfter(TimeSpan delay, int sourceId)
+            {
+                if (delay == TimeSpan.Zero)
+                {
+                    // Cancel immediately.
+                    Cancel(sourceId);
+                    return;
+                }
+
+                _smallFields._locker.Enter();
+                bool idsMismatch = sourceId != SourceId;
+                var states = _states;
+                // Do nothing if this was already canceled, or another thread is currently changing the timer.
+                if (idsMismatch | states != States.Pending)
+                {
+                    _smallFields._locker.Exit();
+                    // Throw if this was disposed.
+                    if (idsMismatch | HasState(states, States.Disposed))
+                    {
+                        throw new ObjectDisposedException(nameof(CancelationSource));
+                    }
+                    return;
+                }
+
+                // Add the ChangingTimer flag. It's safe to set it without bitwise operators because we already ensured that no flags were set.
+                _states = States.ChangingTimer;
+                var timer = _timer;
+
+                // In order to prevent a deadlock, we exit the lock before changing the timer,
+                // because there is a chance that a custom timer factory could invoke the callback synchronously.
+                // The ChangingTimer flag ensures that the timer will not be disposed on another thread while we are changing it.
+                if (timer._timerSource == null)
+                {
+                    ++_internalRetainCounter; // Add an extra internal retain for the timer disposal.
+                    _smallFields._locker.Exit();
+
+                    // There is no existing timer, create a new default timer.
+                    using (SuppressExecutionContextFlow())
+                    {
+                        timer = Promise.Config.DefaultTimerFactory.CreateTimer(obj => obj.UnsafeAs<CancelationRef>().CancelUnsafe(), this, delay, Timeout.InfiniteTimeSpan);
+                    }
+
+                    _smallFields._locker.Enter();
+                    _timer = timer;
+                }
+                else
+                {
+                    _smallFields._locker.Exit();
+
+                    timer.Change(delay, Timeout.InfiniteTimeSpan);
+
+                    _smallFields._locker.Enter();
+                }
+
+                states = _states;
+                // Remove the ChangingTimer flag.
+                _states = states & ~States.ChangingTimer;
+                _smallFields._locker.Exit();
+
+                // This could have been disposed on another thread while the timer was being created or changed.
+                if (HasState(states, States.Disposed))
+                {
+                    DisposeTimer(timer);
+                }
             }
 
             [MethodImpl(InlineOption)]
@@ -324,11 +442,11 @@ namespace Proto.Promises
                 where TNodeCreator : INodeCreator
             {
                 _smallFields._locker.Enter();
-                State state = _state;
+                var states = _states;
                 bool isTokenMatched = tokenId == TokenId;
-                if (!isTokenMatched | state != State.Pending)
+                if (!isTokenMatched | !IsPending(states))
                 {
-                    if (isTokenMatched & state >= State.Canceled)
+                    if (isTokenMatched & HasState(states, States.Canceled))
                     {
                         ThrowIfInPool(this);
                         _smallFields._locker.Exit();
@@ -340,6 +458,7 @@ namespace Proto.Promises
                 }
 
                 ThrowIfInPool(this);
+                CancelationCallbackNodeBase node;
                 // TODO: Unity hasn't adopted .Net 6+ yet, and they usually use different compilation symbols than .Net SDK, so we'll have to update the compilation symbols here once Unity finally does adopt it.
 #if NET6_0_OR_GREATER
                 // This is only necessary in .Net 6 or later, since `CancellationTokenSource.TryReset()` was added.
@@ -362,56 +481,78 @@ namespace Proto.Promises
                         }
                         else
                         {
+                            // Set disposed state to prevent adding more callback nodes.
+                            // We don't call Dispose here to prevent pooling this object, since it's tied to the bcl source.
+                            _states = states | States.Disposed;
                             UnregisterAll();
                             _smallFields._locker.Exit();
                         }
                         return isCanceled;
                     }
 
-                    // If we are unable to unregister, it means the source had TryReset() called on it, or the token was canceled on another thread (and the other thread may be waiting on the lock).
-                    if (!_bclRegistration.Unregister())
+                    static bool RefreshRegistrationAndGetIsCancellationRequested(CancelationRef cancelationRef, System.Threading.CancellationToken cancellationToken, out bool unregistered)
                     {
-                        if (token.IsCancellationRequested)
+                        unregistered = cancelationRef._bclRegistration.Unregister();
+                        if (cancellationToken.IsCancellationRequested)
                         {
-                            _smallFields._locker.Exit();
-                            nodeCreator.Invoke();
                             return true;
                         }
-                        UnregisterAll();
-                    }
-                    // Callback could be invoked synchronously if the token is canceled on another thread,
-                    // so we set a flag to prevent a deadlock, then check the flag again after the hookup to see if it was invoked.
-                    ts_isLinkingToBclToken = true;
-                    _bclRegistration = token.UnsafeRegister(cancelRef =>
-                    {
-                        // This could be invoked synchronously if the token is canceled, so we check the flag to prevent a deadlock.
-                        if (ts_isLinkingToBclToken)
+                        else if (!unregistered)
                         {
-                            // Reset the flag so that we can tell that this was invoked synchronously.
-                            ts_isLinkingToBclToken = false;
-                            return;
+                            // If we were unable to unregister, it means the source had TryReset() called on it,
+                            // or the source was disposed or canceled on another thread (and the other thread may be waiting on the lock).
+                            // We already checked the cancelation state, so we know it was either disposed or reset, in which case we need to remove current listeners.
+                            cancelationRef.UnregisterAll();
                         }
-                        cancelRef.UnsafeAs<CancelationRef>().Cancel();
-                    }, this);
 
-                    if (!ts_isLinkingToBclToken)
+                        // The callback could be invoked synchronously if the token is canceled on another thread,
+                        // so we set a flag to prevent a deadlock, then check the flag again after the hookup to see if it was invoked.
+                        ts_isLinkingToBclToken = true;
+                        cancelationRef._bclRegistration = cancellationToken.UnsafeRegister(obj =>
+                        {
+                            // This could be invoked synchronously if the token is canceled, so we check the flag to prevent a deadlock.
+                            if (ts_isLinkingToBclToken)
+                            {
+                                // Reset the flag so that we can tell that this was invoked synchronously.
+                                ts_isLinkingToBclToken = false;
+                                return;
+                            }
+                            obj.UnsafeAs<CancelationRef>().CancelUnsafe();
+                        }, cancelationRef);
+
+                        bool isCanceled = !ts_isLinkingToBclToken;
+                        ts_isLinkingToBclToken = false;
+                        return isCanceled;
+                    }
+
+                    if (RefreshRegistrationAndGetIsCancellationRequested(this, token, out bool unregistered))
                     {
-                        // Hook up the node instead of invoking since it might throw, and we need all registered callbacks to be invoked.
-                        var node = nodeCreator.CreateNode(this, tokenId);
-                        InsertPrevious(node);
-                        InvokeCallbacksAlreadyLocked();
+                        // The source was already canceled.
+                        if (unregistered)
+                        {
+                            // Hook up the node instead of invoking directly since it might throw, and we need all registered callbacks to be invoked.
+                            node = nodeCreator.CreateNode(this, tokenId);
+                            InsertPrevious(node);
+                            InvokeCallbacksAlreadyLocked();
+                        }
+                        else
+                        {
+                            // All previous listeners were removed. We can simply set the flags and invoke the new callback here.
+                            _states = states | States.CanceledAndNotifyComplete;
+                            _smallFields._locker.Exit();
+                            nodeCreator.Invoke();
+                        }
                         return true;
                     }
-                    ts_isLinkingToBclToken = false;
+
+                    // There is a race condition where it is possible the source was disposed on another thread without being canceled.
+                    // This case is benign, we will simply be creating a callback node that will never be invoked.
                 }
 #endif
-
-                {
-                    var node = nodeCreator.CreateNode(this, tokenId);
-                    InsertPrevious(node);
-                    _smallFields._locker.Exit();
-                    return true;
-                }
+                node = nodeCreator.CreateNode(this, tokenId);
+                InsertPrevious(node);
+                _smallFields._locker.Exit();
+                return true;
             }
 
             private void InsertPrevious(CancelationCallbackNodeBase node)
@@ -422,21 +563,59 @@ namespace Proto.Promises
                 _previous = node;
             }
 
-            [MethodImpl(InlineOption)]
-            internal static bool TrySetCanceled(CancelationRef _this, int sourceId)
-                => _this != null && _this.TrySetCanceled(sourceId);
-
-            [MethodImpl(InlineOption)]
-            private bool TrySetCanceled(int sourceId)
+            internal bool TryCancel(int sourceId)
             {
                 _smallFields._locker.Enter();
-                if (sourceId != SourceId | _state != State.Pending)
+                if (sourceId == SourceId & IsPending())
                 {
-                    _smallFields._locker.Exit();
-                    return false;
+                    InvokeCallbacksAlreadyLocked();
+                    return true;
                 }
-                InvokeCallbacksAlreadyLocked();
-                return true;
+                _smallFields._locker.Exit();
+                return false;
+            }
+
+            internal void Cancel(int sourceId)
+            {
+                _smallFields._locker.Enter();
+                bool idsMatch = sourceId == SourceId;
+                var states = _states;
+                if (idsMatch & IsPending(states))
+                {
+                    InvokeCallbacksAlreadyLocked();
+                    return;
+                }
+
+                _smallFields._locker.Exit();
+                // Only throw if this was disposed. If this was already canceled, do nothing.
+                if (!idsMatch | HasState(states, States.Disposed))
+                {
+                    throw new ObjectDisposedException(nameof(CancelationSource));
+                }
+            }
+
+            private void OnTimerCallback()
+            {
+                // Due to object pooling, this is not a fool-proof check. But it's good enough to protect against accidental non-compliant timer implementations,
+                // as object pooling is disabled in DEBUG mode, and it's still possible to catch the improper call while this is in the pool.
+                if (_timer == default)
+                {
+                    throw new InvalidOperationException("Timer callback may not be invoked after its DisposeAsync Promise has completed.", GetFormattedStacktrace(1));
+                }
+
+                CancelUnsafe();
+            }
+
+            // Internal Cancel method skipping the disposed check.
+            internal void CancelUnsafe()
+            {
+                _smallFields._locker.Enter();
+                if (IsPending())
+                {
+                    InvokeCallbacksAlreadyLocked();
+                    return;
+                }
+                _smallFields._locker.Exit();
             }
 
             private void InvokeCallbacksAlreadyLocked()
@@ -444,7 +623,7 @@ namespace Proto.Promises
                 ThrowIfInPool(this);
 
                 _executingThread = Thread.CurrentThread;
-                _state = State.Canceled;
+                _states |= States.Canceled;
                 ++_internalRetainCounter;
 
                 // We call the delegates in LIFO order so that callbacks fire 'deepest first'.
@@ -475,7 +654,7 @@ namespace Proto.Promises
                 }
 
                 _executingThread = null;
-                _state = State.CanceledComplete;
+                _states |= States.NotifyComplete;
                 MaybeResetAndRepoolAlreadyLocked();
                 if (exceptions != null)
                 {
@@ -484,27 +663,80 @@ namespace Proto.Promises
                 }
             }
 
-            [MethodImpl(InlineOption)]
-            internal static bool TryDispose(CancelationRef _this, int sourceId)
-                => _this != null && _this.TryDispose(sourceId);
-
             internal bool TryDispose(int sourceId)
             {
                 _smallFields._locker.Enter();
-                if (!TryIncrementSourceId(sourceId))
+                if (HasState(States.Disposed) || !TryIncrementSourceId(sourceId))
                 {
                     _smallFields._locker.Exit();
                     return false;
                 }
 
                 ThrowIfInPool(this);
-                if (_state == State.Pending)
+                DisposeLocked();
+                return true;
+            }
+
+            internal void Dispose(int sourceId)
+            {
+                if (!TryDispose(sourceId))
                 {
-                    _state = State.Disposed;
+                    throw new ObjectDisposedException(nameof(CancelationSource));
+                }
+            }
+
+            // Internal Dispose method skipping the disposed check.
+            internal void DisposeUnsafe()
+            {
+                ThrowIfInPool(this);
+                _smallFields._locker.Enter();
+                unchecked { ++_sourceId; }
+                DisposeLocked();
+            }
+
+            private void DisposeLocked()
+            {
+                var states = _states;
+                _states = states | States.Disposed;
+                if (!HasState(states, States.Canceled))
+                {
                     UnregisterAll();
                 }
+
+                var timer = _timer;
                 MaybeResetAndRepoolAlreadyLocked();
-                return true;
+                
+                if (timer._timerSource == null | HasState(states, States.ChangingTimer))
+                {
+                    return;
+                }
+
+                DisposeTimer(timer);
+            }
+
+            private void DisposeTimer(Timers.Timer timer)
+            {
+                var timerDisposePromise = timer.DisposeAsync();
+                if (timerDisposePromise._ref?.State != Promise.State.Pending)
+                {
+                    _timer = default;
+                    timerDisposePromise._ref?.MaybeMarkAwaitedAndDispose(timerDisposePromise._id);
+                    MaybeResetAndRepool();
+                }
+                else
+                {
+                    timerDisposePromise._ref.HookupExistingWaiter(timerDisposePromise._id, this);
+                }
+            }
+
+            internal override void Handle(PromiseRefBase handler, Promise.State state)
+            {
+                // The timer dispose promise is complete.
+                ThrowIfInPool(this);
+                _timer = default;
+                handler.SetCompletionState(state);
+                handler.MaybeReportUnhandledAndDispose(state);
+                MaybeResetAndRepool();
             }
 
             [MethodImpl(InlineOption)]
@@ -533,14 +765,10 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal static bool TryRetainUser(CancelationRef _this, int tokenId)
-                => _this != null && _this.TryRetainUser(tokenId);
-
-            [MethodImpl(InlineOption)]
-            private bool TryRetainUser(int tokenId)
+            internal bool TryRetainUser(int tokenId)
             {
                 _smallFields._locker.Enter();
-                if (tokenId != TokenId | _state == State.Disposed)
+                if (!CanTokenBeCanceled(tokenId))
                 {
                     _smallFields._locker.Exit();
                     return false;
@@ -549,18 +777,14 @@ namespace Proto.Promises
                 ThrowIfInPool(this);
                 checked
                 {
-                    _userRetainCounter += _userRetainIncrementor;
+                    _userRetainCounter += _userRetainIncrement;
                 }
                 _smallFields._locker.Exit();
                 return true;
             }
 
             [MethodImpl(InlineOption)]
-            internal static bool TryReleaseUser(CancelationRef _this, int tokenId)
-                => _this != null && _this.TryReleaseUser(tokenId);
-
-            [MethodImpl(InlineOption)]
-            private bool TryReleaseUser(int tokenId)
+            internal bool TryReleaseUser(int tokenId)
             {
                 _smallFields._locker.Enter();
                 if (tokenId != TokenId)
@@ -570,14 +794,13 @@ namespace Proto.Promises
                 }
                 checked
                 {
-                    if ((_userRetainCounter -= _userRetainIncrementor) == 0 & _internalRetainCounter == 0)
+                    if ((_userRetainCounter -= _userRetainIncrement) == 0 & _internalRetainCounter == 0)
                     {
                         unchecked
                         {
                             ++_tokenId;
                         }
-                        _smallFields._locker.Exit();
-                        ResetAndRepool();
+                        ResetAndRepoolAlreadyLocked();
                         return true;
                     }
                 }
@@ -585,36 +808,43 @@ namespace Proto.Promises
                 return true;
             }
 
+            private void MaybeResetAndRepool()
+            {
+                _smallFields._locker.Enter();
+                MaybeResetAndRepoolAlreadyLocked();
+            }
+
             private void MaybeResetAndRepoolAlreadyLocked()
             {
-                if (--_internalRetainCounter == 0 & _userRetainCounter == 0)
+                if (--_internalRetainCounter != 0 | _userRetainCounter != 0)
                 {
-                    if (_bclSource != null)
-                    {
-                        CancelationConverter.DetachCancelationRef(_bclSource);
-                        // We should only dispose the source if we were the one that created it.
-                        if (!_linkedToBclToken)
-                        {
-                            // We *could* call _cancellationTokenSource.TryReset() in .Net 6+ instead of always creating a new one,
-                            // but if a user still holds an old token after this is reused, its cancelation state would be incorrect,
-                            // possibly causing cancelations to be triggered unexpectedly.
-                            _bclSource.Dispose();
-                        }
-                        Volatile.Write(ref _bclSource, null);
-                    }
-                    unchecked
-                    {
-                        ++_tokenId;
-                    }
                     _smallFields._locker.Exit();
-                    ResetAndRepool();
                     return;
                 }
-                _smallFields._locker.Exit();
+
+                var bclSource = _bclSource;
+                if (bclSource != null)
+                {
+                    Volatile.Write(ref _bclSource, null);
+                    CancelationConverter.DetachCancelationRef(bclSource);
+                    // We should only dispose the source if we were the one that created it.
+                    if (!_linkedToBclToken)
+                    {
+                        // We *could* call TryReset() in .Net 6+ instead of always creating a new one,
+                        // but if a user still holds an old token after this is reused, its cancelation state would be incorrect,
+                        // possibly causing cancelations to be triggered unexpectedly.
+                        bclSource.Dispose();
+                    }
+                }
+                unchecked
+                {
+                    ++_tokenId;
+                }
+                ResetAndRepoolAlreadyLocked();
             }
 
             [MethodImpl(InlineOption)]
-            private void ResetAndRepool()
+            private void ResetAndRepoolAlreadyLocked()
             {
                 ThrowIfInPool(this);
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -623,25 +853,15 @@ namespace Proto.Promises
                     throw new System.InvalidOperationException("CancelationToken callbacks have not been unregistered.");
                 }
 #endif
-                _state = State.Disposed;
+                // Set states to only Disposed, clearing Canceled and NotifyComplete flags.
+                _states = States.Disposed;
+                _smallFields._locker.Exit();
                 // Unhook from other tokens before repooling.
                 while (_links.IsNotEmpty)
                 {
                     _links.Pop().UnhookAndDispose();
                 }
                 ObjectPool.MaybeRepool(this);
-            }
-
-            internal void Cancel()
-            {
-                // Same as TrySetCanceled, but without checking the SourceId.
-                _smallFields._locker.Enter();
-                if (_state != State.Pending)
-                {
-                    _smallFields._locker.Exit();
-                    return;
-                }
-                InvokeCallbacksAlreadyLocked();
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -700,7 +920,7 @@ namespace Proto.Promises
                     {
                         ++_nodeId;
                     }
-                    _cancelable = default;
+                    ClearReferences(ref _cancelable);
                     ObjectPool.MaybeRepool(this);
                 }
             } // class CallbackNodeImpl<TCancelable>
@@ -740,7 +960,7 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     try
                     {
-                        _target.Cancel();
+                        _target.CancelUnsafe();
                     }
                     finally
                     {
@@ -753,12 +973,14 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     _target = null;
-                    bool shouldRepool = _parent == null;
-                    _parent = null;
-                    if (shouldRepool)
+                    if (_parent == null)
                     {
                         // Only repool here if UnhookAndDispose() was called synchronously from inside the invoke.
                         Repool();
+                    }
+                    else
+                    {
+                        Volatile.Write(ref _parent, null);
                     }
                 }
 
@@ -888,7 +1110,7 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 public void Invoke()
-                    => _target.Cancel();
+                    => _target.CancelUnsafe();
             }
         } // class CancelationRef
 
@@ -953,7 +1175,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             private bool GetIsRegisteredAndIsCanceled(CancelationRef parent, int nodeId, int tokenId, out bool isCanceled)
             {
-                bool canceled = parent._state >= CancelationRef.State.Canceled;
+                bool canceled = parent.HasState(CancelationRef.States.Canceled);
                 // We read state volatile, so we don't need to read anything else volatile.
                 bool tokenIdMatches = parent.TokenId == tokenId & parent._smallFields._instanceId == _parentId;
                 bool isRegistered = tokenIdMatches & _nodeId == nodeId & _previous != null;
@@ -1017,29 +1239,36 @@ namespace Proto.Promises
                     return;
                 }
 
-                bool parentIsCanceling = parent._state == CancelationRef.State.Canceled;
+                var states = parent._states;
+                bool parentIsCanceling = (states & CancelationRef.States.CanceledAndNotifyComplete) == CancelationRef.States.Canceled;
                 parent._smallFields._locker.Exit();
                 // If the source is executing callbacks on another thread, we must wait until this callback is complete.
-                if (idsMatch & parentIsCanceling
-                    & parent._executingThread != Thread.CurrentThread)
+                if (idsMatch & parentIsCanceling & parent._executingThread != Thread.CurrentThread)
                 {
                     var spinner = new SpinWait();
-                    // _this._nodeId will be incremented when the callback is complete and this is disposed.
-                    // parent.TokenId will be incremented when all callbacks are complete and it is disposed.
-                    // We really only need to compare the nodeId, the tokenId comparison is just for a little extra safety in case of thread starvation and node re-use.
-                    while (nodeId == Volatile.Read(ref _this._nodeId) & tokenId == parent.TokenId)
+                    do
                     {
                         spinner.SpinOnce(); // Spin, as we assume callback execution is fast and that this situation is rare.
+                        states = parent._states;
+                        parentIsCanceling = (states & CancelationRef.States.CanceledAndNotifyComplete) == CancelationRef.States.Canceled;
                     }
+                    // _this._nodeId will be incremented when the callback is complete and this is disposed.
+                    // parent.TokenId will be incremented when all callbacks are complete and it is disposed.
+                    // parentIsCanceling is only true while the callbacks are being invoked. After all callbacks are invoked, it will be false.
+                    // We really only need to compare the nodeId, the other checks are just for a little extra safety in case of thread starvation and node re-use.
+                    while (nodeId == Volatile.Read(ref _this._nodeId)
+                        & tokenId == parent.TokenId
+                        & parent._smallFields._instanceId == _this._parentId
+                        & parentIsCanceling);
                 }
             }
 
             [MethodImpl(InlineOption)]
-            internal static Promise TryUnregisterOrWaitForCallbackToCompleteAsync(CancelationRef parent, CancelationCallbackNode _this, int nodeId, int tokenId)
+            internal static async Promise TryUnregisterOrWaitForCallbackToCompleteAsync(CancelationRef parent, CancelationCallbackNode _this, int nodeId, int tokenId)
             {
                 if (_this == null | parent == null)
                 {
-                    return new Promise();
+                    return;
                 }
 
                 parent._smallFields._locker.Enter();
@@ -1051,10 +1280,11 @@ namespace Proto.Promises
                     _this.RemoveFromLinkedList();
                     parent._smallFields._locker.Exit();
                     _this.Dispose();
-                    return new Promise();
+                    return;
                 }
 
-                bool parentIsCanceling = parent._state == CancelationRef.State.Canceled;
+                var states = parent._states;
+                bool parentIsCanceling = (states & CancelationRef.States.CanceledAndNotifyComplete) == CancelationRef.States.Canceled;
                 parent._smallFields._locker.Exit();
                 // If the source is executing callbacks on another thread, we must wait until this callback is complete.
                 if (idsMatch & parentIsCanceling
@@ -1064,31 +1294,22 @@ namespace Proto.Promises
                     // callback to complete. While such polling isn't ideal, we expect this to be a rare case (disposing while
                     // the associated callback is running), and brief when it happens (so the polling will be minimal), and making
                     // this work with a callback mechanism will add additional cost to other more common cases.
-                    var deferred = Promise.NewDeferred();
-                    WaitForInvokeComplete(parent, _this, nodeId, tokenId, deferred);
-                    return deferred.Promise;
-                }
-                return new Promise();
-            }
-
-            private static void WaitForInvokeComplete(CancelationRef parent, CancelationCallbackNode node, int nodeId, int tokenId, Promise.Deferred deferred)
-            {
-                // node._nodeId will be incremented when the callback is complete and it is disposed.
-                // parent.TokenId will be incremented when all callbacks are complete and it is disposed.
-                // We really only need to compare the nodeId, the tokenId comparison is just for a little extra safety in case of thread starvation and node re-use.
-                if (nodeId == Volatile.Read(ref node._nodeId) & tokenId == parent.TokenId)
-                {
-                    // Queue the check to happen again on a background thread.
-                    // Force async so the current thread will be yielded if this is already being executed on a background thread.
-                    // This is recursive, but it's done so asynchronously so it will never cause StackOverflowException.
-                    Promise.Run((parent, node, nodeId, tokenId, deferred),
-                        cv => WaitForInvokeComplete(cv.parent, cv.node, cv.nodeId, cv.tokenId, cv.deferred),
-                        Promise.Config.BackgroundContext, forceAsync: true)
-                        .Forget();
-                }
-                else
-                {
-                    deferred.Resolve();
+                    do
+                    {
+                        // Queue the check to happen again on a background thread.
+                        // Force async so the current thread will be yielded if this is already being executed on a background thread.
+                        await Promise.SwitchToBackgroundAwait(forceAsync: true);
+                        states = parent._states;
+                        parentIsCanceling = (states & CancelationRef.States.CanceledAndNotifyComplete) == CancelationRef.States.Canceled;
+                    }
+                    // _this._nodeId will be incremented when the callback is complete and it is disposed.
+                    // parent.TokenId will be incremented when all callbacks are complete and it is disposed.
+                    // parentIsCanceling is only true while the callbacks are being invoked. After all callbacks are invoked, it will be false.
+                    // We really only need to compare the nodeId, the other comparisons are just for a little extra safety in case of thread starvation and node re-use.
+                    while (nodeId == Volatile.Read(ref _this._nodeId)
+                        & tokenId == parent.TokenId
+                        & parent._smallFields._instanceId == _this._parentId
+                        & parentIsCanceling);
                 }
             }
         } // class CancelationCallbackNode
@@ -1222,7 +1443,7 @@ namespace Proto.Promises
                 var cancelRef = GetFromPoolOrCreate();
                 cancelRef._next = null;
 #endif
-                cancelRef.Initialize(true);
+                cancelRef.Initialize(true, 0);
                 cancelRef._bclSource = source;
                 return cancelRef;
             }
@@ -1231,27 +1452,23 @@ namespace Proto.Promises
             {
                 // We don't need the synchronous invoke check when this is created.
 #if NETCOREAPP3_0_OR_GREATER
-                var registration = token.UnsafeRegister(state => state.UnsafeAs<CancelationRef>().Cancel(), this);
+                var registration = token.UnsafeRegister(state => state.UnsafeAs<CancelationRef>().CancelUnsafe(), this);
 #else
-                var registration = token.Register(state => state.UnsafeAs<CancelationRef>().Cancel(), this, false);
+                var registration = token.Register(state => state.UnsafeAs<CancelationRef>().CancelUnsafe(), this, false);
 #endif
                 SetCancellationTokenRegistration(registration);
             }
 
-            internal static System.Threading.CancellationToken GetCancellationToken(CancelationRef _this, int tokenId)
-                => _this?.GetCancellationToken(tokenId) ?? default;
-
-            private System.Threading.CancellationToken GetCancellationToken(int tokenId)
+            internal System.Threading.CancellationToken GetCancellationToken(int tokenId)
             {
                 _smallFields._locker.Enter();
                 try
                 {
-                    var state = _state;
-                    if (tokenId != TokenId | state == State.Disposed)
+                    if (!CanTokenBeCanceled(tokenId))
                     {
                         return default;
                     }
-                    if (state >= State.Canceled)
+                    if (HasState(States.Canceled))
                     {
                         return new CancellationToken(true);
                     }
@@ -1268,7 +1485,7 @@ namespace Proto.Promises
                 // The original source may be disposed, in which case the Token property will throw ObjectDisposedException.
                 catch (ObjectDisposedException)
                 {
-                    return _bclSource.IsCancellationRequested ? new CancellationToken(true) : default;
+                    return new CancellationToken(_bclSource.IsCancellationRequested);
                 }
                 finally
                 {

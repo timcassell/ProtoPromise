@@ -333,11 +333,11 @@ namespace ProtoPromiseTests.APIs
                                 throw expected;
                             });
                     }
-                    else
+                    else if (item == 10)
                     {
-                        deferred.TryResolve();
-                        return Promise.Resolved();
+                        deferred.Resolve();
                     }
+                    return Promise.Resolved();
                 }, cts.Token, maxDegreeOfParallelism: 2)
                     .Catch((Exception e) => actual = e)
                     .WaitWithTimeout(TimeSpan.FromSeconds(2));

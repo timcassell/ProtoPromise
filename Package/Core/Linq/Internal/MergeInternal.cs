@@ -85,7 +85,7 @@ namespace Proto.Promises
                         // The async enumerator was canceled or rejected, notify all enumerators that they don't need to continue executing.
                         CancelEnumerators();
                     }
-                    _enumeratorsAndRejectContainers[index].rejectContainer = handler._rejectContainer;
+                    _enumeratorsAndRejectContainers[index].rejectContainer = handler.RejectContainer;
                     _readyQueue.RemoveProducer();
                 }
             }
@@ -95,7 +95,7 @@ namespace Proto.Promises
                 // This may be called multiple times. It's fine because it checks internally if it's already canceled.
                 try
                 {
-                    _cancelationToken._ref.Cancel();
+                    _cancelationToken._ref.CancelUnsafe();
                 }
                 catch (Exception e)
                 {
@@ -266,7 +266,7 @@ namespace Proto.Promises
             internal override void MaybeDispose()
             {
                 // This is called on every MoveNextAsync, we only fully dispose and return to pool after DisposeAsync is called.
-                if (_disposed)
+                if (_enumerableDisposed)
                 {
                     DisposeAndReturnToPool();
                 }
@@ -391,7 +391,7 @@ namespace Proto.Promises
                     _readyQueue.Dispose();
                     _enumeratorsAndRejectContainers.Dispose();
                     // We stored the CancelationRef we created in the token field, so we extract it to dispose here.
-                    _cancelationToken._ref.TryDispose(_cancelationToken._ref.SourceId);
+                    _cancelationToken._ref.DisposeUnsafe();
 
 #pragma warning disable CA2219 // Do not raise exceptions in finally clauses
                     if (_exceptions != null)
@@ -523,7 +523,7 @@ namespace Proto.Promises
             internal override void MaybeDispose()
             {
                 // This is called on every MoveNextAsync, we only fully dispose and return to pool after DisposeAsync is called.
-                if (_disposed)
+                if (_enumerableDisposed)
                 {
                     DisposeAndReturnToPool();
                 }
@@ -636,7 +636,7 @@ namespace Proto.Promises
                     _readyQueue.Dispose();
                     _enumeratorsAndRejectContainers.Dispose();
                     // We stored the CancelationRef we created in the token field, so we extract it to dispose here.
-                    _cancelationToken._ref.TryDispose(_cancelationToken._ref.SourceId);
+                    _cancelationToken._ref.DisposeUnsafe();
 
 #pragma warning disable CA2219 // Do not raise exceptions in finally clauses
                     if (_exceptions != null)

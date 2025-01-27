@@ -17,16 +17,19 @@
 
     <dependencies>
       <group targetFramework="netstandard2.0">
-        <dependency id="Microsoft.Bcl.AsyncInterfaces" version="5.0.0" exclude="Build,Analyzers" />
-        <dependency id="System.Buffers" version="4.5.1" exclude="Build,Analyzers" />
-        <dependency id="System.Memory" version="4.5.5" exclude="Build,Analyzers" />
-        <dependency id="System.Threading.Tasks.Extensions" version="4.5.4" exclude="Build,Analyzers" />
+        <dependency id="Microsoft.Bcl.TimeProvider" version="8.0.1" exclude="Build,Analyzers" />
+        <dependency id="Microsoft.Bcl.HashCode" version="6.0.0" exclude="Build,Analyzers" />
+        <dependency id="System.Buffers" version="4.6.0" exclude="Build,Analyzers" />
+        <dependency id="System.Memory" version="4.6.0" exclude="Build,Analyzers" />
+        <dependency id="System.Threading.Tasks.Extensions" version="4.6.0" exclude="Build,Analyzers" />
         <dependency id="ProtoPromise.Analyzer" version="1.0.0" exclude="Build" />
       </group>
       <group targetFramework="netstandard2.1">
+        <dependency id="Microsoft.Bcl.TimeProvider" version="8.0.1" exclude="Build,Analyzers" />
         <dependency id="ProtoPromise.Analyzer" version="1.0.0" exclude="Build" />
       </group>
       <group targetFramework="net6.0">
+        <dependency id="Microsoft.Bcl.TimeProvider" version="8.0.1" exclude="Build,Analyzers" />
         <dependency id="ProtoPromise.Analyzer" version="1.0.0" exclude="Build" />
       </group>
       <group targetFramework="net8.0">

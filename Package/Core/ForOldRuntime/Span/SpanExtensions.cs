@@ -22,6 +22,9 @@ namespace Proto.Promises
         // AsSpan extension exists in netstandard2.1 and in the Span nuget package. We only add this in Unity where we're not using nuget packages.
         public static Span<T> AsSpan<T>(this T[] array, int start)
             => new Span<T>(array, start, array.Length);
+            
+        public static Span<T> AsSpan<T>(this T[] array)
+            => new Span<T>(array, 0, array.Length);
 #endif
     }
 }

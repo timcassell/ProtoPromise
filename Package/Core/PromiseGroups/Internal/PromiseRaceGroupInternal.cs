@@ -33,7 +33,7 @@ namespace Proto.Promises
                     if ((state != Promise.State.Resolved | _cancelationThrew) & _exceptions != null)
                     {
                         state = Promise.State.Rejected;
-                        _rejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
                     }
                     _exceptions = null;
                     return state;
@@ -64,7 +64,7 @@ namespace Proto.Promises
                     // This may be called multiple times. It's fine because it checks internally if it's already canceled.
                     try
                     {
-                        _cancelationRef.Cancel();
+                        _cancelationRef.CancelUnsafe();
                     }
                     catch (Exception e)
                     {
@@ -143,7 +143,7 @@ namespace Proto.Promises
                     {
                         if (state == Promise.State.Rejected)
                         {
-                            RecordException(handler._rejectContainer.GetValueAsException());
+                            RecordException(handler.RejectContainer.GetValueAsException());
                         }
                         if (_cancelOnNonResolved)
                         {
@@ -203,7 +203,7 @@ namespace Proto.Promises
                     {
                         if (state == Promise.State.Rejected)
                         {
-                            RecordException(handler._rejectContainer.GetValueAsException());
+                            RecordException(handler.RejectContainer.GetValueAsException());
                         }
                         if (_cancelOnNonResolved)
                         {
@@ -263,7 +263,7 @@ namespace Proto.Promises
                     {
                         if (state == Promise.State.Rejected)
                         {
-                            RecordException(handler._rejectContainer.GetValueAsException());
+                            RecordException(handler.RejectContainer.GetValueAsException());
                         }
                         if (_cancelOnNonResolved)
                         {

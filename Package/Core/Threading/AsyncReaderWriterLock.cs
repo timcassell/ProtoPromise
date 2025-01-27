@@ -558,7 +558,7 @@ namespace Proto.Promises.Threading
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
             public override bool Equals(object obj)
-                => obj is ReaderKey token && Equals(token);
+                => obj is ReaderKey key && Equals(key);
 
             /// <summary>Returns the hash code for this instance.</summary>
             public override int GetHashCode()
@@ -593,7 +593,7 @@ namespace Proto.Promises.Threading
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
             public override bool Equals(object obj)
-                => obj is WriterKey token && Equals(token);
+                => obj is WriterKey key && Equals(key);
 
             /// <summary>Returns the hash code for this instance.</summary>
             public override int GetHashCode()
@@ -628,7 +628,7 @@ namespace Proto.Promises.Threading
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
             public override bool Equals(object obj)
-                => obj is UpgradeableReaderKey token && Equals(token);
+                => obj is UpgradeableReaderKey key && Equals(key);
 
             /// <summary>Returns the hash code for this instance.</summary>
             public override int GetHashCode()
@@ -663,7 +663,7 @@ namespace Proto.Promises.Threading
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
             public override bool Equals(object obj)
-                => obj is UpgradedWriterKey token && Equals(token);
+                => obj is UpgradedWriterKey key && Equals(key);
 
             /// <summary>Returns the hash code for this instance.</summary>
             public override int GetHashCode()

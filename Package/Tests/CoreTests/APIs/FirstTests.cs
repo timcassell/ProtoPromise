@@ -356,7 +356,7 @@ namespace ProtoPromiseTests.APIs
 
             Assert.IsFalse(resolved);
 
-            deferred1.TryResolve();
+            deferred1.Resolve();
 
             Assert.IsTrue(resolved);
         }
@@ -382,7 +382,7 @@ namespace ProtoPromiseTests.APIs
 
             Assert.IsFalse(resolved);
 
-            deferred1.TryResolve(5);
+            deferred1.Resolve(5);
 
             Assert.IsTrue(resolved);
         }

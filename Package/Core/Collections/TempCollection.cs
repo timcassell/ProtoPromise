@@ -5,9 +5,7 @@
 #endif
 
 using System;
-#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
 using System.Buffers;
-#endif
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -278,29 +276,18 @@ namespace Proto.Promises.Collections
 #endif
         }
 
-        internal void SetCapacityNoCopy(int capacity)
-        {
-            Array.Clear(_items, 0, _count);
-            ArrayPool<T>.Shared.Return(_items, false);
-            _items = ArrayPool<T>.Shared.Rent(capacity);
-        }
-
-        internal void SetCapacityAndCopy(int capacity)
-        {
-            var newStorage = ArrayPool<T>.Shared.Rent(capacity);
-            _items.CopyTo(newStorage, 0);
-            Array.Clear(_items, 0, _count);
-            ArrayPool<T>.Shared.Return(_items, false);
-            _items = newStorage;
-        }
-
         internal void EnsureCapacity(int capacity)
         {
             if (capacity <= _items.Length)
             {
                 return;
             }
-            SetCapacityAndCopy(capacity);
+
+            var newStorage = ArrayPool<T>.Shared.Rent(capacity);
+            _items.CopyTo(newStorage, 0);
+            Internal.ClearReferences(_items, 0, _count);
+            ArrayPool<T>.Shared.Return(_items, false);
+            _items = newStorage;
         }
 
         internal void Add(T item)
@@ -314,7 +301,7 @@ namespace Proto.Promises.Collections
 
         internal void Clear()
         {
-            Array.Clear(_items, 0, _count);
+            Internal.ClearReferences(_items, 0, _count);
             _count = 0;
         }
 
@@ -325,7 +312,7 @@ namespace Proto.Promises.Collections
             _disposedChecker._isDisposed = true;
             Internal.Discard(_disposedChecker);
 #endif
-            Array.Clear(_items, 0, _count);
+            Internal.ClearReferences(_items, 0, _count);
             ArrayPool<T>.Shared.Return(_items, false);
             this = default;
         }

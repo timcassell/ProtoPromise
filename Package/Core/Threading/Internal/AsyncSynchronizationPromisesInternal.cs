@@ -22,7 +22,6 @@ namespace Proto.Promises
 #endif
             internal abstract class AsyncSynchronizationPromiseBase<TResult> : PromiseSingleAwait<TResult>, ICancelable
             {
-                private SynchronizationContext _continuationContext;
                 protected CancelationRegistration _cancelationRegistration;
                 // We have to store the state in a separate field until the next awaiter is ready to be invoked on the proper context.
                 protected Promise.State _tempState;
@@ -31,7 +30,7 @@ namespace Proto.Promises
                 protected void Reset(bool continueOnCapturedContext)
                 {
                     Reset();
-                    _continuationContext = continueOnCapturedContext ? ContinuationOptions.CaptureContext() : null;
+                    ContinuationContext = continueOnCapturedContext ? ContinuationOptions.CaptureContext() : null;
                     // Assume the resolved state will occur. If this is actually canceled or rejected, the state will be set at that time.
                     _tempState = Promise.State.Resolved;
                 }
@@ -39,21 +38,23 @@ namespace Proto.Promises
                 new protected void Dispose()
                 {
                     base.Dispose();
-                    _continuationContext = null;
                     _cancelationRegistration = default;
                 }
 
+                [MethodImpl(InlineOption)]
                 protected void Continue()
+                    => Continue(ContinuationContext);
+
+                private void Continue(object continuationContext)
                 {
-                    var context = _continuationContext;
-                    if (context == null)
+                    if (continuationContext == null)
                     {
                         // This was configured to continue synchronously.
                         HandleNextInternal(_tempState);
                         return;
                     }
-                    // This was configured to continuation on the context.
-                    ScheduleContextCallback(context, this,
+                    // This was configured to continue on the context.
+                    ScheduleContextCallback(continuationContext.UnsafeAs<SynchronizationContext>(), this,
                         obj => obj.UnsafeAs<AsyncSynchronizationPromiseBase<TResult>>().HandleFromContext(),
                         obj => obj.UnsafeAs<AsyncSynchronizationPromiseBase<TResult>>().HandleFromContext()
                     );
@@ -68,7 +69,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     // We register without immediate invoke because we hold a spin lock here, and we don't want to cause a deadlock from it trying to re-enter from the invoke.
-                    cancelationToken.TryRegisterWithoutImmediateInvoke<ICancelable>(this, out _cancelationRegistration, out var alreadyCanceled);
+                    _cancelationRegistration = cancelationToken.RegisterWithoutImmediateInvoke<ICancelable>(this, out var alreadyCanceled);
                     return alreadyCanceled;
                 }
 
@@ -79,9 +80,11 @@ namespace Proto.Promises
                 internal void Reject(IRejectContainer rejectContainer)
                 {
                     _cancelationRegistration.Dispose();
-                    _rejectContainer = rejectContainer;
+                    // ContinuationContext shares a field with RejectContainer, so we have to read it before writing.
+                    var continuationContext = ContinuationContext;
+                    RejectContainer = rejectContainer;
                     _tempState = Promise.State.Rejected;
-                    Continue();
+                    Continue(continuationContext);
                 }
 
                 internal void CancelDirect()

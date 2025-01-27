@@ -77,8 +77,8 @@ namespace Proto.Promises
                 internal CancelationToken _cancelationToken;
                 protected T _current;
                 protected int _enumerableId = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
-                protected bool _disposed;
                 protected bool _isStarted;
+                protected bool _enumerableDisposed;
 
                 internal int EnumerableId
                 {
@@ -100,7 +100,7 @@ namespace Proto.Promises
                 new protected void Reset()
                 {
                     base.Reset();
-                    _disposed = false;
+                    _enumerableDisposed = false;
                     _isStarted = false;
                 }
 
@@ -113,7 +113,7 @@ namespace Proto.Promises
 
                 ~AsyncEnumerableBase()
                 {
-                    if (!_disposed)
+                    if (!_enumerableDisposed)
                     {
                         string message = "An AsyncEnumerable's resources were garbage collected without it being disposed. You must call DisposeAsync on the AsyncEnumerator.";
                         ReportRejection(new UnreleasedObjectException(message), this);
@@ -235,7 +235,7 @@ namespace Proto.Promises
                     if (oldId == iteratorCompleteId)
                     {
                         // The async iterator function is already complete, dispose this and return a resolved promise.
-                        _disposed = true;
+                        _enumerableDisposed = true;
                         DisposeAndReturnToPool();
                         return Promise.Resolved();
                     }
@@ -254,7 +254,7 @@ namespace Proto.Promises
                     }
 
                     ThrowIfInPool(this);
-                    _disposed = true;
+                    _enumerableDisposed = true;
                     var iteratorPromise = Interlocked.Exchange(ref _iteratorPromiseRef, null);
                     if (iteratorPromise == null)
                     {
@@ -280,12 +280,12 @@ namespace Proto.Promises
                     if (Interlocked.CompareExchange(ref _enumerableId, _iteratorCompleteId, _iteratorCompleteExpectedId) != _iteratorCompleteExpectedId)
                     {
                         handler.MaybeReportUnhandledAndDispose(state);
-                        _rejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create async iterator completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create async iterator completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
                         state = Promise.State.Rejected;
                     }
                     else
                     {
-                        _rejectContainer = handler._rejectContainer;
+                        RejectContainer = handler.RejectContainer;
                         handler.SuppressRejection = true;
                         handler.MaybeDispose();
                     }
@@ -298,7 +298,7 @@ namespace Proto.Promises
                     Promise.State state = Promise.State.Resolved;
                     if (Interlocked.CompareExchange(ref _enumerableId, _iteratorCompleteId, _iteratorCompleteExpectedId) != _iteratorCompleteExpectedId)
                     {
-                        _rejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create async iterator completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create async iterator completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
                         state = Promise.State.Rejected;
                     }
                     HandleNextInternal(state);
@@ -381,7 +381,7 @@ namespace Proto.Promises
             internal override void MaybeDispose()
             {
                 // This is called on every MoveNextAsync, we only fully dispose and return to pool after DisposeAsync is called.
-                if (_disposed)
+                if (_enumerableDisposed)
                 {
                     DisposeAndReturnToPool();
                 }

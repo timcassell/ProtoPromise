@@ -141,6 +141,95 @@ namespace Proto.Promises
 #endif
         } // class ObjectPool
 
+        // LocalObjectPool is used for pooling on a per-instance basis, used with types that we don't have compile-time access to
+        // (e.g. pooled types associated with a public abstract class, like TimerFactory).
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal sealed partial class LocalObjectPool<T> where T : HandleablePromiseBase
+        {
+            private static readonly List<WeakReference<LocalObjectPool<T>>> s_objectPools = new List<WeakReference<LocalObjectPool<T>>>();
+            private ValueLinkedStackSafe _pool = new ValueLinkedStackSafe(PromiseRefBase.InvalidAwaitSentinel.s_instance);
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            private readonly Func<T> _instanceFactory;
+#endif
+
+#if NETCOREAPP || UNITY_2021_2_OR_NEWER
+            static unsafe LocalObjectPool() { AddClearPoolListener(&Clear); }
+#else
+            static LocalObjectPool() { AddClearPoolListener(Clear); }
+#endif
+
+            private static void Clear()
+            {
+                lock (s_objectPools)
+                {
+                    for (int i = s_objectPools.Count - 1; i >= 0; --i)
+                    {
+                        if (s_objectPools[i].TryGetTarget(out var objectPool))
+                        {
+                            objectPool._pool.ClearUnsafe();
+                        }
+                        else
+                        {
+                            s_objectPools.RemoveAt(i);
+                        }
+                    }
+                }
+            }
+
+            [MethodImpl(InlineOption)]
+            internal LocalObjectPool(Func<T> instanceFactory)
+            {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                _instanceFactory = instanceFactory;
+#endif
+            }
+
+            [MethodImpl(InlineOption)]
+            internal HandleablePromiseBase TryTakeOrInvalid()
+            {
+                var obj = _pool.PopOrInvalid();
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                if (s_trackObjectsForRelease & obj == PromiseRefBase.InvalidAwaitSentinel.s_instance)
+                {
+                    // Create here via the instance factory so that the object can be tracked.
+                    obj = _instanceFactory();
+                }
+#endif
+                MarkNotInPoolPrivate(obj);
+                return obj;
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void MaybeRepool(T obj)
+            {
+                MarkInPoolPrivate(obj);
+                if (Promise.Config.ObjectPoolingEnabled)
+                {
+                    _pool.Push(obj);
+                }
+                else
+                {
+                    // Finalizers are only used to validate that objects were used and released properly.
+                    // If the object is being repooled, it means it was released properly. If pooling is disabled, we don't need the finalizer anymore.
+                    // SuppressFinalize reduces pressure on the system when the GC runs.
+                    GC.SuppressFinalize(obj);
+                }
+            }
+
+            static partial void MarkInPoolPrivate(object obj);
+            static partial void MarkNotInPoolPrivate(object obj);
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            static partial void MarkInPoolPrivate(object obj)
+                => MarkInPool(obj);
+
+            static partial void MarkNotInPoolPrivate(object obj)
+                => MarkNotInPool(obj);
+#endif
+        }
+
+
         internal static void Discard(object waste)
         {
             GC.SuppressFinalize(waste);
@@ -226,6 +315,9 @@ namespace Proto.Promises
 
         internal static void AssertAllObjectsReleased()
         {
+            // Some objects could be used on a ThreadPool thread that we can't control, like Promise.Delay using system timer.
+            // Wait a bit of time for it to settle before asserting.
+            System.Threading.SpinWait.SpinUntil(() => s_inUseObjects.Count == 0, TimeSpan.FromSeconds(1));
             lock (s_pooledObjects)
             {
                 if (s_inUseObjects.Count > 0)

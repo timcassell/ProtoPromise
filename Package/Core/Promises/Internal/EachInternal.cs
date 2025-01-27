@@ -6,6 +6,7 @@
 
 #pragma warning disable IDE0090 // Use 'new(...)'
 
+using Proto.Promises.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -24,13 +25,11 @@ namespace Proto.Promises
             {
                 private static GetResultDelegate<TResult> s_getResult;
 
-                private CancelationRegistration _cancelationRegistration;
-                // This must not be readonly.
-                private PoolBackedQueue<TResult> _queue;
+                // These must not be readonly.
+                private CancelationHelper _cancelationHelper;
+                private PoolBackedDeque<TResult> _queue;
                 private int _remaining;
-                private int _retainCount;
                 private bool _isMoveNextAsyncPending;
-                private bool _isCanceled;
 
                 private PromiseEachAsyncEnumerable() { }
 
@@ -57,10 +56,8 @@ namespace Proto.Promises
                 {
                     base.Reset();
                     _remaining = 0;
-                    // 1 retain for DisposeAsync, and 1 retain for cancelation registration.
-                    _retainCount = 2;
-                    _isCanceled = false;
-                    _queue = new PoolBackedQueue<TResult>(0);
+                    _cancelationHelper.Reset();
+                    _queue = new PoolBackedDeque<TResult>(0);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -69,7 +66,7 @@ namespace Proto.Promises
                     ++_remaining;
                     lock (this)
                     {
-                        _queue.Enqueue(result);
+                        _queue.EnqueueTail(result);
                     }
                 }
 
@@ -78,7 +75,7 @@ namespace Proto.Promises
                     AddPending(promise);
 
                     ++_remaining;
-                    InterlockedAddWithUnsignedOverflowCheck(ref _retainCount, 1);
+                    _cancelationHelper.Retain();
                     promise.HookupNewWaiter(id, this);
                 }
 
@@ -89,8 +86,9 @@ namespace Proto.Promises
                     // MoveNextAsync/DisposeAsync may have completed synchronously, or not called at all.
                     PrepareEarlyDispose();
                     base.Dispose();
-                    _disposed = true;
-                    _current = default;
+                    _enumerableDisposed = true;
+                    ClearReferences(ref _current);
+                    _cancelationHelper = default;
                     _queue.Dispose();
                     _queue = default;
                     ObjectPool.MaybeRepool(this);
@@ -111,9 +109,9 @@ namespace Proto.Promises
                     }
 
                     // Same as calling MaybeDispose twice, but without the extra interlocked and branch.
-                    int releaseCount = TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) & !_isCanceled ? -2 : -1;
-                    _cancelationRegistration = default;
-                    if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCount, releaseCount) == 0)
+                    int releaseCount = _cancelationHelper.TrySetCompleted() ? -2 : -1;
+                    _cancelationHelper.UnregisterAndWait();
+                    if (_cancelationHelper.TryRelease(releaseCount))
                     {
                         Dispose();
                     }
@@ -122,7 +120,7 @@ namespace Proto.Promises
 
                 internal override void MaybeDispose()
                 {
-                    if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCount, -1) == 0)
+                    if (_cancelationHelper.TryRelease())
                     {
                         Dispose();
                     }
@@ -138,7 +136,7 @@ namespace Proto.Promises
                     if (!_isStarted)
                     {
                         _isStarted = true;
-                        _cancelationToken.TryRegisterWithoutImmediateInvoke<ICancelable>(this, out _cancelationRegistration, out bool alreadyCanceled);
+                        _cancelationHelper.RegisterWithoutImmediateInvoke(_cancelationToken, this, out bool alreadyCanceled);
                         if (alreadyCanceled)
                         {
                             _enumerableId = id;
@@ -150,7 +148,7 @@ namespace Proto.Promises
                         _enumerableId = id;
                         return Promise.Resolved(false);
                     }
-                    else if (_cancelationToken.IsCancelationRequested | _isCanceled)
+                    else if (_cancelationHelper.IsCompleted)
                     {
                         _enumerableId = id;
                         return Promise<bool>.Canceled();
@@ -159,14 +157,13 @@ namespace Proto.Promises
                     
                     // Reset this before entering the lock so that we're not spending extra time inside the lock.
                     ResetForNextAwait();
-                    bool pending;
                     lock (this)
                     {
-                        _isMoveNextAsyncPending = pending = !_queue.TryDequeue(out _current);
-                    }
-                    if (pending)
-                    {
-                        return new Promise<bool>(this, Id);
+                        if (_isMoveNextAsyncPending = _queue.IsEmpty)
+                        {
+                            return new Promise<bool>(this, Id);
+                        }
+                        _current = _queue.DequeueHead();
                     }
                     _enumerableId = id;
                     return Promise.Resolved(true);
@@ -189,7 +186,7 @@ namespace Proto.Promises
                             _isMoveNextAsyncPending = false;
                             goto HandleNext;
                         }
-                        _queue.Enqueue(result);
+                        _queue.EnqueueTail(result);
                     }
                     MaybeDispose();
                     return;
@@ -203,7 +200,10 @@ namespace Proto.Promises
 
                 void ICancelable.Cancel()
                 {
-                    _isCanceled = true;
+                    if (!_cancelationHelper.TrySetCompleted())
+                    {
+                        return;
+                    }
 
                     lock (this)
                     {

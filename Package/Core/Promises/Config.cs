@@ -7,6 +7,7 @@
 
 #pragma warning disable RECS0029 // Warns about property or indexer setters and event adders or removers that do not use the value parameter
 
+using Proto.Timers;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -156,11 +157,35 @@ namespace Proto.Promises
                     s_asyncFlowExecutionContextEnabled = true;
                 }
             }
-            private static bool s_asyncFlowExecutionContextEnabled;
+            // Internal so that tests can disable it directly.
+            internal static bool s_asyncFlowExecutionContextEnabled;
 
             [MethodImpl(MethodImplOptions.NoInlining)]
             private static void ThrowCannotDisableAsyncFlow()
                 => throw new InvalidOperationException("Cannot disable AsyncFlowExecutionContext. It may only be enabled.");
+
+            /// <summary>
+            /// The default <see cref="TimerFactory"/> to use for time-based methods when one is not provided.
+            /// </summary>
+            public static TimerFactory DefaultTimerFactory
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get => s_defaultTimeProvider;
+                [MethodImpl(Internal.InlineOption)]
+                set
+                {
+                    if (value == null)
+                    {
+                        ThrowNullTimerFactory();
+                    }
+                    s_defaultTimeProvider = value;
+                }
+            }
+            private static TimerFactory s_defaultTimeProvider = TimerFactory.System;
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private static void ThrowNullTimerFactory()
+                => throw new ArgumentNullException("value", $"{nameof(TimerFactory)} may not be null.");
         }
     }
 }

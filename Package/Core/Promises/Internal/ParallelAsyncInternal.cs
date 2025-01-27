@@ -55,7 +55,6 @@ namespace Proto.Promises
                 // Use the CancelationRef directly instead of CancelationSource struct to save memory.
                 private CancelationRef _cancelationRef;
                 private ExecutionContext _executionContext;
-                private SynchronizationContext _synchronizationContext;
                 private int _remainingAvailableWorkers;
                 private int _waitCounter;
                 private List<Exception> _exceptions;
@@ -85,14 +84,14 @@ namespace Proto.Promises
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._body = body;
-                    promise._synchronizationContext = synchronizationContext ?? BackgroundSynchronizationContextSentinel.s_instance;
+                    promise.ContinuationContext = synchronizationContext ?? BackgroundSynchronizationContextSentinel.s_instance;
                     promise._remainingAvailableWorkers = maxDegreeOfParallelism;
                     promise._completionState = Promise.State.Resolved;
                     promise._stopExecuting = false;
                     promise._lockAndLaunchNext = 0;
                     var cancelRef = CancelationRef.GetOrCreate();
                     promise._cancelationRef = cancelRef;
-                    cancelationToken.TryRegister(promise, out promise._externalCancelationRegistration);
+                    promise._externalCancelationRegistration = cancelationToken.Register<ICancelable>(promise);
                     promise._asyncEnumerator = enumerable.GetAsyncEnumerator(new CancelationToken(cancelRef, cancelRef.TokenId));
                     if (Promise.Config.AsyncFlowExecutionContextEnabled)
                     {
@@ -106,7 +105,6 @@ namespace Proto.Promises
                     ValidateNoPending();
                     Dispose();
                     _body = default;
-                    _synchronizationContext = null;
                     _executionContext = null;
                     ObjectPool.MaybeRepool(this);
                 }
@@ -161,7 +159,7 @@ namespace Proto.Promises
                         if ((int) newValue > 0)
                         {
                             // Another worker is waiting on the lock, schedule it on the context and jump to inside lock.
-                            ScheduleContextCallback(_synchronizationContext, this,
+                            ScheduleContextCallback(ContinuationContext.UnsafeAs<SynchronizationContext>(), this,
                                 obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorkerInsideLock(),
                                 obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorkerInsideLock()
                             );
@@ -191,7 +189,7 @@ namespace Proto.Promises
                         // We add to the wait counter before we run the worker to resolve a race condition where the counter could hit zero prematurely.
                         InterlockedAddWithUnsignedOverflowCheck(ref _waitCounter, 1);
 
-                        ScheduleContextCallback(_synchronizationContext, this,
+                        ScheduleContextCallback(ContinuationContext.UnsafeAs<SynchronizationContext>(), this,
                             obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorkerAndLaunchNext(),
                             obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorkerAndLaunchNext()
                         );
@@ -227,9 +225,13 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        // .Net Framework doesn't allow us to re-use a captured context, so we have to copy it for each invocation.
-                        // .Net Core's implementation of CreateCopy returns itself, so this is always as efficient as it can be.
-                        ExecutionContext.Run(_executionContext.CreateCopy(), obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorker(false), this);
+                        ExecutionContext.Run(
+                            // .Net Framework doesn't allow us to re-use a captured context, so we have to copy it for each invocation.
+                            // .Net Core's implementation of CreateCopy returns itself, so this is always as efficient as it can be.
+                            _executionContext.CreateCopy(),
+                            obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorker(false),
+                            this
+                        );
                     }
                 }
 
@@ -241,9 +243,13 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        // .Net Framework doesn't allow us to re-use a captured context, so we have to copy it for each invocation.
-                        // .Net Core's implementation of CreateCopy returns itself, so this is always as efficient as it can be.
-                        ExecutionContext.Run(_executionContext.CreateCopy(), obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorker(true), this);
+                        ExecutionContext.Run(
+                            // .Net Framework doesn't allow us to re-use a captured context, so we have to copy it for each invocation.
+                            // .Net Core's implementation of CreateCopy returns itself, so this is always as efficient as it can be.
+                            _executionContext.CreateCopy(),
+                            obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorker(true),
+                            this
+                        );
                     }
                 }
 
@@ -354,7 +360,7 @@ namespace Proto.Promises
                 internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
                     RemoveComplete(handler);
-                    var rejectContainer = handler._rejectContainer;
+                    var rejectContainer = handler.RejectContainer;
                     handler.SuppressRejection = true;
                     handler.SetCompletionState(state);
                     handler.MaybeDispose();
@@ -368,7 +374,7 @@ namespace Proto.Promises
                         if (!isMoveNextAsyncContinuation)
                         {
                             // Schedule the worker body to run again on the context, but without launching another worker.
-                            ScheduleContextCallback(_synchronizationContext, this,
+                            ScheduleContextCallback(ContinuationContext.UnsafeAs<SynchronizationContext>(), this,
                                 obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorkerWithoutLaunchNext(),
                                 obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorkerWithoutLaunchNext()
                             );
@@ -380,7 +386,7 @@ namespace Proto.Promises
                             return;
                         }
                         // Schedule the worker body to jump to after move next.
-                        ScheduleContextCallback(_synchronizationContext, this,
+                        ScheduleContextCallback(ContinuationContext.UnsafeAs<SynchronizationContext>(), this,
                                 obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorkerAfterMoveNext(),
                                 obj => obj.UnsafeAs<PromiseParallelForEachAsync<TParallelBody, TSource>>().ExecuteWorkerAfterMoveNext()
                         );
@@ -419,7 +425,7 @@ namespace Proto.Promises
                     // This may be called multiple times. It's fine because it checks internally if it's already canceled.
                     try
                     {
-                        _cancelationRef.Cancel();
+                        _cancelationRef.CancelUnsafe();
                     }
                     catch (Exception e)
                     {
@@ -460,14 +466,14 @@ namespace Proto.Promises
                 {
                     _externalCancelationRegistration.Dispose();
                     _externalCancelationRegistration = default;
-                    _cancelationRef.TryDispose(_cancelationRef.SourceId);
+                    _cancelationRef.DisposeUnsafe();
                     _cancelationRef = null;
 
                     // Finally, complete the promise returned to the ParallelForEachAsync caller.
                     // This must be the very last thing done.
                     if (_exceptions != null)
                     {
-                        _rejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
                         _exceptions = null;
                         HandleNextInternal(Promise.State.Rejected);
                     }
@@ -511,7 +517,7 @@ namespace Proto.Promises
                     handler.SetCompletionState(state);
                     if (state == Promise.State.Rejected)
                     {
-                        RecordException(handler._rejectContainer.GetValueAsException());
+                        RecordException(handler.RejectContainer.GetValueAsException());
                         handler.SuppressRejection = true;
                     }
                     handler.MaybeDispose();

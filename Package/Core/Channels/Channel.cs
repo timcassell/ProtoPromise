@@ -22,7 +22,7 @@ namespace Proto.Promises.Channels
 #endif
     public readonly struct Channel<T> : IEquatable<Channel<T>>, IDisposable
     {
-        private readonly Internal.ChannelBase<T> _ref;
+        internal readonly Internal.ChannelBase<T> _ref;
         internal readonly int _id;
 
         [MethodImpl(Internal.InlineOption)]
@@ -75,8 +75,10 @@ namespace Proto.Promises.Channels
         /// If any items are remaining in the channel, they will be discarded.
         /// If any read or write operations are pending, they will be rejected with <see cref="ObjectDisposedException"/>.
         /// </summary>
+        /// <exception cref="ObjectDisposedException">This was already disposed.</exception>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
         public void Dispose()
-            => ValidateAndGetRef().Dispose(_id);
+            => _ref.Dispose(_id);
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="Channel{T}"/>.</summary>
         [MethodImpl(Internal.InlineOption)]
@@ -85,12 +87,12 @@ namespace Proto.Promises.Channels
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
         public override bool Equals(object obj)
-            => obj is Channel<T> other && Equals(other);
+            => obj is Channel<T> channel && Equals(channel);
 
         /// <summary>Returns the hash code for this instance.</summary>
         [MethodImpl(Internal.InlineOption)]
         public override int GetHashCode()
-            => Internal.BuildHashCode(_ref, _id, 0);
+            => HashCode.Combine(_ref, _id);
 
         /// <summary>Returns a value indicating whether two <see cref="Channel{T}"/> values are equal.</summary>
         [MethodImpl(Internal.InlineOption)]
@@ -120,16 +122,5 @@ namespace Proto.Promises.Channels
         [MethodImpl(Internal.InlineOption)]
         public static implicit operator ChannelWriter<T>(Channel<T> channel)
             => channel.Writer;
-
-        [MethodImpl(Internal.InlineOption)]
-        internal Internal.ChannelBase<T> ValidateAndGetRef()
-        {
-            var r = _ref;
-            if (r == null)
-            {
-                throw new InvalidOperationException("Channel is invalid.", Internal.GetFormattedStacktrace(2));
-            }
-            return r;
-        }
     }
 }

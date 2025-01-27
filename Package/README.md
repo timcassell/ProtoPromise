@@ -5,6 +5,9 @@
          title="Promises/A+ 1.1 compliant" align="right" />
 </a>
 
+[![NuGet](https://img.shields.io/nuget/v/ProtoPromise.svg)](https://www.nuget.org/packages/ProtoPromise)
+[![openupm](https://img.shields.io/npm/v/com.timcassell.protopromise?label=openupm&registry_uri=https://package.openupm.com)](https://openupm.com/packages/com.timcassell.protopromise/)
+
 Robust and efficient library for management of asynchronous operations.
 
 - Allocation-free async operations
@@ -49,11 +52,14 @@ See the [C# Asynchronous Benchmarks Repo](https://github.com/timcassell/CSharpAs
 
 ## Latest Updates
 
-### v3.2.0 - November 3, 2024
+## v3.3.0 - January 27, 2025
 
-- Added Channels.
-- Added `Promise(<T>).{ConfigureAwait, ConfigureContinuation}` APIs.
-- Added `SynchronizationOption.CapturedContext` option.
+- Added `Proto.Timers` and time-based APIs.
+- Added `CancelationToken(bool)` constructor and `CancelationToken.RegisterWithoutImmediateInvoke` APIs.
+- Added `PromiseYielder.Initialize()` API to help with early code running before Unity can auto initialize.
+- Fixed Unity initialization not being fully initialized before user `Awake` methods run.
+- Reduced memory and increased speed.
+- Deprecated several APIs.
 
 See [ChangeLog](https://github.com/timcassell/ProtoPromise/tree/master/Docs/Changelog) for the full changelog.
 

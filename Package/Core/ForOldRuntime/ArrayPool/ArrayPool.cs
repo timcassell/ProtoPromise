@@ -1,13 +1,12 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-// Different namespace to avoid collisions if someone else brings in the ArrayPool package.
-namespace Proto.Promises.Collections
-{
-    // We reference the nuget package for the nuget builds, but to not have any nuget dependencies in Unity, we include the source.
-    // ArrayPool was added in netstandard2.1, so we only need this in Unity versions older than 2021.2.
+// We reference the nuget package for the nuget builds, but to not have any nuget dependencies in Unity, we include the source.
+// ArrayPool was added in netstandard2.1, so we only need this in Unity versions older than 2021.2.
 #if UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
 
+namespace System.Buffers
+{
     /// <summary>
     /// Provides a resource pool that enables reusing instances of arrays.
     /// </summary>
@@ -25,7 +24,7 @@ namespace Proto.Promises.Collections
     {
         // Store the shared ArrayPool in a field of its derived sealed type so the Jit can "see" the exact type
         // when the Shared property is inlined which will allow it to devirtualize calls made on it.
-        private static readonly TlsOverPerCoreLockedStacksArrayPool<T> s_shared = new TlsOverPerCoreLockedStacksArrayPool<T>();
+        private static readonly SharedArrayPool<T> s_shared = new SharedArrayPool<T>();
 
         /// <summary>
         /// Retrieves a shared <see cref="ArrayPool{T}"/> instance.
@@ -81,6 +80,6 @@ namespace Proto.Promises.Collections
         /// </remarks>
         public abstract void Return(T[] array, bool clearArray = false);
     }
+}
 
 #endif // UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
-}

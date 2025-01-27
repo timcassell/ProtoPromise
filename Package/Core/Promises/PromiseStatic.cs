@@ -8,6 +8,7 @@
 #pragma warning disable IDE0270 // Use coalesce expression
 
 using Proto.Promises.CompilerServices;
+using Proto.Timers;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -92,7 +93,7 @@ namespace Proto.Promises
                 var promise = Resolved();
                 while (promiseFuncs.MoveNext())
                 {
-                    promise = promise.Then(promiseFuncs.Current, cancelationToken);
+                    promise = promise.WaitAsync(cancelationToken).Then(promiseFuncs.Current);
                 }
                 return promise;
             }
@@ -460,6 +461,88 @@ namespace Proto.Promises
         }
 
         /// <summary>
+        /// Creates a <see cref="Promise"/> that will be resolved after a time delay.
+        /// </summary>
+        /// <param name="delay">The time span to wait before resolving the returned <see cref="Promise"/>.</param>
+        /// <returns>A <see cref="Promise"/> that represents the time delay.</returns>
+        /// <remarks>
+        /// The returned <see cref="Promise"/> may be resolved on a background thread. If you need to ensure
+        /// the continuation executes on a particular context, append <see cref="ConfigureAwait(ContinuationOptions)"/>.
+        /// </remarks>
+        public static Promise Delay(TimeSpan delay)
+            => Delay(delay, Config.DefaultTimerFactory);
+
+        /// <summary>
+        /// Creates a <see cref="Promise"/> that will be resolved after a time delay.
+        /// </summary>
+        /// <param name="delay">The time span to wait before resolving the returned <see cref="Promise"/>.</param>
+        /// <param name="timerFactory">The <see cref="TimerFactory"/> with which to interpret <paramref name="delay"/>.</param>
+        /// <returns>A <see cref="Promise"/> that represents the time delay.</returns>
+        /// <exception cref="ArgumentNullException">The <paramref name="timerFactory"/> argument is <see langword="null"/>.</exception>
+        /// <remarks>
+        /// The returned <see cref="Promise"/> may be completed on a background thread. If you need to ensure
+        /// the continuation executes on a particular context, append <see cref="ConfigureAwait(ContinuationOptions)"/>.
+        /// </remarks>
+        public static Promise Delay(TimeSpan delay, TimerFactory timerFactory)
+        {
+            ValidateArgument(timerFactory, nameof(timerFactory), 1);
+            if (delay == TimeSpan.Zero)
+            {
+                return Resolved();
+            }
+            var delayPromise = Internal.PromiseRefBase.DelayPromise.GetOrCreate(delay, timerFactory);
+            return new Promise(delayPromise, delayPromise.Id);
+        }
+
+        /// <summary>
+        /// Creates a <see cref="Promise"/> that will be resolved after a time delay.
+        /// </summary>
+        /// <param name="delay">The time span to wait before resolving the returned <see cref="Promise"/>.</param>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the delay.</param>
+        /// <returns>A <see cref="Promise"/> that represents the time delay.</returns>
+        /// <remarks>
+        /// If the <paramref name="cancelationToken"/> is canceled before the specified time delay,
+        /// the returned <see cref="Promise"/> will be canceled. Otherwise, the <see cref="Promise"/> will be resolved.
+        /// <para/>
+        /// The returned <see cref="Promise"/> may be completed on a background thread. If you need to ensure
+        /// the continuation executes on a particular context, append <see cref="ConfigureAwait(ContinuationOptions)"/>.
+        /// </remarks>
+        public static Promise Delay(TimeSpan delay, CancelationToken cancelationToken)
+            => Delay(delay, Config.DefaultTimerFactory, cancelationToken);
+
+        /// <summary>
+        /// Creates a <see cref="Promise"/> that will be resolved after a time delay.
+        /// </summary>
+        /// <param name="delay">The time span to wait before resolving the returned <see cref="Promise"/>.</param>
+        /// <param name="timerFactory">The <see cref="TimerFactory"/> with which to interpret <paramref name="delay"/>.</param>
+        /// <param name="cancelationToken">The <see cref="CancelationToken"/> used to cancel the delay.</param>
+        /// <returns>A <see cref="Promise"/> that represents the time delay.</returns>
+        /// <exception cref="ArgumentNullException">The <paramref name="timerFactory"/> argument is <see langword="null"/>.</exception>
+        /// <remarks>
+        /// If the <paramref name="cancelationToken"/> is canceled before the specified time delay,
+        /// the returned <see cref="Promise"/> will be canceled. Otherwise, the <see cref="Promise"/> will be resolved.
+        /// <para/>
+        /// The returned <see cref="Promise"/> may be completed on a background thread. If you need to ensure
+        /// the continuation executes on a particular context, append <see cref="ConfigureAwait(ContinuationOptions)"/>.
+        /// </remarks>
+        public static Promise Delay(TimeSpan delay, TimerFactory timerFactory, CancelationToken cancelationToken)
+        {
+            ValidateArgument(timerFactory, nameof(timerFactory), 1);
+            if (cancelationToken.IsCancelationRequested)
+            {
+                return Canceled();
+            }
+            if (delay == TimeSpan.Zero)
+            {
+                return Resolved();
+            }
+            Internal.PromiseRefBase delayPromise = cancelationToken.CanBeCanceled
+                ? Internal.PromiseRefBase.DelayWithCancelationPromise.GetOrCreate(delay, timerFactory, cancelationToken)
+                : (Internal.PromiseRefBase) Internal.PromiseRefBase.DelayPromise.GetOrCreate(delay, timerFactory);
+            return new Promise(delayPromise, delayPromise.Id);
+        }
+
+        /// <summary>
         /// Returns a <see cref="Promise"/> that is already resolved.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
@@ -508,7 +591,17 @@ namespace Proto.Promises
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public static Promise Canceled()
-            => Internal.CreateCanceled();
+        {
+#if PROMISE_DEBUG
+            // Make a new promise to capture causality trace and help with debugging.
+            var promise = Internal.PromiseRefBase.DeferredPromise<Internal.VoidResult>.GetOrCreate();
+            promise.CancelDirect();
+#else
+            // Use a singleton promise for efficiency.
+            var promise = Internal.PromiseRefBase.CanceledPromiseSentinel<Internal.VoidResult>.s_instance;
+#endif
+            return new Promise(promise, promise.Id);
+        }
 
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that is already canceled.

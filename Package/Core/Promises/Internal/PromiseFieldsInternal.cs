@@ -18,9 +18,12 @@
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 using Proto.Promises.Collections;
+using Proto.Timers;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace Proto.Promises
@@ -82,29 +85,65 @@ namespace Proto.Promises
 
         partial class PromiseSynchronousWaiter : HandleablePromiseBase
         {
-            private const int InitialState = 0;
-            private const int WaitingState = 1;
-            private const int CompletedState = 2;
-            private const int WaitedSuccessState = 3;
-            private const int WaitedFailedState = 4;
-
             volatile private int _waitState; // int for Interlocked.
         }
 
-        partial class PromiseRefBase : HandleablePromiseBase
+        // We add a class between HandleablePromiseBase and PromiseRefBase so that we can have a union struct field without affecting derived types sizes.
+        // https://github.com/dotnet/runtime/issues/109680
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal abstract class PromiseRefBaseWithStructField : HandleablePromiseBase
+        {
+            // We union the fields together to save space.
+            // The field may contain the ExecutionContext or SynchronizationContext of the yielded `async Promise` while it is pending.
+            // When the promise is complete in a rejected state, it will contain the IRejectContainer.
+            [StructLayout(LayoutKind.Explicit)]
+            private struct ContextRejectUnion
+            {
+                // Common case this is null. If Promise.Config.AsyncFlowExecutionContextEnabled is true, this may be ExecutionContext.
+                // If an awaited Promise was configured, this may be SynchronizationContext. If both cases occurred, this will be ConfiguredAwaitDualContext.
+                [FieldOffset(0)]
+                internal object _continuationContext;
+                [FieldOffset(0)]
+                internal IRejectContainer _rejectContainer;
+            }
+
+            private ContextRejectUnion _contextOrRejection;
+
+            internal object ContinuationContext
+            {
+                [MethodImpl(InlineOption)]
+                get => _contextOrRejection._continuationContext;
+                [MethodImpl(InlineOption)]
+                set => _contextOrRejection._continuationContext = value;
+            }
+
+            internal IRejectContainer RejectContainer
+            {
+                [MethodImpl(InlineOption)]
+                get => _contextOrRejection._rejectContainer;
+                [MethodImpl(InlineOption)]
+                set => _contextOrRejection._rejectContainer = value;
+            }
+        }
+
+        partial class PromiseRefBase : PromiseRefBaseWithStructField
         {
 #if PROMISE_DEBUG
             CausalityTrace ITraceable.Trace { get; set; }
             internal PromiseRefBase _previous; // Used to detect circular awaits.
 #endif
-            internal IRejectContainer _rejectContainer;
 
             private short _promiseId = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
             volatile private Promise.State _state;
             private bool _suppressRejection;
-            private bool _wasAwaitedorForgotten;
+            private bool _wasAwaitedOrForgotten;
 #if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
             internal bool _ignoreValueTaskContextScheduling;
+#endif
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            protected bool _disposed;
 #endif
 
             partial class PromiseRef<TResult> : PromiseRefBase
@@ -120,9 +159,55 @@ namespace Proto.Promises
             {
             }
 
-            partial class PromiseDuplicateCancel<TResult> : PromiseSingleAwait<TResult>
+            partial class WaitAsyncWithCancelationPromise<TResult> : PromiseSingleAwait<TResult>
             {
                 internal CancelationHelper _cancelationHelper;
+            }
+
+            partial class WaitAsyncWithTimeoutPromise<TResult> : PromiseSingleAwait<TResult>
+            {
+                private Timers.Timer _timer;
+                // We're waiting on a promise and a timer,
+                // so we use an Interlocked counter to ensure this is disposed properly.
+                private int _retainCounter;
+                // The timer callback can be invoked before the field is actually assigned,
+                // and the promise can be completed and the timer fired concurrently from different threads,
+                // so we use an Interlocked state to ensure this is completed and the timer is disposed properly.
+                private int _waitState;
+            }
+
+            partial class WaitAsyncWithTimeoutAndCancelationPromise<TResult> : PromiseSingleAwait<TResult>
+            {
+                private Timers.Timer _timer;
+                private CancelationRegistration _cancelationRegistration;
+                // We're waiting on a promise, a timer, and a cancelation token,
+                // so we use an Interlocked counter to ensure this is disposed properly.
+                private int _retainCounter;
+                // The awaited promise, the timer, and the cancelation can race on different threads,
+                // and can be invoked before the fields are actually assigned,
+                // so we use an Interlocked state to ensure this is completed and the timer
+                // and cancelation registration are used and disposed properly.
+                private int _waitState;
+            }
+
+            partial class DelayPromise : PromiseSingleAwait<VoidResult>
+            {
+                // Use ITimerSource and int directly instead of the Timer struct
+                // so that the fields can be packed efficiently without extra padding.
+                private ITimerSource _timerSource;
+                private int _timerToken;
+                // The timer callback can be invoked before the fields are actually assigned,
+                // so we use an Interlocked counter to ensure it is disposed properly.
+                private int _timerUseCounter;
+            }
+
+            partial class DelayWithCancelationPromise : PromiseSingleAwait<VoidResult>
+            {
+                private Timers.Timer _timer;
+                // The timer and cancelation callbacks can race on different threads,
+                // and can be invoked before the fields are actually assigned;
+                // we use CancelationHelper to make sure they are used and disposed properly.
+                private CancelationHelper _cancelationHelper;
             }
 
             partial class ConfiguredPromise<TResult> : PromiseSingleAwait<TResult>
@@ -151,10 +236,14 @@ namespace Proto.Promises
                 private int _retainCounter;
             }
 
-            partial class PromiseRetainer<TResult> : PromiseRef<TResult>
+            partial class RetainedPromiseBase<TResult> : PromiseRef<TResult>
             {
                 private TempCollectionBuilder<HandleablePromiseBase> _nextBranches;
                 private int _retainCounter;
+            }
+
+            partial class PromiseRetainer<TResult> : RetainedPromiseBase<TResult>
+            {
             }
 
             partial class PromiseWaitPromise<TResult> : PromiseSingleAwait<TResult>
@@ -248,39 +337,11 @@ namespace Proto.Promises
             partial struct CancelationHelper
             {
                 private CancelationRegistration _cancelationRegistration;
+                // int for Interlocked.Exchange.
+                private int _isCompletedFlag;
+                // The retain counter is to ensure the async op(s) we're waiting for and the cancelation callback
+                // are completed or guaranteed to never invoke before we return the object to the pool.
                 private int _retainCounter;
-            }
-
-            partial class CancelablePromiseResolve<TResult, TResolver> : PromiseSingleAwait<TResult>
-                where TResolver : IDelegateResolveOrCancel
-            {
-                internal CancelationHelper _cancelationHelper;
-                private TResolver _resolver;
-            }
-
-            partial class CancelablePromiseResolvePromise<TResult, TResolver> : PromiseWaitPromise<TResult>
-                where TResolver : IDelegateResolveOrCancelPromise
-            {
-                internal CancelationHelper _cancelationHelper;
-                private TResolver _resolver;
-            }
-
-            partial class CancelablePromiseResolveReject<TResult, TResolver, TRejecter> : PromiseSingleAwait<TResult>
-                where TResolver : IDelegateResolveOrCancel
-                where TRejecter : IDelegateReject
-            {
-                internal CancelationHelper _cancelationHelper;
-                private TResolver _resolver;
-                private TRejecter _rejecter;
-            }
-
-            partial class CancelablePromiseResolveRejectPromise<TResult, TResolver, TRejecter> : PromiseWaitPromise<TResult>
-                where TResolver : IDelegateResolveOrCancelPromise
-                where TRejecter : IDelegateRejectPromise
-            {
-                internal CancelationHelper _cancelationHelper;
-                private TResolver _resolver;
-                private TRejecter _rejecter;
             }
 
             partial class CancelablePromiseContinue<TResult, TContinuer> : PromiseSingleAwait<TResult>
@@ -295,20 +356,6 @@ namespace Proto.Promises
             {
                 internal CancelationHelper _cancelationHelper;
                 private TContinuer _continuer;
-            }
-
-            partial class CancelablePromiseCancel<TResult, TCanceler> : PromiseSingleAwait<TResult>
-                where TCanceler : IDelegateResolveOrCancel
-            {
-                internal CancelationHelper _cancelationHelper;
-                private TCanceler _canceler;
-            }
-
-            partial class CancelablePromiseCancelPromise<TResult, TCanceler> : PromiseWaitPromise<TResult>
-                where TCanceler : IDelegateResolveOrCancelPromise
-            {
-                internal CancelationHelper _cancelationHelper;
-                private TCanceler _canceler;
             }
             #endregion
 
@@ -434,12 +481,6 @@ namespace Proto.Promises
 
             partial class AsyncPromiseRef<TResult> : PromiseSingleAwait<TResult>
             {
-                // TODO: change this field to object. Either store ExecutionContext or SynchronizationContext.
-                // If both contexts need to be used, use ConfiguredAsyncPromiseContinuer to wrap them both.
-                // We already null-check it, so it won't cost anything in the common case. If it's not null, then we proceed to type-check.
-                // This should improve performance of Promise.ConfigureAwait so that it can avoid allocating ConfiguredAsyncPromiseContinuer in the common case.
-                private ExecutionContext _executionContext;
-
 #if !OPTIMIZED_ASYNC_MODE
                 partial class PromiseMethodContinuer : HandleablePromiseBase
                 {

@@ -5,6 +5,7 @@
 #endif
 
 #pragma warning disable IDE0074 // Use compound assignment
+#pragma warning disable IDE0290 // Use primary constructor
 
 using System;
 using System.Collections.Generic;
@@ -156,35 +157,6 @@ namespace Proto.Promises
         }
 
         [MethodImpl(InlineOption)]
-        internal static bool TryUnregisterAndIsNotCanceling(ref CancelationRegistration cancelationRegistration)
-        {
-            // We check isCanceling in case the token is not cancelable (in which case TryUnregister returns false).
-            bool unregistered = cancelationRegistration.TryUnregister(out bool isCanceling);
-            return unregistered | !isCanceling;
-        }
-
-        internal static int BuildHashCode(object _ref, int hashcode1, int hashcode2)
-        {
-            int hashcode0 = _ref == null ? 0 : _ref.GetHashCode();
-            unchecked
-            {
-                int hash = 17;
-                hash = hash * 31 + hashcode0;
-                hash = hash * 31 + hashcode1;
-                hash = hash * 31 + hashcode2;
-                return hash;
-            }
-        }
-
-        internal static int BuildHashCode(object _ref, int hashcode1, int hashcode2, int hashcode3)
-        {
-            unchecked
-            {
-                return BuildHashCode(_ref, hashcode1, hashcode2) * 31 + hashcode3;
-            }
-        }
-
-        [MethodImpl(InlineOption)]
         internal static T UnsafeAs<T>(this object o) where T : class
         {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -203,7 +175,7 @@ namespace Proto.Promises
             => dict.TryGetValue(key, out value) && dict.Remove(key);
 #endif
 
-        internal static CancelationSource MaybeJoinCancelationTokens(CancelationToken first, CancelationToken second, out CancelationToken maybeJoinedToken)
+        internal static MaybeJoinedCancelationSource MaybeJoinCancelationTokens(CancelationToken first, CancelationToken second, out CancelationToken maybeJoinedToken)
         {
             if (first == second | !first.CanBeCanceled)
             {
@@ -222,7 +194,30 @@ namespace Proto.Promises
             }
             var source = CancelationSource.New(first, second);
             maybeJoinedToken = source.Token;
-            return source;
+            return new MaybeJoinedCancelationSource(source);
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal readonly struct MaybeJoinedCancelationSource: IDisposable
+        {
+            private readonly CancelationSource _source;
+
+            [MethodImpl(InlineOption)]
+            public MaybeJoinedCancelationSource(CancelationSource source)
+            {
+                _source = source;
+            }
+
+            [MethodImpl(InlineOption)]
+            public void Dispose()
+            {
+                if (_source != default)
+                {
+                    _source.Dispose();
+                }
+            }
         }
 
         internal static void SetOrAdd<T>(this IList<T> list, in T value, int index)
@@ -245,5 +240,68 @@ namespace Proto.Promises
                 list.RemoveAt(--listCount);
             }
         }
+
+        // SpinWait.SpinOnce(int sleep1Threshold) API was added in netcoreapp3.0. We just route it to SpinOnce() for older runtimes.
+#if !NETCOREAPP3_0_OR_GREATER
+        [MethodImpl(InlineOption)]
+        internal static void SpinOnce(this ref SpinWait spinner, int sleep1Threshold)
+            => spinner.SpinOnce();
+#endif
+
+        [MethodImpl(InlineOption)]
+        internal static void ClearReferences<T>(ref T location)
+        {
+#if NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NETCOREAPP2_0_OR_GREATER
+            if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+#endif
+            {
+                location = default;
+            }
+        }
+
+        [MethodImpl(InlineOption)]
+        internal static void ClearReferences<T>(T[] array, int index, int length)
+        {
+#if NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER || NETCOREAPP2_0_OR_GREATER
+            if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+#endif
+            {
+                Array.Clear(array, index, length);
+            }
+        }
+
+#if NETCOREAPP
+        [MethodImpl(InlineOption)]
+        internal static AsyncFlowControl SuppressExecutionContextFlow()
+            => ExecutionContext.SuppressFlow();
+#else
+        // .Net Framework throws if ExecutionContext.SuppressFlow() is called recursively, so we need to check if it's already suppressed.
+        [MethodImpl(InlineOption)]
+        internal static WrappedAsyncFlowControl SuppressExecutionContextFlow()
+            => ExecutionContext.IsFlowSuppressed() ? default : new WrappedAsyncFlowControl(ExecutionContext.SuppressFlow());
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal readonly struct WrappedAsyncFlowControl : IDisposable
+        {
+            private readonly AsyncFlowControl _asyncFlowControl;
+
+            [MethodImpl(InlineOption)]
+            public WrappedAsyncFlowControl(AsyncFlowControl asyncFlowControl)
+            {
+                _asyncFlowControl = asyncFlowControl;
+            }
+
+            [MethodImpl(InlineOption)]
+            public void Dispose()
+            {
+                if (_asyncFlowControl != default)
+                {
+                    _asyncFlowControl.Dispose();
+                }
+            }
+        }
+#endif
     } // class Internal
 } // namespace Proto.Promises

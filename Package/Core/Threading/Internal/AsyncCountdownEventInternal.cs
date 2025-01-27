@@ -92,7 +92,7 @@ namespace Proto.Promises
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
             {
                 _locker.Enter();
-                var waiters = _waiters.MoveElementsToStack();
+                var waiters = _waiters.TakeElements();
                 _locker.Exit();
                 if (waiters.IsEmpty)
                 {
@@ -100,10 +100,11 @@ namespace Proto.Promises
                 }
 
                 var rejectContainer = Internal.CreateRejectContainer(new AbandonedResetEventException("An AsyncCountdownEvent was collected with waiters still pending."), int.MinValue, null, this);
+                var stack = waiters.MoveElementsToStackUnsafe();
                 do
                 {
-                    waiters.Pop().Reject(rejectContainer);
-                } while (waiters.IsNotEmpty);
+                    stack.Pop().Reject(rejectContainer);
+                } while (stack.IsNotEmpty);
                 rejectContainer.ReportUnhandled();
             }
 #endif // PROMISE_DEBUG
@@ -189,7 +190,7 @@ namespace Proto.Promises
 
             private bool SignalImpl(int signalCount)
             {
-                Internal.ValueLinkedStack<Internal.AsyncEventPromiseBase> waiters;
+                Internal.ValueLinkedQueue<Internal.AsyncEventPromiseBase> waiters;
                 _locker.Enter();
                 {
                     // Read the _currentCount into a local variable to avoid extra unnecessary volatile accesses inside the lock.
@@ -214,12 +215,17 @@ namespace Proto.Promises
                         return false;
                     }
 
-                    waiters = _waiters.MoveElementsToStack();
+                    waiters = _waiters.TakeElements();
                 }
                 _locker.Exit();
-                while (waiters.IsNotEmpty)
+
+                if (waiters.IsNotEmpty)
                 {
-                    waiters.Pop().Resolve();
+                    var stack = waiters.MoveElementsToStackUnsafe();
+                    do
+                    {
+                        stack.Pop().Resolve();
+                    } while (stack.IsNotEmpty);
                 }
                 return true;
             }
@@ -238,7 +244,7 @@ namespace Proto.Promises
                     throw new ArgumentOutOfRangeException(nameof(count), "AsyncCountdownEvent.Reset: count must be greater than or equal to 0.", Internal.GetFormattedStacktrace(2));
                 }
 
-                Internal.ValueLinkedStack<Internal.AsyncEventPromiseBase> waiters;
+                Internal.ValueLinkedQueue<Internal.AsyncEventPromiseBase> waiters;
                 _locker.Enter();
                 {
                     _initialCount = count;
@@ -250,12 +256,17 @@ namespace Proto.Promises
                         return;
                     }
 
-                    waiters = _waiters.MoveElementsToStack();
+                    waiters = _waiters.TakeElements();
                 }
                 _locker.Exit();
-                while (waiters.IsNotEmpty)
+
+                if (waiters.IsNotEmpty)
                 {
-                    waiters.Pop().Resolve();
+                    var stack = waiters.MoveElementsToStackUnsafe();
+                    do
+                    {
+                        stack.Pop().Resolve();
+                    } while (stack.IsNotEmpty);
                 }
             }
 

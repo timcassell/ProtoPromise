@@ -309,8 +309,7 @@ namespace ProtoPromiseTests.APIs
                     );
                     deferred.Resolve();
 
-                    Assert.IsFalse(deferred.TryResolve());
-                    Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Resolve());
+                    Assert.Catch<Proto.Promises.InvalidOperationException>(() => deferred.Resolve());
 
                     Assert.AreEqual(
                         (TestHelper.resolveVoidVoidCallbacks + TestHelper.resolveVoidConvertCallbacks +
@@ -337,8 +336,7 @@ namespace ProtoPromiseTests.APIs
                     );
                     deferred.Resolve(1);
 
-                    Assert.IsFalse(deferred.TryResolve(1));
-                    Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Resolve(100));
+                    Assert.Catch<Proto.Promises.InvalidOperationException>(() => deferred.Resolve(100));
 
                     Assert.AreEqual(
                         (TestHelper.resolveTVoidCallbacks + TestHelper.resolveTConvertCallbacks +
@@ -452,8 +450,7 @@ namespace ProtoPromiseTests.APIs
                 );
                 deferred.Reject("Fail value");
 
-                Assert.IsFalse(deferred.TryReject("Fail value"));
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
+                Assert.Catch<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
 
                 Assert.AreEqual(
                     (TestHelper.rejectVoidVoidCallbacks + TestHelper.rejectVoidConvertCallbacks +
@@ -475,8 +472,7 @@ namespace ProtoPromiseTests.APIs
                 );
                 deferred.Reject("Fail value");
 
-                Assert.IsFalse(deferred.TryReject("Fail value"));
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
+                Assert.Catch<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
 
                 Assert.AreEqual(
                     (TestHelper.rejectTVoidCallbacks + TestHelper.rejectTConvertCallbacks + TestHelper.rejectTTCallbacks +

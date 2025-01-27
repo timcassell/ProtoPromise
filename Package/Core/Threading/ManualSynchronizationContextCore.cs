@@ -137,7 +137,7 @@ namespace Proto.Promises.Threading
             private void Dispose()
             {
                 _callback = default;
-                _capturedInfo = default;
+                _capturedInfo = null;
                 Internal.ObjectPool.MaybeRepool(this);
             }
         }
@@ -240,13 +240,13 @@ namespace Proto.Promises.Threading
 
                 while (true)
                 {
-                    var (sendStack, postQueue, postCount) = GetSendsAndPosts();
-                    if (sendStack.IsEmpty & postCount == 0)
+                    var (sendQueue, postQueue, postCount) = GetSendsAndPosts();
+                    if (sendQueue.IsEmpty & postCount == 0)
                     {
                         break;
                     }
 
-                    ExecuteCore(sendStack, postQueue, postCount, ref exceptions);
+                    ExecuteCore(sendQueue, postQueue, postCount, ref exceptions);
                 }
 
                 if (exceptions != null)
@@ -278,8 +278,8 @@ namespace Proto.Promises.Threading
                 // Catch all exceptions and continue executing callbacks until all are exhausted, then if there are any, throw all exceptions wrapped in AggregateException.
                 List<Exception> exceptions = null;
 
-                var (sendStack, postQueue, postCount) = GetSendsAndPosts();
-                ExecuteCore(sendStack, postQueue, postCount, ref exceptions);
+                var (sendQueue, postQueue, postCount) = GetSendsAndPosts();
+                ExecuteCore(sendQueue, postQueue, postCount, ref exceptions);
 
                 if (exceptions != null)
                 {
@@ -292,10 +292,10 @@ namespace Proto.Promises.Threading
             }
         }
 
-        private (Internal.ValueLinkedStack<SendCallback> sendStack, PostCallback[] postQueue, int postCount) GetSendsAndPosts()
+        private (Internal.ValueLinkedQueue<SendCallback> sendQueue, PostCallback[] postQueue, int postCount) GetSendsAndPosts()
         {
             _smallFields._locker.Enter();
-            var sendStack = _sendQueue.MoveElementsToStack();
+            var sendQueue = _sendQueue.TakeElements();
             var postQueue = _postQueue;
             int postCount = _smallFields._postCount;
             _smallFields._postCount = 0;
@@ -304,16 +304,20 @@ namespace Proto.Promises.Threading
             _executing = postQueue;
             _smallFields._locker.Exit();
 
-            return (sendStack, postQueue, postCount);
+            return (sendQueue, postQueue, postCount);
         }
 
-        private static void ExecuteCore(Internal.ValueLinkedStack<SendCallback> sendStack, PostCallback[] postQueue, int postCount, ref List<Exception> exceptions)
+        private static void ExecuteCore(Internal.ValueLinkedQueue<SendCallback> sendQueue, PostCallback[] postQueue, int postCount, ref List<Exception> exceptions)
         {
             // Execute Send callbacks first so that their waiting threads may continue sooner.
             // We don't need to catch exceptions here because it's already handled in the SendCallback.Invoke().
-            while (sendStack.IsNotEmpty)
+            if (sendQueue.IsNotEmpty)
             {
-                sendStack.Pop().Invoke();
+                var stack = sendQueue.MoveElementsToStackUnsafe();
+                do
+                {
+                    stack.Pop().Invoke();
+                } while (stack.IsNotEmpty);
             }
 
             for (int i = 0; i < postCount; ++i)

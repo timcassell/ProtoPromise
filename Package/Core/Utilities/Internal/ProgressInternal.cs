@@ -186,13 +186,13 @@ namespace Proto.Promises
 
                 SetCreatedStacktrace(instance, 2);
                 // Hook up the cancelation last.
-                cancelationToken.TryRegister(instance, out instance._cancelationRegistration);
+                instance._cancelationRegistration = cancelationToken.Register<ICancelable>(instance);
                 return instance;
             }
 
             private void DisposeAndRepool()
             {
-                _progress = default;
+                ClearReferences(ref _progress);
                 _invokeContext = null;
                 ObjectPool.MaybeRepool(this);
             }

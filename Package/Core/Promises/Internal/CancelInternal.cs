@@ -4,8 +4,11 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0251 // Make member 'readonly'
+
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Proto.Promises
 {
@@ -17,7 +20,7 @@ namespace Proto.Promises
             {
                 // PromiseSingleAwait
 
-                MaybeReportUnhandledRejection(_rejectContainer, state);
+                MaybeReportUnhandledRejection(state);
                 MaybeDispose();
             }
 
@@ -39,340 +42,55 @@ namespace Proto.Promises
 
             internal partial struct CancelationHelper
             {
+                internal bool IsCompleted
+                {
+                    [MethodImpl(InlineOption)]
+                    get => _isCompletedFlag != 0;
+                }
+
                 [MethodImpl(InlineOption)]
-                internal void Reset()
-                    // _retainCounter is necessary to make sure the promise is disposed after the cancelation has invoked or unregistered,
-                    // and the previous promise has handled this.
-                    => _retainCounter = 2;
+                internal void Reset(int retainCounter = 2)
+                {
+                    _isCompletedFlag = 0;
+                    _retainCounter = retainCounter;
+                }
 
                 [MethodImpl(InlineOption)]
                 internal void Register(CancelationToken cancelationToken, ICancelable owner)
-                    => cancelationToken.TryRegister(owner, out _cancelationRegistration);
-
-                internal bool TryUnregister(PromiseRefBase owner)
-                {
-                    ThrowIfInPool(owner);
-                    return TryUnregisterAndIsNotCanceling(ref _cancelationRegistration) & owner.State == Promise.State.Pending;
-                }
+                    => _cancelationRegistration = cancelationToken.Register(owner);
 
                 [MethodImpl(InlineOption)]
-                internal bool TryRelease()
-                    => InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0;
-            }
-
-            [MethodImpl(InlineOption)]
-            protected void HandleFromCancelation()
-            {
-                ThrowIfInPool(this);
-                HandleNextInternal(Promise.State.Canceled);
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class CancelablePromiseResolve<TResult, TResolver> : PromiseSingleAwait<TResult>, ICancelable
-                where TResolver : IDelegateResolveOrCancel
-            {
-                private CancelablePromiseResolve() { }
+                internal void RegisterWithoutImmediateInvoke(CancelationToken cancelationToken, ICancelable owner, out bool alreadyCanceled)
+                    => _cancelationRegistration = cancelationToken.RegisterWithoutImmediateInvoke(owner, out alreadyCanceled);
 
                 [MethodImpl(InlineOption)]
-                private static CancelablePromiseResolve<TResult, TResolver> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<CancelablePromiseResolve<TResult, TResolver>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new CancelablePromiseResolve<TResult, TResolver>()
-                        : obj.UnsafeAs<CancelablePromiseResolve<TResult, TResolver>>();
-                }
+                internal bool TrySetCompleted()
+                    => Interlocked.Exchange(ref _isCompletedFlag, 1) == 0;
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseResolve<TResult, TResolver> GetOrCreate(TResolver resolver)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    promise._resolver = resolver;
-                    promise._cancelationHelper.Reset();
-                    return promise;
-                }
-
-                internal override void MaybeDispose()
-                {
-                    if (_cancelationHelper.TryRelease())
-                    {
-                        Dispose();
-                    }
-                }
-
-                new private void Dispose()
-                {
-                    base.Dispose();
-                    _cancelationHelper = default;
-                    _resolver = default;
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
-                {
-                    var resolveCallback = _resolver;
-                    bool unregistered = _cancelationHelper.TryUnregister(this);
-                    if (unregistered & state == Promise.State.Resolved)
-                    {
-                        _cancelationHelper.TryRelease();
-                        resolveCallback.InvokeResolver(handler, state, this);
-                    }
-                    else if (unregistered)
-                    {
-                        _cancelationHelper.TryRelease();
-                        HandleSelfWithoutResult(handler, state);
-                    }
-                    else
-                    {
-                        MaybeDispose();
-                        handler.MaybeReportUnhandledAndDispose(state);
-                    }
-                }
-
-                void ICancelable.Cancel() => HandleFromCancelation();
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class CancelablePromiseResolvePromise<TResult, TResolver> : PromiseWaitPromise<TResult>, ICancelable
-                where TResolver : IDelegateResolveOrCancelPromise
-            {
-                private CancelablePromiseResolvePromise() { }
+                internal void UnregisterAndWait()
+                    => _cancelationRegistration.Dispose();
 
                 [MethodImpl(InlineOption)]
-                private static CancelablePromiseResolvePromise<TResult, TResolver> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<CancelablePromiseResolvePromise<TResult, TResolver>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new CancelablePromiseResolvePromise<TResult, TResolver>()
-                        : obj.UnsafeAs<CancelablePromiseResolvePromise<TResult, TResolver>>();
-                }
+                internal void Retain()
+                    => InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, 1);
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseResolvePromise<TResult, TResolver> GetOrCreate(TResolver resolver)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    promise._resolver = resolver;
-                    promise._cancelationHelper.Reset();
-                    return promise;
-                }
-
-                internal override void MaybeDispose()
-                {
-                    if (_cancelationHelper.TryRelease())
-                    {
-                        Dispose();
-                    }
-                }
-
-                new private void Dispose()
-                {
-                    base.Dispose();
-                    _cancelationHelper = default;
-                    _resolver = default;
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
-                {
-                    if (_resolver.IsNull)
-                    {
-                        // The returned promise is handling this.
-                        HandleSelf(handler, state);
-                        return;
-                    }
-
-                    var resolveCallback = _resolver;
-                    _resolver = default;
-                    bool unregistered = _cancelationHelper.TryUnregister(this);
-                    if (unregistered & state == Promise.State.Resolved)
-                    {
-                        _cancelationHelper.TryRelease();
-                        resolveCallback.InvokeResolver(handler, state, this);
-                    }
-                    else if (unregistered)
-                    {
-                        _cancelationHelper.TryRelease();
-                        HandleSelfWithoutResult(handler, state);
-                    }
-                    else
-                    {
-                        MaybeDispose();
-                        handler.MaybeReportUnhandledAndDispose(state);
-                    }
-                }
-
-                void ICancelable.Cancel() => HandleFromCancelation();
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class CancelablePromiseResolveReject<TResult, TResolver, TRejecter> : PromiseSingleAwait<TResult>, ICancelable
-                where TResolver : IDelegateResolveOrCancel
-                where TRejecter : IDelegateReject
-            {
-                private CancelablePromiseResolveReject() { }
+                internal bool TryRelease(int releaseCount = -1)
+                    => InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, releaseCount) == 0;
 
                 [MethodImpl(InlineOption)]
-                private static CancelablePromiseResolveReject<TResult, TResolver, TRejecter> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<CancelablePromiseResolveReject<TResult, TResolver, TRejecter>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new CancelablePromiseResolveReject<TResult, TResolver, TRejecter>()
-                        : obj.UnsafeAs<CancelablePromiseResolveReject<TResult, TResolver, TRejecter>>();
-                }
+                internal void RetainUnchecked(int retainCount)
+                    => Interlocked.Add(ref _retainCounter, retainCount);
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseResolveReject<TResult, TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    promise._resolver = resolver;
-                    promise._rejecter = rejecter;
-                    promise._cancelationHelper.Reset();
-                    return promise;
-                }
+                internal bool TryReleaseUnchecked()
+                    => Interlocked.Add(ref _retainCounter, -1) == 0;
 
-                internal override void MaybeDispose()
-                {
-                    if (_cancelationHelper.TryRelease())
-                    {
-                        Dispose();
-                    }
-                }
-
-                new private void Dispose()
-                {
-                    base.Dispose();
-                    _cancelationHelper = default;
-                    _resolver = default;
-                    _rejecter = default;
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
-                {
-                    var resolveCallback = _resolver;
-                    var rejectCallback = _rejecter;
-                    bool unregistered = _cancelationHelper.TryUnregister(this);
-                    if (unregistered & state == Promise.State.Resolved)
-                    {
-                        _cancelationHelper.TryRelease();
-                        resolveCallback.InvokeResolver(handler, state, this);
-                    }
-                    else if (!unregistered)
-                    {
-                        MaybeDispose();
-                        handler.MaybeReportUnhandledAndDispose(state);
-                    }
-                    else if (state == Promise.State.Rejected)
-                    {
-                        var rejectContainer = handler._rejectContainer;
-                        handler.SuppressRejection = true;
-                        handler.MaybeDispose();
-                        _cancelationHelper.TryRelease();
-                        invokingRejected = true;
-                        rejectCallback.InvokeRejecter(rejectContainer, this);
-                    }
-                    else
-                    {
-                        _cancelationHelper.TryRelease();
-                        HandleSelfWithoutResult(handler, state);
-                    }
-                }
-
-                void ICancelable.Cancel() => HandleFromCancelation();
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class CancelablePromiseResolveRejectPromise<TResult, TResolver, TRejecter> : PromiseWaitPromise<TResult>, ICancelable
-                where TResolver : IDelegateResolveOrCancelPromise
-                where TRejecter : IDelegateRejectPromise
-            {
-                private CancelablePromiseResolveRejectPromise() { }
-
+                // As an optimization, we can skip one Interlocked operation if the async op completed before the cancelation callback.
                 [MethodImpl(InlineOption)]
-                private static CancelablePromiseResolveRejectPromise<TResult, TResolver, TRejecter> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<CancelablePromiseResolveRejectPromise<TResult, TResolver, TRejecter>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new CancelablePromiseResolveRejectPromise<TResult, TResolver, TRejecter>()
-                        : obj.UnsafeAs<CancelablePromiseResolveRejectPromise<TResult, TResolver, TRejecter>>();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static CancelablePromiseResolveRejectPromise<TResult, TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    promise._resolver = resolver;
-                    promise._rejecter = rejecter;
-                    promise._cancelationHelper.Reset();
-                    return promise;
-                }
-
-                internal override void MaybeDispose()
-                {
-                    if (_cancelationHelper.TryRelease())
-                    {
-                        Dispose();
-                    }
-                }
-
-                new private void Dispose()
-                {
-                    base.Dispose();
-                    _cancelationHelper = default;
-                    _resolver = default;
-                    _rejecter = default;
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
-                {
-                    if (_resolver.IsNull)
-                    {
-                        // The returned promise is handling this.
-                        HandleSelf(handler, state);
-                        return;
-                    }
-
-                    var resolveCallback = _resolver;
-                    _resolver = default;
-                    var rejectCallback = _rejecter;
-                    bool unregistered = _cancelationHelper.TryUnregister(this);
-                    if (unregistered & state == Promise.State.Resolved)
-                    {
-                        _cancelationHelper.TryRelease();
-                        resolveCallback.InvokeResolver(handler, state, this);
-                    }
-                    else if (!unregistered)
-                    {
-                        MaybeDispose();
-                        handler.MaybeReportUnhandledAndDispose(state);
-                    }
-                    else if (state == Promise.State.Rejected)
-                    {
-                        handler.SuppressRejection = true;
-                        _cancelationHelper.TryRelease();
-                        invokingRejected = true;
-                        rejectCallback.InvokeRejecter(handler, handler._rejectContainer, this);
-                    }
-                    else
-                    {
-                        _cancelationHelper.TryRelease();
-                        HandleSelfWithoutResult(handler, state);
-                    }
-                }
-
-                void ICancelable.Cancel() => HandleFromCancelation();
+                internal void ReleaseOne()
+                    => _retainCounter = 1;
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -420,11 +138,12 @@ namespace Proto.Promises
 
                 protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
                 {
-                    if (_cancelationHelper.TryUnregister(this))
+                    if (_cancelationHelper.TrySetCompleted())
                     {
+                        _cancelationHelper.UnregisterAndWait();
+                        _cancelationHelper.ReleaseOne();
                         handler.SuppressRejection = true;
-                        _cancelationHelper.TryRelease();
-                        _continuer.Invoke(handler, handler._rejectContainer, state, this);
+                        _continuer.Invoke(handler, handler.RejectContainer, state, this);
                     }
                     else
                     {
@@ -433,7 +152,14 @@ namespace Proto.Promises
                     }
                 }
 
-                void ICancelable.Cancel() => HandleFromCancelation();
+                void ICancelable.Cancel()
+                {
+                    ThrowIfInPool(this);
+                    if (_cancelationHelper.TrySetCompleted())
+                    {
+                        HandleNextInternal(Promise.State.Canceled);
+                    }
+                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -490,11 +216,12 @@ namespace Proto.Promises
 
                     var callback = _continuer;
                     _continuer = default;
-                    if (_cancelationHelper.TryUnregister(this))
+                    if (_cancelationHelper.TrySetCompleted())
                     {
+                        _cancelationHelper.UnregisterAndWait();
+                        _cancelationHelper.ReleaseOne();
                         handler.SuppressRejection = true;
-                        _cancelationHelper.TryRelease();
-                        callback.Invoke(handler, handler._rejectContainer, state, this);
+                        callback.Invoke(handler, handler.RejectContainer, state, this);
                     }
                     else
                     {
@@ -503,150 +230,15 @@ namespace Proto.Promises
                     }
                 }
 
-                void ICancelable.Cancel() => HandleFromCancelation();
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class CancelablePromiseCancel<TResult, TCanceler> : PromiseSingleAwait<TResult>, ICancelable
-                where TCanceler : IDelegateResolveOrCancel
-            {
-                private CancelablePromiseCancel() { }
-
-                [MethodImpl(InlineOption)]
-                private static CancelablePromiseCancel<TResult, TCanceler> GetOrCreate()
+                void ICancelable.Cancel()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<CancelablePromiseCancel<TResult, TCanceler>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new CancelablePromiseCancel<TResult, TCanceler>()
-                        : obj.UnsafeAs<CancelablePromiseCancel<TResult, TCanceler>>();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static CancelablePromiseCancel<TResult, TCanceler> GetOrCreate(TCanceler canceler)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    promise._canceler = canceler;
-                    promise._cancelationHelper.Reset();
-                    return promise;
-                }
-
-                internal override void MaybeDispose()
-                {
-                    if (_cancelationHelper.TryRelease())
+                    ThrowIfInPool(this);
+                    if (_cancelationHelper.TrySetCompleted())
                     {
-                        Dispose();
+                        HandleNextInternal(Promise.State.Canceled);
                     }
                 }
-
-                new private void Dispose()
-                {
-                    base.Dispose();
-                    _cancelationHelper = default;
-                    _canceler = default;
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
-                {
-                    var callback = _canceler;
-                    bool unregistered = _cancelationHelper.TryUnregister(this);
-                    if (unregistered & state == Promise.State.Canceled)
-                    {
-                        _cancelationHelper.TryRelease();
-                        callback.InvokeResolver(handler, state, this);
-                    }
-                    else if (unregistered)
-                    {
-                        _cancelationHelper.TryRelease();
-                        HandleSelf(handler, state);
-                    }
-                    else
-                    {
-                        MaybeDispose();
-                        handler.MaybeReportUnhandledAndDispose(state);
-                    }
-                }
-
-                void ICancelable.Cancel() => HandleFromCancelation();
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class CancelablePromiseCancelPromise<TResult, TCanceler> : PromiseWaitPromise<TResult>, ICancelable
-                where TCanceler : IDelegateResolveOrCancelPromise
-            {
-                private CancelablePromiseCancelPromise() { }
-
-                [MethodImpl(InlineOption)]
-                private static CancelablePromiseCancelPromise<TResult, TCanceler> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<CancelablePromiseCancelPromise<TResult, TCanceler>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new CancelablePromiseCancelPromise<TResult, TCanceler>()
-                        : obj.UnsafeAs<CancelablePromiseCancelPromise<TResult, TCanceler>>();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static CancelablePromiseCancelPromise<TResult, TCanceler> GetOrCreate(TCanceler canceler)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    promise._canceler = canceler;
-                    promise._cancelationHelper.Reset();
-                    return promise;
-                }
-
-                internal override void MaybeDispose()
-                {
-                    if (_cancelationHelper.TryRelease())
-                    {
-                        Dispose();
-                    }
-                }
-
-                new private void Dispose()
-                {
-                    base.Dispose();
-                    _cancelationHelper = default;
-                    _canceler = default;
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
-                {
-                    if (_canceler.IsNull)
-                    {
-                        // The returned promise is handling this.
-                        HandleSelf(handler, state);
-                        return;
-                    }
-
-                    var callback = _canceler;
-                    _canceler = default;
-                    bool unregistered = _cancelationHelper.TryUnregister(this);
-                    if (unregistered & state == Promise.State.Canceled)
-                    {
-                        _cancelationHelper.TryRelease();
-                        callback.InvokeResolver(handler, state, this);
-                    }
-                    else if (unregistered)
-                    {
-                        _cancelationHelper.TryRelease();
-                        HandleSelf(handler, state);
-                    }
-                    else
-                    {
-                        MaybeDispose();
-                        handler.MaybeReportUnhandledAndDispose(state);
-                    }
-                }
-
-                void ICancelable.Cancel() => HandleFromCancelation();
             }
         } // PromiseRefBase
     } // Internal
-}
+} // namespace Proto.Promises

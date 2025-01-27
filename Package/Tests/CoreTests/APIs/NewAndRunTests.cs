@@ -128,7 +128,10 @@ namespace ProtoPromiseTests.APIs
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
-            TestHelper.GetTryCompleterVoid(completeType, "Reject").Invoke(deferred);
+            if (!throwInAction)
+            {
+                TestHelper.GetCompleterVoid(completeType, "Reject").Invoke(deferred);
+            }
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
             Assert.True(invoked);
@@ -195,7 +198,10 @@ namespace ProtoPromiseTests.APIs
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
-            TestHelper.GetTryCompleterVoid(completeType, "Reject").Invoke(deferred);
+            if (!throwInAction)
+            {
+                TestHelper.GetCompleterVoid(completeType, "Reject").Invoke(deferred);
+            }
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
             Assert.True(invoked);
@@ -262,7 +268,10 @@ namespace ProtoPromiseTests.APIs
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
-            TestHelper.GetTryCompleterT(completeType, expectedResolveValue, "Reject").Invoke(deferred);
+            if (!throwInAction)
+            {
+                TestHelper.GetCompleterT(completeType, expectedResolveValue, "Reject").Invoke(deferred);
+            }
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
             Assert.True(invoked);
@@ -331,7 +340,10 @@ namespace ProtoPromiseTests.APIs
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
 
-            TestHelper.GetTryCompleterT(completeType, expectedResolveValue, "Reject").Invoke(deferred);
+            if (!throwInAction)
+            {
+                TestHelper.GetCompleterT(completeType, expectedResolveValue, "Reject").Invoke(deferred);
+            }
 
             TestHelper.ExecuteForegroundCallbacksAndWaitForThreadsToComplete();
             Assert.True(invoked);

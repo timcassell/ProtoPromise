@@ -46,7 +46,6 @@ namespace ProtoPromiseTests.APIs
                 string state = null;
 
                 var deferred = Promise.NewDeferred();
-                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .Then(() => state = Resolved, () => state = Rejected)
@@ -55,13 +54,10 @@ namespace ProtoPromiseTests.APIs
                 Assert.IsNull(state);
 
                 deferred.Resolve();
-                Assert.IsFalse(deferred.IsValidAndPending);
-
                 Assert.AreEqual(Resolved, state);
 
                 state = null;
                 deferred = Promise.NewDeferred();
-                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .Then(() => state = Resolved, () => state = Rejected)
@@ -70,13 +66,11 @@ namespace ProtoPromiseTests.APIs
                 Assert.IsNull(state);
 
                 deferred.Reject("Fail Value");
-                Assert.IsFalse(deferred.IsValidAndPending);
 
                 state = null;
                 CancelationSource cancelationSource = CancelationSource.New();
                 deferred = Promise.NewDeferred();
                 cancelationSource.Token.Register(deferred);
-                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .Then(() => state = Resolved, () => state = Rejected)
@@ -85,8 +79,6 @@ namespace ProtoPromiseTests.APIs
                 Assert.IsNull(state);
 
                 cancelationSource.Cancel();
-                Assert.IsFalse(deferred.IsValidAndPending);
-
                 Assert.AreEqual(Canceled, state);
                 cancelationSource.Dispose();
 
@@ -94,7 +86,6 @@ namespace ProtoPromiseTests.APIs
                 cancelationSource = CancelationSource.New();
                 deferred = Promise.NewDeferred();
                 cancelationSource.Token.Register(deferred);
-                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .Then(() => state = Resolved, () => state = Rejected)
@@ -103,8 +94,6 @@ namespace ProtoPromiseTests.APIs
                 Assert.IsNull(state);
 
                 cancelationSource.Cancel();
-                Assert.IsFalse(deferred.IsValidAndPending);
-
                 Assert.AreEqual(Canceled, state);
                 cancelationSource.Dispose();
             }
@@ -116,7 +105,6 @@ namespace ProtoPromiseTests.APIs
                 string state = null;
 
                 var deferred = Promise.NewDeferred<int>();
-                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .Then(v => state = Resolved, () => state = Rejected)
@@ -125,13 +113,10 @@ namespace ProtoPromiseTests.APIs
                 Assert.IsNull(state);
 
                 deferred.Resolve(1);
-                Assert.IsFalse(deferred.IsValidAndPending);
-
                 Assert.AreEqual(Resolved, state);
 
                 state = null;
                 deferred = Promise.NewDeferred<int>();
-                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .Then(v => state = Resolved, () => state = Rejected)
@@ -140,13 +125,11 @@ namespace ProtoPromiseTests.APIs
                 Assert.IsNull(state);
 
                 deferred.Reject("Fail Value");
-                Assert.IsFalse(deferred.IsValidAndPending);
 
                 state = null;
                 CancelationSource cancelationSource = CancelationSource.New();
                 deferred = Promise.NewDeferred<int>();
                 cancelationSource.Token.Register(deferred);
-                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .Then(v => state = Resolved, () => state = Rejected)
@@ -155,8 +138,6 @@ namespace ProtoPromiseTests.APIs
                 Assert.IsNull(state);
 
                 cancelationSource.Cancel();
-                Assert.IsFalse(deferred.IsValidAndPending);
-
                 Assert.AreEqual(Canceled, state);
                 cancelationSource.Dispose();
 
@@ -164,7 +145,6 @@ namespace ProtoPromiseTests.APIs
                 cancelationSource = CancelationSource.New();
                 deferred = Promise.NewDeferred<int>();
                 cancelationSource.Token.Register(deferred);
-                Assert.IsTrue(deferred.IsValidAndPending);
 
                 deferred.Promise
                     .Then(v => state = Resolved, () => state = Rejected)
@@ -173,8 +153,6 @@ namespace ProtoPromiseTests.APIs
                 Assert.IsNull(state);
 
                 cancelationSource.Cancel();
-                Assert.IsFalse(deferred.IsValidAndPending);
-
                 Assert.AreEqual(Canceled, state);
                 cancelationSource.Dispose();
             }
@@ -209,11 +187,8 @@ namespace ProtoPromiseTests.APIs
 
                 deferred.Resolve();
 
-                Assert.IsFalse(deferred.TryResolve());
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Resolve());
-                Assert.IsFalse(deferred.TryReject("Fail value"));
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
-                Assert.IsFalse(deferred.TryCancel());
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Cancel());
 
                 Assert.IsTrue(resolved);
@@ -234,11 +209,8 @@ namespace ProtoPromiseTests.APIs
 
                 deferred.Resolve(1);
 
-                Assert.IsFalse(deferred.TryResolve(1));
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Resolve(1));
-                Assert.IsFalse(deferred.TryReject("Fail value"));
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
-                Assert.IsFalse(deferred.TryCancel());
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Cancel());
 
                 Assert.IsTrue(resolved);
@@ -274,11 +246,8 @@ namespace ProtoPromiseTests.APIs
 
                 deferred.Reject("Fail Value");
 
-                Assert.IsFalse(deferred.TryResolve());
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Resolve());
-                Assert.IsFalse(deferred.TryReject("Fail value"));
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
-                Assert.IsFalse(deferred.TryCancel());
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Cancel());
 
                 Assert.IsTrue(rejected);
@@ -299,11 +268,8 @@ namespace ProtoPromiseTests.APIs
 
                 deferred.Reject("Fail Value");
 
-                Assert.IsFalse(deferred.TryResolve(1));
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Resolve(1));
-                Assert.IsFalse(deferred.TryReject("Fail value"));
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
-                Assert.IsFalse(deferred.TryCancel());
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Cancel());
 
                 Assert.IsTrue(rejected);
@@ -341,11 +307,9 @@ namespace ProtoPromiseTests.APIs
 
                 cancelationSource.Cancel();
 
-                Assert.IsFalse(deferred.TryResolve());
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Resolve());
-                Assert.IsFalse(deferred.TryReject("Fail value"));
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() => cancelationSource.Cancel());
+                cancelationSource.Cancel();
 
                 Assert.IsTrue(canceled);
 
@@ -369,11 +333,9 @@ namespace ProtoPromiseTests.APIs
 
                 cancelationSource.Cancel();
 
-                Assert.IsFalse(deferred.TryResolve(1));
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Resolve(1));
-                Assert.IsFalse(deferred.TryReject("Fail value"));
                 Assert.Throws<Proto.Promises.InvalidOperationException>(() => deferred.Reject("Fail value"));
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() => cancelationSource.Cancel());
+                cancelationSource.Cancel();
 
                 Assert.IsTrue(canceled);
 
@@ -511,12 +473,9 @@ namespace ProtoPromiseTests.APIs
                     onCancelCapture: cv => ++cancelCount
                 );
                 cancelationSource.Cancel();
+                cancelationSource.Cancel();
 
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() =>
-                    cancelationSource.Cancel()
-                );
-
-                Assert.AreEqual(TestHelper.onCancelCallbacks * 2, cancelCount);
+                Assert.AreEqual(TestHelper.onCancelCallbacks, cancelCount);
 
                 cancelationSource.Dispose();
             }
@@ -534,12 +493,9 @@ namespace ProtoPromiseTests.APIs
                     onCancelCapture: cv => ++cancelCount
                 );
                 cancelationSource.Cancel();
+                cancelationSource.Cancel();
 
-                Assert.Throws<Proto.Promises.InvalidOperationException>(() =>
-                    cancelationSource.Cancel()
-                );
-
-                Assert.AreEqual(TestHelper.onCancelCallbacks * 2, cancelCount);
+                Assert.AreEqual(TestHelper.onCancelCallbacks, cancelCount);
 
                 cancelationSource.Dispose();
             }
@@ -667,7 +623,7 @@ namespace ProtoPromiseTests.APIs
 
             deferred.Cancel();
 
-            Assert.AreEqual(TestHelper.onCancelCallbacks * 2, exceptionCount);
+            Assert.AreEqual(TestHelper.onCancelCallbacks, exceptionCount);
         }
 
         [Test]
@@ -693,7 +649,7 @@ namespace ProtoPromiseTests.APIs
 
             deferred.Cancel();
 
-            Assert.AreEqual(TestHelper.onCancelCallbacks * 2, exceptionCount);
+            Assert.AreEqual(TestHelper.onCancelCallbacks, exceptionCount);
         }
 
         [Test]
@@ -883,7 +839,7 @@ namespace ProtoPromiseTests.APIs
                 deferred.Cancel();
 
                 Assert.AreEqual(
-                    TestHelper.onCancelPromiseCallbacks * 2,
+                    TestHelper.onCancelPromiseCallbacks,
                     exceptionCounter
                 );
 
@@ -920,7 +876,7 @@ namespace ProtoPromiseTests.APIs
                 deferred.Cancel();
 
                 Assert.AreEqual(
-                    TestHelper.onCancelPromiseCallbacks * 2,
+                    TestHelper.onCancelPromiseCallbacks,
                     exceptionCounter
                 );
 
@@ -982,15 +938,15 @@ namespace ProtoPromiseTests.APIs
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     resolveWaitDeferred.Resolve();
-                    expectedCompleteCount += TestHelper.onCancelCallbacks;
+                    expectedCompleteCount += TestHelper.onCancelCallbacks / 2;
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     rejectWaitDeferred.Reject("Reject");
-                    expectedCompleteCount += TestHelper.onCancelCallbacks;
+                    expectedCompleteCount += TestHelper.onCancelCallbacks / 2;
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     cancelWaitDeferred.Cancel();
-                    expectedCompleteCount += TestHelper.onCancelCallbacks;
+                    expectedCompleteCount += TestHelper.onCancelCallbacks / 2;
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     cancelPromiseRetainer.Dispose();
@@ -1039,15 +995,15 @@ namespace ProtoPromiseTests.APIs
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     resolveWaitDeferred.Resolve(1);
-                    expectedCompleteCount += TestHelper.onCancelCallbacks;
+                    expectedCompleteCount += TestHelper.onCancelCallbacks / 2;
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     rejectWaitDeferred.Reject("Reject");
-                    expectedCompleteCount += TestHelper.onCancelCallbacks;
+                    expectedCompleteCount += TestHelper.onCancelCallbacks / 2;
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     cancelWaitDeferred.Cancel();
-                    expectedCompleteCount += TestHelper.onCancelCallbacks;
+                    expectedCompleteCount += TestHelper.onCancelCallbacks / 2;
                     Assert.AreEqual(expectedCompleteCount, completeCounter);
 
                     cancelPromiseRetainer.Dispose();
@@ -1095,7 +1051,7 @@ namespace ProtoPromiseTests.APIs
                         resolveWaitDeferred.Resolve();
                     }
 
-                    Assert.AreEqual(TestHelper.onCancelCallbacks, resolveCounter);
+                    Assert.AreEqual(TestHelper.onCancelCallbacks / 2, resolveCounter);
 
                     if (firstRun)
                     {
@@ -1149,7 +1105,7 @@ namespace ProtoPromiseTests.APIs
                         resolveWaitDeferred.Resolve(resolveValue);
                     }
 
-                    Assert.AreEqual(TestHelper.onCancelCallbacks, resolveCounter);
+                    Assert.AreEqual(TestHelper.onCancelCallbacks / 2, resolveCounter);
 
                     if (firstRun)
                     {
@@ -1202,7 +1158,7 @@ namespace ProtoPromiseTests.APIs
                         rejectWaitDeferred.Reject(rejectReason);
                     }
 
-                    Assert.AreEqual(TestHelper.onCancelCallbacks, rejectCounter);
+                    Assert.AreEqual(TestHelper.onCancelCallbacks / 2, rejectCounter);
 
                     if (firstRun)
                     {
@@ -1256,7 +1212,7 @@ namespace ProtoPromiseTests.APIs
                         rejectWaitDeferred.Reject(rejectReason);
                     }
 
-                    Assert.AreEqual(TestHelper.onCancelCallbacks, rejectCounter);
+                    Assert.AreEqual(TestHelper.onCancelCallbacks / 2, rejectCounter);
 
                     if (firstRun)
                     {
@@ -1287,7 +1243,7 @@ namespace ProtoPromiseTests.APIs
                 deferred.Cancel();
 
                 Assert.AreEqual(
-                    TestHelper.onCancelCallbacks * 2,
+                    TestHelper.onCancelCallbacks,
                     resolveCounter
                 );
             }
@@ -1316,7 +1272,7 @@ namespace ProtoPromiseTests.APIs
                 deferred.Cancel();
 
                 Assert.AreEqual(
-                    TestHelper.onCancelCallbacks * 2,
+                    TestHelper.onCancelCallbacks,
                     resolveCounter
                 );
             }
@@ -1370,7 +1326,7 @@ namespace ProtoPromiseTests.APIs
 
                 deferred.Cancel();
 
-                Assert.AreEqual(TestHelper.onCancelCallbacks, exceptionCounter);
+                Assert.AreEqual(TestHelper.onCancelCallbacks / 2, exceptionCounter);
             }
 
             [Test]
@@ -1416,7 +1372,7 @@ namespace ProtoPromiseTests.APIs
 
                 deferred.Cancel();
 
-                Assert.AreEqual(TestHelper.onCancelCallbacks, exceptionCounter);
+                Assert.AreEqual(TestHelper.onCancelCallbacks / 2, exceptionCounter);
             }
 #endif
         }
@@ -1470,7 +1426,8 @@ namespace ProtoPromiseTests.APIs
 
             deferred.Promise
                 .Then(() => resolved = true)
-                .Then(_ => Assert.Fail("Promise was resolved when it should have been canceled."), cancelationSource.Token)
+                .WaitAsync(cancelationSource.Token)
+                .Then(_ => Assert.Fail("Promise was resolved when it should have been canceled."))
                 .Finally(cancelationSource.Dispose)
                 .Forget();
 
@@ -1511,7 +1468,8 @@ namespace ProtoPromiseTests.APIs
             CancelationSource cancelationSource = CancelationSource.New();
 
             deferred.Promise
-                .Then(() => { }, cancelationSource.Token)
+                .WaitAsync(cancelationSource.Token)
+                .Then(() => { })
                 .CatchCancelation(() =>
                 {
                     invoked = true;
@@ -1535,7 +1493,8 @@ namespace ProtoPromiseTests.APIs
 
             deferred.Promise
                 .Then(() => cancelationSource.Cancel())
-                .Then(() => { }, cancelationSource.Token)
+                .WaitAsync(cancelationSource.Token)
+                .Then(() => { })
                 .Then(() => Assert.Fail("Promise was resolved when it should have been canceled."),
                     () => Assert.Fail("Promise was rejected when it should have been canceled."))
                 .CatchCancelation(() => canceled = true)
@@ -1555,11 +1514,13 @@ namespace ProtoPromiseTests.APIs
             var promiseRetainer = deferred.Promise.GetRetainer();
 
             promiseRetainer.WaitAsync()
-                .Then(() => { }, cancelationSource.Token)
+                .WaitAsync(cancelationSource.Token)
+                .Then(() => { })
                 .CatchCancelation(captureValue, cv => Assert.AreEqual(captureValue, cv))
                 .Forget();
             promiseRetainer.WaitAsync()
-                .Then(() => 1f, cancelationSource.Token)
+                .WaitAsync(cancelationSource.Token)
+                .Then(() => 1f)
                 .CatchCancelation(captureValue, cv => Assert.AreEqual(captureValue, cv))
                 .Forget();
             cancelationSource.Cancel();
@@ -1628,6 +1589,7 @@ namespace ProtoPromiseTests.APIs
                 cancelationSource.Dispose();
             }
 
+#pragma warning disable CS0618 // Type or member is obsolete
             [Test]
             public void OnCanceledIsNotInvokedIfTokenIsCanceled_void0()
             {
@@ -1732,71 +1694,32 @@ namespace ProtoPromiseTests.APIs
                     .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), Proto.Promises.CancelationToken.Canceled())
                     .Forget();
             }
+#pragma warning restore CS0618 // Type or member is obsolete
 
             [Test]
-            public void OnCanceledIsNotInvokedIfPromiseIsResolved_void0()
+            public void OnCanceledIsNotInvokedIfPromiseIsResolved_void()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
                 var deferred = Promise.NewDeferred();
 
                 deferred.Promise
-                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."))
+                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."))
                     .Forget();
 
                 deferred.Resolve();
-                cancelationSource.Cancel();
-
-                cancelationSource.Dispose();
             }
 
             [Test]
-            public void OnCanceledIsNotInvokedIfPromiseIsResolved_T0()
+            public void OnCanceledIsNotInvokedIfPromiseIsResolved_T()
             {
-                CancelationSource cancelationSource = CancelationSource.New();
                 var deferred = Promise.NewDeferred<int>();
 
                 deferred.Promise
-                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
+                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."))
+                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."))
                     .Forget();
 
                 deferred.Resolve(1);
-                cancelationSource.Cancel();
-
-                cancelationSource.Dispose();
-            }
-
-            [Test]
-            public void OnCanceledIsNotInvokedIfPromiseIsResolved_void1()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred();
-
-                deferred.Promise
-                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .Forget();
-
-                deferred.Resolve();
-
-                cancelationSource.Dispose();
-            }
-
-            [Test]
-            public void OnCanceledIsNotInvokedIfPromiseIsResolved_T1()
-            {
-                CancelationSource cancelationSource = CancelationSource.New();
-                var deferred = Promise.NewDeferred<int>();
-
-                deferred.Promise
-                    .CatchCancelation(() => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .CatchCancelation(1, cv => Assert.Fail("OnCanceled was invoked."), cancelationSource.Token)
-                    .Forget();
-
-                deferred.Resolve(1);
-
-                cancelationSource.Dispose();
             }
 
             [Test]

@@ -57,7 +57,7 @@ namespace Proto.Promises
 
                 public void RejectDirect(IRejectContainer reasonContainer)
                 {
-                    _rejectContainer = reasonContainer;
+                    RejectContainer = reasonContainer;
                     HandleNextInternal(Promise.State.Rejected);
                 }
 
@@ -98,28 +98,6 @@ namespace Proto.Promises
                     var promise = GetFromPoolOrCreate();
                     promise.Reset();
                     return promise;
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static bool TryResolve(DeferredPromise<TResult> _this, int deferredId, in TResult value)
-                {
-                    if (_this?.TryIncrementDeferredId(deferredId) == true)
-                    {
-                        _this.ResolveDirect(value);
-                        return true;
-                    }
-                    return false;
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static bool TryResolveVoid(DeferredPromise<TResult> _this, int deferredId)
-                {
-                    if (_this?.TryIncrementDeferredId(deferredId) == true)
-                    {
-                        _this.ResolveDirectVoid();
-                        return true;
-                    }
-                    return false;
                 }
 
                 [MethodImpl(InlineOption)]

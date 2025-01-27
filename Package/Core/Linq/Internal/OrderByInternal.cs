@@ -213,7 +213,7 @@ namespace Proto.Promises
 
                 protected void Dispose()
                 {
-                    _comparer = default;
+                    ClearReferences(ref _comparer);
                     // Dispose ThenBys
                     var next = _next;
                     _next = null;
@@ -374,7 +374,7 @@ namespace Proto.Promises
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredSource._enumerator._target;
-                    var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
                     try
                     {
@@ -421,7 +421,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
-                        joinedCancelationSource.TryDispose();
+                        maybeJoinedCancelationSource.Dispose();
                         var source = _configuredSource;
                         Dispose();
                         await source.DisposeAsync();
@@ -439,7 +439,7 @@ namespace Proto.Promises
 
                 protected void Dispose()
                 {
-                    _comparer = default;
+                    ClearReferences(ref _comparer);
                     // Dispose ThenBys
                     var next = _next;
                     _next = null;
@@ -628,7 +628,7 @@ namespace Proto.Promises
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredSource._enumerator._target;
-                    var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
                     try
                     {
@@ -677,7 +677,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
-                        joinedCancelationSource.TryDispose();
+                        maybeJoinedCancelationSource.Dispose();
                         var source = _configuredSource;
                         Dispose();
                         await source.DisposeAsync();
@@ -847,7 +847,7 @@ namespace Proto.Promises
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _configuredSource._enumerator._target;
-                    var joinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
                     try
                     {
@@ -899,7 +899,7 @@ namespace Proto.Promises
                     }
                     finally
                     {
-                        joinedCancelationSource.TryDispose();
+                        maybeJoinedCancelationSource.Dispose();
                         var source = _configuredSource;
                         Dispose();
                         await source.DisposeAsync();
@@ -937,7 +937,7 @@ namespace Proto.Promises
                     {
                         _keys.Dispose();
                     }
-                    _comparer = default;
+                    ClearReferences(ref _comparer);
                 }
             }
 
