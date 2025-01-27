@@ -78,9 +78,7 @@ namespace Proto.Promises
                 protected T _current;
                 protected int _enumerableId = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
                 protected bool _isStarted;
-#if !(PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE)
-                protected bool _disposed;
-#endif
+                protected bool _enumerableDisposed;
 
                 internal int EnumerableId
                 {
@@ -102,7 +100,7 @@ namespace Proto.Promises
                 new protected void Reset()
                 {
                     base.Reset();
-                    _disposed = false;
+                    _enumerableDisposed = false;
                     _isStarted = false;
                 }
 
@@ -115,7 +113,7 @@ namespace Proto.Promises
 
                 ~AsyncEnumerableBase()
                 {
-                    if (!_disposed)
+                    if (!_enumerableDisposed)
                     {
                         string message = "An AsyncEnumerable's resources were garbage collected without it being disposed. You must call DisposeAsync on the AsyncEnumerator.";
                         ReportRejection(new UnreleasedObjectException(message), this);
@@ -237,7 +235,7 @@ namespace Proto.Promises
                     if (oldId == iteratorCompleteId)
                     {
                         // The async iterator function is already complete, dispose this and return a resolved promise.
-                        _disposed = true;
+                        _enumerableDisposed = true;
                         DisposeAndReturnToPool();
                         return Promise.Resolved();
                     }
@@ -256,7 +254,7 @@ namespace Proto.Promises
                     }
 
                     ThrowIfInPool(this);
-                    _disposed = true;
+                    _enumerableDisposed = true;
                     var iteratorPromise = Interlocked.Exchange(ref _iteratorPromiseRef, null);
                     if (iteratorPromise == null)
                     {
@@ -383,7 +381,7 @@ namespace Proto.Promises
             internal override void MaybeDispose()
             {
                 // This is called on every MoveNextAsync, we only fully dispose and return to pool after DisposeAsync is called.
-                if (_disposed)
+                if (_enumerableDisposed)
                 {
                     DisposeAndReturnToPool();
                 }

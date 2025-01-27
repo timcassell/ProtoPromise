@@ -119,7 +119,7 @@ namespace Proto.Promises
             {
                 PrepareEarlyDispose();
                 base.Dispose();
-                _disposed = true;
+                _enumerableDisposed = true;
                 ObjectPool.MaybeRepool(this);
             }
 
