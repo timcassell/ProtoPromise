@@ -368,11 +368,6 @@ namespace Proto.Promises
 
                     // Not all invokes are complete yet, create a deferred promise that will be resolved when all invokes are complete.
                     var deferredPromise = PromiseRefBase.DeferredPromise<VoidResult>.GetOrCreate();
-#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
-                    // If the promise is converted to ValueTask, we ignore the context scheduling,
-                    // since we already resolve the promise on the same context that we report progress on.
-                    deferredPromise._ignoreValueTaskContextScheduling = true;
-#endif
                     // We store the deferred promise in _next to save memory.
                     _next = deferredPromise;
                     registration.Dispose();

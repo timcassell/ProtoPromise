@@ -21,7 +21,7 @@ namespace Proto.Promises
     {
         partial class PromiseRefBase
         {
-            internal ValueTask ToValueTaskVoid(short id)
+            internal ValueTask ToValueTaskVoid(short id, bool suppressContextScheduling)
             {
                 if (State == Promise.State.Resolved)
                 {
@@ -29,7 +29,7 @@ namespace Proto.Promises
                     return new ValueTask();
                 }
 
-                var source = PooledValueTaskSource<VoidResult>.GetOrCreate(_ignoreValueTaskContextScheduling);
+                var source = PooledValueTaskSource<VoidResult>.GetOrCreate(suppressContextScheduling);
                 HookupNewWaiter(id, source);
                 return source.TaskVoid;
             }
@@ -45,7 +45,7 @@ namespace Proto.Promises
                         return new ValueTask<TResult>(result);
                     }
 
-                    var source = PooledValueTaskSource<TResult>.GetOrCreate(_ignoreValueTaskContextScheduling);
+                    var source = PooledValueTaskSource<TResult>.GetOrCreate(false);
                     HookupNewWaiter(id, source);
                     return source.Task;
                 }
@@ -83,12 +83,12 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static PooledValueTaskSource<TResult> GetOrCreate(bool ignoreValueTaskContextScheduling)
+                internal static PooledValueTaskSource<TResult> GetOrCreate(bool suppressContextScheduling)
                 {
                     var source = GetOrCreate();
                     // If the promise we're converting to a ValueTask is already configured to execute on a certain context,
                     // we ignore the context scheduling of the ValueTask continuation, and continue synchronously.
-                    source._flagsMask = ignoreValueTaskContextScheduling
+                    source._flagsMask = suppressContextScheduling
                         ? ~ValueTaskSourceOnCompletedFlags.UseSchedulingContext
                         : ~ValueTaskSourceOnCompletedFlags.None;
                     return source;

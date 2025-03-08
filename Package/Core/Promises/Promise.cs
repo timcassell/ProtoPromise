@@ -28,12 +28,16 @@ namespace Proto.Promises
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public System.Threading.Tasks.ValueTask AsValueTask()
+            => AsValueTask(false);
+
+        [MethodImpl(Internal.InlineOption)]
+        internal System.Threading.Tasks.ValueTask AsValueTask(bool suppressContext)
         {
-            ValidateOperation(1);
+            ValidateOperation(2);
             var r = _ref;
             return r == null
                 ? new System.Threading.Tasks.ValueTask()
-                : r.ToValueTaskVoid(_id);
+                : r.ToValueTaskVoid(_id, suppressContext);
         }
 
         /// <summary>

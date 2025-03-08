@@ -403,7 +403,7 @@ namespace Proto.Promises
     partial struct Progress : IAsyncDisposable
     {
         System.Threading.Tasks.ValueTask IAsyncDisposable.DisposeAsync()
-            => DisposeAsync();
+            => DisposeAsync().AsValueTask(true);
     }
 #endif // UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
 

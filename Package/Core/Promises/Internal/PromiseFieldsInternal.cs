@@ -139,9 +139,6 @@ namespace Proto.Promises
             volatile private Promise.State _state;
             private bool _suppressRejection;
             private bool _wasAwaitedOrForgotten;
-#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
-            internal bool _ignoreValueTaskContextScheduling;
-#endif
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             protected bool _disposed;
 #endif
