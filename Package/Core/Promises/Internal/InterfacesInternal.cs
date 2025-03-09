@@ -78,5 +78,11 @@ namespace Proto.Promises
                 void Invoke(PromiseRefBase owner);
             }
         }
+
+        internal interface IContinuer<TArg, TResult>
+        {
+            bool ShouldInvoke(IRejectContainer rejectContainer, Promise.State state, out bool isCatch);
+            TResult Invoke(in Promise<TArg>.ResultContainer resultContainer);
+        }
     }
 }

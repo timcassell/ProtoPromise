@@ -13,7 +13,7 @@ namespace Proto.Promises
 {
     partial class Internal
     {
-        internal abstract partial class PromiseRefBase
+        partial class PromiseRefBase
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]

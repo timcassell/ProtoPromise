@@ -112,33 +112,33 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal static Promise AddContinue<TDelegateContinue>(Promise<TArg> _this, TDelegateContinue continuer)
-                    where TDelegateContinue : IAction<TArg>, IDelegateContinue
+                    where TDelegateContinue : IAction<TArg>, IContinuer<TArg, VoidResult>
                 {
                     if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
                     {
                         return InvokeCallbackDirect(continuer, _this);
                     }
-                    var promise = PromiseContinue<VoidResult, TDelegateContinue>.GetOrCreate(continuer);
+                    var promise = ContinuePromise<TArg, VoidResult, TDelegateContinue>.GetOrCreate(continuer);
                     _this._ref.HookupNewPromise(_this._id, promise);
                     return new Promise(promise, promise.Id);
                 }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise AddContinueWait<TDelegateContinue>(Promise<TArg> _this, TDelegateContinue continuer)
-                    where TDelegateContinue : IFunc<TArg, Promise>, IDelegateContinuePromise
+                    where TDelegateContinue : IFunc<TArg, Promise>, IContinuer<TArg, Promise>
                 {
                     if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
                     {
                         return InvokeCallbackAndAdoptDirect(continuer, _this);
                     }
-                    var promise = PromiseContinuePromise<VoidResult, TDelegateContinue>.GetOrCreate(continuer);
+                    var promise = ContinueWaitPromise<TArg, TDelegateContinue>.GetOrCreate(continuer);
                     _this._ref.HookupNewPromise(_this._id, promise);
                     return new Promise(promise, promise.Id);
                 }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise AddContinue<TDelegateContinue>(Promise<TArg> _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IAction<TArg>, IDelegateContinue
+                    where TDelegateContinue : IAction<TArg>, IContinuer<TArg, VoidResult>
                 {
                     if (cancelationToken.IsCancelationRequested)
                     {
@@ -151,12 +151,12 @@ namespace Proto.Promises
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelablePromiseContinue<VoidResult, TDelegateContinue>.GetOrCreate(continuer);
+                        var p = CancelableContinuePromise<TArg, VoidResult, TDelegateContinue>.GetOrCreate(continuer);
                         promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
                     }
                     else
                     {
-                        promise = PromiseContinue<VoidResult, TDelegateContinue>.GetOrCreate(continuer);
+                        promise = ContinuePromise<TArg, VoidResult, TDelegateContinue>.GetOrCreate(continuer);
                         _this._ref.HookupNewPromise(_this._id, promise);
                     }
                     return new Promise(promise, promise.Id);
@@ -164,7 +164,7 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal static Promise AddContinueWait<TDelegateContinue>(Promise<TArg> _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IFunc<TArg, Promise>, IDelegateContinuePromise
+                    where TDelegateContinue : IFunc<TArg, Promise>, IContinuer<TArg, Promise>
                 {
                     if (cancelationToken.IsCancelationRequested)
                     {
@@ -177,12 +177,12 @@ namespace Proto.Promises
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelablePromiseContinuePromise<VoidResult, TDelegateContinue>.GetOrCreate(continuer);
+                        var p = CancelableContinueWaitPromise<TArg, TDelegateContinue>.GetOrCreate(continuer);
                         promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
                     }
                     else
                     {
-                        promise = PromiseContinuePromise<VoidResult, TDelegateContinue>.GetOrCreate(continuer);
+                        promise = ContinueWaitPromise<TArg, TDelegateContinue>.GetOrCreate(continuer);
                         _this._ref.HookupNewPromise(_this._id, promise);
                     }
                     return new Promise(promise, promise.Id);
@@ -449,33 +449,33 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddContinue<TDelegateContinue>(Promise _this, TDelegateContinue continuer)
-                    where TDelegateContinue : IFunc<TResult>, IDelegateContinue
+                    where TDelegateContinue : IFunc<TResult>, IContinuer<VoidResult, TResult>
                 {
                     if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
                     {
                         return InvokeCallbackDirect(continuer, _this);
                     }
-                    var promise = PromiseContinue<TResult, TDelegateContinue>.GetOrCreate(continuer);
+                    var promise = ContinuePromise<VoidResult, TResult, TDelegateContinue>.GetOrCreate(continuer);
                     _this._ref.HookupNewPromise(_this._id, promise);
                     return new Promise<TResult>(promise, promise.Id);
                 }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddContinueWait<TDelegateContinue>(Promise _this, TDelegateContinue continuer)
-                    where TDelegateContinue : IFunc<Promise<TResult>>, IDelegateContinuePromise
+                    where TDelegateContinue : IFunc<Promise<TResult>>, IContinuer<VoidResult, Promise<TResult>>
                 {
                     if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
                     {
                         return InvokeCallbackAndAdoptDirect(continuer, _this);
                     }
-                    var promise = PromiseContinuePromise<TResult, TDelegateContinue>.GetOrCreate(continuer);
+                    var promise = ContinueWaitPromise<VoidResult, TResult, TDelegateContinue>.GetOrCreate(continuer);
                     _this._ref.HookupNewPromise(_this._id, promise);
                     return new Promise<TResult>(promise, promise.Id);
                 }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddContinue<TDelegateContinue>(Promise _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IFunc<TResult>, IDelegateContinue
+                    where TDelegateContinue : IFunc<TResult>, IContinuer<VoidResult, TResult>
                 {
                     if (cancelationToken.IsCancelationRequested)
                     {
@@ -488,12 +488,12 @@ namespace Proto.Promises
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelablePromiseContinue<TResult, TDelegateContinue>.GetOrCreate(continuer);
+                        var p = CancelableContinuePromise<VoidResult, TResult, TDelegateContinue>.GetOrCreate(continuer);
                         promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
                     }
                     else
                     {
-                        promise = PromiseContinue<TResult, TDelegateContinue>.GetOrCreate(continuer);
+                        promise = ContinuePromise<VoidResult, TResult, TDelegateContinue>.GetOrCreate(continuer);
                         _this._ref.HookupNewPromise(_this._id, promise);
                     }
                     return new Promise<TResult>(promise, promise.Id);
@@ -501,7 +501,7 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddContinueWait<TDelegateContinue>(Promise _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IFunc<Promise<TResult>>, IDelegateContinuePromise
+                    where TDelegateContinue : IFunc<Promise<TResult>>, IContinuer<VoidResult, Promise<TResult>>
                 {
                     if (cancelationToken.IsCancelationRequested)
                     {
@@ -514,12 +514,12 @@ namespace Proto.Promises
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelablePromiseContinuePromise<TResult, TDelegateContinue>.GetOrCreate(continuer);
+                        var p = CancelableContinueWaitPromise<VoidResult, TResult, TDelegateContinue>.GetOrCreate(continuer);
                         promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
                     }
                     else
                     {
-                        promise = PromiseContinuePromise<TResult, TDelegateContinue>.GetOrCreate(continuer);
+                        promise = ContinueWaitPromise<VoidResult, TResult, TDelegateContinue>.GetOrCreate(continuer);
                         _this._ref.HookupNewPromise(_this._id, promise);
                     }
                     return new Promise<TResult>(promise, promise.Id);
@@ -644,33 +644,33 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddContinue<TDelegateContinue>(Promise<TArg> _this, TDelegateContinue continuer)
-                    where TDelegateContinue : IFunc<TArg, TResult>, IDelegateContinue
+                    where TDelegateContinue : IFunc<TArg, TResult>, IContinuer<TArg, TResult>
                 {
                     if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
                     {
                         return InvokeCallbackDirect(continuer, _this);
                     }
-                    var promise = PromiseContinue<TResult, TDelegateContinue>.GetOrCreate(continuer);
+                    var promise = ContinuePromise<TArg, TResult, TDelegateContinue>.GetOrCreate(continuer);
                     _this._ref.HookupNewPromise(_this._id, promise);
                     return new Promise<TResult>(promise, promise.Id);
                 }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddContinueWait<TDelegateContinue>(Promise<TArg> _this, TDelegateContinue continuer)
-                    where TDelegateContinue : IFunc<TArg, Promise<TResult>>, IDelegateContinuePromise
+                    where TDelegateContinue : IFunc<TArg, Promise<TResult>>, IContinuer<TArg, Promise<TResult>>
                 {
                     if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
                     {
                         return InvokeCallbackAndAdoptDirect(continuer, _this);
                     }
-                    var promise = PromiseContinuePromise<TResult, TDelegateContinue>.GetOrCreate(continuer);
+                    var promise = ContinueWaitPromise<TArg, TResult, TDelegateContinue>.GetOrCreate(continuer);
                     _this._ref.HookupNewPromise(_this._id, promise);
                     return new Promise<TResult>(promise, promise.Id);
                 }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddContinue<TDelegateContinue>(Promise<TArg> _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IFunc<TArg, TResult>, IDelegateContinue
+                    where TDelegateContinue : IFunc<TArg, TResult>, IContinuer<TArg, TResult>
                 {
                     if (cancelationToken.IsCancelationRequested)
                     {
@@ -683,12 +683,12 @@ namespace Proto.Promises
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelablePromiseContinue<TResult, TDelegateContinue>.GetOrCreate(continuer);
+                        var p = CancelableContinuePromise<TArg, TResult, TDelegateContinue>.GetOrCreate(continuer);
                         promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
                     }
                     else
                     {
-                        promise = PromiseContinue<TResult, TDelegateContinue>.GetOrCreate(continuer);
+                        promise = ContinuePromise<TArg, TResult, TDelegateContinue>.GetOrCreate(continuer);
                         _this._ref.HookupNewPromise(_this._id, promise);
                     }
                     return new Promise<TResult>(promise, promise.Id);
@@ -696,7 +696,7 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> AddContinueWait<TDelegateContinue>(Promise<TArg> _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IFunc<TArg, Promise<TResult>>, IDelegateContinuePromise
+                    where TDelegateContinue : IFunc<TArg, Promise<TResult>>, IContinuer<TArg, Promise<TResult>>
                 {
                     if (cancelationToken.IsCancelationRequested)
                     {
@@ -709,12 +709,12 @@ namespace Proto.Promises
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelablePromiseContinuePromise<TResult, TDelegateContinue>.GetOrCreate(continuer);
+                        var p = CancelableContinueWaitPromise<TArg, TResult, TDelegateContinue>.GetOrCreate(continuer);
                         promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
                     }
                     else
                     {
-                        promise = PromiseContinuePromise<TResult, TDelegateContinue>.GetOrCreate(continuer);
+                        promise = ContinueWaitPromise<TArg, TResult, TDelegateContinue>.GetOrCreate(continuer);
                         _this._ref.HookupNewPromise(_this._id, promise);
                     }
                     return new Promise<TResult>(promise, promise.Id);
@@ -992,34 +992,34 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise AddContinue<TDelegateContinue>(Promise _this, TDelegateContinue continuer)
-                    where TDelegateContinue : IAction, IDelegateContinue
+                internal static Promise AddContinue<TContinuer>(Promise _this, TContinuer continuer)
+                    where TContinuer : IAction, IContinuer<VoidResult, VoidResult>
                 {
                     if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
                     {
                         return InvokeCallbackDirect(continuer, _this);
                     }
-                    var promise = PromiseContinue<VoidResult, TDelegateContinue>.GetOrCreate(continuer);
+                    var promise = ContinuePromise<VoidResult, VoidResult, TContinuer>.GetOrCreate(continuer);
                     _this._ref.HookupNewPromise(_this._id, promise);
                     return new Promise(promise, promise.Id);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise AddContinueWait<TDelegateContinue>(Promise _this, TDelegateContinue continuer)
-                    where TDelegateContinue : IFunc<Promise>, IDelegateContinuePromise
+                internal static Promise AddContinueWait<TContinuer>(Promise _this, TContinuer continuer)
+                    where TContinuer : IFunc<Promise>, IContinuer<VoidResult, Promise>
                 {
                     if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
                     {
                         return InvokeCallbackAndAdoptDirect(continuer, _this);
                     }
-                    var promise = PromiseContinuePromise<VoidResult, TDelegateContinue>.GetOrCreate(continuer);
+                    var promise = ContinueWaitPromise<VoidResult, TContinuer>.GetOrCreate(continuer);
                     _this._ref.HookupNewPromise(_this._id, promise);
                     return new Promise(promise, promise.Id);
                 }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise AddContinue<TDelegateContinue>(Promise _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IAction, IDelegateContinue
+                    where TDelegateContinue : IAction, IContinuer<VoidResult, VoidResult>
                 {
                     if (cancelationToken.IsCancelationRequested)
                     {
@@ -1032,12 +1032,12 @@ namespace Proto.Promises
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelablePromiseContinue<VoidResult, TDelegateContinue>.GetOrCreate(continuer);
+                        var p = CancelableContinuePromise<VoidResult, VoidResult, TDelegateContinue>.GetOrCreate(continuer);
                         promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
                     }
                     else
                     {
-                        promise = PromiseContinue<VoidResult, TDelegateContinue>.GetOrCreate(continuer);
+                        promise = ContinuePromise<VoidResult, VoidResult, TDelegateContinue>.GetOrCreate(continuer);
                         _this._ref.HookupNewPromise(_this._id, promise);
                     }
                     return new Promise(promise, promise.Id);
@@ -1045,7 +1045,7 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal static Promise AddContinueWait<TDelegateContinue>(Promise _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IFunc<Promise>, IDelegateContinuePromise
+                    where TDelegateContinue : IFunc<Promise>, IContinuer<VoidResult, Promise>
                 {
                     if (cancelationToken.IsCancelationRequested)
                     {
@@ -1058,12 +1058,12 @@ namespace Proto.Promises
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelablePromiseContinuePromise<VoidResult, TDelegateContinue>.GetOrCreate(continuer);
+                        var p = CancelableContinueWaitPromise<VoidResult, TDelegateContinue>.GetOrCreate(continuer);
                         promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
                     }
                     else
                     {
-                        promise = PromiseContinuePromise<VoidResult, TDelegateContinue>.GetOrCreate(continuer);
+                        promise = ContinueWaitPromise<VoidResult, TDelegateContinue>.GetOrCreate(continuer);
                         _this._ref.HookupNewPromise(_this._id, promise);
                     }
                     return new Promise(promise, promise.Id);

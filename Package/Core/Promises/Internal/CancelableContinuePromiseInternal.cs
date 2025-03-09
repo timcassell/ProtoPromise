@@ -96,22 +96,22 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class CancelablePromiseContinue<TResult, TContinuer> : PromiseSingleAwait<TResult>, ICancelable
-                where TContinuer : IDelegateContinue
+            private sealed partial class CancelableContinuePromise<TArg, TResult, TContinuer> : ContinuePromiseBase<TArg, TResult, TContinuer>, ICancelable
+                where TContinuer : IContinuer<TArg, TResult>
             {
-                private CancelablePromiseContinue() { }
+                private CancelableContinuePromise() { }
 
                 [MethodImpl(InlineOption)]
-                private static CancelablePromiseContinue<TResult, TContinuer> GetOrCreate()
+                private static CancelableContinuePromise<TArg, TResult, TContinuer> GetOrCreate()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<CancelablePromiseContinue<TResult, TContinuer>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<CancelableContinuePromise<TArg, TResult, TContinuer>>();
                     return obj == InvalidAwaitSentinel.s_instance
-                        ? new CancelablePromiseContinue<TResult, TContinuer>()
-                        : obj.UnsafeAs<CancelablePromiseContinue<TResult, TContinuer>>();
+                        ? new CancelableContinuePromise<TArg, TResult, TContinuer>()
+                        : obj.UnsafeAs<CancelableContinuePromise<TArg, TResult, TContinuer>>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseContinue<TResult, TContinuer> GetOrCreate(TContinuer continuer)
+                internal static CancelableContinuePromise<TArg, TResult, TContinuer> GetOrCreate(in TContinuer continuer)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
@@ -125,31 +125,28 @@ namespace Proto.Promises
                     if (_cancelationHelper.TryRelease())
                     {
                         Dispose();
+                        _cancelationHelper = default;
+                        _continuer = default;
+                        ObjectPool.MaybeRepool(this);
                     }
                 }
 
-                new private void Dispose()
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
-                    base.Dispose();
-                    _cancelationHelper = default;
-                    _continuer = default;
-                    ObjectPool.MaybeRepool(this);
-                }
+                    ThrowIfInPool(this);
 
-                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
-                {
-                    if (_cancelationHelper.TrySetCompleted())
+                    if (!_cancelationHelper.TrySetCompleted())
                     {
-                        _cancelationHelper.UnregisterAndWait();
-                        _cancelationHelper.ReleaseOne();
-                        handler.SuppressRejection = true;
-                        _continuer.Invoke(handler, handler.RejectContainer, state, this);
-                    }
-                    else
-                    {
-                        MaybeDispose();
+                        handler.SetCompletionState(state);
                         handler.MaybeReportUnhandledAndDispose(state);
+                        MaybeDispose();
+                        return;
                     }
+
+                    _cancelationHelper.UnregisterAndWait();
+                    _cancelationHelper.ReleaseOne();
+
+                    base.Handle(handler, state);
                 }
 
                 void ICancelable.Cancel()
@@ -160,27 +157,27 @@ namespace Proto.Promises
                         HandleNextInternal(Promise.State.Canceled);
                     }
                 }
-            }
+            } // class CancelableContinuePromise<TArg, TResult, TContinuer>
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class CancelablePromiseContinuePromise<TResult, TContinuer> : PromiseWaitPromise<TResult>, ICancelable
-                where TContinuer : IDelegateContinuePromise
+            private sealed partial class CancelableContinueWaitPromise<TArg, TContinuer> : ContinueWaitPromiseBase<TArg, TContinuer>, ICancelable
+                where TContinuer : IContinuer<TArg, Promise>
             {
-                private CancelablePromiseContinuePromise() { }
+                private CancelableContinueWaitPromise() { }
 
                 [MethodImpl(InlineOption)]
-                private static CancelablePromiseContinuePromise<TResult, TContinuer> GetOrCreate()
+                private static CancelableContinueWaitPromise<TArg, TContinuer> GetOrCreate()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<CancelablePromiseContinuePromise<TResult, TContinuer>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<CancelableContinueWaitPromise<TArg, TContinuer>>();
                     return obj == InvalidAwaitSentinel.s_instance
-                        ? new CancelablePromiseContinuePromise<TResult, TContinuer>()
-                        : obj.UnsafeAs<CancelablePromiseContinuePromise<TResult, TContinuer>>();
+                        ? new CancelableContinueWaitPromise<TArg, TContinuer>()
+                        : obj.UnsafeAs<CancelableContinueWaitPromise<TArg, TContinuer>>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelablePromiseContinuePromise<TResult, TContinuer> GetOrCreate(TContinuer continuer)
+                internal static CancelableContinueWaitPromise<TArg, TContinuer> GetOrCreate(in TContinuer continuer)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
@@ -205,29 +202,29 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
-                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
-                    if (_continuer.IsNull)
+                    ThrowIfInPool(this);
+
+                    if (!_firstContinue)
                     {
-                        // The returned promise is handling this.
-                        HandleSelf(handler, state);
+                        handler.SetCompletionState(state);
+                        HandleSelfWithoutResult(handler, state);
                         return;
                     }
 
-                    var callback = _continuer;
-                    _continuer = default;
-                    if (_cancelationHelper.TrySetCompleted())
+                    if (!_cancelationHelper.TrySetCompleted())
                     {
-                        _cancelationHelper.UnregisterAndWait();
-                        _cancelationHelper.ReleaseOne();
-                        handler.SuppressRejection = true;
-                        callback.Invoke(handler, handler.RejectContainer, state, this);
-                    }
-                    else
-                    {
-                        MaybeDispose();
+                        handler.SetCompletionState(state);
                         handler.MaybeReportUnhandledAndDispose(state);
+                        MaybeDispose();
+                        return;
                     }
+
+                    _cancelationHelper.UnregisterAndWait();
+                    _cancelationHelper.ReleaseOne();
+
+                    base.Handle(handler, state);
                 }
 
                 void ICancelable.Cancel()
@@ -238,7 +235,85 @@ namespace Proto.Promises
                         HandleNextInternal(Promise.State.Canceled);
                     }
                 }
-            }
+            } // class CancelableContinueWaitPromise<TArg, TContinuer>
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private sealed partial class CancelableContinueWaitPromise<TArg, TResult, TContinuer> : ContinueWaitPromiseBase<TArg, TResult, TContinuer>, ICancelable
+                where TContinuer : IContinuer<TArg, Promise<TResult>>
+            {
+                private CancelableContinueWaitPromise() { }
+
+                [MethodImpl(InlineOption)]
+                private static CancelableContinueWaitPromise<TArg, TResult, TContinuer> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<CancelableContinueWaitPromise<TArg, TResult, TContinuer>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new CancelableContinueWaitPromise<TArg, TResult, TContinuer>()
+                        : obj.UnsafeAs<CancelableContinueWaitPromise<TArg, TResult, TContinuer>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static CancelableContinueWaitPromise<TArg, TResult, TContinuer> GetOrCreate(in TContinuer continuer)
+                {
+                    var promise = GetOrCreate();
+                    promise.Reset();
+                    promise._continuer = continuer;
+                    promise._cancelationHelper.Reset();
+                    return promise;
+                }
+
+                internal override void MaybeDispose()
+                {
+                    if (_cancelationHelper.TryRelease())
+                    {
+                        Dispose();
+                    }
+                }
+
+                new private void Dispose()
+                {
+                    base.Dispose();
+                    _cancelationHelper = default;
+                    _continuer = default;
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                {
+                    ThrowIfInPool(this);
+
+                    if (!_firstContinue)
+                    {
+                        handler.SetCompletionState(state);
+                        HandleSelf(handler, state);
+                        return;
+                    }
+
+                    if (!_cancelationHelper.TrySetCompleted())
+                    {
+                        handler.SetCompletionState(state);
+                        handler.MaybeReportUnhandledAndDispose(state);
+                        MaybeDispose();
+                        return;
+                    }
+
+                    _cancelationHelper.UnregisterAndWait();
+                    _cancelationHelper.ReleaseOne();
+
+                    base.Handle(handler, state);
+                }
+
+                void ICancelable.Cancel()
+                {
+                    ThrowIfInPool(this);
+                    if (_cancelationHelper.TrySetCompleted())
+                    {
+                        HandleNextInternal(Promise.State.Canceled);
+                    }
+                }
+            } // class CancelableContinueWaitPromise<TArg, TContinuer>
         } // PromiseRefBase
     } // Internal
 } // namespace Proto.Promises

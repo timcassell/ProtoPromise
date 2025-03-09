@@ -245,6 +245,7 @@ namespace Proto.Promises
 
             partial class PromiseWaitPromise<TResult> : PromiseSingleAwait<TResult>
             {
+                protected bool _firstContinue;
             }
 
             partial class DeferredPromiseBase<TResult> : PromiseSingleAwait<TResult>, IDeferredPromise
@@ -292,16 +293,22 @@ namespace Proto.Promises
                 private TRejecter _rejecter;
             }
 
-            partial class PromiseContinue<TResult, TContinuer> : PromiseSingleAwait<TResult>
-                where TContinuer : IDelegateContinue
+            partial class ContinuePromiseBase<TArg, TResult, TContinuer> : PromiseSingleAwait<TResult>
+                where TContinuer : IContinuer<TArg, TResult>
             {
-                private TContinuer _continuer;
+                protected TContinuer _continuer;
             }
 
-            partial class PromiseContinuePromise<TResult, TContinuer> : PromiseWaitPromise<TResult>
-                where TContinuer : IDelegateContinuePromise
+            partial class ContinueWaitPromiseBase<TArg, TContinuer> : PromiseWaitPromise<VoidResult>
+                where TContinuer : IContinuer<TArg, Promise>
             {
-                private TContinuer _continuer;
+                protected TContinuer _continuer;
+            }
+
+            partial class ContinueWaitPromiseBase<TArg, TResult, TContinuer> : PromiseWaitPromise<TResult>
+                where TContinuer : IContinuer<TArg, Promise<TResult>>
+            {
+                protected TContinuer _continuer;
             }
 
             partial class PromiseFinally<TResult, TFinalizer> : PromiseSingleAwait<TResult>
@@ -341,18 +348,22 @@ namespace Proto.Promises
                 private int _retainCounter;
             }
 
-            partial class CancelablePromiseContinue<TResult, TContinuer> : PromiseSingleAwait<TResult>
-                where TContinuer : IDelegateContinue
+            partial class CancelableContinuePromise<TArg, TResult, TContinuer> : ContinuePromiseBase<TArg, TResult, TContinuer>
+                where TContinuer : IContinuer<TArg, TResult>
             {
                 internal CancelationHelper _cancelationHelper;
-                private TContinuer _continuer;
             }
 
-            partial class CancelablePromiseContinuePromise<TResult, TContinuer> : PromiseWaitPromise<TResult>
-                where TContinuer : IDelegateContinuePromise
+            partial class CancelableContinueWaitPromise<TArg, TContinuer> : ContinueWaitPromiseBase<TArg, TContinuer>
+                where TContinuer : IContinuer<TArg, Promise>
             {
                 internal CancelationHelper _cancelationHelper;
-                private TContinuer _continuer;
+            }
+
+            partial class CancelableContinueWaitPromise<TArg, TResult, TContinuer> : ContinueWaitPromiseBase<TArg, TResult, TContinuer>
+                where TContinuer : IContinuer<TArg, Promise<TResult>>
+            {
+                internal CancelationHelper _cancelationHelper;
             }
             #endregion
 

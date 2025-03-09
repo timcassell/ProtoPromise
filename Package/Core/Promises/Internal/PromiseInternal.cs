@@ -805,6 +805,12 @@ namespace Proto.Promises
 #endif
             internal abstract partial class PromiseWaitPromise<TResult> : PromiseSingleAwait<TResult>
             {
+                protected new void Reset()
+                {
+                    base.Reset();
+                    _firstContinue = true;
+                }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
                 [DebuggerNonUserCode, StackTraceHidden]
 #endif
@@ -1116,95 +1122,6 @@ namespace Proto.Promises
                     {
                         HandleSelfWithoutResult(handler, state);
                     }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class PromiseContinue<TResult, TContinuer> : PromiseSingleAwait<TResult>
-                where TContinuer : IDelegateContinue
-            {
-                private PromiseContinue() { }
-
-                [MethodImpl(InlineOption)]
-                private static PromiseContinue<TResult, TContinuer> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<PromiseContinue<TResult, TContinuer>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new PromiseContinue<TResult, TContinuer>()
-                        : obj.UnsafeAs<PromiseContinue<TResult, TContinuer>>();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static PromiseContinue<TResult, TContinuer> GetOrCreate(TContinuer continuer)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    promise._continuer = continuer;
-                    return promise;
-                }
-
-                internal override void MaybeDispose()
-                {
-                    Dispose();
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
-                {
-                    handler.SuppressRejection = true;
-                    var callback = _continuer;
-                    _continuer = default;
-                    callback.Invoke(handler, handler.RejectContainer, state, this);
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class PromiseContinuePromise<TResult, TContinuer> : PromiseWaitPromise<TResult>
-                where TContinuer : IDelegateContinuePromise
-            {
-                private PromiseContinuePromise() { }
-
-                [MethodImpl(InlineOption)]
-                private static PromiseContinuePromise<TResult, TContinuer> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<PromiseContinuePromise<TResult, TContinuer>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new PromiseContinuePromise<TResult, TContinuer>()
-                        : obj.UnsafeAs<PromiseContinuePromise<TResult, TContinuer>>();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static PromiseContinuePromise<TResult, TContinuer> GetOrCreate(TContinuer continuer)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    promise._continuer = continuer;
-                    return promise;
-                }
-
-                internal override void MaybeDispose()
-                {
-                    Dispose();
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
-                {
-                    if (_continuer.IsNull)
-                    {
-                        // The returned promise is handling this.
-                        HandleSelf(handler, state);
-                        return;
-                    }
-
-                    var callback = _continuer;
-                    _continuer = default;
-                    handler.SuppressRejection = true;
-                    callback.Invoke(handler, handler.RejectContainer, state, this);
                 }
             }
 
