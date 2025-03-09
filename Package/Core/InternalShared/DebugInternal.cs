@@ -176,7 +176,6 @@ namespace Proto.Promises
         {
             const string CausalitySplitMessage = "--- End of stack trace from the previous location where the exception was thrown ---";
 
-            // StackTrace.ToString() format issue was fixed in the new runtime.
             var causalityTrace = stackTraces
                 .Select(stackTrace => stackTrace.GetFrames()
                     .Where(frame =>

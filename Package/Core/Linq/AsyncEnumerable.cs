@@ -25,9 +25,6 @@ namespace Proto.Promises.Linq
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
     public readonly partial struct AsyncEnumerable<T>
-#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
-        : IAsyncEnumerable<T>
-#endif
     {
         internal readonly Internal.IAsyncEnumerable<T> _target;
         internal readonly int _id;
@@ -68,10 +65,6 @@ namespace Proto.Promises.Linq
         [MethodImpl(Internal.InlineOption)]
         public AsyncEnumerator<T> GetAsyncEnumerator() => GetAsyncEnumerator(CancelationToken.None);
 
-#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
-        IAsyncEnumerator<T> IAsyncEnumerable<T>.GetAsyncEnumerator(CancellationToken cancellationToken) => GetAsyncEnumerator(cancellationToken.ToCancelationToken());
-#endif
-
         /// <summary>
         /// Sets the <see cref="CancelationToken"/> to be passed to <see cref="AsyncEnumerable{T}.GetAsyncEnumerator(CancelationToken)"/> when iterating.
         /// </summary>
@@ -108,16 +101,20 @@ namespace Proto.Promises.Linq
         public ConfiguredAsyncEnumerable<T> ConfigureAwait(ContinuationOptions continuationOptions)
             => new ConfiguredAsyncEnumerable<T>(this, CancelationToken.None, continuationOptions);
 
-#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
-        // These methods exist to hide the built-in IAsyncEnumerable extension methods, and use promise-optimized implementations instead if they are used.
+        // TODO: These methods are only necessary when this implements IAsyncEnumerable<T>, move them to the #if section in v4.
+        /// <summary>
+        /// This method exists only to hide the extension method for <see cref="IAsyncEnumerable{T}"/>. Prefer <see cref="WithCancelation(CancelationToken)"/>.
+        /// </summary>
         [EditorBrowsable(EditorBrowsableState.Never)]
         public ConfiguredAsyncEnumerable<T> WithCancellation(CancellationToken cancellationToken)
             => WithCancelation(cancellationToken.ToCancelationToken());
 
+        /// <summary>
+        /// This method exists only to hide the extension method for <see cref="IAsyncEnumerable{T}"/>. Prefer <see cref="ConfigureAwait(ContinuationOptions)"/>.
+        /// </summary>
         [EditorBrowsable(EditorBrowsableState.Never)]
         public ConfiguredAsyncEnumerable<T> ConfigureAwait(bool continueOnCapturedContext)
             => ConfigureAwait(continueOnCapturedContext ? ContinuationOptions.CapturedContext : ContinuationOptions.Synchronous);
-#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
     }
 
     /// <summary>
@@ -128,10 +125,7 @@ namespace Proto.Promises.Linq
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public readonly struct AsyncEnumerator<T>
-#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
-        : IAsyncEnumerator<T>
-#endif
+    public readonly partial struct AsyncEnumerator<T>
     {
         internal readonly Internal.PromiseRefBase.AsyncEnumerableBase<T> _target;
         private readonly int _id;
@@ -163,10 +157,18 @@ namespace Proto.Promises.Linq
         /// </summary>
         public Promise DisposeAsync()
             => _target.DisposeAsync(_id);
+    }
 
 #if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
+    public readonly partial struct AsyncEnumerable<T> : IAsyncEnumerable<T>
+    {
+        IAsyncEnumerator<T> IAsyncEnumerable<T>.GetAsyncEnumerator(CancellationToken cancellationToken) => GetAsyncEnumerator(cancellationToken.ToCancelationToken());
+    }
+
+    public readonly partial struct AsyncEnumerator<T> : IAsyncEnumerator<T>
+    {
         System.Threading.Tasks.ValueTask<bool> IAsyncEnumerator<T>.MoveNextAsync() => MoveNextAsync();
         System.Threading.Tasks.ValueTask IAsyncDisposable.DisposeAsync() => DisposeAsync();
-#endif
     }
+#endif
 }
