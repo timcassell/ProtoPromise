@@ -245,11 +245,11 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public TResult Invoke(TResult arg)
+                public TResult Invoke(in TResult arg)
                     => arg;
 
                 [MethodImpl(InlineOption)]
-                Promise<TResult> IFunc<TResult, Promise<TResult>>.Invoke(TResult arg) => new Promise<TResult>(arg);
+                Promise<TResult> IFunc<TResult, Promise<TResult>>.Invoke(in TResult arg) => new Promise<TResult>(arg);
 
                 [MethodImpl(InlineOption)]
                 void IDelegateResolveOrCancel.InvokeResolver(PromiseRefBase handler, Promise.State state, PromiseRefBase owner)
@@ -454,11 +454,11 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(TArg arg)
+                public void Invoke(in TArg arg)
                     => _callback.Invoke(arg);
 
                 [MethodImpl(InlineOption)]
-                Promise IFunc<TArg, Promise>.Invoke(TArg arg)
+                Promise IFunc<TArg, Promise>.Invoke(in TArg arg)
                 {
                     Invoke(arg);
                     return new Promise();
@@ -526,11 +526,11 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public TResult Invoke(TArg arg)
+                public TResult Invoke(in TArg arg)
                     => _callback.Invoke(arg);
 
                 [MethodImpl(InlineOption)]
-                Promise<TResult> IFunc<TArg, Promise<TResult>>.Invoke(TArg arg)
+                Promise<TResult> IFunc<TArg, Promise<TResult>>.Invoke(in TArg arg)
                     => new Promise<TResult>(Invoke(arg));
 
                 [MethodImpl(InlineOption)]
@@ -690,7 +690,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public Promise Invoke(TArg arg)
+                public Promise Invoke(in TArg arg)
                     => _callback.Invoke(arg);
 
                 [MethodImpl(InlineOption)]
@@ -738,7 +738,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public Promise<TResult> Invoke(TArg arg)
+                public Promise<TResult> Invoke(in TArg arg)
                     => _callback.Invoke(arg);
 
                 [MethodImpl(InlineOption)]
@@ -844,7 +844,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(TArg arg)
+                public void Invoke(in TArg arg)
                     => Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
 
                 [MethodImpl(InlineOption)]
@@ -875,7 +875,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public TResult Invoke(TArg arg)
+                public TResult Invoke(in TArg arg)
                     => Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
 
                 [MethodImpl(InlineOption)]
@@ -987,7 +987,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public Promise Invoke(TArg arg)
+                public Promise Invoke(in TArg arg)
                     => Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
 
                 [MethodImpl(InlineOption)]
@@ -1024,7 +1024,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public Promise<TResult> Invoke(TArg arg)
+                public Promise<TResult> Invoke(in TArg arg)
                     => Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
 
                 [MethodImpl(InlineOption)]
@@ -1289,13 +1289,13 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(TArg arg)
+                public void Invoke(in TArg arg)
                 {
                     _callback.Invoke(_capturedValue, arg);
                 }
 
                 [MethodImpl(InlineOption)]
-                Promise IFunc<TArg, Promise>.Invoke(TArg arg)
+                Promise IFunc<TArg, Promise>.Invoke(in TArg arg)
                 {
                     Invoke(arg);
                     return new Promise();
@@ -1365,11 +1365,11 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public TResult Invoke(TArg arg)
+                public TResult Invoke(in TArg arg)
                     => _callback.Invoke(_capturedValue, arg);
 
                 [MethodImpl(InlineOption)]
-                Promise<TResult> IFunc<TArg, Promise<TResult>>.Invoke(TArg arg)
+                Promise<TResult> IFunc<TArg, Promise<TResult>>.Invoke(in TArg arg)
                     => new Promise<TResult>(Invoke(arg));
 
                 [MethodImpl(InlineOption)]
@@ -1535,7 +1535,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public Promise Invoke(TArg arg)
+                public Promise Invoke(in TArg arg)
                     => _callback.Invoke(_capturedValue, arg);
 
                 [MethodImpl(InlineOption)]
@@ -1585,7 +1585,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public Promise<TResult> Invoke(TArg arg)
+                public Promise<TResult> Invoke(in TArg arg)
                     => _callback.Invoke(_capturedValue, arg);
 
                 [MethodImpl(InlineOption)]
@@ -1699,7 +1699,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public void Invoke(TArg arg)
+                public void Invoke(in TArg arg)
                     => Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
 
                 [MethodImpl(InlineOption)]
@@ -1732,7 +1732,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public TResult Invoke(TArg arg)
+                public TResult Invoke(in TArg arg)
                     => Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
 
                 [MethodImpl(InlineOption)]
@@ -1850,7 +1850,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public Promise Invoke(TArg arg)
+                public Promise Invoke(in TArg arg)
                     => Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
 
                 [MethodImpl(InlineOption)]
@@ -1889,7 +1889,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public Promise<TResult> Invoke(TArg arg)
+                public Promise<TResult> Invoke(in TArg arg)
                     => Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
 
                 [MethodImpl(InlineOption)]
@@ -1970,7 +1970,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public TResult Invoke(TArg1 arg1, TArg2 arg2)
+                public TResult Invoke(in TArg1 arg1, in TArg2 arg2)
                     => _callback.Invoke(arg1, arg2);
             }
 
@@ -1990,7 +1990,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                public TResult Invoke(TArg1 arg1, TArg2 arg2)
+                public TResult Invoke(in TArg1 arg1, in TArg2 arg2)
                     => _callback.Invoke(_capturedValue, arg1, arg2);
             }
         }

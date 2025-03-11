@@ -5,6 +5,7 @@
 #endif
 
 #pragma warning disable IDE0074 // Use compound assignment
+#pragma warning disable CS0618 // Type or member is obsolete - .Duplicate()
 
 using Proto.Timers;
 using System;
@@ -26,6 +27,35 @@ namespace Proto.Promises
             internal static class CallbackHelperArg<TArg>
             {
                 [MethodImpl(InlineOption)]
+                private static Promise InvokeDirect<TContinuer>(in TContinuer continuer, in Promise<TArg>.ResultContainer arg)
+                    where TContinuer : IContinuer<TArg, VoidResult>
+                {
+                    try
+                    {
+                        continuer.Invoke(arg);
+                        return Promise.Resolved();
+                    }
+                    catch (Exception e)
+                    {
+                        return Promise.FromException(e);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                private static Promise InvokeAdoptDirect<TContinuer>(in TContinuer continuer, in Promise<TArg>.ResultContainer arg)
+                    where TContinuer : IContinuer<TArg, Promise>
+                {
+                    try
+                    {
+                        return continuer.Invoke(arg).Duplicate();
+                    }
+                    catch (Exception e)
+                    {
+                        return Promise.FromException(e);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
                 private static Promise InvokeCallbackDirect<TDelegate>(TDelegate resolver, in Promise<TArg> resolved)
                     where TDelegate : IAction<TArg>
                 {
@@ -46,9 +76,7 @@ namespace Proto.Promises
                 {
                     try
                     {
-#pragma warning disable CS0618 // Type or member is obsolete
                         return resolver.Invoke(CallbackHelperVoid.GetResultFromResolved(resolved)).Duplicate();
-#pragma warning restore CS0618 // Type or member is obsolete
                     }
                     catch (Exception e)
                     {
@@ -111,78 +139,148 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise AddContinue<TDelegateContinue>(Promise<TArg> _this, TDelegateContinue continuer)
-                    where TDelegateContinue : IAction<TArg>, IContinuer<TArg, VoidResult>
+                internal static Promise ContinueWith<TContinuer>(Promise<TArg> _this, TContinuer continuer)
+                    where TContinuer : IContinuer<TArg, VoidResult>
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
-                        return InvokeCallbackDirect(continuer, _this);
+                        return continuer.ShouldInvoke(null, Promise.State.Resolved, out _)
+                            ? InvokeDirect(continuer, _this._result)
+                            : _this;
                     }
-                    var promise = ContinuePromise<TArg, VoidResult, TDelegateContinue>.GetOrCreate(continuer);
+
+                    var state = _this._ref.State;
+                    if (state != Promise.State.Pending)
+                    {
+                        var rejectContainer = _this._ref.RejectContainer;
+                        if (continuer.ShouldInvoke(rejectContainer, state, out _))
+                        {
+                            var result = new Promise<TArg>.ResultContainer(_this._ref._result, rejectContainer, state);
+                            _this._ref.SuppressRejection = true;
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return InvokeDirect(continuer, result);
+                        }
+                        return _this.Duplicate();
+                    }
+
+                    var promise = ContinuePromise<TArg, VoidResult, TContinuer>.GetOrCreate(continuer);
                     _this._ref.HookupNewPromise(_this._id, promise);
                     return new Promise(promise, promise.Id);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise AddContinueWait<TDelegateContinue>(Promise<TArg> _this, TDelegateContinue continuer)
-                    where TDelegateContinue : IFunc<TArg, Promise>, IContinuer<TArg, Promise>
+                internal static Promise ContinueWithWait<TContinuer>(Promise<TArg> _this, TContinuer continuer)
+                    where TContinuer : IContinuer<TArg, Promise>
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
-                        return InvokeCallbackAndAdoptDirect(continuer, _this);
+                        return continuer.ShouldInvoke(null, Promise.State.Resolved, out _)
+                            ? InvokeAdoptDirect(continuer, _this._result)
+                            : _this;
                     }
-                    var promise = ContinueWaitPromise<TArg, TDelegateContinue>.GetOrCreate(continuer);
+
+                    var state = _this._ref.State;
+                    if (state != Promise.State.Pending)
+                    {
+                        var rejectContainer = _this._ref.RejectContainer;
+                        if (continuer.ShouldInvoke(rejectContainer, state, out _))
+                        {
+                            var result = new Promise<TArg>.ResultContainer(_this._ref._result, rejectContainer, state);
+                            _this._ref.SuppressRejection = true;
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return InvokeAdoptDirect(continuer, result);
+                        }
+                        return _this.Duplicate();
+                    }
+
+                    var promise = ContinueWaitPromise<TArg, TContinuer>.GetOrCreate(continuer);
                     _this._ref.HookupNewPromise(_this._id, promise);
                     return new Promise(promise, promise.Id);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise AddContinue<TDelegateContinue>(Promise<TArg> _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IAction<TArg>, IContinuer<TArg, VoidResult>
+                internal static Promise ContinueWith<TContinuer>(Promise<TArg> _this, TContinuer continuer, CancelationToken cancelationToken)
+                    where TContinuer : IContinuer<TArg, VoidResult>
                 {
                     if (cancelationToken.IsCancelationRequested)
                     {
                         return CallbackHelperVoid.Canceled(_this._ref, _this._id);
                     }
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+
+                    if (_this._ref == null)
                     {
-                        return InvokeCallbackDirect(continuer, _this);
+                        return continuer.ShouldInvoke(null, Promise.State.Resolved, out _)
+                            ? InvokeDirect(continuer, _this._result)
+                            : _this;
                     }
+
+                    var state = _this._ref.State;
+                    if (state != Promise.State.Pending)
+                    {
+                        var rejectContainer = _this._ref.RejectContainer;
+                        if (continuer.ShouldInvoke(rejectContainer, state, out _))
+                        {
+                            var result = new Promise<TArg>.ResultContainer(_this._ref._result, rejectContainer, state);
+                            _this._ref.SuppressRejection = true;
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return InvokeDirect(continuer, result);
+                        }
+                        return _this.Duplicate();
+                    }
+
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelableContinuePromise<TArg, VoidResult, TDelegateContinue>.GetOrCreate(continuer);
+                        var p = CancelableContinuePromise<TArg, VoidResult, TContinuer>.GetOrCreate(continuer);
                         promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
                     }
                     else
                     {
-                        promise = ContinuePromise<TArg, VoidResult, TDelegateContinue>.GetOrCreate(continuer);
+                        promise = ContinuePromise<TArg, VoidResult, TContinuer>.GetOrCreate(continuer);
                         _this._ref.HookupNewPromise(_this._id, promise);
                     }
                     return new Promise(promise, promise.Id);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise AddContinueWait<TDelegateContinue>(Promise<TArg> _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IFunc<TArg, Promise>, IContinuer<TArg, Promise>
+                internal static Promise ContinueWithWait<TContinuer>(Promise<TArg> _this, TContinuer continuer, CancelationToken cancelationToken)
+                    where TContinuer : IContinuer<TArg, Promise>
                 {
                     if (cancelationToken.IsCancelationRequested)
                     {
                         return CallbackHelperVoid.Canceled(_this._ref, _this._id);
                     }
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+
+                    if (_this._ref == null)
                     {
-                        return InvokeCallbackAndAdoptDirect(continuer, _this);
+                        return continuer.ShouldInvoke(null, Promise.State.Resolved, out _)
+                            ? InvokeAdoptDirect(continuer, _this._result)
+                            : _this;
                     }
+
+                    var state = _this._ref.State;
+                    if (state != Promise.State.Pending)
+                    {
+                        var rejectContainer = _this._ref.RejectContainer;
+                        if (continuer.ShouldInvoke(rejectContainer, state, out _))
+                        {
+                            var result = new Promise<TArg>.ResultContainer(_this._ref._result, rejectContainer, state);
+                            _this._ref.SuppressRejection = true;
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return InvokeAdoptDirect(continuer, result);
+                        }
+                        return _this.Duplicate();
+                    }
+
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelableContinueWaitPromise<TArg, TDelegateContinue>.GetOrCreate(continuer);
+                        var p = CancelableContinueWaitPromise<TArg, TContinuer>.GetOrCreate(continuer);
                         promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
                     }
                     else
                     {
-                        promise = ContinueWaitPromise<TArg, TDelegateContinue>.GetOrCreate(continuer);
+                        promise = ContinueWaitPromise<TArg, TContinuer>.GetOrCreate(continuer);
                         _this._ref.HookupNewPromise(_this._id, promise);
                     }
                     return new Promise(promise, promise.Id);
@@ -198,6 +296,35 @@ namespace Proto.Promises
                 {
                     _ref?.MaybeMarkAwaitedAndDispose(promiseId);
                     return Promise<TResult>.Canceled();
+                }
+
+                [MethodImpl(InlineOption)]
+                private static Promise<TResult> InvokeDirect<TContinuer>(in TContinuer continuer, in Promise<VoidResult>.ResultContainer arg)
+                    where TContinuer : IContinuer<VoidResult, TResult>
+                {
+                    try
+                    {
+                        TResult result = continuer.Invoke(arg);
+                        return Promise.Resolved(result);
+                    }
+                    catch (Exception e)
+                    {
+                        return Promise<TResult>.FromException(e);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                private static Promise<TResult> InvokeAdoptDirect<TContinuer>(in TContinuer continuer, in Promise<VoidResult>.ResultContainer arg)
+                    where TContinuer : IContinuer<VoidResult, Promise<TResult>>
+                {
+                    try
+                    {
+                        return continuer.Invoke(arg).Duplicate();
+                    }
+                    catch (Exception e)
+                    {
+                        return Promise<TResult>.FromException(e);
+                    }
                 }
 
                 [MethodImpl(InlineOption)]
@@ -223,9 +350,7 @@ namespace Proto.Promises
                     try
                     {
                         resolved._ref?.MaybeMarkAwaitedAndDispose(resolved._id);
-#pragma warning disable CS0618 // Type or member is obsolete
                         return resolver.Invoke().Duplicate();
-#pragma warning restore CS0618 // Type or member is obsolete
                     }
                     catch (Exception e)
                     {
@@ -252,9 +377,7 @@ namespace Proto.Promises
                 {
                     try
                     {
-#pragma warning disable CS0618 // Type or member is obsolete
                         return runner.Invoke().Duplicate();
-#pragma warning restore CS0618 // Type or member is obsolete
                     }
                     catch (Exception e)
                     {
@@ -448,78 +571,132 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> AddContinue<TDelegateContinue>(Promise _this, TDelegateContinue continuer)
-                    where TDelegateContinue : IFunc<TResult>, IContinuer<VoidResult, TResult>
+                internal static Promise<TResult> ContinueWith<TContinuer>(Promise _this, TContinuer continuer)
+                    where TContinuer : IContinuer<VoidResult, TResult>
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    // .Catch(Cancelation) APIs return the same Promise type, so the continuer must be a type that should invoke.
+                    Debug.Assert(continuer.ShouldInvoke(null, Promise.State.Resolved, out _));
+
+                    if (_this._ref == null)
                     {
-                        return InvokeCallbackDirect(continuer, _this);
+                        return InvokeDirect(continuer, new Promise<VoidResult>.ResultContainer(default, null, Promise.State.Resolved));
                     }
-                    var promise = ContinuePromise<VoidResult, TResult, TDelegateContinue>.GetOrCreate(continuer);
+
+                    var state = _this._ref.State;
+                    if (state != Promise.State.Pending)
+                    {
+                        var result = new Promise<VoidResult>.ResultContainer(default, _this._ref.RejectContainer, state);
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return InvokeDirect(continuer, result);
+                    }
+
+                    var promise = ContinuePromise<VoidResult, TResult, TContinuer>.GetOrCreate(continuer);
                     _this._ref.HookupNewPromise(_this._id, promise);
                     return new Promise<TResult>(promise, promise.Id);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> AddContinueWait<TDelegateContinue>(Promise _this, TDelegateContinue continuer)
-                    where TDelegateContinue : IFunc<Promise<TResult>>, IContinuer<VoidResult, Promise<TResult>>
+                internal static Promise<TResult> ContinueWithWait<TContinuer>(Promise _this, TContinuer continuer)
+                    where TContinuer : IContinuer<VoidResult, Promise<TResult>>
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    // .Catch(Cancelation) APIs return the same Promise type, so the continuer must be a type that should invoke.
+                    Debug.Assert(continuer.ShouldInvoke(null, Promise.State.Resolved, out _));
+
+                    if (_this._ref == null)
                     {
-                        return InvokeCallbackAndAdoptDirect(continuer, _this);
+                        return InvokeAdoptDirect(continuer, new Promise<VoidResult>.ResultContainer(default, null, Promise.State.Resolved));
                     }
-                    var promise = ContinueWaitPromise<VoidResult, TResult, TDelegateContinue>.GetOrCreate(continuer);
+
+                    var state = _this._ref.State;
+                    if (state != Promise.State.Pending)
+                    {
+                        var result = new Promise<VoidResult>.ResultContainer(default, _this._ref.RejectContainer, state);
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return InvokeAdoptDirect(continuer, result);
+                    }
+
+                    var promise = ContinueWaitPromise<VoidResult, TResult, TContinuer>.GetOrCreate(continuer);
                     _this._ref.HookupNewPromise(_this._id, promise);
                     return new Promise<TResult>(promise, promise.Id);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> AddContinue<TDelegateContinue>(Promise _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IFunc<TResult>, IContinuer<VoidResult, TResult>
+                internal static Promise<TResult> ContinueWith<TContinuer>(Promise _this, TContinuer continuer, CancelationToken cancelationToken)
+                    where TContinuer : IContinuer<VoidResult, TResult>
                 {
+                    // .Catch(Cancelation) APIs return the same Promise type, so the continuer must be a type that should invoke.
+                    Debug.Assert(continuer.ShouldInvoke(null, Promise.State.Resolved, out _));
+
                     if (cancelationToken.IsCancelationRequested)
                     {
                         return Canceled(_this._ref, _this._id);
                     }
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+
+                    if (_this._ref == null)
                     {
-                        return InvokeCallbackDirect(continuer, _this);
+                        return InvokeDirect(continuer, new Promise<VoidResult>.ResultContainer(default, null, Promise.State.Resolved));
                     }
+
+                    var state = _this._ref.State;
+                    if (state != Promise.State.Pending)
+                    {
+                        var result = new Promise<VoidResult>.ResultContainer(default, _this._ref.RejectContainer, state);
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return InvokeDirect(continuer, result);
+                    }
+
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelableContinuePromise<VoidResult, TResult, TDelegateContinue>.GetOrCreate(continuer);
+                        var p = CancelableContinuePromise<VoidResult, TResult, TContinuer>.GetOrCreate(continuer);
                         promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
                     }
                     else
                     {
-                        promise = ContinuePromise<VoidResult, TResult, TDelegateContinue>.GetOrCreate(continuer);
+                        promise = ContinuePromise<VoidResult, TResult, TContinuer>.GetOrCreate(continuer);
                         _this._ref.HookupNewPromise(_this._id, promise);
                     }
                     return new Promise<TResult>(promise, promise.Id);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> AddContinueWait<TDelegateContinue>(Promise _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IFunc<Promise<TResult>>, IContinuer<VoidResult, Promise<TResult>>
+                internal static Promise<TResult> ContinueWithWait<TContinuer>(Promise _this, TContinuer continuer, CancelationToken cancelationToken)
+                    where TContinuer : IContinuer<VoidResult, Promise<TResult>>
                 {
+                    // .Catch(Cancelation) APIs return the same Promise type, so the continuer must be a type that should invoke.
+                    Debug.Assert(continuer.ShouldInvoke(null, Promise.State.Resolved, out _));
+
                     if (cancelationToken.IsCancelationRequested)
                     {
                         return Canceled(_this._ref, _this._id);
                     }
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+
+                    if (_this._ref == null)
                     {
-                        return InvokeCallbackAndAdoptDirect(continuer, _this);
+                        return InvokeAdoptDirect(continuer, new Promise<VoidResult>.ResultContainer(default, null, Promise.State.Resolved));
                     }
+
+                    var state = _this._ref.State;
+                    if (state != Promise.State.Pending)
+                    {
+                        var result = new Promise<VoidResult>.ResultContainer(default, _this._ref.RejectContainer, state);
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return InvokeAdoptDirect(continuer, result);
+                    }
+
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelableContinueWaitPromise<VoidResult, TResult, TDelegateContinue>.GetOrCreate(continuer);
+                        var p = CancelableContinueWaitPromise<VoidResult, TResult, TContinuer>.GetOrCreate(continuer);
                         promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
                     }
                     else
                     {
-                        promise = ContinueWaitPromise<VoidResult, TResult, TDelegateContinue>.GetOrCreate(continuer);
+                        promise = ContinueWaitPromise<VoidResult, TResult, TContinuer>.GetOrCreate(continuer);
                         _this._ref.HookupNewPromise(_this._id, promise);
                     }
                     return new Promise<TResult>(promise, promise.Id);
@@ -558,6 +735,35 @@ namespace Proto.Promises
             internal static class CallbackHelper<TArg, TResult>
             {
                 [MethodImpl(InlineOption)]
+                private static Promise<TResult> InvokeDirect<TContinuer>(in TContinuer continuer, in Promise<TArg>.ResultContainer arg)
+                    where TContinuer : IContinuer<TArg, TResult>
+                {
+                    try
+                    {
+                        TResult result = continuer.Invoke(arg);
+                        return Promise.Resolved(result);
+                    }
+                    catch (Exception e)
+                    {
+                        return Promise<TResult>.FromException(e);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                private static Promise<TResult> InvokeAdoptDirect<TContinuer>(in TContinuer continuer, in Promise<TArg>.ResultContainer arg)
+                    where TContinuer : IContinuer<TArg, Promise<TResult>>
+                {
+                    try
+                    {
+                        return continuer.Invoke(arg).Duplicate();
+                    }
+                    catch (Exception e)
+                    {
+                        return Promise<TResult>.FromException(e);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
                 private static Promise<TResult> InvokeCallbackDirect<TDelegate>(TDelegate resolver, in Promise<TArg> resolved)
                     where TDelegate : IFunc<TArg, TResult>
                 {
@@ -578,9 +784,7 @@ namespace Proto.Promises
                 {
                     try
                     {
-#pragma warning disable CS0618 // Type or member is obsolete
                         return resolver.Invoke(CallbackHelperVoid.GetResultFromResolved(resolved)).Duplicate();
-#pragma warning restore CS0618 // Type or member is obsolete
                     }
                     catch (Exception e)
                     {
@@ -643,78 +847,132 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> AddContinue<TDelegateContinue>(Promise<TArg> _this, TDelegateContinue continuer)
-                    where TDelegateContinue : IFunc<TArg, TResult>, IContinuer<TArg, TResult>
+                internal static Promise<TResult> ContinueWith<TContinuer>(Promise<TArg> _this, TContinuer continuer)
+                    where TContinuer : IContinuer<TArg, TResult>
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    // .Catch(Cancelation) APIs return the same Promise type, so the continuer must be a type that should invoke.
+                    Debug.Assert(continuer.ShouldInvoke(null, Promise.State.Resolved, out _));
+
+                    if (_this._ref == null)
                     {
-                        return InvokeCallbackDirect(continuer, _this);
+                        return InvokeDirect(continuer, new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved));
                     }
-                    var promise = ContinuePromise<TArg, TResult, TDelegateContinue>.GetOrCreate(continuer);
+
+                    var state = _this._ref.State;
+                    if (state != Promise.State.Pending)
+                    {
+                        var result = new Promise<TArg>.ResultContainer(_this._ref._result, _this._ref.RejectContainer, state);
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return InvokeDirect(continuer, result);
+                    }
+
+                    var promise = ContinuePromise<TArg, TResult, TContinuer>.GetOrCreate(continuer);
                     _this._ref.HookupNewPromise(_this._id, promise);
                     return new Promise<TResult>(promise, promise.Id);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> AddContinueWait<TDelegateContinue>(Promise<TArg> _this, TDelegateContinue continuer)
-                    where TDelegateContinue : IFunc<TArg, Promise<TResult>>, IContinuer<TArg, Promise<TResult>>
+                internal static Promise<TResult> ContinueWithWait<TContinuer>(Promise<TArg> _this, TContinuer continuer)
+                    where TContinuer : IContinuer<TArg, Promise<TResult>>
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    // .Catch(Cancelation) APIs return the same Promise type, so the continuer must be a type that should invoke.
+                    Debug.Assert(continuer.ShouldInvoke(null, Promise.State.Resolved, out _));
+
+                    if (_this._ref == null)
                     {
-                        return InvokeCallbackAndAdoptDirect(continuer, _this);
+                        return InvokeAdoptDirect(continuer, new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved));
                     }
-                    var promise = ContinueWaitPromise<TArg, TResult, TDelegateContinue>.GetOrCreate(continuer);
+
+                    var state = _this._ref.State;
+                    if (state != Promise.State.Pending)
+                    {
+                        var result = new Promise<TArg>.ResultContainer(_this._ref._result, _this._ref.RejectContainer, state);
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return InvokeAdoptDirect(continuer, result);
+                    }
+
+                    var promise = ContinueWaitPromise<TArg, TResult, TContinuer>.GetOrCreate(continuer);
                     _this._ref.HookupNewPromise(_this._id, promise);
                     return new Promise<TResult>(promise, promise.Id);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> AddContinue<TDelegateContinue>(Promise<TArg> _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IFunc<TArg, TResult>, IContinuer<TArg, TResult>
+                internal static Promise<TResult> ContinueWith<TContinuer>(Promise<TArg> _this, TContinuer continuer, CancelationToken cancelationToken)
+                    where TContinuer : IContinuer<TArg, TResult>
                 {
+                    // .Catch(Cancelation) APIs return the same Promise type, so the continuer must be a type that should invoke.
+                    Debug.Assert(continuer.ShouldInvoke(null, Promise.State.Resolved, out _));
+
                     if (cancelationToken.IsCancelationRequested)
                     {
                         return CallbackHelperResult<TResult>.Canceled(_this._ref, _this._id);
                     }
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+
+                    if (_this._ref == null)
                     {
-                        return InvokeCallbackDirect(continuer, _this);
+                        return InvokeDirect(continuer, new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved));
                     }
+
+                    var state = _this._ref.State;
+                    if (state != Promise.State.Pending)
+                    {
+                        var result = new Promise<TArg>.ResultContainer(_this._ref._result, _this._ref.RejectContainer, state);
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return InvokeDirect(continuer, result);
+                    }
+
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelableContinuePromise<TArg, TResult, TDelegateContinue>.GetOrCreate(continuer);
+                        var p = CancelableContinuePromise<TArg, TResult, TContinuer>.GetOrCreate(continuer);
                         promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
                     }
                     else
                     {
-                        promise = ContinuePromise<TArg, TResult, TDelegateContinue>.GetOrCreate(continuer);
+                        promise = ContinuePromise<TArg, TResult, TContinuer>.GetOrCreate(continuer);
                         _this._ref.HookupNewPromise(_this._id, promise);
                     }
                     return new Promise<TResult>(promise, promise.Id);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> AddContinueWait<TDelegateContinue>(Promise<TArg> _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IFunc<TArg, Promise<TResult>>, IContinuer<TArg, Promise<TResult>>
+                internal static Promise<TResult> ContinueWithWait<TContinuer>(Promise<TArg> _this, TContinuer continuer, CancelationToken cancelationToken)
+                    where TContinuer : IContinuer<TArg, Promise<TResult>>
                 {
+                    // .Catch(Cancelation) APIs return the same Promise type, so the continuer must be a type that should invoke.
+                    Debug.Assert(continuer.ShouldInvoke(null, Promise.State.Resolved, out _));
+
                     if (cancelationToken.IsCancelationRequested)
                     {
                         return CallbackHelperResult<TResult>.Canceled(_this._ref, _this._id);
                     }
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+
+                    if (_this._ref == null)
                     {
-                        return InvokeCallbackAndAdoptDirect(continuer, _this);
+                        return InvokeAdoptDirect(continuer, new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved));
                     }
+
+                    var state = _this._ref.State;
+                    if (state != Promise.State.Pending)
+                    {
+                        var result = new Promise<TArg>.ResultContainer(_this._ref._result, _this._ref.RejectContainer, state);
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return InvokeAdoptDirect(continuer, result);
+                    }
+
                     PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelableContinueWaitPromise<TArg, TResult, TDelegateContinue>.GetOrCreate(continuer);
+                        var p = CancelableContinueWaitPromise<TArg, TResult, TContinuer>.GetOrCreate(continuer);
                         promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
                     }
                     else
                     {
-                        promise = ContinueWaitPromise<TArg, TResult, TDelegateContinue>.GetOrCreate(continuer);
+                        promise = ContinueWaitPromise<TArg, TResult, TContinuer>.GetOrCreate(continuer);
                         _this._ref.HookupNewPromise(_this._id, promise);
                     }
                     return new Promise<TResult>(promise, promise.Id);
@@ -726,6 +984,35 @@ namespace Proto.Promises
 #endif
             internal static class CallbackHelperVoid
             {
+                [MethodImpl(InlineOption)]
+                private static Promise InvokeDirect<TContinuer>(in TContinuer continuer, in Promise<VoidResult>.ResultContainer arg)
+                    where TContinuer : IContinuer<VoidResult, VoidResult>
+                {
+                    try
+                    {
+                        continuer.Invoke(arg);
+                        return Promise.Resolved();
+                    }
+                    catch (Exception e)
+                    {
+                        return Promise.FromException(e);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                private static Promise InvokeAdoptDirect<TContinuer>(in TContinuer continuer, in Promise<VoidResult>.ResultContainer arg)
+                    where TContinuer : IContinuer<VoidResult, Promise>
+                {
+                    try
+                    {
+                        return continuer.Invoke(arg).Duplicate();
+                    }
+                    catch (Exception e)
+                    {
+                        return Promise.FromException(e);
+                    }
+                }
+
                 [MethodImpl(InlineOption)]
                 private static Promise InvokeCallbackDirect<TDelegate>(TDelegate resolver, in Promise resolved)
                     where TDelegate : IAction
@@ -749,9 +1036,7 @@ namespace Proto.Promises
                     try
                     {
                         resolved._ref?.MaybeMarkAwaitedAndDispose(resolved._id);
-#pragma warning disable CS0618 // Type or member is obsolete
                         return resolver.Invoke().Duplicate();
-#pragma warning restore CS0618 // Type or member is obsolete
                     }
                     catch (Exception e)
                     {
@@ -778,9 +1063,7 @@ namespace Proto.Promises
                 {
                     try
                     {
-#pragma warning disable CS0618 // Type or member is obsolete
                         return runner.Invoke().Duplicate();
-#pragma warning restore CS0618 // Type or member is obsolete
                     }
                     catch (Exception e)
                     {
@@ -992,78 +1275,148 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise AddContinue<TContinuer>(Promise _this, TContinuer continuer)
-                    where TContinuer : IAction, IContinuer<VoidResult, VoidResult>
+                internal static Promise ContinueWith<TContinuer>(Promise _this, TContinuer continuer)
+                    where TContinuer : IContinuer<VoidResult, VoidResult>
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
-                        return InvokeCallbackDirect(continuer, _this);
+                        return continuer.ShouldInvoke(null, Promise.State.Resolved, out _)
+                            ? InvokeDirect(continuer, new Promise<VoidResult>.ResultContainer(default, null, Promise.State.Resolved))
+                            : _this;
                     }
+
+                    var state = _this._ref.State;
+                    if (state != Promise.State.Pending)
+                    {
+                        var rejectContainer = _this._ref.RejectContainer;
+                        if (continuer.ShouldInvoke(rejectContainer, state, out _))
+                        {
+                            var result = new Promise<VoidResult>.ResultContainer(default, rejectContainer, state);
+                            _this._ref.SuppressRejection = true;
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return InvokeDirect(continuer, result);
+                        }
+                        return _this.Duplicate();
+                    }
+
                     var promise = ContinuePromise<VoidResult, VoidResult, TContinuer>.GetOrCreate(continuer);
                     _this._ref.HookupNewPromise(_this._id, promise);
                     return new Promise(promise, promise.Id);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise AddContinueWait<TContinuer>(Promise _this, TContinuer continuer)
-                    where TContinuer : IFunc<Promise>, IContinuer<VoidResult, Promise>
+                internal static Promise ContinueWithWait<TContinuer>(Promise _this, TContinuer continuer)
+                    where TContinuer : IContinuer<VoidResult, Promise>
                 {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+                    if (_this._ref == null)
                     {
-                        return InvokeCallbackAndAdoptDirect(continuer, _this);
+                        return continuer.ShouldInvoke(null, Promise.State.Resolved, out _)
+                            ? InvokeAdoptDirect(continuer, new Promise<VoidResult>.ResultContainer(default, null, Promise.State.Resolved))
+                            : _this;
                     }
+
+                    var state = _this._ref.State;
+                    if (state != Promise.State.Pending)
+                    {
+                        var rejectContainer = _this._ref.RejectContainer;
+                        if (continuer.ShouldInvoke(rejectContainer, state, out _))
+                        {
+                            var result = new Promise<VoidResult>.ResultContainer(default, rejectContainer, state);
+                            _this._ref.SuppressRejection = true;
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return InvokeAdoptDirect(continuer, result);
+                        }
+                        return _this.Duplicate();
+                    }
+
                     var promise = ContinueWaitPromise<VoidResult, TContinuer>.GetOrCreate(continuer);
                     _this._ref.HookupNewPromise(_this._id, promise);
                     return new Promise(promise, promise.Id);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise AddContinue<TDelegateContinue>(Promise _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IAction, IContinuer<VoidResult, VoidResult>
+                internal static Promise ContinueWith<TContinuer>(Promise _this, TContinuer continuer, CancelationToken cancelationToken)
+                    where TContinuer : IContinuer<VoidResult, VoidResult>
                 {
                     if (cancelationToken.IsCancelationRequested)
                     {
                         return Canceled(_this._ref, _this._id);
                     }
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+
+                    if (_this._ref == null)
                     {
-                        return InvokeCallbackDirect(continuer, _this);
+                        return continuer.ShouldInvoke(null, Promise.State.Resolved, out _)
+                            ? InvokeDirect(continuer, new Promise<VoidResult>.ResultContainer(default, null, Promise.State.Resolved))
+                            : _this;
                     }
+
+                    var state = _this._ref.State;
+                    if (state != Promise.State.Pending)
+                    {
+                        var rejectContainer = _this._ref.RejectContainer;
+                        if (continuer.ShouldInvoke(rejectContainer, state, out _))
+                        {
+                            var result = new Promise<VoidResult>.ResultContainer(default, rejectContainer, state);
+                            _this._ref.SuppressRejection = true;
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return InvokeDirect(continuer, result);
+                        }
+                        return _this.Duplicate();
+                    }
+
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelableContinuePromise<VoidResult, VoidResult, TDelegateContinue>.GetOrCreate(continuer);
+                        var p = CancelableContinuePromise<VoidResult, VoidResult, TContinuer>.GetOrCreate(continuer);
                         promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
                     }
                     else
                     {
-                        promise = ContinuePromise<VoidResult, VoidResult, TDelegateContinue>.GetOrCreate(continuer);
+                        promise = ContinuePromise<VoidResult, VoidResult, TContinuer>.GetOrCreate(continuer);
                         _this._ref.HookupNewPromise(_this._id, promise);
                     }
                     return new Promise(promise, promise.Id);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise AddContinueWait<TDelegateContinue>(Promise _this, TDelegateContinue continuer, CancelationToken cancelationToken)
-                    where TDelegateContinue : IFunc<Promise>, IContinuer<VoidResult, Promise>
+                internal static Promise ContinueWithWait<TContinuer>(Promise _this, TContinuer continuer, CancelationToken cancelationToken)
+                    where TContinuer : IContinuer<VoidResult, Promise>
                 {
                     if (cancelationToken.IsCancelationRequested)
                     {
                         return Canceled(_this._ref, _this._id);
                     }
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
+
+                    if (_this._ref == null)
                     {
-                        return InvokeCallbackAndAdoptDirect(continuer, _this);
+                        return continuer.ShouldInvoke(null, Promise.State.Resolved, out _)
+                            ? InvokeAdoptDirect(continuer, new Promise<VoidResult>.ResultContainer(default, null, Promise.State.Resolved))
+                            : _this;
                     }
+
+                    var state = _this._ref.State;
+                    if (state != Promise.State.Pending)
+                    {
+                        var rejectContainer = _this._ref.RejectContainer;
+                        if (continuer.ShouldInvoke(rejectContainer, state, out _))
+                        {
+                            var result = new Promise<VoidResult>.ResultContainer(default, rejectContainer, state);
+                            _this._ref.SuppressRejection = true;
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return InvokeAdoptDirect(continuer, result);
+                        }
+                        return _this.Duplicate();
+                    }
+
                     PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelableContinueWaitPromise<VoidResult, TDelegateContinue>.GetOrCreate(continuer);
+                        var p = CancelableContinueWaitPromise<VoidResult, TContinuer>.GetOrCreate(continuer);
                         promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
                     }
                     else
                     {
-                        promise = ContinueWaitPromise<VoidResult, TDelegateContinue>.GetOrCreate(continuer);
+                        promise = ContinueWaitPromise<VoidResult, TContinuer>.GetOrCreate(continuer);
                         _this._ref.HookupNewPromise(_this._id, promise);
                     }
                     return new Promise(promise, promise.Id);

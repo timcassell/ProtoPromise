@@ -207,7 +207,7 @@ namespace Proto.Promises.Linq
                 AsyncEnumerator<TSource> asyncEnumerator,
                 TKeySelector keySelector,
                 IEqualityComparer<TKey> comparer)
-                where TKeySelector : Internal.IFunc<TSource, TKey>
+                where TKeySelector : IFunc<TSource, TKey>
             {
                 try
                 {
@@ -229,7 +229,7 @@ namespace Proto.Promises.Linq
                 AsyncEnumerator<TSource> asyncEnumerator,
                 TKeySelector keySelector,
                 IEqualityComparer<TKey> comparer)
-                where TKeySelector : Internal.IFunc<TSource, Promise<TKey>>
+                where TKeySelector : IFunc<TSource, Promise<TKey>>
             {
                 try
                 {
@@ -251,7 +251,7 @@ namespace Proto.Promises.Linq
                 ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator,
                 TKeySelector keySelector,
                 IEqualityComparer<TKey> comparer)
-                where TKeySelector : Internal.IFunc<TSource, TKey>
+                where TKeySelector : IFunc<TSource, TKey>
             {
                 try
                 {
@@ -273,7 +273,7 @@ namespace Proto.Promises.Linq
                 ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator,
                 TKeySelector keySelector,
                 IEqualityComparer<TKey> comparer)
-                where TKeySelector : Internal.IFunc<TSource, Promise<TKey>>
+                where TKeySelector : IFunc<TSource, Promise<TKey>>
             {
                 try
                 {
@@ -1213,8 +1213,8 @@ namespace Proto.Promises.Linq
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
                 IEqualityComparer<TKey> comparer)
-                where TKeySelector : Internal.IFunc<TSource, TKey>
-                where TElementSelector : Internal.IFunc<TSource, TElement>
+                where TKeySelector : IFunc<TSource, TKey>
+                where TElementSelector : IFunc<TSource, TElement>
             {
                 try
                 {
@@ -1237,8 +1237,8 @@ namespace Proto.Promises.Linq
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
                 IEqualityComparer<TKey> comparer)
-                where TKeySelector : Internal.IFunc<TSource, Promise<TKey>>
-                where TElementSelector : Internal.IFunc<TSource, TElement>
+                where TKeySelector : IFunc<TSource, Promise<TKey>>
+                where TElementSelector : IFunc<TSource, TElement>
             {
                 try
                 {
@@ -1261,8 +1261,8 @@ namespace Proto.Promises.Linq
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
                 IEqualityComparer<TKey> comparer)
-                where TKeySelector : Internal.IFunc<TSource, TKey>
-                where TElementSelector : Internal.IFunc<TSource, TElement>
+                where TKeySelector : IFunc<TSource, TKey>
+                where TElementSelector : IFunc<TSource, TElement>
             {
                 try
                 {
@@ -1285,8 +1285,8 @@ namespace Proto.Promises.Linq
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
                 IEqualityComparer<TKey> comparer)
-                where TKeySelector : Internal.IFunc<TSource, Promise<TKey>>
-                where TElementSelector : Internal.IFunc<TSource, TElement>
+                where TKeySelector : IFunc<TSource, Promise<TKey>>
+                where TElementSelector : IFunc<TSource, TElement>
             {
                 try
                 {
@@ -1309,8 +1309,8 @@ namespace Proto.Promises.Linq
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
                 IEqualityComparer<TKey> comparer)
-                where TKeySelector : Internal.IFunc<TSource, TKey>
-                where TElementSelector : Internal.IFunc<TSource, Promise<TElement>>
+                where TKeySelector : IFunc<TSource, TKey>
+                where TElementSelector : IFunc<TSource, Promise<TElement>>
             {
                 try
                 {
@@ -1333,8 +1333,8 @@ namespace Proto.Promises.Linq
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
                 IEqualityComparer<TKey> comparer)
-                where TKeySelector : Internal.IFunc<TSource, Promise<TKey>>
-                where TElementSelector : Internal.IFunc<TSource, Promise<TElement>>
+                where TKeySelector : IFunc<TSource, Promise<TKey>>
+                where TElementSelector : IFunc<TSource, Promise<TElement>>
             {
                 try
                 {
@@ -1357,8 +1357,8 @@ namespace Proto.Promises.Linq
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
                 IEqualityComparer<TKey> comparer)
-                where TKeySelector : Internal.IFunc<TSource, TKey>
-                where TElementSelector : Internal.IFunc<TSource, Promise<TElement>>
+                where TKeySelector : IFunc<TSource, TKey>
+                where TElementSelector : IFunc<TSource, Promise<TElement>>
             {
                 try
                 {
@@ -1381,8 +1381,8 @@ namespace Proto.Promises.Linq
                 TKeySelector keySelector,
                 TElementSelector elementSelector,
                 IEqualityComparer<TKey> comparer)
-                where TKeySelector : Internal.IFunc<TSource, Promise<TKey>>
-                where TElementSelector : Internal.IFunc<TSource, Promise<TElement>>
+                where TKeySelector : IFunc<TSource, Promise<TKey>>
+                where TElementSelector : IFunc<TSource, Promise<TElement>>
             {
                 try
                 {

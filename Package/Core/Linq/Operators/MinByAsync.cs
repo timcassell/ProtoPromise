@@ -376,7 +376,7 @@ namespace Proto.Promises.Linq
         {
             internal static async Promise<TSource> MinByAsync<TSource, TKeySelector, TComparer>(AsyncEnumerator<TSource> asyncEnumerator, TKeySelector keySelector, TComparer comparer)
                 where TComparer : IComparer<TKey>
-                where TKeySelector : Internal.IFunc<TSource, TKey>
+                where TKeySelector : IFunc<TSource, TKey>
             {
                 try
                 {
@@ -452,7 +452,7 @@ namespace Proto.Promises.Linq
 
             internal static async Promise<TSource> MinByAwaitAsync<TSource, TKeySelector, TComparer>(AsyncEnumerator<TSource> asyncEnumerator, TKeySelector keySelector, TComparer comparer)
                 where TComparer : IComparer<TKey>
-                where TKeySelector : Internal.IFunc<TSource, Promise<TKey>>
+                where TKeySelector : IFunc<TSource, Promise<TKey>>
             {
                 try
                 {
@@ -528,7 +528,7 @@ namespace Proto.Promises.Linq
 
             internal static async Promise<TSource> MinByAsync<TSource, TKeySelector, TComparer>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TKeySelector keySelector, TComparer comparer)
                 where TComparer : IComparer<TKey>
-                where TKeySelector : Internal.IFunc<TSource, TKey>
+                where TKeySelector : IFunc<TSource, TKey>
             {
                 try
                 {
@@ -604,7 +604,7 @@ namespace Proto.Promises.Linq
 
             internal static async Promise<TSource> MinByAwaitAsync<TSource, TKeySelector, TComparer>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TKeySelector keySelector, TComparer comparer)
                 where TComparer : IComparer<TKey>
-                where TKeySelector : Internal.IFunc<TSource, Promise<TKey>>
+                where TKeySelector : IFunc<TSource, Promise<TKey>>
             {
                 try
                 {

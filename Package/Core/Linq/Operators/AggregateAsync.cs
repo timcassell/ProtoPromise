@@ -25,7 +25,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
-            return AggregateCoreSync(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(accumulator));
+            return AggregateCoreSync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(accumulator));
         }
 
         /// <summary>
@@ -44,11 +44,11 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
-            return AggregateCoreSync(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, accumulator));
+            return AggregateCoreSync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, accumulator));
         }
 
         private static async Promise<TSource> AggregateCoreSync<TSource, TAccumulator>(AsyncEnumerator<TSource> asyncEnumerator, TAccumulator accumulator)
-            where TAccumulator : Internal.IFunc<TSource, TSource, TSource>
+            where TAccumulator : IFunc<TSource, TSource, TSource>
         {
             try
             {
@@ -83,7 +83,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
-            return AggregateCoreSync(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(accumulator));
+            return AggregateCoreSync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(accumulator));
         }
 
         /// <summary>
@@ -101,11 +101,11 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
-            return AggregateCoreSync(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, accumulator));
+            return AggregateCoreSync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, accumulator));
         }
 
         private static async Promise<TSource> AggregateCoreSync<TSource, TAccumulator>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TAccumulator accumulator)
-            where TAccumulator : Internal.IFunc<TSource, TSource, TSource>
+            where TAccumulator : IFunc<TSource, TSource, TSource>
         {
             try
             {
@@ -141,7 +141,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
-            return AggregateCoreAsync(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(asyncAccumulator));
+            return AggregateCoreAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(asyncAccumulator));
         }
 
         /// <summary>
@@ -160,11 +160,11 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
-            return AggregateCoreAsync(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, asyncAccumulator));
+            return AggregateCoreAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, asyncAccumulator));
         }
 
         private static async Promise<TSource> AggregateCoreAsync<TSource, TAccumulator>(AsyncEnumerator<TSource> asyncEnumerator, TAccumulator asyncAccumulator)
-            where TAccumulator : Internal.IFunc<TSource, TSource, Promise<TSource>>
+            where TAccumulator : IFunc<TSource, TSource, Promise<TSource>>
         {
             try
             {
@@ -199,7 +199,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
-            return AggregateCoreAsync(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(asyncAccumulator));
+            return AggregateCoreAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(asyncAccumulator));
         }
 
         /// <summary>
@@ -217,11 +217,11 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
-            return AggregateCoreAsync(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, asyncAccumulator));
+            return AggregateCoreAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, asyncAccumulator));
         }
 
         private static async Promise<TSource> AggregateCoreAsync<TSource, TAccumulator>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TAccumulator asyncAccumulator)
-            where TAccumulator : Internal.IFunc<TSource, TSource, Promise<TSource>>
+            where TAccumulator : IFunc<TSource, TSource, Promise<TSource>>
         {
             try
             {
@@ -258,7 +258,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
-            return AggregateCoreSync(source.GetAsyncEnumerator(cancelationToken), seed, Internal.PromiseRefBase.DelegateWrapper.Create(accumulator));
+            return AggregateCoreSync(source.GetAsyncEnumerator(cancelationToken), seed, DelegateWrapper.Create(accumulator));
         }
 
         /// <summary>
@@ -278,11 +278,11 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
-            return AggregateCoreSync(source.GetAsyncEnumerator(cancelationToken), seed, Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, accumulator));
+            return AggregateCoreSync(source.GetAsyncEnumerator(cancelationToken), seed, DelegateWrapper.Create(captureValue, accumulator));
         }
 
         private static async Promise<TAccumulate> AggregateCoreSync<TSource, TAccumulate, TAccumulator>(AsyncEnumerator<TSource> asyncEnumerator, TAccumulate seed, TAccumulator accumulator)
-            where TAccumulator : Internal.IFunc<TAccumulate, TSource, TAccumulate>
+            where TAccumulator : IFunc<TAccumulate, TSource, TAccumulate>
         {
             try
             {
@@ -313,7 +313,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
-            return AggregateCoreSync(configuredSource.GetAsyncEnumerator(), seed, Internal.PromiseRefBase.DelegateWrapper.Create(accumulator));
+            return AggregateCoreSync(configuredSource.GetAsyncEnumerator(), seed, DelegateWrapper.Create(accumulator));
         }
 
         /// <summary>
@@ -333,11 +333,11 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
-            return AggregateCoreSync(configuredSource.GetAsyncEnumerator(), seed, Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, accumulator));
+            return AggregateCoreSync(configuredSource.GetAsyncEnumerator(), seed, DelegateWrapper.Create(captureValue, accumulator));
         }
 
         private static async Promise<TAccumulate> AggregateCoreSync<TSource, TAccumulate, TAccumulator>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TAccumulate seed, TAccumulator accumulator)
-            where TAccumulator : Internal.IFunc<TAccumulate, TSource, TAccumulate>
+            where TAccumulator : IFunc<TAccumulate, TSource, TAccumulate>
         {
             try
             {
@@ -370,7 +370,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
-            return AggregateCoreAsync(source.GetAsyncEnumerator(cancelationToken), seed, Internal.PromiseRefBase.DelegateWrapper.Create(asyncAccumulator));
+            return AggregateCoreAsync(source.GetAsyncEnumerator(cancelationToken), seed, DelegateWrapper.Create(asyncAccumulator));
         }
 
         /// <summary>
@@ -391,11 +391,11 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
-            return AggregateCoreAsync(source.GetAsyncEnumerator(cancelationToken), seed, Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, asyncAccumulator));
+            return AggregateCoreAsync(source.GetAsyncEnumerator(cancelationToken), seed, DelegateWrapper.Create(captureValue, asyncAccumulator));
         }
 
         private static async Promise<TAccumulate> AggregateCoreAsync<TSource, TAccumulate, TAccumulator>(AsyncEnumerator<TSource> asyncEnumerator, TAccumulate seed, TAccumulator asyncAccumulator)
-            where TAccumulator : Internal.IFunc<TAccumulate, TSource, Promise<TAccumulate>>
+            where TAccumulator : IFunc<TAccumulate, TSource, Promise<TAccumulate>>
         {
             try
             {
@@ -427,7 +427,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
-            return AggregateCoreAsync(configuredSource.GetAsyncEnumerator(), seed, Internal.PromiseRefBase.DelegateWrapper.Create(asyncAccumulator));
+            return AggregateCoreAsync(configuredSource.GetAsyncEnumerator(), seed, DelegateWrapper.Create(asyncAccumulator));
         }
 
         /// <summary>
@@ -447,11 +447,11 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
-            return AggregateCoreAsync(configuredSource.GetAsyncEnumerator(), seed, Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, asyncAccumulator));
+            return AggregateCoreAsync(configuredSource.GetAsyncEnumerator(), seed, DelegateWrapper.Create(captureValue, asyncAccumulator));
         }
 
         private static async Promise<TAccumulate> AggregateCoreAsync<TSource, TAccumulate, TAccumulator>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TAccumulate seed, TAccumulator asyncAccumulator)
-            where TAccumulator : Internal.IFunc<TAccumulate, TSource, Promise<TAccumulate>>
+            where TAccumulator : IFunc<TAccumulate, TSource, Promise<TAccumulate>>
         {
             try
             {

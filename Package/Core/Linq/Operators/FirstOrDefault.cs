@@ -107,7 +107,7 @@ namespace Proto.Promises.Linq
         }
 
         private static async Promise<TSource> FirstOrDefaultAsyncCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
-            where TPredicate : Internal.IFunc<TSource, bool>
+            where TPredicate : IFunc<TSource, bool>
         {
             try
             {
@@ -168,7 +168,7 @@ namespace Proto.Promises.Linq
         }
 
         private static async Promise<TSource> FirstOrDefaultAsyncCoreAwait<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
-            where TPredicate : Internal.IFunc<TSource, Promise<bool>>
+            where TPredicate : IFunc<TSource, Promise<bool>>
         {
             try
             {
@@ -227,7 +227,7 @@ namespace Proto.Promises.Linq
         }
 
         private static async Promise<TSource> FirstOrDefaultAsyncCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
-            where TPredicate : Internal.IFunc<TSource, bool>
+            where TPredicate : IFunc<TSource, bool>
         {
             try
             {
@@ -286,7 +286,7 @@ namespace Proto.Promises.Linq
         }
 
         private static async Promise<TSource> FirstOrDefaultAsyncCoreAwait<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
-            where TPredicate : Internal.IFunc<TSource, Promise<bool>>
+            where TPredicate : IFunc<TSource, Promise<bool>>
         {
             try
             {
@@ -349,7 +349,7 @@ namespace Proto.Promises.Linq
         }
 
         private static async Promise<TSource> FirstOrDefaultAsyncCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate, TSource d)
-            where TPredicate : Internal.IFunc<TSource, bool>
+            where TPredicate : IFunc<TSource, bool>
         {
             try
             {
@@ -412,7 +412,7 @@ namespace Proto.Promises.Linq
         }
 
         private static async Promise<TSource> FirstOrDefaultAsyncCoreAwait<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate, TSource d)
-            where TPredicate : Internal.IFunc<TSource, Promise<bool>>
+            where TPredicate : IFunc<TSource, Promise<bool>>
         {
             try
             {
@@ -473,7 +473,7 @@ namespace Proto.Promises.Linq
         }
 
         private static async Promise<TSource> FirstOrDefaultAsyncCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate, TSource d)
-            where TPredicate : Internal.IFunc<TSource, bool>
+            where TPredicate : IFunc<TSource, bool>
         {
             try
             {
@@ -534,7 +534,7 @@ namespace Proto.Promises.Linq
         }
 
         private static async Promise<TSource> FirstOrDefaultAsyncCoreAwait<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate, TSource d)
-            where TPredicate : Internal.IFunc<TSource, Promise<bool>>
+            where TPredicate : IFunc<TSource, Promise<bool>>
         {
             try
             {

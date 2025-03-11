@@ -301,7 +301,7 @@ namespace Proto.Promises
             return Internal.PromiseRefBase.CallbackHelperResult<T>.AddCancelWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onCanceled));
         }
 
-#region Resolve Callbacks
+        #region Resolve Callbacks
         /// <summary>
         /// Add a resolve callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
@@ -361,9 +361,9 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onResolved));
         }
-#endregion
+        #endregion
 
-#region Reject Callbacks
+        #region Reject Callbacks
         /// <summary>
         /// Add a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
@@ -428,9 +428,9 @@ namespace Proto.Promises
             return Internal.PromiseRefBase.CallbackHelper<T, T>
                 .AddResolveRejectWait(this, Internal.PromiseRefBase.DelegateWrapper.CreatePassthrough<T>(), Internal.PromiseRefBase.DelegateWrapper.Create(onRejected));
         }
-#endregion
+        #endregion
 
-#region Resolve or Reject Callbacks
+        #region Resolve or Reject Callbacks
         /// <summary>
         /// Add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
@@ -739,7 +739,9 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperArg<T>.AddContinue(this, DelegateWrapper.Create(onContinue));
+            return Internal.PromiseRefBase.CallbackHelperArg<T>.ContinueWith(this,
+                ContinuerArg<T>.ContinueWith(DelegateWrapper.Create(onContinue))
+            );
         }
 
         /// <summary>
@@ -752,7 +754,9 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddContinue(this, DelegateWrapper.Create(onContinue));
+            return Internal.PromiseRefBase.CallbackHelper<T, TResult>.ContinueWith(this,
+                Continuer<T, TResult>.ContinueWith(DelegateWrapper.Create(onContinue))
+            );
         }
 
 
@@ -766,7 +770,9 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperArg<T>.AddContinueWait(this, DelegateWrapper.Create(onContinue));
+            return Internal.PromiseRefBase.CallbackHelperArg<T>.ContinueWithWait(this,
+                ContinuerArg<T>.ContinueWithWait(DelegateWrapper.Create(onContinue))
+            );
         }
 
         /// <summary>
@@ -779,7 +785,9 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddContinueWait(this, DelegateWrapper.Create(onContinue));
+            return Internal.PromiseRefBase.CallbackHelper<T, TResult>.ContinueWithWait(this,
+                Continuer<T, TResult>.ContinueWithWait(DelegateWrapper.Create(onContinue))
+            );
         }
 
         /// <summary>
@@ -794,7 +802,10 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperArg<T>.AddContinue(this, DelegateWrapper.Create(onContinue), cancelationToken);
+            return Internal.PromiseRefBase.CallbackHelperArg<T>.ContinueWith(this,
+                ContinuerArg<T>.ContinueWith(DelegateWrapper.Create(onContinue)),
+                cancelationToken
+            );
         }
 
         /// <summary>
@@ -809,7 +820,10 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddContinue(this, DelegateWrapper.Create(onContinue), cancelationToken);
+            return Internal.PromiseRefBase.CallbackHelper<T, TResult>.ContinueWith(this,
+                Continuer<T, TResult>.ContinueWith(DelegateWrapper.Create(onContinue)),
+                cancelationToken
+            );
         }
 
 
@@ -825,7 +839,10 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperArg<T>.AddContinueWait(this, DelegateWrapper.Create(onContinue), cancelationToken);
+            return Internal.PromiseRefBase.CallbackHelperArg<T>.ContinueWithWait(this,
+                ContinuerArg<T>.ContinueWithWait(DelegateWrapper.Create(onContinue)),
+                cancelationToken
+            );
         }
 
         /// <summary>
@@ -840,7 +857,10 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddContinueWait(this, DelegateWrapper.Create(onContinue), cancelationToken);
+            return Internal.PromiseRefBase.CallbackHelper<T, TResult>.ContinueWithWait(this,
+                Continuer<T, TResult>.ContinueWithWait(DelegateWrapper.Create(onContinue)),
+                cancelationToken
+            );
         }
         #endregion
 
@@ -912,7 +932,7 @@ namespace Proto.Promises
             return Internal.PromiseRefBase.CallbackHelperResult<T>.AddCancelWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(cancelCaptureValue, onCanceled));
         }
 
-#region Resolve Callbacks
+        #region Resolve Callbacks
         /// <summary>
         /// Capture a value and add a resolve callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
@@ -972,9 +992,9 @@ namespace Proto.Promises
 
             return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddResolveWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved));
         }
-#endregion
+        #endregion
 
-#region Reject Callbacks
+        #region Reject Callbacks
         /// <summary>
         /// Capture a value and add a reject callback. Returns a new <see cref="Promise{T}"/> of <typeparamref name="T"/>.
         /// <para/>If/when this is resolved, the new <see cref="Promise{T}"/> will be resolved with the resolve value.
@@ -1044,9 +1064,9 @@ namespace Proto.Promises
                 Internal.PromiseRefBase.DelegateWrapper.CreatePassthrough<T>(),
                 Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
-#endregion
+        #endregion
 
-#region Resolve or Reject Callbacks
+        #region Resolve or Reject Callbacks
         /// <summary>
         /// Capture a value and add a resolve and a reject callback. Returns a new <see cref="Promise"/>.
         /// <para/>If/when this is resolved, <paramref name="onResolved"/> will be invoked with <paramref name="resolveCaptureValue"/> and the resolve value, and the new <see cref="Promise"/> will be resolved when it returns.
@@ -1984,9 +2004,9 @@ namespace Proto.Promises
                 Internal.PromiseRefBase.DelegateWrapper.Create(resolveCaptureValue, onResolved),
                 Internal.PromiseRefBase.DelegateWrapper.Create(rejectCaptureValue, onRejected));
         }
-#endregion
+        #endregion
 
-#region Continue Callbacks
+        #region Continue Callbacks
         /// <summary>
         /// Capture a value and add a continuation callback. Returns a new <see cref="Promise"/>.
         /// <para/>When this is resolved, rejected, or canceled, <paramref name="onContinue"/> will be invoked with <paramref name="continueCaptureValue"/> and the <see cref="ResultContainer"/>, and the new <see cref="Promise"/> will be resolved when it returns.
@@ -1997,7 +2017,9 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperArg<T>.AddContinue(this, DelegateWrapper.Create(continueCaptureValue, onContinue));
+            return Internal.PromiseRefBase.CallbackHelperArg<T>.ContinueWith(this,
+                ContinuerArg<T>.ContinueWith(DelegateWrapper.Create(continueCaptureValue, onContinue))
+            );
         }
 
         /// <summary>
@@ -2010,7 +2032,9 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddContinue(this, DelegateWrapper.Create(continueCaptureValue, onContinue));
+            return Internal.PromiseRefBase.CallbackHelper<T, TResult>.ContinueWith(this,
+                Continuer<T, TResult>.ContinueWith(DelegateWrapper.Create(continueCaptureValue, onContinue))
+            );
         }
 
         /// <summary>
@@ -2023,7 +2047,9 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperArg<T>.AddContinueWait(this, DelegateWrapper.Create(continueCaptureValue, onContinue));
+            return Internal.PromiseRefBase.CallbackHelperArg<T>.ContinueWithWait(this,
+                ContinuerArg<T>.ContinueWithWait(DelegateWrapper.Create(continueCaptureValue, onContinue))
+            );
         }
 
         /// <summary>
@@ -2036,7 +2062,9 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddContinueWait(this, DelegateWrapper.Create(continueCaptureValue, onContinue));
+            return Internal.PromiseRefBase.CallbackHelper<T, TResult>.ContinueWithWait(this,
+                Continuer<T, TResult>.ContinueWithWait(DelegateWrapper.Create(continueCaptureValue, onContinue))
+            );
         }
 
         /// <summary>
@@ -2051,7 +2079,10 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperArg<T>.AddContinue(this, DelegateWrapper.Create(continueCaptureValue, onContinue), cancelationToken);
+            return Internal.PromiseRefBase.CallbackHelperArg<T>.ContinueWith(this,
+                ContinuerArg<T>.ContinueWith(DelegateWrapper.Create(continueCaptureValue, onContinue)),
+                cancelationToken
+            );
         }
 
         /// <summary>
@@ -2066,7 +2097,10 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddContinue(this, DelegateWrapper.Create(continueCaptureValue, onContinue), cancelationToken);
+            return Internal.PromiseRefBase.CallbackHelper<T, TResult>.ContinueWith(this,
+                Continuer<T, TResult>.ContinueWith(DelegateWrapper.Create(continueCaptureValue, onContinue)),
+                cancelationToken
+            );
         }
 
         /// <summary>
@@ -2081,7 +2115,10 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperArg<T>.AddContinueWait(this, DelegateWrapper.Create(continueCaptureValue, onContinue), cancelationToken);
+            return Internal.PromiseRefBase.CallbackHelperArg<T>.ContinueWithWait(this,
+                ContinuerArg<T>.ContinueWithWait(DelegateWrapper.Create(continueCaptureValue, onContinue)),
+                cancelationToken
+            );
         }
 
         /// <summary>
@@ -2096,7 +2133,10 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelper<T, TResult>.AddContinueWait(this, DelegateWrapper.Create(continueCaptureValue, onContinue), cancelationToken);
+            return Internal.PromiseRefBase.CallbackHelper<T, TResult>.ContinueWithWait(this,
+                Continuer<T, TResult>.ContinueWithWait(DelegateWrapper.Create(continueCaptureValue, onContinue)),
+                cancelationToken
+            );
         }
         #endregion
     }
@@ -2157,9 +2197,9 @@ namespace Proto.Promises
         [MethodImpl(Internal.InlineOption)]
         public Promise Catch<TReject>(Func<TReject, Promise> onRejected)
             => AsPromise().Catch(onRejected);
-#endregion
+        #endregion
 
-#region Resolve or Reject Callbacks
+        #region Resolve or Reject Callbacks
         /// <inheritdoc cref="Promise.Then(Action, Action)"/>
         [MethodImpl(Internal.InlineOption)]
         public Promise Then(Action onResolved, Action onRejected)

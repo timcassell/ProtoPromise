@@ -112,7 +112,7 @@ namespace Proto.Promises.Linq
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
             private readonly struct DefaultIfEmptyIterator<TSource, TValueRetriever> : IAsyncIterator<TSource>
-                where TValueRetriever : Internal.IFunc<Promise<TSource>>
+                where TValueRetriever : IFunc<Promise<TSource>>
             {
                 private readonly AsyncEnumerator<TSource> _asyncEnumerator;
                 private readonly TValueRetriever _defaultValueRetriever;
@@ -151,7 +151,7 @@ namespace Proto.Promises.Linq
             }
 
             internal static AsyncEnumerable<TSource> DefaultIfEmpty<TSource, TValueRetriever>(AsyncEnumerator<TSource> asyncEnumerator, TValueRetriever defaultValueRetriever)
-                where TValueRetriever : Internal.IFunc<Promise<TSource>>
+                where TValueRetriever : IFunc<Promise<TSource>>
             {
                 return AsyncEnumerable<TSource>.Create(new DefaultIfEmptyIterator<TSource, TValueRetriever>(asyncEnumerator, defaultValueRetriever));
             }

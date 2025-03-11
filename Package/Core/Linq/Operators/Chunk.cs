@@ -142,7 +142,7 @@ namespace Proto.Promises.Linq
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
             private readonly struct ChunkSameStorageIterator<TSource, TValueRetriever> : IAsyncIterator<TempCollection<TSource>>
-                where TValueRetriever : Internal.IFunc<Promise<TSource>>
+                where TValueRetriever : IFunc<Promise<TSource>>
             {
                 private readonly AsyncEnumerator<TSource> _asyncEnumerator;
                 private readonly int _size;
