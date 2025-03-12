@@ -73,7 +73,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                 Assert.Catch<System.InvalidOperationException>(() => mergeGroup7.Add(intPromise));
                 Assert.Catch<System.InvalidOperationException>(() => mergeGroup7.WaitAsync());
 
-#if ENABLE_IL2CPP
+#if ENABLE_IL2CPP && !UNITY_2021_2_OR_NEWER // Older Unity IL2CPP fails when generic nesting is too deep.
                 mergeGroup8.WaitAsync().Forget();
                 Assert.Catch<System.InvalidOperationException>(() => mergeGroup8.Add(voidPromise));
                 Assert.Catch<System.InvalidOperationException>(() => mergeGroup8.Add(intPromise));
@@ -1009,6 +1009,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
             }
         }
 
+#if !ENABLE_IL2CPP || UNITY_2021_2_OR_NEWER // Older Unity IL2CPP fails when generic nesting is too deep.
         [Test]
         public void PromiseMergeResultsGroupIsResolvedWhenAllPromisesAreCompleted_WithCancelation_14(
             [Values] CancelationType cancelationType,
@@ -1194,6 +1195,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                 Assert.IsTrue(completed);
             }
         }
+#endif // !ENABLE_IL2CPP || UNITY_2021_2_OR_NEWER
 
         [Test]
         public void PromiseMergeResultsGroup_CancelationCallbackExceptionsArePropagated_8(
@@ -1269,6 +1271,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
             }
         }
 
+#if !ENABLE_IL2CPP || UNITY_2021_2_OR_NEWER // Older Unity IL2CPP fails when generic nesting is too deep.
         [Test]
         public void PromiseMergeResultsGroup_CancelationCallbackExceptionsArePropagated_14(
             [Values(CancelationType.None, CancelationType.Deferred)] CancelationType cancelationType,
@@ -1366,5 +1369,6 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                 Assert.IsTrue(completed);
             }
         }
+#endif // !ENABLE_IL2CPP || UNITY_2021_2_OR_NEWER
     }
 }
