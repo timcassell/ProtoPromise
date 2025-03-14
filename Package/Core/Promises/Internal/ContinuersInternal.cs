@@ -12,301 +12,122 @@ using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
-    // These help reduce typed out generics.
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode, StackTraceHidden]
-#endif
-    internal static class Continuer
-    {
-        [MethodImpl(Internal.InlineOption)]
-        internal static Internal.ContinueWithContinuer<TDelegate> ContinueWith<TDelegate>(in TDelegate callback)
-            where TDelegate : IAction<Promise.ResultContainer>
-            => new Internal.ContinueWithContinuer<TDelegate>(callback);
-
-        [MethodImpl(Internal.InlineOption)]
-        internal static Internal.ContinueWithWaitContinuer<TDelegate> ContinueWithWait<TDelegate>(in TDelegate callback)
-            where TDelegate : IFunc<Promise.ResultContainer, Promise>
-            => new Internal.ContinueWithWaitContinuer<TDelegate>(callback);
-    }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode, StackTraceHidden]
-#endif
-    internal static class ContinuerArg<TArg>
-    {
-        [MethodImpl(Internal.InlineOption)]
-        internal static Internal.ContinueWithContinuerArg<TArg, TDelegate> ContinueWith<TDelegate>(in TDelegate callback)
-            where TDelegate : IAction<Promise<TArg>.ResultContainer>
-            => new Internal.ContinueWithContinuerArg<TArg, TDelegate>(callback);
-
-        [MethodImpl(Internal.InlineOption)]
-        internal static Internal.ContinueWithWaitContinuerArg<TArg, TDelegate> ContinueWithWait<TDelegate>(in TDelegate callback)
-            where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise>
-            => new Internal.ContinueWithWaitContinuerArg<TArg, TDelegate>(callback);
-    }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode, StackTraceHidden]
-#endif
-    internal static class ContinuerResult<TResult>
-    {
-        [MethodImpl(Internal.InlineOption)]
-        internal static Internal.ContinueWithContinuerResult<TResult, TDelegate> ContinueWith<TDelegate>(in TDelegate callback)
-            where TDelegate : IFunc<Promise.ResultContainer, TResult>
-            => new Internal.ContinueWithContinuerResult<TResult, TDelegate>(callback);
-
-        [MethodImpl(Internal.InlineOption)]
-        internal static Internal.ContinueWithWaitContinuerResult<TResult, TDelegate> ContinueWithWait<TDelegate>(in TDelegate callback)
-            where TDelegate : IFunc<Promise.ResultContainer, Promise<TResult>>
-            => new Internal.ContinueWithWaitContinuerResult<TResult, TDelegate>(callback);
-    }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode, StackTraceHidden]
-#endif
-    internal static class Continuer<TArg, TResult>
-    {
-        [MethodImpl(Internal.InlineOption)]
-        internal static Internal.ContinueWithContinuer<TArg, TResult, TDelegate> ContinueWith<TDelegate>(in TDelegate callback)
-            where TDelegate : IFunc<Promise<TArg>.ResultContainer, TResult>
-            => new Internal.ContinueWithContinuer<TArg, TResult, TDelegate>(callback);
-
-        [MethodImpl(Internal.InlineOption)]
-        internal static Internal.ContinueWithWaitContinuer<TArg, TResult, TDelegate> ContinueWithWait<TDelegate>(in TDelegate callback)
-            where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>
-            => new Internal.ContinueWithWaitContinuer<TArg, TResult, TDelegate>(callback);
-    }
-
     partial class Internal
     {
+        // This type allows us to treat `Promise` as `Promise<VoidResult>` to reduce code duplication.
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal readonly struct ContinueWithContinuer<TDelegate> : IContinuer<VoidResult, VoidResult>
-            where TDelegate : IAction<Promise.ResultContainer>
+        internal readonly struct PromiseWrapper<T>
         {
-            private readonly TDelegate _callback;
+            internal readonly PromiseRefBase _ref;
+            internal readonly T _result;
+            internal readonly short _id;
 
             [MethodImpl(InlineOption)]
-            public ContinueWithContinuer(TDelegate callback)
-                => _callback = callback;
-
-            [MethodImpl(InlineOption)]
-            public bool ShouldInvoke(IRejectContainer rejectContainer, Promise.State state, out bool isCatch)
+            private PromiseWrapper(Promise promise)
             {
-                isCatch = false;
-                return true;
+                _ref = promise._ref;
+                _result = default;
+                _id = promise._id;
             }
 
             [MethodImpl(InlineOption)]
-            public VoidResult Invoke(in Promise<VoidResult>.ResultContainer resultContainer)
+            private PromiseWrapper(in Promise<T> promise)
             {
-                _callback.Invoke(new Promise.ResultContainer(resultContainer));
-                return default;
+                _ref = promise._ref;
+                _result = promise._result;
+                _id = promise._id;
             }
+
+            [MethodImpl(InlineOption)]
+            private PromiseWrapper(in T result)
+            {
+                _ref = null;
+                _result = result;
+                _id = 0;
+            }
+
+            [MethodImpl(InlineOption)]
+            internal Promise<T> AsPromise()
+                => new Promise<T>(_ref.UnsafeAs<PromiseRefBase.PromiseRef<T>>(), _id, _result);
+
+            [MethodImpl(InlineOption)]
+            public static implicit operator PromiseWrapper<T>(in Promise promise)
+                => new PromiseWrapper<T>(promise);
+
+            [MethodImpl(InlineOption)]
+            public static implicit operator PromiseWrapper<T>(in Promise<T> promise)
+                => new PromiseWrapper<T>(promise);
+
+            [MethodImpl(InlineOption)]
+            public static implicit operator PromiseWrapper<T>(in T result)
+                => new PromiseWrapper<T>(result);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal readonly struct ContinueWithContinuerResult<TResult, TDelegate> : IContinuer<VoidResult, TResult>
-            where TDelegate : IFunc<Promise.ResultContainer, TResult>
+        internal readonly struct VoidTransformer :
+            ITransformer<Promise<VoidResult>.ResultContainer, Promise.ResultContainer>,
+            ITransformer<Promise<VoidResult>.ResultContainer, VoidResult>,
+            ITransformer<VoidResult, PromiseWrapper<VoidResult>>,
+            ITransformer<Promise, PromiseWrapper<VoidResult>>
         {
-            private readonly TDelegate _callback;
+            [MethodImpl(InlineOption)]
+            Promise.ResultContainer ITransformer<Promise<VoidResult>.ResultContainer, Promise.ResultContainer>.Transform(in Promise<VoidResult>.ResultContainer input)
+                => new Promise.ResultContainer(input);
 
             [MethodImpl(InlineOption)]
-            public ContinueWithContinuerResult(TDelegate callback)
-            {
-                _callback = callback;
-            }
+            public VoidResult Transform(in Promise<VoidResult>.ResultContainer input)
+                => default;
 
             [MethodImpl(InlineOption)]
-            public bool ShouldInvoke(IRejectContainer rejectContainer, Promise.State state, out bool isCatch)
-            {
-                isCatch = false;
-                return true;
-            }
+            public PromiseWrapper<VoidResult> Transform(in VoidResult input)
+                => default;
 
             [MethodImpl(InlineOption)]
-            public TResult Invoke(in Promise<VoidResult>.ResultContainer resultContainer)
-                => _callback.Invoke(new Promise.ResultContainer(resultContainer));
+            public PromiseWrapper<VoidResult> Transform(in Promise input)
+                => input;
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal readonly struct ContinueWithContinuerArg<TArg, TDelegate> : IContinuer<TArg, VoidResult>
-            where TDelegate : IAction<Promise<TArg>.ResultContainer>
+        internal readonly struct TTransformer<T> :
+            ITransformer<Promise<T>.ResultContainer, Promise<T>.ResultContainer>,
+            ITransformer<Promise<T>.ResultContainer, T>,
+            ITransformer<T, PromiseWrapper<T>>,
+            ITransformer<Promise<T>, PromiseWrapper<T>>
         {
-            private readonly TDelegate _callback;
+            [MethodImpl(InlineOption)]
+            Promise<T>.ResultContainer ITransformer<Promise<T>.ResultContainer, Promise<T>.ResultContainer>.Transform(in Promise<T>.ResultContainer input)
+                => input;
 
             [MethodImpl(InlineOption)]
-            public ContinueWithContinuerArg(TDelegate callback)
-            {
-                _callback = callback;
-            }
+            public T Transform(in Promise<T>.ResultContainer input)
+                => input.Value;
 
             [MethodImpl(InlineOption)]
-            public bool ShouldInvoke(IRejectContainer rejectContainer, Promise.State state, out bool isCatch)
-            {
-                isCatch = false;
-                return true;
-            }
+            public PromiseWrapper<T> Transform(in T input)
+                => input;
 
             [MethodImpl(InlineOption)]
-            public VoidResult Invoke(in Promise<TArg>.ResultContainer resultContainer)
-            {
-                _callback.Invoke(resultContainer);
-                return default;
-            }
+            public PromiseWrapper<T> Transform(in Promise<T> input)
+                => input;
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal readonly struct ContinueWithContinuer<TArg, TResult, TDelegate> : IContinuer<TArg, TResult>
-            where TDelegate : IFunc<Promise<TArg>.ResultContainer, TResult>
+        internal readonly struct ContinueWithContinuer : IContinuer
         {
-            private readonly TDelegate _callback;
-
             [MethodImpl(InlineOption)]
-            public ContinueWithContinuer(TDelegate callback)
+            public bool ShouldInvoke(IRejectContainer rejectContainer, Promise.State state, out Promise.State invokeType)
             {
-                _callback = callback;
-            }
-
-            [MethodImpl(InlineOption)]
-            public TResult Invoke(TArg arg)
-                => Invoke(new Promise<TArg>.ResultContainer(arg, null, Promise.State.Resolved));
-
-            [MethodImpl(InlineOption)]
-            private TResult Invoke(Promise<TArg>.ResultContainer resultContainer)
-                => _callback.Invoke(resultContainer);
-
-            [MethodImpl(InlineOption)]
-            public bool ShouldInvoke(IRejectContainer rejectContainer, Promise.State state, out bool isCatch)
-            {
-                isCatch = false;
+                invokeType = Promise.State.Resolved;
                 return true;
             }
-
-            [MethodImpl(InlineOption)]
-            public TResult Invoke(in Promise<TArg>.ResultContainer resultContainer)
-                => _callback.Invoke(resultContainer);
-        }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal readonly struct ContinueWithWaitContinuer<TDelegate> : IContinuer<VoidResult, Promise>
-            where TDelegate : IFunc<Promise.ResultContainer, Promise>
-        {
-            private readonly TDelegate _callback;
-
-            [MethodImpl(InlineOption)]
-            public ContinueWithWaitContinuer(TDelegate callback)
-            {
-                _callback = callback;
-            }
-
-            [MethodImpl(InlineOption)]
-            public bool ShouldInvoke(IRejectContainer rejectContainer, Promise.State state, out bool isCatch)
-            {
-                isCatch = false;
-                return true;
-            }
-
-            [MethodImpl(InlineOption)]
-            public Promise Invoke(in Promise<VoidResult>.ResultContainer resultContainer)
-                => _callback.Invoke(new Promise.ResultContainer(resultContainer));
-        }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal readonly struct ContinueWithWaitContinuerResult<TResult, TDelegate> : IContinuer<VoidResult, Promise<TResult>>
-            where TDelegate : IFunc<Promise.ResultContainer, Promise<TResult>>
-        {
-            private readonly TDelegate _callback;
-
-            [MethodImpl(InlineOption)]
-            public ContinueWithWaitContinuerResult(TDelegate callback)
-            {
-                _callback = callback;
-            }
-
-            [MethodImpl(InlineOption)]
-            public bool ShouldInvoke(IRejectContainer rejectContainer, Promise.State state, out bool isCatch)
-            {
-                isCatch = false;
-                return true;
-            }
-
-            [MethodImpl(InlineOption)]
-            public Promise<TResult> Invoke(in Promise<VoidResult>.ResultContainer resultContainer)
-                => _callback.Invoke(new Promise.ResultContainer(resultContainer));
-        }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal readonly struct ContinueWithWaitContinuerArg<TArg, TDelegate> : IContinuer<TArg, Promise>
-            where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise>
-        {
-            private readonly TDelegate _callback;
-
-            [MethodImpl(InlineOption)]
-            public ContinueWithWaitContinuerArg(TDelegate callback)
-            {
-                _callback = callback;
-            }
-
-            [MethodImpl(InlineOption)]
-            public void Invoke(PromiseRefBase handler, IRejectContainer rejectContainer, Promise.State state, PromiseRefBase owner)
-            {
-                var resultContainer = new Promise<TArg>.ResultContainer(handler.GetResult<TArg>(), rejectContainer, state);
-                handler.MaybeDispose();
-                Promise result = Invoke(resultContainer);
-                owner.WaitFor(result);
-            }
-
-            [MethodImpl(InlineOption)]
-            public bool ShouldInvoke(IRejectContainer rejectContainer, Promise.State state, out bool isCatch)
-            {
-                isCatch = false;
-                return true;
-            }
-
-            [MethodImpl(InlineOption)]
-            public Promise Invoke(in Promise<TArg>.ResultContainer resultContainer)
-                => _callback.Invoke(resultContainer);
-        }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal readonly struct ContinueWithWaitContinuer<TArg, TResult, TDelegate> : IContinuer<TArg, Promise<TResult>>
-            where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>
-        {
-            private readonly TDelegate _callback;
-
-            [MethodImpl(InlineOption)]
-            public ContinueWithWaitContinuer(TDelegate callback)
-            {
-                _callback = callback;
-            }
-
-            [MethodImpl(InlineOption)]
-            public bool ShouldInvoke(IRejectContainer rejectContainer, Promise.State state, out bool isCatch)
-            {
-                isCatch = false;
-                return true;
-            }
-
-            [MethodImpl(InlineOption)]
-            public Promise<TResult> Invoke(in Promise<TArg>.ResultContainer resultContainer)
-                => _callback.Invoke(resultContainer);
         }
     }
 }

@@ -53,6 +53,7 @@ namespace Proto.Promises
         partial class PromiseRefBase
         {
             partial void ValidateReturn(Promise other);
+            partial void ValidateReturn(PromiseRefBase other, short promiseId);
             partial void ValidateAwait(PromiseRefBase other, short promiseId);
         }
 
@@ -267,6 +268,9 @@ namespace Proto.Promises
         {
             partial void ValidateReturn(Promise other)
                 => ValidateAwait(other._ref, other._id, false);
+
+            partial void ValidateReturn(PromiseRefBase other, short promiseId)
+                => ValidateAwait(other, promiseId, false);
 
             partial void ValidateAwait(PromiseRefBase other, short promiseId)
                 => ValidateAwait(other, promiseId, true);

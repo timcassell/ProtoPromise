@@ -156,6 +156,16 @@ namespace Proto.Promises
             {
             }
 
+            partial struct CancelationHelper
+            {
+                private CancelationRegistration _cancelationRegistration;
+                // int for Interlocked.Exchange.
+                private int _isCompletedFlag;
+                // The retain counter is to ensure the async op(s) we're waiting for and the cancelation callback
+                // are completed or guaranteed to never invoke before we return the object to the pool.
+                private int _retainCounter;
+            }
+
             partial class WaitAsyncWithCancelationPromise<TResult> : PromiseSingleAwait<TResult>
             {
                 internal CancelationHelper _cancelationHelper;
@@ -253,7 +263,6 @@ namespace Proto.Promises
                 protected int _deferredId = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
             }
 
-            #region Non-cancelable Promises
             partial class DeferredPromise<TResult> : DeferredPromiseBase<TResult>
             {
             }
@@ -293,23 +302,34 @@ namespace Proto.Promises
                 private TRejecter _rejecter;
             }
 
-            partial class ContinuePromiseBase<TArg, TResult, TContinuer> : PromiseSingleAwait<TResult>
-                where TContinuer : IContinuer<TArg, TResult>
+            partial class ContinuePromiseBase<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer> : PromiseWaitPromise<TResult>
+                where TDelegate : IFunc<TDelegateArg, TDelegateResult>
+                where TContinuer : struct, IContinuer
+                where TArgTransformer : struct, ITransformer<Promise<TArg>.ResultContainer, TDelegateArg>
+                where TResultTransformer : struct, ITransformer<TDelegateResult, PromiseWrapper<TResult>>
             {
-                protected TContinuer _continuer;
+                protected TDelegate _callback;
             }
 
-            partial class ContinueWaitPromiseBase<TArg, TContinuer> : PromiseWaitPromise<VoidResult>
-                where TContinuer : IContinuer<TArg, Promise>
+            partial class ContinuePromise<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>
+                : ContinuePromiseBase<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>
+                where TDelegate : IFunc<TDelegateArg, TDelegateResult>
+                where TContinuer : struct, IContinuer
+                where TArgTransformer : struct, ITransformer<Promise<TArg>.ResultContainer, TDelegateArg>
+                where TResultTransformer : struct, ITransformer<TDelegateResult, PromiseWrapper<TResult>>
             {
-                protected TContinuer _continuer;
             }
 
-            partial class ContinueWaitPromiseBase<TArg, TResult, TContinuer> : PromiseWaitPromise<TResult>
-                where TContinuer : IContinuer<TArg, Promise<TResult>>
+            partial class CancelableContinuePromise<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>
+                : ContinuePromiseBase<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>, ICancelable
+                where TDelegate : IFunc<TDelegateArg, TDelegateResult>
+                where TContinuer : struct, IContinuer
+                where TArgTransformer : struct, ITransformer<Promise<TArg>.ResultContainer, TDelegateArg>
+                where TResultTransformer : struct, ITransformer<TDelegateResult, PromiseWrapper<TResult>>
             {
-                protected TContinuer _continuer;
+                internal CancelationHelper _cancelationHelper;
             }
+
 
             partial class PromiseFinally<TResult, TFinalizer> : PromiseSingleAwait<TResult>
                 where TFinalizer : IAction
@@ -335,37 +355,6 @@ namespace Proto.Promises
             {
                 private TCanceler _canceler;
             }
-            #endregion
-
-            #region Cancelable Promises
-            partial struct CancelationHelper
-            {
-                private CancelationRegistration _cancelationRegistration;
-                // int for Interlocked.Exchange.
-                private int _isCompletedFlag;
-                // The retain counter is to ensure the async op(s) we're waiting for and the cancelation callback
-                // are completed or guaranteed to never invoke before we return the object to the pool.
-                private int _retainCounter;
-            }
-
-            partial class CancelableContinuePromise<TArg, TResult, TContinuer> : ContinuePromiseBase<TArg, TResult, TContinuer>
-                where TContinuer : IContinuer<TArg, TResult>
-            {
-                internal CancelationHelper _cancelationHelper;
-            }
-
-            partial class CancelableContinueWaitPromise<TArg, TContinuer> : ContinueWaitPromiseBase<TArg, TContinuer>
-                where TContinuer : IContinuer<TArg, Promise>
-            {
-                internal CancelationHelper _cancelationHelper;
-            }
-
-            partial class CancelableContinueWaitPromise<TArg, TResult, TContinuer> : ContinueWaitPromiseBase<TArg, TResult, TContinuer>
-                where TContinuer : IContinuer<TArg, Promise<TResult>>
-            {
-                internal CancelationHelper _cancelationHelper;
-            }
-            #endregion
 
             #region Multi Promises
             partial class MultiHandleablePromiseBase<TResult> : PromiseSingleAwait<TResult>

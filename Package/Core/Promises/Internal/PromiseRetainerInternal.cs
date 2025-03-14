@@ -111,6 +111,11 @@ namespace Proto.Promises
                     MaybeRepool();
                 }
 
+                internal sealed override void MaybeReportUnhandledAndDispose(Promise.State state)
+                    // We don't report unhandled rejection here unless none of the waiters suppressed.
+                    // This way we only report it once in case multiple waiters were canceled.
+                    => MaybeDispose();
+
                 protected abstract void MaybeRepool();
 
                 internal override bool GetIsCompleted(short promiseId)

@@ -710,9 +710,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.ContinueWith(this,
-                Continuer.ContinueWith(DelegateWrapper.Create(onContinue))
-            );
+            return Internal.PromiseRefBase.CallbackHelperVoid.ContinueWith(this, DelegateWrapper.Create(onContinue));
         }
 
         /// <summary>
@@ -725,9 +723,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.ContinueWith(this,
-                ContinuerResult<TResult>.ContinueWith(DelegateWrapper.Create(onContinue))
-            );
+            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.ContinueWith(this, DelegateWrapper.Create(onContinue));
         }
 
         /// <summary>
@@ -740,9 +736,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.ContinueWithWait(this,
-                Continuer.ContinueWithWait(DelegateWrapper.Create(onContinue))
-            );
+            return Internal.PromiseRefBase.CallbackHelperVoid.ContinueWithWait(this, DelegateWrapper.Create(onContinue));
         }
 
         /// <summary>
@@ -755,9 +749,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.ContinueWithWait(this,
-                ContinuerResult<TResult>.ContinueWithWait(DelegateWrapper.Create(onContinue))
-            );
+            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.ContinueWithWait(this, DelegateWrapper.Create(onContinue));
         }
 
         /// <summary>
@@ -772,10 +764,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.ContinueWith(this,
-                Continuer.ContinueWith(DelegateWrapper.Create(onContinue)),
-                cancelationToken
-            );
+            return Internal.PromiseRefBase.CallbackHelperVoid.ContinueWith(this, DelegateWrapper.Create(onContinue), cancelationToken);
         }
 
         /// <summary>
@@ -790,10 +779,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.ContinueWith(this,
-                ContinuerResult<TResult>.ContinueWith(DelegateWrapper.Create(onContinue)),
-                cancelationToken
-            );
+            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.ContinueWith(this, DelegateWrapper.Create(onContinue), cancelationToken);
         }
 
         /// <summary>
@@ -808,10 +794,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.ContinueWithWait(this,
-                Continuer.ContinueWithWait(DelegateWrapper.Create(onContinue)),
-                cancelationToken
-            );
+            return Internal.PromiseRefBase.CallbackHelperVoid.ContinueWithWait(this, DelegateWrapper.Create(onContinue), cancelationToken);
         }
 
         /// <summary>
@@ -826,10 +809,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.ContinueWithWait(this,
-                ContinuerResult<TResult>.ContinueWithWait(DelegateWrapper.Create(onContinue)),
-                cancelationToken
-            );
+            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.ContinueWithWait(this, DelegateWrapper.Create(onContinue), cancelationToken);
         }
         #endregion
 
@@ -1985,9 +1965,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.ContinueWith(this,
-                Continuer.ContinueWith(DelegateWrapper.Create(continueCaptureValue, onContinue))
-            );
+            return Internal.PromiseRefBase.CallbackHelperVoid.ContinueWith(this, DelegateWrapper.Create(continueCaptureValue, onContinue));
         }
 
         /// <summary>
@@ -2000,9 +1978,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.ContinueWith(this,
-                ContinuerResult<TResult>.ContinueWith(DelegateWrapper.Create(continueCaptureValue, onContinue))
-            );
+            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.ContinueWith(this, DelegateWrapper.Create(continueCaptureValue, onContinue));
         }
 
         /// <summary>
@@ -2015,9 +1991,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.ContinueWithWait(this,
-                Continuer.ContinueWithWait(DelegateWrapper.Create(continueCaptureValue, onContinue))
-            );
+            return Internal.PromiseRefBase.CallbackHelperVoid.ContinueWithWait(this, DelegateWrapper.Create(continueCaptureValue, onContinue));
         }
 
         /// <summary>
@@ -2030,9 +2004,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.ContinueWithWait(this,
-                ContinuerResult<TResult>.ContinueWithWait(DelegateWrapper.Create(continueCaptureValue, onContinue))
-            );
+            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.ContinueWithWait(this, DelegateWrapper.Create(continueCaptureValue, onContinue));
         }
 
         /// <summary>
@@ -2047,10 +2019,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.ContinueWith(this,
-                Continuer.ContinueWith(DelegateWrapper.Create(continueCaptureValue, onContinue)),
-                cancelationToken
-            );
+            return Internal.PromiseRefBase.CallbackHelperVoid.ContinueWith(this, DelegateWrapper.Create(continueCaptureValue, onContinue), cancelationToken);
         }
 
         /// <summary>
@@ -2065,10 +2034,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.ContinueWith(this,
-                ContinuerResult<TResult>.ContinueWith(DelegateWrapper.Create(continueCaptureValue, onContinue)),
-                cancelationToken
-            );
+            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.ContinueWith(this, DelegateWrapper.Create(continueCaptureValue, onContinue), cancelationToken);
         }
 
         /// <summary>
@@ -2083,10 +2049,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.ContinueWithWait(this,
-                Continuer.ContinueWithWait(DelegateWrapper.Create(continueCaptureValue, onContinue)),
-                cancelationToken
-            );
+            return Internal.PromiseRefBase.CallbackHelperVoid.ContinueWithWait(this, DelegateWrapper.Create(continueCaptureValue, onContinue), cancelationToken);
         }
 
         /// <summary>
@@ -2101,10 +2064,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onContinue, nameof(onContinue), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.ContinueWithWait(this,
-                ContinuerResult<TResult>.ContinueWithWait(DelegateWrapper.Create(continueCaptureValue, onContinue)),
-                cancelationToken
-            );
+            return Internal.PromiseRefBase.CallbackHelperResult<TResult>.ContinueWithWait(this, DelegateWrapper.Create(continueCaptureValue, onContinue), cancelationToken);
         }
         #endregion
 
