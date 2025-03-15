@@ -73,7 +73,7 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                 Assert.Catch<System.InvalidOperationException>(() => mergeGroup7.Add(intPromise));
                 Assert.Catch<System.InvalidOperationException>(() => mergeGroup7.WaitAsync());
 
-#if ENABLE_IL2CPP && !UNITY_2021_2_OR_NEWER // Older Unity IL2CPP fails when generic nesting is too deep.
+#if ENABLE_IL2CPP
                 mergeGroup8.WaitAsync().Forget();
                 Assert.Catch<System.InvalidOperationException>(() => mergeGroup8.Add(voidPromise));
                 Assert.Catch<System.InvalidOperationException>(() => mergeGroup8.Add(intPromise));
@@ -833,7 +833,8 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                 float value6 = 1.0f;
 
                 bool completed = false;
-                var mergedGroup = mergeGroup
+
+                mergeGroup
                     .Add(TestHelper.BuildPromise(completeType1, alreadyComplete1, value1, expectedException, out var tryCompleter1))
                     .Add(TestHelper.BuildPromise(completeType2, alreadyComplete2Through7, expectedException, out var tryCompleter2))
                     .Add(TestHelper.BuildPromise(completeType3, alreadyComplete2Through7, value3, expectedException, out var tryCompleter3))
@@ -841,26 +842,23 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                     .Add(TestHelper.BuildPromise(completeType5, alreadyComplete2Through7, value5, expectedException, out var tryCompleter5))
                     .Add(TestHelper.BuildPromise(completeType6, alreadyComplete2Through7, value6, expectedException, out var tryCompleter6))
                     .Add(TestHelper.BuildPromise(completeType7, alreadyComplete2Through7, expectedException, out var tryCompleter7))
-                    .Add(TestHelper.BuildPromise(completeType8, alreadyComplete8, expectedException, out var tryCompleter8));
-
-                async Promise Await()
-                {
-                    var result = await mergedGroup.WaitAsync().AwaitNoThrow();
-                    
-                    completed = true;
-                    Assert.AreEqual(Promise.State.Resolved, result.State);
-                    var ((result1, result2, result3, result4, result5, result6, result7), result8) = result.Value;
-                    AssertResult(completeType1, result1, value1, expectedException);
-                    AssertResult(completeType2, result2, expectedException);
-                    AssertResult(completeType3, result3, value3, expectedException);
-                    AssertResult(completeType4, result4, expectedException);
-                    AssertResult(completeType5, result5, value5, expectedException);
-                    AssertResult(completeType6, result6, value6, expectedException);
-                    AssertResult(completeType7, result7, expectedException);
-                    AssertResult(completeType8, result8, expectedException);
-                }
-
-                Await().Forget();
+                    .Add(TestHelper.BuildPromise(completeType8, alreadyComplete8, expectedException, out var tryCompleter8))
+                    .WaitAsync()
+                    .ContinueWith(result =>
+                    {
+                        completed = true;
+                        Assert.AreEqual(Promise.State.Resolved, result.State);
+                        var ((result1, result2, result3, result4, result5, result6, result7), result8) = result.Value;
+                        AssertResult(completeType1, result1, value1, expectedException);
+                        AssertResult(completeType2, result2, expectedException);
+                        AssertResult(completeType3, result3, value3, expectedException);
+                        AssertResult(completeType4, result4, expectedException);
+                        AssertResult(completeType5, result5, value5, expectedException);
+                        AssertResult(completeType6, result6, value6, expectedException);
+                        AssertResult(completeType7, result7, expectedException);
+                        AssertResult(completeType8, result8, expectedException);
+                    })
+                    .Forget();
 
                 Assert.AreEqual(alreadyComplete1 && alreadyComplete2Through7 && alreadyComplete8, completed);
 
@@ -939,10 +937,11 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                     .Add(TestHelper.BuildPromise(completeType7, alreadyComplete2Through7, expectedException, groupCancelationToken, out var tryCompleter7))
                     .Add(TestHelper.BuildPromise(completeType8, alreadyComplete8, value8, expectedException, groupCancelationToken, out var tryCompleter8))
                     .WaitAsync()
-                    .Then(cv =>
+                    .ContinueWith(result =>
                     {
                         completed = true;
-                        var ((result1, result2, result3, result4, result5, result6, result7), result8) = cv;
+                        Assert.AreEqual(Promise.State.Resolved, result.State);
+                        var ((result1, result2, result3, result4, result5, result6, result7), result8) = result.Value;
                         AssertResult(GetExpectedState(0, cancelationType, completeValues), result1, value1, expectedException);
                         AssertResult(GetExpectedState(1, cancelationType, completeValues), result2, expectedException);
                         AssertResult(GetExpectedState(2, cancelationType, completeValues), result3, value3, expectedException);
@@ -1010,7 +1009,6 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
             }
         }
 
-#if !ENABLE_IL2CPP || UNITY_2021_2_OR_NEWER // Older Unity IL2CPP fails when generic nesting is too deep.
         [Test]
         public void PromiseMergeResultsGroupIsResolvedWhenAllPromisesAreCompleted_WithCancelation_14(
             [Values] CancelationType cancelationType,
@@ -1196,7 +1194,6 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                 Assert.IsTrue(completed);
             }
         }
-#endif // !ENABLE_IL2CPP || UNITY_2021_2_OR_NEWER
 
         [Test]
         public void PromiseMergeResultsGroup_CancelationCallbackExceptionsArePropagated_8(
@@ -1272,7 +1269,6 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
             }
         }
 
-#if !ENABLE_IL2CPP || UNITY_2021_2_OR_NEWER // Older Unity IL2CPP fails when generic nesting is too deep.
         [Test]
         public void PromiseMergeResultsGroup_CancelationCallbackExceptionsArePropagated_14(
             [Values(CancelationType.None, CancelationType.Deferred)] CancelationType cancelationType,
@@ -1370,6 +1366,5 @@ namespace ProtoPromiseTests.APIs.PromiseGroups
                 Assert.IsTrue(completed);
             }
         }
-#endif // !ENABLE_IL2CPP || UNITY_2021_2_OR_NEWER
     }
 }

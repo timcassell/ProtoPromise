@@ -67,6 +67,28 @@ namespace Proto.Promises
         [MethodImpl(Internal.InlineOption)]
         internal static Internal.DelegateCapture2ArgResult<TCapture, TArg1, TArg2, TResult> Create<TCapture, TArg1, TArg2, TResult>(in TCapture capturedValue, Func<TCapture, TArg1, TArg2, TResult> callback)
             => new Internal.DelegateCapture2ArgResult<TCapture, TArg1, TArg2, TResult>(capturedValue, callback);
+
+        // Unity IL2CPP has a maximum nested generic depth, so unfortunately we have to create separate struct wrappers,
+        // so the generic will only nest <TArg> instead of <Promise<TArg>.ResultContainer>
+        #region ResultContainer Delegates
+
+        [MethodImpl(Internal.InlineOption)]
+        internal static Internal.DelegateResultContainerArgVoid<TArg> Create<TArg>(Action<Promise<TArg>.ResultContainer> callback)
+            => new Internal.DelegateResultContainerArgVoid<TArg>(callback);
+
+        [MethodImpl(Internal.InlineOption)]
+        internal static Internal.DelegateResultContainerArgResult<TArg, TResult> Create<TArg, TResult>(Func<Promise<TArg>.ResultContainer, TResult> callback)
+            => new Internal.DelegateResultContainerArgResult<TArg, TResult>(callback);
+
+        [MethodImpl(Internal.InlineOption)]
+        internal static Internal.DelegateResultContainerCaptureArgVoid<TCapture, TArg> Create<TCapture, TArg>(in TCapture capturedValue, Action<TCapture, Promise<TArg>.ResultContainer> callback)
+            => new Internal.DelegateResultContainerCaptureArgVoid<TCapture, TArg>(capturedValue, callback);
+
+        [MethodImpl(Internal.InlineOption)]
+        internal static Internal.DelegateResultContainerCaptureArgResult<TCapture, TArg, TResult> Create<TCapture, TArg, TResult>(in TCapture capturedValue, Func<TCapture, Promise<TArg>.ResultContainer, TResult> callback)
+            => new Internal.DelegateResultContainerCaptureArgResult<TCapture, TArg, TResult>(capturedValue, callback);
+
+        #endregion ResultContainer Delegates
     }
 
     partial class Internal
@@ -406,5 +428,125 @@ namespace Proto.Promises
             Promise<TResult> IFunc<TArg1, TArg2, Promise<TResult>>.Invoke(in TArg1 arg1, in TArg2 arg2)
                 => Promise.Resolved(_callback.Invoke(_capturedValue, arg1, arg2));
         }
+
+        // Unity IL2CPP has a maximum nested generic depth, so unfortunately we have to create separate struct wrappers,
+        // so the generic will only nest <TArg> instead of <Promise<TArg>.ResultContainer>
+        #region ResultContainer Delegates
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal readonly struct DelegateResultContainerArgVoid<TArg> : IAction<Promise<TArg>.ResultContainer>,
+            IFunc<Promise<TArg>.ResultContainer, Promise>,
+            IFunc<Promise<TArg>.ResultContainer, VoidResult>
+        {
+            private readonly Action<Promise<TArg>.ResultContainer> _callback;
+
+            [MethodImpl(InlineOption)]
+            public DelegateResultContainerArgVoid(Action<Promise<TArg>.ResultContainer> callback)
+                => _callback = callback;
+
+            [MethodImpl(InlineOption)]
+            public void Invoke(in Promise<TArg>.ResultContainer arg)
+                => _callback.Invoke(arg);
+
+            [MethodImpl(InlineOption)]
+            Promise IFunc<Promise<TArg>.ResultContainer, Promise>.Invoke(in Promise<TArg>.ResultContainer arg)
+            {
+                _callback.Invoke(arg);
+                return Promise.Resolved();
+            }
+
+            [MethodImpl(InlineOption)]
+            VoidResult IFunc<Promise<TArg>.ResultContainer, VoidResult>.Invoke(in Promise<TArg>.ResultContainer arg)
+            {
+                _callback.Invoke(arg);
+                return default;
+            }
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal readonly struct DelegateResultContainerArgResult<TArg, TResult> : IFunc<Promise<TArg>.ResultContainer, TResult>,
+            IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>
+        {
+            private readonly Func<Promise<TArg>.ResultContainer, TResult> _callback;
+
+            [MethodImpl(InlineOption)]
+            public DelegateResultContainerArgResult(Func<Promise<TArg>.ResultContainer, TResult> callback)
+                => _callback = callback;
+
+            [MethodImpl(InlineOption)]
+            public TResult Invoke(in Promise<TArg>.ResultContainer arg)
+                => _callback.Invoke(arg);
+
+            [MethodImpl(InlineOption)]
+            Promise<TResult> IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>.Invoke(in Promise<TArg>.ResultContainer arg)
+                => Promise.Resolved(_callback.Invoke(arg));
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal readonly struct DelegateResultContainerCaptureArgVoid<TCapture, TArg> : IAction<Promise<TArg>.ResultContainer>,
+            IFunc<Promise<TArg>.ResultContainer, Promise>,
+            IFunc<Promise<TArg>.ResultContainer, VoidResult>
+        {
+            private readonly Action<TCapture, Promise<TArg>.ResultContainer> _callback;
+            private readonly TCapture _capturedValue;
+
+            [MethodImpl(InlineOption)]
+            public DelegateResultContainerCaptureArgVoid(in TCapture capturedValue, Action<TCapture, Promise<TArg>.ResultContainer> callback)
+            {
+                _callback = callback;
+                _capturedValue = capturedValue;
+            }
+
+            [MethodImpl(InlineOption)]
+            public void Invoke(in Promise<TArg>.ResultContainer arg)
+                => _callback.Invoke(_capturedValue, arg);
+
+            [MethodImpl(InlineOption)]
+            Promise IFunc<Promise<TArg>.ResultContainer, Promise>.Invoke(in Promise<TArg>.ResultContainer arg)
+            {
+                _callback.Invoke(_capturedValue, arg);
+                return Promise.Resolved();
+            }
+
+            [MethodImpl(InlineOption)]
+            VoidResult IFunc<Promise<TArg>.ResultContainer, VoidResult>.Invoke(in Promise<TArg>.ResultContainer arg)
+            {
+                _callback.Invoke(_capturedValue, arg);
+                return default;
+            }
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal readonly struct DelegateResultContainerCaptureArgResult<TCapture, TArg, TResult> : IFunc<Promise<TArg>.ResultContainer, TResult>,
+            IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>
+        {
+            private readonly Func<TCapture, Promise<TArg>.ResultContainer, TResult> _callback;
+            private readonly TCapture _capturedValue;
+
+            [MethodImpl(InlineOption)]
+            public DelegateResultContainerCaptureArgResult(in TCapture capturedValue, Func<TCapture, Promise<TArg>.ResultContainer, TResult> callback)
+            {
+                _callback = callback;
+                _capturedValue = capturedValue;
+            }
+
+            [MethodImpl(InlineOption)]
+            public TResult Invoke(in Promise<TArg>.ResultContainer arg)
+                => _callback.Invoke(_capturedValue, arg);
+
+            [MethodImpl(InlineOption)]
+            Promise<TResult> IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>.Invoke(in Promise<TArg>.ResultContainer arg)
+                => Promise.Resolved(_callback.Invoke(_capturedValue, arg));
+        }
+
+        #endregion ResultContainer Delegates
     }
 }
