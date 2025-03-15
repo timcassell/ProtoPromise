@@ -539,23 +539,26 @@ namespace Proto.Promises
                     where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>
                     => ContinueWith<Promise<TArg>.ResultContainer, Promise<TResult>, TDelegate, ContinueWithContinuer, TTransformer<TArg>, TTransformer<TResult>>(_this, callback, cancelationToken);
 
+                // Unity IL2CPP doesn't generate necessary code when simply using `default(TType).Method`, so we have to pass in instances of TContinuer, TArgTransformer, TResultTransformer.
+                // They are not stored as fields, so they do not consume any memory, and it is later safe to use `default(TType).Method` in the ContinuePromise class.
                 internal static Promise<TResult> ContinueWith<TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>(
-                    PromiseWrapper<TArg> _this, in TDelegate callback)
+                    PromiseWrapper<TArg> _this, in TDelegate callback,
+                    TContinuer continuer = default, TArgTransformer argTransformer = default, TResultTransformer resultTransformer = default)
                     where TDelegate : IFunc<TDelegateArg, TDelegateResult>
                     where TContinuer : struct, IContinuer
                     where TArgTransformer : struct, ITransformer<Promise<TArg>.ResultContainer, TDelegateArg>
                     where TResultTransformer : struct, ITransformer<TDelegateResult, PromiseWrapper<TResult>>
                 {
                     // .Catch(Cancelation) APIs return the same Promise type, so the continuer must be a type that should invoke if the state is resolved.
-                    Debug.Assert(default(TContinuer).ShouldInvoke(null, Promise.State.Resolved, out _));
+                    Debug.Assert(continuer.ShouldInvoke(null, Promise.State.Resolved, out _));
 
                     if (_this._ref == null)
                     {
                         try
                         {
-                            var delArg = default(TArgTransformer).Transform(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved));
+                            var delArg = argTransformer.Transform(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved));
                             var delResult = callback.Invoke(delArg);
-                            return default(TResultTransformer).Transform(delResult).AsPromise().Duplicate();
+                            return resultTransformer.Transform(delResult).AsPromise().Duplicate();
                         }
                         catch (Exception e)
                         {
@@ -570,19 +573,27 @@ namespace Proto.Promises
                         var rejectContainer = _this._ref.RejectContainer;
                         _this._ref.SuppressRejection = true;
                         _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                        if (default(TContinuer).ShouldInvoke(rejectContainer, state, out _))
+                        if (continuer.ShouldInvoke(rejectContainer, state, out var invokeType))
                         {
+                            var delArg = argTransformer.Transform(new Promise<TArg>.ResultContainer(arg, rejectContainer, state));
                             try
                             {
-                                var delArg = default(TArgTransformer).Transform(new Promise<TArg>.ResultContainer(arg, rejectContainer, state));
                                 var delResult = callback.Invoke(delArg);
-                                return default(TResultTransformer).Transform(delResult).AsPromise().Duplicate();
+                                return resultTransformer.Transform(delResult).AsPromise().Duplicate();
+                            }
+                            catch (RethrowException e)
+                            {
+                                // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
+                                return state == Promise.State.Rejected && invokeType == Promise.State.Rejected
+                                    ? Promise<TResult>.Rejected(rejectContainer)
+                                    : Promise<TResult>.Rejected(e);
                             }
                             catch (Exception e)
                             {
                                 return Promise<TResult>.FromException(e);
                             }
                         }
+
                         Debug.Assert(state == Promise.State.Canceled || state == Promise.State.Rejected);
                         return state == Promise.State.Canceled
                             ? Promise<TResult>.Canceled()
@@ -595,14 +606,15 @@ namespace Proto.Promises
                 }
 
                 internal static Promise<TResult> ContinueWith<TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>(
-                    PromiseWrapper<TArg> _this, in TDelegate callback, CancelationToken cancelationToken)
+                    PromiseWrapper<TArg> _this, in TDelegate callback, CancelationToken cancelationToken,
+                    TContinuer continuer = default, TArgTransformer argTransformer = default, TResultTransformer resultTransformer = default)
                     where TDelegate : IFunc<TDelegateArg, TDelegateResult>
                     where TContinuer : struct, IContinuer
                     where TArgTransformer : struct, ITransformer<Promise<TArg>.ResultContainer, TDelegateArg>
                     where TResultTransformer : struct, ITransformer<TDelegateResult, PromiseWrapper<TResult>>
                 {
                     // .Catch(Cancelation) APIs return the same Promise type, so the continuer must be a type that should invoke if the state is resolved.
-                    Debug.Assert(default(TContinuer).ShouldInvoke(null, Promise.State.Resolved, out _));
+                    Debug.Assert(continuer.ShouldInvoke(null, Promise.State.Resolved, out _));
 
                     if (cancelationToken.IsCancelationRequested)
                     {
@@ -613,9 +625,9 @@ namespace Proto.Promises
                     {
                         try
                         {
-                            var delArg = default(TArgTransformer).Transform(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved));
+                            var delArg = argTransformer.Transform(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved));
                             var delResult = callback.Invoke(delArg);
-                            return default(TResultTransformer).Transform(delResult).AsPromise().Duplicate();
+                            return resultTransformer.Transform(delResult).AsPromise().Duplicate();
                         }
                         catch (Exception e)
                         {
@@ -630,19 +642,27 @@ namespace Proto.Promises
                         var rejectContainer = _this._ref.RejectContainer;
                         _this._ref.SuppressRejection = true;
                         _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                        if (default(TContinuer).ShouldInvoke(rejectContainer, state, out _))
+                        if (continuer.ShouldInvoke(rejectContainer, state, out var invokeType))
                         {
+                            var delArg = argTransformer.Transform(new Promise<TArg>.ResultContainer(arg, rejectContainer, state));
                             try
                             {
-                                var delArg = default(TArgTransformer).Transform(new Promise<TArg>.ResultContainer(arg, rejectContainer, state));
                                 var delResult = callback.Invoke(delArg);
-                                return default(TResultTransformer).Transform(delResult).AsPromise().Duplicate();
+                                return resultTransformer.Transform(delResult).AsPromise().Duplicate();
+                            }
+                            catch (RethrowException e)
+                            {
+                                // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
+                                return state == Promise.State.Rejected && invokeType == Promise.State.Rejected
+                                    ? Promise<TResult>.Rejected(rejectContainer)
+                                    : Promise<TResult>.Rejected(e);
                             }
                             catch (Exception e)
                             {
                                 return Promise<TResult>.FromException(e);
                             }
                         }
+
                         Debug.Assert(state == Promise.State.Canceled || state == Promise.State.Rejected);
                         return state == Promise.State.Canceled
                             ? Promise<TResult>.Canceled()

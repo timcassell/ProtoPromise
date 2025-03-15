@@ -25,27 +25,11 @@ namespace Proto.Promises
             internal readonly short _id;
 
             [MethodImpl(InlineOption)]
-            private PromiseWrapper(Promise promise)
+            internal PromiseWrapper(PromiseRefBase promise, short promiseId, T result)
             {
-                _ref = promise._ref;
-                _result = default;
-                _id = promise._id;
-            }
-
-            [MethodImpl(InlineOption)]
-            private PromiseWrapper(in Promise<T> promise)
-            {
-                _ref = promise._ref;
-                _result = promise._result;
-                _id = promise._id;
-            }
-
-            [MethodImpl(InlineOption)]
-            private PromiseWrapper(in T result)
-            {
-                _ref = null;
+                _ref = promise;
                 _result = result;
-                _id = 0;
+                _id = promiseId;
             }
 
             [MethodImpl(InlineOption)]
@@ -54,15 +38,15 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             public static implicit operator PromiseWrapper<T>(in Promise promise)
-                => new PromiseWrapper<T>(promise);
+                => new PromiseWrapper<T>(promise._ref, promise._id, default);
 
             [MethodImpl(InlineOption)]
             public static implicit operator PromiseWrapper<T>(in Promise<T> promise)
-                => new PromiseWrapper<T>(promise);
+                => new PromiseWrapper<T>(promise._ref, promise._id, promise._result);
 
             [MethodImpl(InlineOption)]
             public static implicit operator PromiseWrapper<T>(in T result)
-                => new PromiseWrapper<T>(result);
+                => new PromiseWrapper<T>(null, 0, result);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE

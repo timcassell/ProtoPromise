@@ -90,9 +90,18 @@ namespace Proto.Promises
                                 state = VerifyAndGetResultFromComplete(promise._ref, promiseSingleAwait);
                             }
                         }
-                        catch (RethrowException) when (state == Promise.State.Rejected && invokeType == Promise.State.Rejected)
+                        catch (RethrowException e)
                         {
-                            RejectContainer = rejectContainer;
+                            // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
+                            if (state == Promise.State.Rejected && invokeType == Promise.State.Rejected)
+                            {
+                                RejectContainer = rejectContainer;
+                            }
+                            else
+                            {
+                                RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                                state = Promise.State.Rejected;
+                            }
                         }
                         catch (OperationCanceledException)
                         {
