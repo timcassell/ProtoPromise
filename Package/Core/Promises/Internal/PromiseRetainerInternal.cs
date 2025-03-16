@@ -125,14 +125,10 @@ namespace Proto.Promises
                     return State != Promise.State.Pending;
                 }
 
-                internal override PromiseRefBase GetDuplicate(short promiseId)
-                {
-                    ValidateId(promiseId, this, 2);
-                    ThrowIfInPool(this);
-                    return this;
-                }
+                internal sealed override PromiseRefBase GetDuplicate(short promiseId)
+                    => GetDuplicateT(promiseId);
 
-                internal override PromiseRef<TResult> GetDuplicateT(short promiseId)
+                internal sealed override PromiseRef<TResult> GetDuplicateT(short promiseId)
                 {
                     ValidateId(promiseId, this, 2);
                     ThrowIfInPool(this);

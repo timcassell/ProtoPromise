@@ -526,11 +526,7 @@ namespace Proto.Promises
                 }
 
                 internal override PromiseRefBase GetDuplicate(short promiseId)
-                {
-                    var newPromise = PromiseDuplicate<VoidResult>.GetOrCreate();
-                    HookupNewPromise(promiseId, newPromise);
-                    return newPromise;
-                }
+                    => GetDuplicateT(promiseId);
 
                 internal override PromiseRef<TResult> GetDuplicateT(short promiseId)
                 {

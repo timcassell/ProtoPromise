@@ -50,19 +50,16 @@ namespace Proto.Promises
                 where TArgTransformer : struct, ITransformer<Promise<TArg>.ResultContainer, TDelegateArg>
                 where TResultTransformer : struct, ITransformer<TDelegateResult, PromiseWrapper<TResult>>
             {
-                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                protected void HandleCore(PromiseRefBase handler, Promise.State state)
                 {
                     ThrowIfInPool(this);
 
-                    handler.SetCompletionState(state);
                     var rejectContainer = handler.RejectContainer;
                     handler.SuppressRejection = true;
 
-                    bool firstContinue = _firstContinue;
-                    _firstContinue = false;
                     var callback = _callback;
                     _callback = default;
-                    if (firstContinue & default(TContinuer).ShouldInvoke(rejectContainer, state, out var invokeType))
+                    if (default(TContinuer).ShouldInvoke(rejectContainer, state, out var invokeTypes))
                     {
                         var arg = handler.GetResult<TArg>();
                         handler.MaybeDispose();
@@ -71,29 +68,29 @@ namespace Proto.Promises
                         {
                             var delArg = default(TArgTransformer).Transform(new Promise<TArg>.ResultContainer(arg, rejectContainer, state));
                             var delResult = callback.Invoke(delArg);
-                            var promise = default(TResultTransformer).Transform(delResult);
-                            ValidateReturn(promise._ref, promise._id);
+                            var promiseWrapper = default(TResultTransformer).Transform(delResult);
+                            ValidateReturn(promiseWrapper._ref, promiseWrapper._id);
 
-                            this.SetPrevious(promise._ref);
-                            if (promise._ref == null)
+                            this.SetPrevious(promiseWrapper._ref);
+                            if (promiseWrapper._ref == null)
                             {
-                                _result = promise._result;
+                                _result = promiseWrapper._result;
                                 state = Promise.State.Resolved;
                             }
                             else
                             {
-                                PromiseRefBase promiseSingleAwait = promise._ref.AddWaiter(promise._id, this, out var previousWaiter);
+                                PromiseRefBase promiseSingleAwait = promiseWrapper._ref.AddWaiter(promiseWrapper._id, this, out var previousWaiter);
                                 if (previousWaiter == PendingAwaitSentinel.s_instance)
                                 {
                                     return;
                                 }
-                                state = VerifyAndGetResultFromComplete(promise._ref, promiseSingleAwait);
+                                state = VerifyAndGetResultFromComplete(promiseWrapper._ref, promiseSingleAwait);
                             }
                         }
                         catch (RethrowException e)
                         {
                             // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
-                            if (state == Promise.State.Rejected && invokeType == Promise.State.Rejected)
+                            if (state == Promise.State.Rejected && (invokeTypes & InvokeTypes.Rejected) != 0 && (invokeTypes & InvokeTypes.Canceled) == 0)
                             {
                                 RejectContainer = rejectContainer;
                             }
@@ -119,7 +116,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        if (invokeType != Promise.State.Resolved)
+                        if ((invokeTypes & InvokeTypes.Resolved) == 0)
                         {
                             _result = handler.GetResult<TResult>();
                         }
@@ -127,7 +124,7 @@ namespace Proto.Promises
                         RejectContainer = rejectContainer;
                     }
 
-                    // We call HandleNextInternal last, so that if the runtime wants to, it can tail-call optimize.
+                    // We handle next last, so that if the runtime wants to, it can tail-call optimize.
                     // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
                     HandleNextInternal(state);
                 }
@@ -167,6 +164,14 @@ namespace Proto.Promises
                 {
                     Dispose();
                     ObjectPool.MaybeRepool(this);
+                }
+
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                {
+                    ThrowIfInPool(this);
+
+                    handler.SetCompletionState(state);
+                    HandleCore(handler, state);
                 }
             }
 
@@ -221,16 +226,10 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
 
-                    if (!_firstContinue)
-                    {
-                        handler.SetCompletionState(state);
-                        HandleSelf(handler, state);
-                        return;
-                    }
+                    handler.SetCompletionState(state);
 
                     if (!_cancelationHelper.TrySetCompleted())
                     {
-                        handler.SetCompletionState(state);
                         handler.MaybeReportUnhandledAndDispose(state);
                         MaybeDispose();
                         return;
@@ -239,7 +238,143 @@ namespace Proto.Promises
                     _cancelationHelper.UnregisterAndWait();
                     _cancelationHelper.ReleaseOne();
 
-                    base.Handle(handler, state);
+                    HandleCore(handler, state);
+                }
+
+                void ICancelable.Cancel()
+                {
+                    ThrowIfInPool(this);
+                    if (_cancelationHelper.TrySetCompleted())
+                    {
+                        HandleNextInternal(Promise.State.Canceled);
+                    }
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private sealed partial class ContinueWaitPromise<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>
+                : ContinuePromiseBase<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>
+                where TDelegate : IFunc<TDelegateArg, TDelegateResult>
+                where TContinuer : struct, IContinuer
+                where TArgTransformer : struct, ITransformer<Promise<TArg>.ResultContainer, TDelegateArg>
+                where TResultTransformer : struct, ITransformer<TDelegateResult, PromiseWrapper<TResult>>
+            {
+                private ContinueWaitPromise() { }
+
+                [MethodImpl(InlineOption)]
+                private static ContinueWaitPromise<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<ContinueWaitPromise<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new ContinueWaitPromise<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>()
+                        : obj.UnsafeAs<ContinueWaitPromise<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static ContinueWaitPromise<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer> GetOrCreate(in TDelegate callback)
+                {
+                    var promise = GetOrCreate();
+                    promise.Reset();
+                    promise._callback = callback;
+                    return promise;
+                }
+
+                internal override void MaybeDispose()
+                {
+                    Dispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                {
+                    ThrowIfInPool(this);
+
+                    handler.SetCompletionState(state);
+
+                    if (!_firstContinue)
+                    {
+                        HandleSelf(handler, state);
+                        return;
+                    }
+                    _firstContinue = false;
+
+                    HandleCore(handler, state);
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private sealed partial class CancelableContinueWaitPromise<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>
+                : ContinuePromiseBase<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>, ICancelable
+                where TDelegate : IFunc<TDelegateArg, TDelegateResult>
+                where TContinuer : struct, IContinuer
+                where TArgTransformer : struct, ITransformer<Promise<TArg>.ResultContainer, TDelegateArg>
+                where TResultTransformer : struct, ITransformer<TDelegateResult, PromiseWrapper<TResult>>
+            {
+                private CancelableContinueWaitPromise() { }
+
+                [MethodImpl(InlineOption)]
+                private static CancelableContinueWaitPromise<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<CancelableContinueWaitPromise<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new CancelableContinueWaitPromise<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>()
+                        : obj.UnsafeAs<CancelableContinueWaitPromise<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static CancelableContinueWaitPromise<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer> GetOrCreate(in TDelegate callback)
+                {
+                    var promise = GetOrCreate();
+                    promise.Reset();
+                    promise._callback = callback;
+                    promise._cancelationHelper.Reset();
+                    return promise;
+                }
+
+                internal override void MaybeDispose()
+                {
+                    if (_cancelationHelper.TryRelease())
+                    {
+                        Dispose();
+                    }
+                }
+
+                new private void Dispose()
+                {
+                    base.Dispose();
+                    _cancelationHelper = default;
+                    _callback = default;
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                {
+                    ThrowIfInPool(this);
+
+                    handler.SetCompletionState(state);
+
+                    if (!_firstContinue)
+                    {
+                        HandleSelf(handler, state);
+                        return;
+                    }
+                    _firstContinue = false;
+
+                    if (!_cancelationHelper.TrySetCompleted())
+                    {
+                        handler.MaybeReportUnhandledAndDispose(state);
+                        MaybeDispose();
+                        return;
+                    }
+
+                    _cancelationHelper.UnregisterAndWait();
+                    _cancelationHelper.ReleaseOne();
+
+                    HandleCore(handler, state);
                 }
 
                 void ICancelable.Cancel()

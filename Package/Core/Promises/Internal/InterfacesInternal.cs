@@ -81,7 +81,7 @@ namespace Proto.Promises
 
         internal interface IContinuer
         {
-            bool ShouldInvoke(IRejectContainer rejectContainer, Promise.State state, out Promise.State invokeType);
+            bool ShouldInvoke(IRejectContainer rejectContainer, Promise.State state, out InvokeTypes invokeTypes);
         }
 
         internal interface ITransformer<TIn, TOut>

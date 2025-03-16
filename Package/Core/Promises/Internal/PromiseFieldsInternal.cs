@@ -330,6 +330,25 @@ namespace Proto.Promises
                 internal CancelationHelper _cancelationHelper;
             }
 
+            partial class ContinueWaitPromise<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>
+                : ContinuePromiseBase<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>
+                where TDelegate : IFunc<TDelegateArg, TDelegateResult>
+                where TContinuer : struct, IContinuer
+                where TArgTransformer : struct, ITransformer<Promise<TArg>.ResultContainer, TDelegateArg>
+                where TResultTransformer : struct, ITransformer<TDelegateResult, PromiseWrapper<TResult>>
+            {
+            }
+
+            partial class CancelableContinueWaitPromise<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>
+                : ContinuePromiseBase<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>, ICancelable
+                where TDelegate : IFunc<TDelegateArg, TDelegateResult>
+                where TContinuer : struct, IContinuer
+                where TArgTransformer : struct, ITransformer<Promise<TArg>.ResultContainer, TDelegateArg>
+                where TResultTransformer : struct, ITransformer<TDelegateResult, PromiseWrapper<TResult>>
+            {
+                internal CancelationHelper _cancelationHelper;
+            }
+
 
             partial class PromiseFinally<TResult, TFinalizer> : PromiseSingleAwait<TResult>
                 where TFinalizer : IAction
