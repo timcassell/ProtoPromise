@@ -349,6 +349,38 @@ namespace Proto.Promises
                 internal CancelationHelper _cancelationHelper;
             }
 
+            partial class ThenPromiseBase<TArg, TResult, TRejectArg, TDelegateResult, TDelegateResolve, TDelegateReject, TRejectContinuer, TRejectArgTransformer, TResultTransformer>
+                : PromiseWaitPromise<TResult>
+                where TDelegateResolve : IFunc<TArg, TDelegateResult>
+                where TDelegateReject : IFunc<TRejectArg, TDelegateResult>
+                where TRejectContinuer : struct, IContinuer
+                where TRejectArgTransformer : struct, ITransformer<IRejectContainer, TRejectArg>
+                where TResultTransformer : struct, ITransformer<TDelegateResult, PromiseWrapper<TResult>>
+            {
+                protected TDelegateResolve _resolveCallback;
+                protected TDelegateReject _rejectCallback;
+            }
+
+            partial class ThenPromise<TArg, TResult, TRejectArg, TDelegateResult, TDelegateResolve, TDelegateReject, TRejectContinuer, TRejectArgTransformer, TResultTransformer>
+                : ThenPromiseBase<TArg, TResult, TRejectArg, TDelegateResult, TDelegateResolve, TDelegateReject, TRejectContinuer, TRejectArgTransformer, TResultTransformer>
+                where TDelegateResolve : IFunc<TArg, TDelegateResult>
+                where TDelegateReject : IFunc<TRejectArg, TDelegateResult>
+                where TRejectContinuer : struct, IContinuer
+                where TRejectArgTransformer : struct, ITransformer<IRejectContainer, TRejectArg>
+                where TResultTransformer : struct, ITransformer<TDelegateResult, PromiseWrapper<TResult>>
+            {
+            }
+
+            partial class ThenWaitPromise<TArg, TResult, TRejectArg, TDelegateResult, TDelegateResolve, TDelegateReject, TRejectContinuer, TRejectArgTransformer, TResultTransformer>
+                : ThenPromiseBase<TArg, TResult, TRejectArg, TDelegateResult, TDelegateResolve, TDelegateReject, TRejectContinuer, TRejectArgTransformer, TResultTransformer>
+                where TDelegateResolve : IFunc<TArg, TDelegateResult>
+                where TDelegateReject : IFunc<TRejectArg, TDelegateResult>
+                where TRejectContinuer : struct, IContinuer
+                where TRejectArgTransformer : struct, ITransformer<IRejectContainer, TRejectArg>
+                where TResultTransformer : struct, ITransformer<TDelegateResult, PromiseWrapper<TResult>>
+            {
+            }
+
 
             partial class PromiseFinally<TResult, TFinalizer> : PromiseSingleAwait<TResult>
                 where TFinalizer : IAction

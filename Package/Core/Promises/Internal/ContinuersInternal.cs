@@ -130,11 +130,27 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal readonly struct CatchTransformer<T> : ITransformer<Promise<T>.ResultContainer, VoidResult>
+        internal readonly struct CatchTransformer : ITransformer<IRejectContainer, VoidResult>
+        {
+            [MethodImpl(InlineOption)]
+            public VoidResult Transform(in IRejectContainer input)
+                => default;
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal readonly struct CatchTransformer<T> :
+            ITransformer<Promise<T>.ResultContainer, VoidResult>,
+            ITransformer<IRejectContainer, T>
         {
             [MethodImpl(InlineOption)]
             public VoidResult Transform(in Promise<T>.ResultContainer input)
                 => default;
+
+            [MethodImpl(InlineOption)]
+            public T Transform(in IRejectContainer input)
+                => (T) input.Value;
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -194,32 +210,6 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal readonly struct ThenResolveRejectContinuer : IContinuer
-        {
-            [MethodImpl(InlineOption)]
-            public bool ShouldInvoke(IRejectContainer rejectContainer, Promise.State state, out InvokeTypes invokeTypes)
-            {
-                invokeTypes = InvokeTypes.Resolved | InvokeTypes.Rejected;
-                return state == Promise.State.Resolved | state == Promise.State.Rejected;
-            }
-        }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal readonly struct ThenResolveRejectFilteredContinuer<TReject> : IContinuer
-        {
-            [MethodImpl(InlineOption)]
-            public bool ShouldInvoke(IRejectContainer rejectContainer, Promise.State state, out InvokeTypes invokeTypes)
-            {
-                invokeTypes = InvokeTypes.Resolved | InvokeTypes.Rejected;
-                return state == Promise.State.Resolved | (state == Promise.State.Rejected && rejectContainer.Value is TReject);
-            }
-        }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
         internal readonly struct CatchContinuer : IContinuer
         {
             [MethodImpl(InlineOption)]
@@ -253,60 +243,6 @@ namespace Proto.Promises
             {
                 invokeTypes = InvokeTypes.Canceled;
                 return state == Promise.State.Canceled;
-            }
-        }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal readonly struct ThenDelegate<TArg, TResult, TDelegateResolve, TDelegateReject> : IFunc<Promise<TArg>.ResultContainer, TResult>
-            where TDelegateResolve : IFunc<TArg, TResult>
-            where TDelegateReject : IFunc<VoidResult, TResult>
-        {
-            private readonly TDelegateResolve _onResolve;
-            private readonly TDelegateReject _onReject;
-
-            [MethodImpl(InlineOption)]
-            public ThenDelegate(TDelegateResolve onResolve, TDelegateReject onReject)
-            {
-                _onResolve = onResolve;
-                _onReject = onReject;
-            }
-
-            [MethodImpl(InlineOption)]
-            public TResult Invoke(in Promise<TArg>.ResultContainer arg)
-            {
-                Debug.Assert(arg.State == Promise.State.Resolved || arg.State == Promise.State.Rejected);
-                return arg.State == Promise.State.Resolved
-                    ? _onResolve.Invoke(arg.Value)
-                    : _onReject.Invoke(default);
-            }
-        }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal readonly struct ThenFilteredDelegate<TArg, TResult, TReject, TDelegateResolve, TDelegateReject> : IFunc<Promise<TArg>.ResultContainer, TResult>
-            where TDelegateResolve : IFunc<TArg, TResult>
-            where TDelegateReject : IFunc<TReject, TResult>
-        {
-            private readonly TDelegateResolve _onResolve;
-            private readonly TDelegateReject _onReject;
-
-            [MethodImpl(InlineOption)]
-            public ThenFilteredDelegate(TDelegateResolve onResolve, TDelegateReject onReject)
-            {
-                _onResolve = onResolve;
-                _onReject = onReject;
-            }
-
-            [MethodImpl(InlineOption)]
-            public TResult Invoke(in Promise<TArg>.ResultContainer arg)
-            {
-                Debug.Assert(arg.State == Promise.State.Resolved || arg.State == Promise.State.Rejected);
-                return arg.State == Promise.State.Resolved
-                    ? _onResolve.Invoke(arg.Value)
-                    : _onReject.Invoke((TReject) arg._rejectContainer.Value);
             }
         }
     }
