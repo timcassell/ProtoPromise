@@ -16,7 +16,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    internal static class DelegateWrapper
+    internal static partial class DelegateWrapper
     {
         // These static functions help with the implementation so we don't need to type the generics in every method.
 
