@@ -98,6 +98,7 @@ namespace Proto.Promises
             // We union the fields together to save space.
             // The field may contain the ExecutionContext or SynchronizationContext of the yielded `async Promise` while it is pending.
             // When the promise is complete in a rejected state, it will contain the IRejectContainer.
+            // In theory we could also include the result in this field if it is a reference type, but in practice execution becomes slower when doing it, and the code gets more complicated.
             [StructLayout(LayoutKind.Explicit)]
             private struct ContextRejectUnion
             {
@@ -302,82 +303,125 @@ namespace Proto.Promises
                 private TRejecter _rejecter;
             }
 
-            partial class ContinuePromiseBase<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer> : PromiseWaitPromise<TResult>
-                where TDelegate : IFunc<TDelegateArg, TDelegateResult>
-                where TContinuer : struct, IContinuer
-                where TArgTransformer : struct, ITransformer<Promise<TArg>.ResultContainer, TDelegateArg>
-                where TResultTransformer : struct, ITransformer<TDelegateResult, PromiseWrapper<TResult>>
+            partial class ContinuePromise<TResult, TDelegate> : PromiseWaitPromise<TResult>
+                where TDelegate : IFunc<Promise.ResultContainer, PromiseWrapper<TResult>>
+            {
+                private TDelegate _callback;
+            }
+
+            partial class ContinueWaitPromise<TResult, TDelegate> : PromiseWaitPromise<TResult>
+                where TDelegate : IFunc<Promise.ResultContainer, PromiseWrapper<TResult>>
+            {
+                private TDelegate _callback;
+            }
+
+            partial class ContinuePromise<TArg, TResult, TDelegate> : PromiseWaitPromise<TResult>
+                where TDelegate : IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>
+            {
+                private TDelegate _callback;
+            }
+
+            partial class ContinueWaitPromise<TArg, TResult, TDelegate> : PromiseWaitPromise<TResult>
+                where TDelegate : IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>
+            {
+                private TDelegate _callback;
+            }
+
+            partial class CancelableContinuePromise<TResult, TDelegate> : PromiseWaitPromise<TResult>, ICancelable
+                where TDelegate : IFunc<Promise.ResultContainer, PromiseWrapper<TResult>>
+            {
+                internal CancelationHelper _cancelationHelper;
+                private TDelegate _callback;
+            }
+
+            partial class CancelableContinueWaitPromise<TResult, TDelegate> : PromiseWaitPromise<TResult>, ICancelable
+                where TDelegate : IFunc<Promise.ResultContainer, PromiseWrapper<TResult>>
+            {
+                internal CancelationHelper _cancelationHelper;
+                private TDelegate _callback;
+            }
+
+            partial class CancelableContinuePromise<TArg, TResult, TDelegate> : PromiseWaitPromise<TResult>, ICancelable
+                where TDelegate : IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>
+            {
+                internal CancelationHelper _cancelationHelper;
+                private TDelegate _callback;
+            }
+
+            partial class CancelableContinueWaitPromise<TArg, TResult, TDelegate> : PromiseWaitPromise<TResult>, ICancelable
+                where TDelegate : IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>
+            {
+                internal CancelationHelper _cancelationHelper;
+                private TDelegate _callback;
+            }
+
+
+            partial class ThenPromiseBase<TArg, TResult, TDelegate> : PromiseWaitPromise<TResult>
+                where TDelegate : IFunc<TArg, PromiseWrapper<TResult>>
             {
                 protected TDelegate _callback;
             }
 
-            partial class ContinuePromise<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>
-                : ContinuePromiseBase<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>
-                where TDelegate : IFunc<TDelegateArg, TDelegateResult>
-                where TContinuer : struct, IContinuer
-                where TArgTransformer : struct, ITransformer<Promise<TArg>.ResultContainer, TDelegateArg>
-                where TResultTransformer : struct, ITransformer<TDelegateResult, PromiseWrapper<TResult>>
+            partial class ThenPromise<TArg, TResult, TDelegate> : ThenPromiseBase<TArg, TResult, TDelegate>
+                where TDelegate : IFunc<TArg, PromiseWrapper<TResult>>
             {
             }
 
-            partial class CancelableContinuePromise<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>
-                : ContinuePromiseBase<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>, ICancelable
-                where TDelegate : IFunc<TDelegateArg, TDelegateResult>
-                where TContinuer : struct, IContinuer
-                where TArgTransformer : struct, ITransformer<Promise<TArg>.ResultContainer, TDelegateArg>
-                where TResultTransformer : struct, ITransformer<TDelegateResult, PromiseWrapper<TResult>>
-            {
-                internal CancelationHelper _cancelationHelper;
-            }
-
-            partial class ContinueWaitPromise<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>
-                : ContinuePromiseBase<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>
-                where TDelegate : IFunc<TDelegateArg, TDelegateResult>
-                where TContinuer : struct, IContinuer
-                where TArgTransformer : struct, ITransformer<Promise<TArg>.ResultContainer, TDelegateArg>
-                where TResultTransformer : struct, ITransformer<TDelegateResult, PromiseWrapper<TResult>>
+            partial class ThenWaitPromise<TArg, TResult, TDelegate> : ThenPromiseBase<TArg, TResult, TDelegate>
+                where TDelegate : IFunc<TArg, PromiseWrapper<TResult>>
             {
             }
 
-            partial class CancelableContinueWaitPromise<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>
-                : ContinuePromiseBase<TArg, TResult, TDelegateArg, TDelegateResult, TDelegate, TContinuer, TArgTransformer, TResultTransformer>, ICancelable
-                where TDelegate : IFunc<TDelegateArg, TDelegateResult>
-                where TContinuer : struct, IContinuer
-                where TArgTransformer : struct, ITransformer<Promise<TArg>.ResultContainer, TDelegateArg>
-                where TResultTransformer : struct, ITransformer<TDelegateResult, PromiseWrapper<TResult>>
-            {
-                internal CancelationHelper _cancelationHelper;
-            }
-
-            partial class ThenPromiseBase<TArg, TResult, TRejectArg, TDelegateResult, TDelegateResolve, TDelegateReject, TRejectContinuer, TRejectArgTransformer, TResultTransformer>
-                : PromiseWaitPromise<TResult>
-                where TDelegateResolve : IFunc<TArg, TDelegateResult>
-                where TDelegateReject : IFunc<TRejectArg, TDelegateResult>
-                where TRejectContinuer : struct, IContinuer
-                where TRejectArgTransformer : struct, ITransformer<IRejectContainer, TRejectArg>
-                where TResultTransformer : struct, ITransformer<TDelegateResult, PromiseWrapper<TResult>>
+            partial class ThenPromiseBase<TArg, TResult, TReject, TDelegateResolve, TDelegateReject> : PromiseWaitPromise<TResult>
+                where TDelegateResolve : IFunc<TArg, PromiseWrapper<TResult>>
+                where TDelegateReject : IFunc<TReject, PromiseWrapper<TResult>>
             {
                 protected TDelegateResolve _resolveCallback;
                 protected TDelegateReject _rejectCallback;
             }
 
-            partial class ThenPromise<TArg, TResult, TRejectArg, TDelegateResult, TDelegateResolve, TDelegateReject, TRejectContinuer, TRejectArgTransformer, TResultTransformer>
-                : ThenPromiseBase<TArg, TResult, TRejectArg, TDelegateResult, TDelegateResolve, TDelegateReject, TRejectContinuer, TRejectArgTransformer, TResultTransformer>
-                where TDelegateResolve : IFunc<TArg, TDelegateResult>
-                where TDelegateReject : IFunc<TRejectArg, TDelegateResult>
-                where TRejectContinuer : struct, IContinuer
-                where TRejectArgTransformer : struct, ITransformer<IRejectContainer, TRejectArg>
-                where TResultTransformer : struct, ITransformer<TDelegateResult, PromiseWrapper<TResult>>
+            partial class ThenPromise<TArg, TResult, TReject, TDelegateResolve, TDelegateReject> : ThenPromiseBase<TArg, TResult, TReject, TDelegateResolve, TDelegateReject>
+                where TDelegateResolve : IFunc<TArg, PromiseWrapper<TResult>>
+                where TDelegateReject : IFunc<TReject, PromiseWrapper<TResult>>
             {
             }
 
-            partial class ThenWaitPromise<TArg, TResult, TRejectArg, TDelegateResult, TDelegateResolve, TDelegateReject, TRejectContinuer, TRejectArgTransformer, TResultTransformer>
-                : ThenPromiseBase<TArg, TResult, TRejectArg, TDelegateResult, TDelegateResolve, TDelegateReject, TRejectContinuer, TRejectArgTransformer, TResultTransformer>
-                where TDelegateResolve : IFunc<TArg, TDelegateResult>
-                where TDelegateReject : IFunc<TRejectArg, TDelegateResult>
-                where TRejectContinuer : struct, IContinuer
-                where TRejectArgTransformer : struct, ITransformer<IRejectContainer, TRejectArg>
-                where TResultTransformer : struct, ITransformer<TDelegateResult, PromiseWrapper<TResult>>
+            partial class ThenWaitPromise<TArg, TResult, TReject, TDelegateResolve, TDelegateReject> : ThenPromiseBase<TArg, TResult, TReject, TDelegateResolve, TDelegateReject>
+                where TDelegateResolve : IFunc<TArg, PromiseWrapper<TResult>>
+                where TDelegateReject : IFunc<TReject, PromiseWrapper<TResult>>
+            {
+            }
+
+
+            partial class CatchPromiseBase<TResult, TReject, TDelegate> : PromiseWaitPromise<TResult>
+                where TDelegate : IFunc<TReject, PromiseWrapper<TResult>>
+            {
+                protected TDelegate _callback;
+            }
+
+            partial class CatchPromise<TResult, TReject, TDelegate> : CatchPromiseBase<TResult, TReject, TDelegate>
+                where TDelegate : IFunc<TReject, PromiseWrapper<TResult>>
+            {
+            }
+
+            partial class CatchWaitPromise<TResult, TReject, TDelegate> : CatchPromiseBase<TResult, TReject, TDelegate>
+                where TDelegate : IFunc<TReject, PromiseWrapper<TResult>>
+            {
+            }
+
+            partial class CatchCancelationPromiseBase<TResult, TDelegate> : PromiseWaitPromise<TResult>
+                where TDelegate : IFunc<VoidResult, PromiseWrapper<TResult>>
+            {
+                protected TDelegate _callback;
+            }
+
+            partial class CatchCancelationPromise<TResult, TDelegate> : CatchCancelationPromiseBase<TResult, TDelegate>
+                where TDelegate : IFunc<VoidResult, PromiseWrapper<TResult>>
+            {
+            }
+
+            partial class CatchCancelationWaitPromise<TResult, TDelegate> : CatchCancelationPromiseBase<TResult, TDelegate>
+                where TDelegate : IFunc<VoidResult, PromiseWrapper<TResult>>
             {
             }
 

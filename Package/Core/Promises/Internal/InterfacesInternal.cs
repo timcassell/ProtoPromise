@@ -78,15 +78,5 @@ namespace Proto.Promises
                 void Invoke(PromiseRefBase owner);
             }
         }
-
-        internal interface IContinuer
-        {
-            bool ShouldInvoke(IRejectContainer rejectContainer, Promise.State state, out InvokeTypes invokeTypes);
-        }
-
-        internal interface ITransformer<TIn, TOut>
-        {
-            TOut Transform(in TIn input);
-        }
     }
 }
