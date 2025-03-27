@@ -19,34 +19,8 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private abstract partial class CatchPromiseBase<TResult, TReject, TDelegate> : PromiseWaitPromise<TResult>
-                where TDelegate : IFunc<TReject, PromiseWrapper<TResult>>
-            {
-                protected void HandleCore(PromiseRefBase handler, Promise.State state)
-                {
-                    ThrowIfInPool(this);
-
-                    var callback = _callback;
-                    _callback = default;
-
-                    var rejectContainer = handler.RejectContainer;
-                    if (state != Promise.State.Rejected || !GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
-                    {
-                        HandleSelf(handler, state);
-                        return;
-                    }
-                    
-                    handler.SuppressRejection = true;
-                    handler.MaybeDispose();
-                    InvokeAndAdopt(rejectArg, callback, rejectContainer);
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class CatchPromise<TResult, TReject, TDelegate> : CatchPromiseBase<TResult, TReject, TDelegate>
-                where TDelegate : IFunc<TReject, PromiseWrapper<TResult>>
+            private sealed partial class CatchPromise<TResult, TReject, TDelegate> : PromiseSingleAwait<TResult>
+                where TDelegate : IFunc<TReject, TResult>
             {
                 private CatchPromise() { }
 
@@ -79,15 +53,87 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
 
                     handler.SetCompletionState(state);
-                    HandleCore(handler, state);
+
+                    var callback = _callback;
+                    _callback = default;
+                    var rejectContainer = handler.RejectContainer;
+                    if (state != Promise.State.Rejected || !GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
+                    {
+                        HandleSelf(handler, state);
+                        return;
+                    }
+
+                    handler.SuppressRejection = true;
+                    handler.MaybeDispose();
+                    Invoke(rejectArg, callback, rejectContainer);
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class CatchWaitPromise<TResult, TReject, TDelegate> : CatchPromiseBase<TResult, TReject, TDelegate>
-                where TDelegate : IFunc<TReject, PromiseWrapper<TResult>>
+            private sealed partial class CatchWaitPromise<TReject, TDelegate> : PromiseWaitPromise<VoidResult>
+                where TDelegate : IFunc<TReject, Promise>
+            {
+                private CatchWaitPromise() { }
+
+                [MethodImpl(InlineOption)]
+                private static CatchWaitPromise<TReject, TDelegate> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<CatchWaitPromise<TReject, TDelegate>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new CatchWaitPromise<TReject, TDelegate>()
+                        : obj.UnsafeAs<CatchWaitPromise<TReject, TDelegate>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static CatchWaitPromise<TReject, TDelegate> GetOrCreate(in TDelegate callback)
+                {
+                    var promise = GetOrCreate();
+                    promise.Reset();
+                    promise._callback = callback;
+                    return promise;
+                }
+
+                internal override void MaybeDispose()
+                {
+                    Dispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                {
+                    ThrowIfInPool(this);
+
+                    handler.SetCompletionState(state);
+
+                    if (!_firstContinue)
+                    {
+                        HandleSelf(handler, state);
+                        return;
+                    }
+                    _firstContinue = false;
+
+                    var callback = _callback;
+                    _callback = default;
+                    var rejectContainer = handler.RejectContainer;
+                    if (state != Promise.State.Rejected || !GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
+                    {
+                        HandleSelf(handler, state);
+                        return;
+                    }
+
+                    handler.SuppressRejection = true;
+                    handler.MaybeDispose();
+                    InvokeAndAdoptVoid(rejectArg, callback, rejectContainer);
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private sealed partial class CatchWaitPromise<TResult, TReject, TDelegate> : PromiseWaitPromise<TResult>
+                where TDelegate : IFunc<TReject, Promise<TResult>>
             {
                 private CatchWaitPromise() { }
 
@@ -128,39 +174,26 @@ namespace Proto.Promises
                     }
                     _firstContinue = false;
 
-                    HandleCore(handler, state);
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private abstract partial class CatchCancelationPromiseBase<TResult, TDelegate> : PromiseWaitPromise<TResult>
-                where TDelegate : IFunc<VoidResult, PromiseWrapper<TResult>>
-            {
-                protected void HandleCore(PromiseRefBase handler, Promise.State state)
-                {
-                    ThrowIfInPool(this);
-
                     var callback = _callback;
                     _callback = default;
-
-                    if (state != Promise.State.Canceled)
+                    var rejectContainer = handler.RejectContainer;
+                    if (state != Promise.State.Rejected || !GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
                     {
                         HandleSelf(handler, state);
                         return;
                     }
 
+                    handler.SuppressRejection = true;
                     handler.MaybeDispose();
-                    InvokeAndAdopt(default(VoidResult), callback, null);
+                    InvokeAndAdopt(rejectArg, callback, rejectContainer);
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class CatchCancelationPromise<TResult, TDelegate> : CatchCancelationPromiseBase<TResult, TDelegate>
-                where TDelegate : IFunc<VoidResult, PromiseWrapper<TResult>>
+            private sealed partial class CatchCancelationPromise<TResult, TDelegate> : PromiseSingleAwait<TResult>
+                where TDelegate : IFunc<VoidResult, TResult>
             {
                 private CatchCancelationPromise() { }
 
@@ -193,15 +226,83 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
 
                     handler.SetCompletionState(state);
-                    HandleCore(handler, state);
+
+                    var callback = _callback;
+                    _callback = default;
+                    if (state != Promise.State.Canceled)
+                    {
+                        HandleSelf(handler, state);
+                        return;
+                    }
+
+                    handler.MaybeDispose();
+                    Invoke(default(VoidResult), callback, null);
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class CatchCancelationWaitPromise<TResult, TDelegate> : CatchCancelationPromiseBase<TResult, TDelegate>
-                where TDelegate : IFunc<VoidResult, PromiseWrapper<TResult>>
+            private sealed partial class CatchCancelationWaitPromise<TDelegate> : PromiseWaitPromise<VoidResult>
+                where TDelegate : IFunc<VoidResult, Promise>
+            {
+                private CatchCancelationWaitPromise() { }
+
+                [MethodImpl(InlineOption)]
+                private static CatchCancelationWaitPromise<TDelegate> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<CatchCancelationWaitPromise<TDelegate>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new CatchCancelationWaitPromise<TDelegate>()
+                        : obj.UnsafeAs<CatchCancelationWaitPromise<TDelegate>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static CatchCancelationWaitPromise<TDelegate> GetOrCreate(in TDelegate callback)
+                {
+                    var promise = GetOrCreate();
+                    promise.Reset();
+                    promise._callback = callback;
+                    return promise;
+                }
+
+                internal override void MaybeDispose()
+                {
+                    Dispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                {
+                    ThrowIfInPool(this);
+
+                    handler.SetCompletionState(state);
+
+                    if (!_firstContinue)
+                    {
+                        HandleSelf(handler, state);
+                        return;
+                    }
+                    _firstContinue = false;
+
+                    var callback = _callback;
+                    _callback = default;
+                    if (state != Promise.State.Canceled)
+                    {
+                        HandleSelf(handler, state);
+                        return;
+                    }
+
+                    handler.MaybeDispose();
+                    InvokeAndAdoptVoid(default(VoidResult), callback, null);
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private sealed partial class CatchCancelationWaitPromise<TResult, TDelegate> : PromiseWaitPromise<TResult>
+                where TDelegate : IFunc<VoidResult, Promise<TResult>>
             {
                 private CatchCancelationWaitPromise() { }
 
@@ -242,7 +343,16 @@ namespace Proto.Promises
                     }
                     _firstContinue = false;
 
-                    HandleCore(handler, state);
+                    var callback = _callback;
+                    _callback = default;
+                    if (state != Promise.State.Canceled)
+                    {
+                        HandleSelf(handler, state);
+                        return;
+                    }
+
+                    handler.MaybeDispose();
+                    InvokeAndAdopt(default(VoidResult), callback, null);
                 }
             }
         } // class PromiseRefBase

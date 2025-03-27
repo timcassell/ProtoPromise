@@ -19,33 +19,8 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private abstract partial class ThenPromiseBase<TArg, TResult, TDelegate> : PromiseWaitPromise<TResult>
-                where TDelegate : IFunc<TArg, PromiseWrapper<TResult>>
-            {
-                protected void HandleCore(PromiseRefBase handler, Promise.State state)
-                {
-                    ThrowIfInPool(this);
-
-                    var callback = _callback;
-                    _callback = default;
-
-                    if (state == Promise.State.Resolved)
-                    {
-                        var arg = handler.GetResult<TArg>();
-                        handler.MaybeDispose();
-                        InvokeAndAdopt(arg, callback, null);
-                        return;
-                    }
-
-                    HandleSelfWithoutResult(handler, state);
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class ThenPromise<TArg, TResult, TDelegate> : ThenPromiseBase<TArg, TResult, TDelegate>
-                where TDelegate : IFunc<TArg, PromiseWrapper<TResult>>
+            private sealed partial class ThenPromise<TArg, TResult, TDelegate> : PromiseSingleAwait<TResult>
+                where TDelegate : IFunc<TArg, TResult>
             {
                 private ThenPromise() { }
 
@@ -78,15 +53,85 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
 
                     handler.SetCompletionState(state);
-                    HandleCore(handler, state);
+
+                    var callback = _callback;
+                    _callback = default;
+                    if (state == Promise.State.Resolved)
+                    {
+                        var arg = handler.GetResult<TArg>();
+                        handler.MaybeDispose();
+                        Invoke(arg, callback, null);
+                        return;
+                    }
+
+                    HandleSelfWithoutResult(handler, state);
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class ThenWaitPromise<TArg, TResult, TDelegate> : ThenPromiseBase<TArg, TResult, TDelegate>
-                where TDelegate : IFunc<TArg, PromiseWrapper<TResult>>
+            private sealed partial class ThenWaitPromise<TArg, TDelegate> : PromiseWaitPromise<VoidResult>
+                where TDelegate : IFunc<TArg, Promise>
+            {
+                private ThenWaitPromise() { }
+
+                [MethodImpl(InlineOption)]
+                private static ThenWaitPromise<TArg, TDelegate> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<ThenWaitPromise<TArg, TDelegate>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new ThenWaitPromise<TArg, TDelegate>()
+                        : obj.UnsafeAs<ThenWaitPromise<TArg, TDelegate>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static ThenWaitPromise<TArg, TDelegate> GetOrCreate(in TDelegate callback)
+                {
+                    var promise = GetOrCreate();
+                    promise.Reset();
+                    promise._callback = callback;
+                    return promise;
+                }
+
+                internal override void MaybeDispose()
+                {
+                    Dispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                {
+                    ThrowIfInPool(this);
+
+                    handler.SetCompletionState(state);
+
+                    if (!_firstContinue)
+                    {
+                        HandleSelf(handler, state);
+                        return;
+                    }
+                    _firstContinue = false;
+
+                    var callback = _callback;
+                    _callback = default;
+                    if (state == Promise.State.Resolved)
+                    {
+                        var arg = handler.GetResult<TArg>();
+                        handler.MaybeDispose();
+                        InvokeAndAdoptVoid(arg, callback, null);
+                        return;
+                    }
+
+                    HandleSelfWithoutResult(handler, state);
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private sealed partial class ThenWaitPromise<TArg, TResult, TDelegate> : PromiseWaitPromise<TResult>
+                where TDelegate : IFunc<TArg, Promise<TResult>>
             {
                 private ThenWaitPromise() { }
 
@@ -127,7 +172,17 @@ namespace Proto.Promises
                     }
                     _firstContinue = false;
 
-                    HandleCore(handler, state);
+                    var callback = _callback;
+                    _callback = default;
+                    if (state == Promise.State.Resolved)
+                    {
+                        var arg = handler.GetResult<TArg>();
+                        handler.MaybeDispose();
+                        InvokeAndAdopt(arg, callback, null);
+                        return;
+                    }
+
+                    HandleSelfWithoutResult(handler, state);
                 }
             }
 
@@ -150,50 +205,9 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private abstract partial class ThenPromiseBase<TArg, TResult, TReject, TDelegateResolve, TDelegateReject> : PromiseWaitPromise<TResult>
-                where TDelegateResolve : IFunc<TArg, PromiseWrapper<TResult>>
-                where TDelegateReject : IFunc<TReject, PromiseWrapper<TResult>>
-            {
-                protected void HandleCore(PromiseRefBase handler, Promise.State state)
-                {
-                    ThrowIfInPool(this);
-
-                    var resolveCallback = _resolveCallback;
-                    _resolveCallback = default;
-                    var rejectCallback = _rejectCallback;
-                    _rejectCallback = default;
-
-                    if (state == Promise.State.Resolved)
-                    {
-                        var arg = handler.GetResult<TArg>();
-                        handler.MaybeDispose();
-                        InvokeAndAdopt(arg, resolveCallback, null);
-                        return;
-                    }
-
-                    var rejectContainer = handler.RejectContainer;
-                    handler.SuppressRejection = true;
-                    handler.MaybeDispose();
-                    if (state == Promise.State.Rejected && GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
-                    {
-                        InvokeAndAdopt(rejectArg, rejectCallback, rejectContainer);
-                        return;
-                    }
-
-                    RejectContainer = rejectContainer;
-
-                    // We handle next last, so that if the runtime wants to, it can tail-call optimize.
-                    // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
-                    HandleNextInternal(state);
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class ThenPromise<TArg, TResult, TReject, TDelegateResolve, TDelegateReject> : ThenPromiseBase<TArg, TResult, TReject, TDelegateResolve, TDelegateReject>
-                where TDelegateResolve : IFunc<TArg, PromiseWrapper<TResult>>
-                where TDelegateReject : IFunc<TReject, PromiseWrapper<TResult>>
+            private sealed partial class ThenPromise<TArg, TResult, TReject, TDelegateResolve, TDelegateReject> : PromiseSingleAwait<TResult>
+                where TDelegateResolve : IFunc<TArg, TResult>
+                where TDelegateReject : IFunc<TReject, TResult>
             {
                 private ThenPromise() { }
 
@@ -227,16 +241,118 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
 
                     handler.SetCompletionState(state);
-                    HandleCore(handler, state);
+
+                    var resolveCallback = _resolveCallback;
+                    _resolveCallback = default;
+                    var rejectCallback = _rejectCallback;
+                    _rejectCallback = default;
+                    if (state == Promise.State.Resolved)
+                    {
+                        var arg = handler.GetResult<TArg>();
+                        handler.MaybeDispose();
+                        Invoke(arg, resolveCallback, null);
+                        return;
+                    }
+
+                    var rejectContainer = handler.RejectContainer;
+                    handler.SuppressRejection = true;
+                    handler.MaybeDispose();
+                    if (state == Promise.State.Rejected && GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
+                    {
+                        Invoke(rejectArg, rejectCallback, rejectContainer);
+                        return;
+                    }
+
+                    RejectContainer = rejectContainer;
+
+                    // We handle next last, so that if the runtime wants to, it can tail-call optimize.
+                    // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
+                    HandleNextInternal(state);
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class ThenWaitPromise<TArg, TResult, TReject, TDelegateResolve, TDelegateReject> : ThenPromiseBase<TArg, TResult, TReject, TDelegateResolve, TDelegateReject>
-                where TDelegateResolve : IFunc<TArg, PromiseWrapper<TResult>>
-                where TDelegateReject : IFunc<TReject, PromiseWrapper<TResult>>
+            private sealed partial class ThenWaitPromise<TArg, TReject, TDelegateResolve, TDelegateReject> : PromiseWaitPromise<VoidResult>
+                where TDelegateResolve : IFunc<TArg, Promise>
+                where TDelegateReject : IFunc<TReject, Promise>
+            {
+                private ThenWaitPromise() { }
+
+                [MethodImpl(InlineOption)]
+                private static ThenWaitPromise<TArg, TReject, TDelegateResolve, TDelegateReject> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<ThenWaitPromise<TArg, TReject, TDelegateResolve, TDelegateReject>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new ThenWaitPromise<TArg, TReject, TDelegateResolve, TDelegateReject>()
+                        : obj.UnsafeAs<ThenWaitPromise<TArg, TReject, TDelegateResolve, TDelegateReject>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static ThenWaitPromise<TArg, TReject, TDelegateResolve, TDelegateReject> GetOrCreate(in TDelegateResolve resolveCallback, in TDelegateReject rejectCallback)
+                {
+                    var promise = GetOrCreate();
+                    promise.Reset();
+                    promise._resolveCallback = resolveCallback;
+                    promise._rejectCallback = rejectCallback;
+                    return promise;
+                }
+
+                internal override void MaybeDispose()
+                {
+                    Dispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                {
+                    ThrowIfInPool(this);
+
+                    handler.SetCompletionState(state);
+
+                    if (!_firstContinue)
+                    {
+                        HandleSelf(handler, state);
+                        return;
+                    }
+                    _firstContinue = false;
+
+                    var resolveCallback = _resolveCallback;
+                    _resolveCallback = default;
+                    var rejectCallback = _rejectCallback;
+                    _rejectCallback = default;
+                    if (state == Promise.State.Resolved)
+                    {
+                        var arg = handler.GetResult<TArg>();
+                        handler.MaybeDispose();
+                        InvokeAndAdoptVoid(arg, resolveCallback, null);
+                        return;
+                    }
+
+                    var rejectContainer = handler.RejectContainer;
+                    handler.SuppressRejection = true;
+                    handler.MaybeDispose();
+                    if (state == Promise.State.Rejected && GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
+                    {
+                        InvokeAndAdoptVoid(rejectArg, rejectCallback, rejectContainer);
+                        return;
+                    }
+
+                    RejectContainer = rejectContainer;
+
+                    // We handle next last, so that if the runtime wants to, it can tail-call optimize.
+                    // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
+                    HandleNextInternal(state);
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private sealed partial class ThenWaitPromise<TArg, TResult, TReject, TDelegateResolve, TDelegateReject> : PromiseWaitPromise<TResult>
+                where TDelegateResolve : IFunc<TArg, Promise<TResult>>
+                where TDelegateReject : IFunc<TReject, Promise<TResult>>
             {
                 private ThenWaitPromise() { }
 
@@ -278,7 +394,32 @@ namespace Proto.Promises
                     }
                     _firstContinue = false;
 
-                    HandleCore(handler, state);
+                    var resolveCallback = _resolveCallback;
+                    _resolveCallback = default;
+                    var rejectCallback = _rejectCallback;
+                    _rejectCallback = default;
+                    if (state == Promise.State.Resolved)
+                    {
+                        var arg = handler.GetResult<TArg>();
+                        handler.MaybeDispose();
+                        InvokeAndAdopt(arg, resolveCallback, null);
+                        return;
+                    }
+
+                    var rejectContainer = handler.RejectContainer;
+                    handler.SuppressRejection = true;
+                    handler.MaybeDispose();
+                    if (state == Promise.State.Rejected && GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
+                    {
+                        InvokeAndAdopt(rejectArg, rejectCallback, rejectContainer);
+                        return;
+                    }
+
+                    RejectContainer = rejectContainer;
+
+                    // We handle next last, so that if the runtime wants to, it can tail-call optimize.
+                    // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
+                    HandleNextInternal(state);
                 }
             }
         } // class PromiseRefBase

@@ -26,65 +26,331 @@ namespace Proto.Promises
 #endif
             internal static class CallbackHelperArg<TArg>
             {
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static Promise MaybeInvokeResolve<TDelegate>(in Promise<TArg> _this, in TDelegate callback)
+                    where TDelegate : IAction<TArg>
+                {
+                    if (_this._ref.State == Promise.State.Resolved)
+                    {
+                        var arg = _this._ref._result;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return CallbackHelperVoid.Invoke(arg, callback, null);
+                    }
+                    return _this.Duplicate();
+                }
+
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static Promise MaybeInvokeAndAdoptResolve<TDelegate>(in Promise<TArg> _this, in TDelegate callback)
+                    where TDelegate : IFunc<TArg, Promise>
+                {
+                    if (_this._ref.State == Promise.State.Resolved)
+                    {
+                        var arg = _this._ref._result;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return CallbackHelperVoid.InvokeAndAdopt(arg, callback, null);
+                    }
+                    return _this.Duplicate();
+                }
+
                 [MethodImpl(InlineOption)]
                 internal static Promise Then<TDelegate>(Promise<TArg> _this, TDelegate onResolve)
-                    where TDelegate : IAction<TArg>, IFunc<TArg, PromiseWrapper<VoidResult>>
-                    => CallbackHelperImpl<TArg, VoidResult>.Then(_this, onResolve);
+                    where TDelegate : IAction<TArg>, IFunc<TArg, VoidResult>
+                {
+                    if (_this._ref == null)
+                    {
+                        return CallbackHelperVoid.Invoke(_this._result, onResolve, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return MaybeInvokeResolve(_this, onResolve);
+                    }
+
+                    var promise = ThenPromise<TArg, VoidResult, TDelegate>.GetOrCreate(onResolve);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise ThenWait<TDelegate>(Promise<TArg> _this, TDelegate onResolve)
-                    where TDelegate : IFunc<TArg, Promise>, IFunc<TArg, PromiseWrapper<VoidResult>>
-                    => CallbackHelperImpl<TArg, VoidResult>.ThenWait(_this, onResolve);
+                    where TDelegate : IFunc<TArg, Promise>
+                {
+                    if (_this._ref == null)
+                    {
+                        return CallbackHelperVoid.InvokeAndAdopt(_this._result, onResolve, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return MaybeInvokeAndAdoptResolve(_this, onResolve);
+                    }
+
+                    var promise = ThenWaitPromise<TArg, TDelegate>.GetOrCreate(onResolve);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise(promise, promise.Id);
+                }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
                 [DebuggerNonUserCode, StackTraceHidden]
 #endif
                 internal static class Filter<TReject>
                 {
+                    // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                    [MethodImpl(MethodImplOptions.NoInlining)]
+                    internal static Promise MaybeInvokeThen<TDelegateResolve, TDelegateReject>(in Promise<TArg> _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
+                        where TDelegateResolve : IAction<TArg>
+                        where TDelegateReject : IAction<TReject>
+                    {
+                        if (_this._ref.State == Promise.State.Resolved)
+                        {
+                            var arg = _this._ref._result;
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return CallbackHelperVoid.Invoke(arg, onResolve, null);
+                        }
+
+                        var rejectContainer = _this._ref.RejectContainer;
+                        if (_this._ref.State == Promise.State.Rejected && GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
+                        {
+                            _this._ref.SuppressRejection = true;
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return CallbackHelperVoid.Invoke(rejectArg, onReject, rejectContainer);
+                        }
+
+                        return _this.Duplicate();
+                    }
+
+                    // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                    [MethodImpl(MethodImplOptions.NoInlining)]
+                    internal static Promise MaybeInvokeAndAdoptThen<TDelegateResolve, TDelegateReject>(in Promise<TArg> _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
+                        where TDelegateResolve : IFunc<TArg, Promise>
+                        where TDelegateReject : IFunc<TReject, Promise>
+                    {
+                        if (_this._ref.State == Promise.State.Resolved)
+                        {
+                            var arg = _this._ref._result;
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return CallbackHelperVoid.InvokeAndAdopt(arg, onResolve, null);
+                        }
+
+                        var rejectContainer = _this._ref.RejectContainer;
+                        if (_this._ref.State == Promise.State.Rejected && GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
+                        {
+                            _this._ref.SuppressRejection = true;
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return CallbackHelperVoid.InvokeAndAdopt(rejectArg, onReject, rejectContainer);
+                        }
+
+                        return _this.Duplicate();
+                    }
+
                     [MethodImpl(InlineOption)]
                     internal static Promise Then<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, TDelegateResolve onResolve, TDelegateReject onReject)
-                        where TDelegateResolve : IAction<TArg>, IFunc<TArg, PromiseWrapper<VoidResult>>
-                        where TDelegateReject : IAction<TReject>, IFunc<TReject, PromiseWrapper<VoidResult>>
-                        => CallbackHelperImpl<TArg, VoidResult>.Then<TReject, TDelegateResolve, TDelegateReject>(_this, onResolve, onReject);
+                        where TDelegateResolve : IAction<TArg>, IFunc<TArg, VoidResult>
+                        where TDelegateReject : IAction<TReject>, IFunc<TReject, VoidResult>
+                    {
+                        if (_this._ref == null)
+                        {
+                            return CallbackHelperVoid.Invoke(_this._result, onResolve, null);
+                        }
+
+                        if (_this._ref.State != Promise.State.Pending)
+                        {
+                            return MaybeInvokeThen(_this, onResolve, onReject);
+                        }
+
+                        var promise = ThenPromise<TArg, VoidResult, TReject, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                        return new Promise(promise, promise.Id);
+                    }
 
                     [MethodImpl(InlineOption)]
                     internal static Promise ThenWait<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, TDelegateResolve onResolve, TDelegateReject onReject)
-                        where TDelegateResolve : IFunc<TArg, Promise>, IFunc<TArg, PromiseWrapper<VoidResult>>
-                        where TDelegateReject : IFunc<TReject, Promise>, IFunc<TReject, PromiseWrapper<VoidResult>>
-                        => CallbackHelperImpl<TArg, VoidResult>.ThenWait<TReject, TDelegateResolve, TDelegateReject>(_this, onResolve, onReject);
+                        where TDelegateResolve : IFunc<TArg, Promise>
+                        where TDelegateReject : IFunc<TReject, Promise>
+                    {
+                        if (_this._ref == null)
+                        {
+                            return CallbackHelperVoid.InvokeAndAdopt(_this._result, onResolve, null);
+                        }
+
+                        if (_this._ref.State != Promise.State.Pending)
+                        {
+                            return MaybeInvokeAndAdoptThen(_this, onResolve, onReject);
+                        }
+
+                        var promise = ThenWaitPromise<TArg, TReject, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                        return new Promise(promise, promise.Id);
+                    }
                 }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise Then<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, TDelegateResolve onResolve, TDelegateReject onReject)
-                    where TDelegateResolve : IAction<TArg>, IFunc<TArg, PromiseWrapper<VoidResult>>
-                    where TDelegateReject : IAction, IFunc<VoidResult, PromiseWrapper<VoidResult>>
-                    => CallbackHelperImpl<TArg, VoidResult>.Then<VoidResult, TDelegateResolve, TDelegateReject>(_this, onResolve, onReject);
+                    where TDelegateResolve : IAction<TArg>, IFunc<TArg, VoidResult>
+                    where TDelegateReject : IAction, IAction<VoidResult>, IFunc<VoidResult, VoidResult>
+                {
+                    if (_this._ref == null)
+                    {
+                        return CallbackHelperVoid.Invoke(_this._result, onResolve, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return Filter<VoidResult>.MaybeInvokeThen(_this, onResolve, onReject);
+                    }
+
+                    var promise = ThenPromise<TArg, VoidResult, VoidResult, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise ThenWait<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, TDelegateResolve onResolve, TDelegateReject onReject)
-                    where TDelegateResolve : IFunc<TArg, Promise>, IFunc<TArg, PromiseWrapper<VoidResult>>
-                    where TDelegateReject : IFunc<Promise>, IFunc<VoidResult, PromiseWrapper<VoidResult>>
-                    => CallbackHelperImpl<TArg, VoidResult>.ThenWait<VoidResult, TDelegateResolve, TDelegateReject>(_this, onResolve, onReject);
+                    where TDelegateResolve : IFunc<TArg, Promise>
+                    where TDelegateReject : IFunc<Promise>, IFunc<VoidResult, Promise>
+                {
+                    if (_this._ref == null)
+                    {
+                        return CallbackHelperVoid.InvokeAndAdopt(_this._result, onResolve, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return Filter<VoidResult>.MaybeInvokeAndAdoptThen(_this, onResolve, onReject);
+                    }
+
+                    var promise = ThenWaitPromise<TArg, VoidResult, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise(promise, promise.Id);
+                }
+
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static Promise InvokeContinueWith<TDelegate>(PromiseRef<TArg> promise, short promiseId, in TDelegate callback)
+                    where TDelegate : IAction<Promise<TArg>.ResultContainer>, IFunc<Promise<TArg>.ResultContainer, VoidResult>
+                {
+                    var arg = new Promise<TArg>.ResultContainer(promise._result, promise.RejectContainer, promise.State);
+                    promise.SuppressRejection = true;
+                    promise.MaybeMarkAwaitedAndDispose(promiseId);
+                    return CallbackHelperVoid.Invoke(arg, callback, null);
+                }
+
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static Promise InvokeAndAdoptContinueWith<TDelegate>(PromiseRef<TArg> promise, short promiseId, in TDelegate callback)
+                    where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise>
+                {
+                    var arg = new Promise<TArg>.ResultContainer(promise._result, promise.RejectContainer, promise.State);
+                    promise.SuppressRejection = true;
+                    promise.MaybeMarkAwaitedAndDispose(promiseId);
+                    return CallbackHelperVoid.InvokeAndAdopt(arg, callback, null);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise ContinueWith<TDelegate>(Promise<TArg> _this, in TDelegate onContinue)
-                    where TDelegate : IAction<Promise<TArg>.ResultContainer>, IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<VoidResult>>
-                    => CallbackHelperImpl<TArg, VoidResult>.ContinueWith(_this, onContinue);
+                    where TDelegate : IAction<Promise<TArg>.ResultContainer>, IFunc<Promise<TArg>.ResultContainer, VoidResult>
+                {
+                    if (_this._ref == null)
+                    {
+                        return CallbackHelperVoid.Invoke(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return InvokeContinueWith(_this._ref, _this._id, onContinue);
+                    }
+
+                    var promise = ContinueArgResultPromise<TArg, VoidResult, TDelegate>.GetOrCreate(onContinue);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise ContinueWithWait<TDelegate>(Promise<TArg> _this, in TDelegate onContinue)
-                    where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise>, IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<VoidResult>>
-                    => CallbackHelperImpl<TArg, VoidResult>.ContinueWithWait(_this, onContinue);
+                    where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise>
+                {
+                    if (_this._ref == null)
+                    {
+                        return CallbackHelperVoid.InvokeAndAdopt(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return InvokeAndAdoptContinueWith(_this._ref, _this._id, onContinue);
+                    }
+
+                    var promise = ContinueArgVoidWaitPromise<TArg, TDelegate>.GetOrCreate(onContinue);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise ContinueWith<TDelegate>(Promise<TArg> _this, in TDelegate onContinue, CancelationToken cancelationToken)
-                    where TDelegate : IAction<Promise<TArg>.ResultContainer>, IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<VoidResult>>
-                    => CallbackHelperImpl<TArg, VoidResult>.ContinueWith(_this, onContinue, cancelationToken);
+                    where TDelegate : IAction<Promise<TArg>.ResultContainer>, IFunc<Promise<TArg>.ResultContainer, VoidResult>
+                {
+                    if (cancelationToken.IsCancelationRequested)
+                    {
+                        return CallbackHelperVoid.Canceled(_this._ref, _this._id);
+                    }
+
+                    if (_this._ref == null)
+                    {
+                        return CallbackHelperVoid.Invoke(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return InvokeContinueWith(_this._ref, _this._id, onContinue);
+                    }
+
+                    PromiseRefBase promise;
+                    if (cancelationToken.CanBeCanceled)
+                    {
+                        var p = CancelableContinueArgResultPromise<TArg, VoidResult, TDelegate>.GetOrCreate(onContinue);
+                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
+                    }
+                    else
+                    {
+                        promise = ContinueArgResultPromise<TArg, VoidResult, TDelegate>.GetOrCreate(onContinue);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                    }
+                    return new Promise(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise ContinueWithWait<TDelegate>(Promise<TArg> _this, in TDelegate onContinue, CancelationToken cancelationToken)
-                    where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise>, IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<VoidResult>>
-                    => CallbackHelperImpl<TArg, VoidResult>.ContinueWithWait(_this, onContinue, cancelationToken);
+                    where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise>
+                {
+                    if (cancelationToken.IsCancelationRequested)
+                    {
+                        return CallbackHelperVoid.Canceled(_this._ref, _this._id);
+                    }
+
+                    if (_this._ref == null)
+                    {
+                        return CallbackHelperVoid.InvokeAndAdopt(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return InvokeAndAdoptContinueWith(_this._ref, _this._id, onContinue);
+                    }
+
+                    PromiseRefBase promise;
+                    if (cancelationToken.CanBeCanceled)
+                    {
+                        var p = CancelableContinueArgVoidWaitPromise<TArg, TDelegate>.GetOrCreate(onContinue);
+                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
+                    }
+                    else
+                    {
+                        promise = ContinueArgVoidWaitPromise<TArg, TDelegate>.GetOrCreate(onContinue);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                    }
+                    return new Promise(promise, promise.Id);
+                }
             } // class CallbackHelperArg<TArg>
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -96,6 +362,90 @@ namespace Proto.Promises
                 {
                     _ref?.MaybeMarkAwaitedAndDispose(promiseId);
                     return Promise<TResult>.Canceled();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> Invoke<TDelegate>(in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IFunc<TResult>
+                {
+                    try
+                    {
+                        return Promise.Resolved(callback.Invoke());
+                    }
+                    catch (RethrowException e)
+                    {
+                        // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
+                        return rejectContainer != null
+                            ? Promise<TResult>.Rejected(rejectContainer)
+                            : Promise<TResult>.Rejected(e);
+                    }
+                    catch (Exception e)
+                    {
+                        return Promise<TResult>.FromException(e);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> Invoke<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IFunc<TArg, TResult>
+                {
+                    try
+                    {
+                        return Promise.Resolved(callback.Invoke(arg));
+                    }
+                    catch (RethrowException e)
+                    {
+                        // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
+                        return rejectContainer != null
+                            ? Promise<TResult>.Rejected(rejectContainer)
+                            : Promise<TResult>.Rejected(e);
+                    }
+                    catch (Exception e)
+                    {
+                        return Promise<TResult>.FromException(e);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> InvokeAndAdopt<TDelegate>(in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IFunc<Promise<TResult>>
+                {
+                    try
+                    {
+                        return callback.Invoke().Duplicate();
+                    }
+                    catch (RethrowException e)
+                    {
+                        // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
+                        return rejectContainer != null
+                            ? Promise<TResult>.Rejected(rejectContainer)
+                            : Promise<TResult>.Rejected(e);
+                    }
+                    catch (Exception e)
+                    {
+                        return Promise<TResult>.FromException(e);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> InvokeAndAdopt<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IFunc<TArg, Promise<TResult>>
+                {
+                    try
+                    {
+                        return callback.Invoke(arg).Duplicate();
+                    }
+                    catch (RethrowException e)
+                    {
+                        // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
+                        return rejectContainer != null
+                            ? Promise<TResult>.Rejected(rejectContainer)
+                            : Promise<TResult>.Rejected(e);
+                    }
+                    catch (Exception e)
+                    {
+                        return Promise<TResult>.FromException(e);
+                    }
                 }
 
                 [MethodImpl(InlineOption)]
@@ -256,95 +606,496 @@ namespace Proto.Promises
                     return new Promise<TResult>(promise, promise.Id);
                 }
 
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static Promise<TResult> MaybeInvokeResolve<TDelegate>(Promise _this, in TDelegate callback)
+                    where TDelegate : IFunc<TResult>
+                {
+                    if (_this._ref.State == Promise.State.Resolved)
+                    {
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return Invoke(callback, null);
+                    }
+
+                    var rejectContainer = _this._ref.RejectContainer;
+                    _this._ref.SuppressRejection = true;
+                    _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                    return _this._ref.State == Promise.State.Canceled
+                        ? Promise<TResult>.Canceled()
+                        : Promise<TResult>.Rejected(rejectContainer);
+                }
+
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static Promise<TResult> MaybeInvokeAndAdoptResolve<TDelegate>(Promise _this, in TDelegate callback)
+                    where TDelegate : IFunc<Promise<TResult>>
+                {
+                    if (_this._ref.State == Promise.State.Resolved)
+                    {
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return InvokeAndAdopt(callback, null);
+                    }
+
+                    var rejectContainer = _this._ref.RejectContainer;
+                    _this._ref.SuppressRejection = true;
+                    _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                    return _this._ref.State == Promise.State.Canceled
+                        ? Promise<TResult>.Canceled()
+                        : Promise<TResult>.Rejected(rejectContainer);
+                }
+
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> Then<TDelegate>(Promise _this, TDelegate onResolve)
-                    where TDelegate : IFunc<TResult>, IFunc<VoidResult, PromiseWrapper<TResult>>
-                    => CallbackHelperImpl<VoidResult, TResult>.Then(_this, onResolve);
+                    where TDelegate : IFunc<TResult>, IFunc<VoidResult, TResult>
+                {
+                    if (_this._ref == null)
+                    {
+                        return Invoke(onResolve, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return MaybeInvokeResolve(_this, onResolve);
+                    }
+
+                    var promise = ThenPromise<VoidResult, TResult, TDelegate>.GetOrCreate(onResolve);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise<TResult>(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> ThenWait<TDelegate>(Promise _this, TDelegate onResolve)
-                    where TDelegate : IFunc<Promise<TResult>>, IFunc<VoidResult, PromiseWrapper<TResult>>
-                    => CallbackHelperImpl<VoidResult, TResult>.ThenWait(_this, onResolve);
+                    where TDelegate : IFunc<Promise<TResult>>, IFunc<VoidResult, Promise<TResult>>
+                {
+                    if (_this._ref == null)
+                    {
+                        return InvokeAndAdopt(onResolve, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return MaybeInvokeAndAdoptResolve(_this, onResolve);
+                    }
+
+                    var promise = ThenWaitPromise<VoidResult, TResult, TDelegate>.GetOrCreate(onResolve);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise<TResult>(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> Catch<TDelegate>(PromiseWrapper<TResult> _this, TDelegate onReject)
-                    where TDelegate : IFunc<TResult>, IFunc<VoidResult, PromiseWrapper<TResult>>
-                    => CallbackHelperImpl<TResult>.Catch<VoidResult, TDelegate>(_this, onReject);
+                internal static Promise<TResult> Catch<TDelegate>(Promise<TResult> _this, TDelegate onReject)
+                    where TDelegate : IFunc<TResult>, IFunc<VoidResult, TResult>
+                {
+                    if (_this._ref == null)
+                    {
+                        return _this;
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return Filter<VoidResult>.MaybeInvokeCatch(_this, onReject, Promise.State.Rejected);
+                    }
+
+                    var promise = CatchPromise<TResult, VoidResult, TDelegate>.GetOrCreate(onReject);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise<TResult>(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> CatchWait<TDelegate>(PromiseWrapper<TResult> _this, TDelegate onReject)
-                    where TDelegate : IFunc<Promise<TResult>>, IFunc<VoidResult, PromiseWrapper<TResult>>
-                    => CallbackHelperImpl<TResult>.CatchWait<VoidResult, TDelegate>(_this, onReject);
+                internal static Promise<TResult> CatchWait<TDelegate>(Promise<TResult> _this, TDelegate onReject)
+                    where TDelegate : IFunc<Promise<TResult>>, IFunc<VoidResult, Promise<TResult>>
+                {
+                    if (_this._ref == null)
+                    {
+                        return _this;
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return Filter<VoidResult>.MaybeInvokeAndAdoptCatch(_this, onReject, Promise.State.Rejected);
+                    }
+
+                    var promise = CatchWaitPromise<TResult, VoidResult, TDelegate>.GetOrCreate(onReject);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise<TResult>(promise, promise.Id);
+                }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
                 [DebuggerNonUserCode, StackTraceHidden]
 #endif
                 internal static class Filter<TReject>
                 {
+                    // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                    [MethodImpl(MethodImplOptions.NoInlining)]
+                    internal static Promise<TResult> MaybeInvokeCatch<TDelegate>(in Promise<TResult> _this, in TDelegate callback, Promise.State invokeState)
+                        where TDelegate : IFunc<TReject, TResult>
+                    {
+                        // Support both Catch and CatchCancelation to reduce code duplication.
+                        Debug.Assert(invokeState == Promise.State.Rejected || invokeState == Promise.State.Canceled);
+                        var rejectContainer = _this._ref.RejectContainer;
+                        if (_this._ref.State != invokeState || !GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
+                        {
+                            return _this.Duplicate();
+                        }
+
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return Invoke(rejectArg, callback, rejectContainer);
+                    }
+
+                    // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                    [MethodImpl(MethodImplOptions.NoInlining)]
+                    internal static Promise<TResult> MaybeInvokeAndAdoptCatch<TDelegate>(in Promise<TResult> _this, in TDelegate callback, Promise.State invokeState)
+                        where TDelegate : IFunc<TReject, Promise<TResult>>
+                    {
+                        Debug.Assert(invokeState == Promise.State.Rejected || invokeState == Promise.State.Canceled);
+                        var rejectContainer = _this._ref.RejectContainer;
+                        if (_this._ref.State != invokeState || !GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
+                        {
+                            return _this.Duplicate();
+                        }
+
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return InvokeAndAdopt(rejectArg, callback, rejectContainer);
+                    }
+
                     [MethodImpl(InlineOption)]
                     internal static Promise<TResult> Catch<TDelegate>(Promise<TResult> _this, TDelegate onReject)
-                        where TDelegate : IFunc<TReject, TResult>, IFunc<TReject, PromiseWrapper<TResult>>
-                        => CallbackHelperImpl<TResult>.Catch<TReject, TDelegate>(_this, onReject);
+                        where TDelegate : IFunc<TReject, TResult>
+                    {
+                        if (_this._ref == null)
+                        {
+                            return _this;
+                        }
+
+                        if (_this._ref.State != Promise.State.Pending)
+                        {
+                            return MaybeInvokeCatch(_this, onReject, Promise.State.Rejected);
+                        }
+
+                        var promise = CatchPromise<TResult, TReject, TDelegate>.GetOrCreate(onReject);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                        return new Promise<TResult>(promise, promise.Id);
+                    }
 
                     [MethodImpl(InlineOption)]
                     internal static Promise<TResult> CatchWait<TDelegate>(Promise<TResult> _this, TDelegate onReject)
-                        where TDelegate : IFunc<TReject, Promise<TResult>>, IFunc<TReject, PromiseWrapper<TResult>>
-                        => CallbackHelperImpl<TResult>.CatchWait<TReject, TDelegate>(_this, onReject);
+                        where TDelegate : IFunc<TReject, Promise<TResult>>
+                    {
+                        if (_this._ref == null)
+                        {
+                            return _this;
+                        }
+
+                        if (_this._ref.State != Promise.State.Pending)
+                        {
+                            return MaybeInvokeAndAdoptCatch(_this, onReject, Promise.State.Rejected);
+                        }
+
+                        var promise = CatchWaitPromise<TResult, TReject, TDelegate>.GetOrCreate(onReject);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                        return new Promise<TResult>(promise, promise.Id);
+                    }
+
+                    // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                    [MethodImpl(MethodImplOptions.NoInlining)]
+                    internal static Promise<TResult> MaybeInvokeThen<TDelegateResolve, TDelegateReject>(Promise _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
+                        where TDelegateResolve : IFunc<TResult>
+                        where TDelegateReject : IFunc<TReject, TResult>
+                    {
+                        if (_this._ref.State == Promise.State.Resolved)
+                        {
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return Invoke(onResolve, null);
+                        }
+
+                        var rejectContainer = _this._ref.RejectContainer;
+                        if (_this._ref.State == Promise.State.Rejected && GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
+                        {
+                            _this._ref.SuppressRejection = true;
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return Invoke(rejectArg, onReject, rejectContainer);
+                        }
+
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return _this._ref.State == Promise.State.Canceled
+                            ? Promise<TResult>.Canceled()
+                            : Promise<TResult>.Rejected(rejectContainer);
+                    }
+
+                    // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                    [MethodImpl(MethodImplOptions.NoInlining)]
+                    internal static Promise<TResult> MaybeInvokeAndAdoptThen<TDelegateResolve, TDelegateReject>(Promise _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
+                        where TDelegateResolve : IFunc<Promise<TResult>>
+                        where TDelegateReject : IFunc<TReject, Promise<TResult>>
+                    {
+                        if (_this._ref.State == Promise.State.Resolved)
+                        {
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return InvokeAndAdopt(onResolve, null);
+                        }
+
+                        var rejectContainer = _this._ref.RejectContainer;
+                        if (_this._ref.State == Promise.State.Rejected && GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
+                        {
+                            _this._ref.SuppressRejection = true;
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return InvokeAndAdopt(rejectArg, onReject, rejectContainer);
+                        }
+
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return _this._ref.State == Promise.State.Canceled
+                            ? Promise<TResult>.Canceled()
+                            : Promise<TResult>.Rejected(rejectContainer);
+                    }
 
                     [MethodImpl(InlineOption)]
                     internal static Promise<TResult> Then<TDelegateResolve, TDelegateReject>(Promise _this, TDelegateResolve onResolve, TDelegateReject onReject)
-                        where TDelegateResolve : IFunc<TResult>, IFunc<VoidResult, PromiseWrapper<TResult>>
-                        where TDelegateReject : IFunc<TReject, TResult>, IFunc<TReject, PromiseWrapper<TResult>>
-                        => CallbackHelperImpl<VoidResult, TResult>.Then<TReject, TDelegateResolve, TDelegateReject>(_this, onResolve, onReject);
+                        where TDelegateResolve : IFunc<TResult>, IFunc<VoidResult, TResult>
+                        where TDelegateReject : IFunc<TReject, TResult>
+                    {
+                        if (_this._ref == null)
+                        {
+                            return Invoke(onResolve, null);
+                        }
+
+                        if (_this._ref.State != Promise.State.Pending)
+                        {
+                            return MaybeInvokeThen(_this, onResolve, onReject);
+                        }
+
+                        var promise = ThenPromise<VoidResult, TResult, TReject, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                        return new Promise<TResult>(promise, promise.Id);
+                    }
 
                     [MethodImpl(InlineOption)]
                     internal static Promise<TResult> ThenWait<TDelegateResolve, TDelegateReject>(Promise _this, TDelegateResolve onResolve, TDelegateReject onReject)
-                        where TDelegateResolve : IFunc<Promise<TResult>>, IFunc<VoidResult, PromiseWrapper<TResult>>
-                        where TDelegateReject : IFunc<TReject, Promise<TResult>>, IFunc<TReject, PromiseWrapper<TResult>>
-                        => CallbackHelperImpl<VoidResult, TResult>.ThenWait<TReject, TDelegateResolve, TDelegateReject>(_this, onResolve, onReject);
+                        where TDelegateResolve : IFunc<Promise<TResult>>, IFunc<VoidResult, Promise<TResult>>
+                        where TDelegateReject : IFunc<TReject, Promise<TResult>>
+                    {
+                        if (_this._ref == null)
+                        {
+                            return InvokeAndAdopt(onResolve, null);
+                        }
+
+                        if (_this._ref.State != Promise.State.Pending)
+                        {
+                            return MaybeInvokeAndAdoptThen(_this, onResolve, onReject);
+                        }
+
+                        var promise = ThenWaitPromise<VoidResult, TResult, TReject, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                        return new Promise<TResult>(promise, promise.Id);
+                    }
                 }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> Then<TDelegateResolve, TDelegateReject>(Promise _this, TDelegateResolve onResolve, TDelegateReject onReject)
-                    where TDelegateResolve : IFunc<TResult>, IFunc<VoidResult, PromiseWrapper<TResult>>
-                    where TDelegateReject : IFunc<TResult>, IFunc<VoidResult, PromiseWrapper<TResult>>
-                    => CallbackHelperImpl<VoidResult, TResult>.Then<VoidResult, TDelegateResolve, TDelegateReject>(_this, onResolve, onReject);
+                    where TDelegateResolve : IFunc<TResult>, IFunc<VoidResult, TResult>
+                    where TDelegateReject : IFunc<TResult>, IFunc<VoidResult, TResult>
+                {
+                    if (_this._ref == null)
+                    {
+                        return Invoke(onResolve, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return Filter<VoidResult>.MaybeInvokeThen(_this, onResolve, onReject);
+                    }
+
+                    var promise = ThenPromise<VoidResult, TResult, VoidResult, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise<TResult>(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> ThenWait<TDelegateResolve, TDelegateReject>(Promise _this, TDelegateResolve onResolve, TDelegateReject onReject)
-                    where TDelegateResolve : IFunc<Promise<TResult>>, IFunc<VoidResult, PromiseWrapper<TResult>>
-                    where TDelegateReject : IFunc<Promise<TResult>>, IFunc<VoidResult, PromiseWrapper<TResult>>
-                    => CallbackHelperImpl<VoidResult, TResult>.ThenWait<VoidResult, TDelegateResolve, TDelegateReject>(_this, onResolve, onReject);
+                    where TDelegateResolve : IFunc<Promise<TResult>>, IFunc<VoidResult, Promise<TResult>>
+                    where TDelegateReject : IFunc<Promise<TResult>>, IFunc<VoidResult, Promise<TResult>>
+                {
+                    if (_this._ref == null)
+                    {
+                        return InvokeAndAdopt(onResolve, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return Filter<VoidResult>.MaybeInvokeAndAdoptThen(_this, onResolve, onReject);
+                    }
+
+                    var promise = ThenWaitPromise<VoidResult, TResult, VoidResult, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise<TResult>(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> CatchCancelation<TDelegate>(Promise<TResult> _this, TDelegate onCancel)
-                    where TDelegate : IFunc<TResult>, IFunc<VoidResult, PromiseWrapper<TResult>>
-                    => CallbackHelperImpl<TResult>.CatchCancelation(_this, onCancel);
+                    where TDelegate : IFunc<TResult>, IFunc<VoidResult, TResult>
+                {
+                    if (_this._ref == null)
+                    {
+                        return _this;
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return Filter<VoidResult>.MaybeInvokeCatch(_this, onCancel, Promise.State.Canceled);
+                    }
+
+                    var promise = CatchCancelationPromise<TResult, TDelegate>.GetOrCreate(onCancel);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise<TResult>(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> CatchCancelationWait<TDelegate>(Promise<TResult> _this, TDelegate onCancel)
-                    where TDelegate : IFunc<Promise<TResult>>, IFunc<VoidResult, PromiseWrapper<TResult>>
-                    => CallbackHelperImpl<TResult>.CatchCancelationWait(_this, onCancel);
+                    where TDelegate : IFunc<Promise<TResult>>, IFunc<VoidResult, Promise<TResult>>
+                {
+                    if (_this._ref == null)
+                    {
+                        return _this;
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return Filter<VoidResult>.MaybeInvokeAndAdoptCatch(_this, onCancel, Promise.State.Canceled);
+                    }
+
+                    var promise = CatchCancelationWaitPromise<TResult, TDelegate>.GetOrCreate(onCancel);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise<TResult>(promise, promise.Id);
+                }
+
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static Promise<TResult> InvokeContinueWith<TDelegate>(PromiseRefBase promise, short promiseId, in TDelegate callback)
+                    where TDelegate : IFunc<Promise.ResultContainer, TResult>
+                {
+                    var arg = new Promise.ResultContainer(promise.RejectContainer, promise.State);
+                    promise.SuppressRejection = true;
+                    promise.MaybeMarkAwaitedAndDispose(promiseId);
+                    return Invoke(arg, callback, null);
+                }
+
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static Promise<TResult> InvokeAndAdoptContinueWith<TDelegate>(PromiseRefBase promise, short promiseId, in TDelegate callback)
+                    where TDelegate : IFunc<Promise.ResultContainer, Promise<TResult>>
+                {
+                    var arg = new Promise.ResultContainer(promise.RejectContainer, promise.State);
+                    promise.SuppressRejection = true;
+                    promise.MaybeMarkAwaitedAndDispose(promiseId);
+                    return InvokeAndAdopt(arg, callback, null);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> ContinueWith<TDelegate>(Promise _this, in TDelegate onContinue)
-                    where TDelegate : IFunc<Promise.ResultContainer, TResult>, IFunc<Promise.ResultContainer, PromiseWrapper<TResult>>
-                    => CallbackHelperImpl<TResult>.ContinueWith(_this, onContinue);
+                    where TDelegate : IFunc<Promise.ResultContainer, TResult>
+                {
+                    if (_this._ref == null)
+                    {
+                        return Invoke(Promise.ResultContainer.Resolved, onContinue, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return InvokeContinueWith(_this._ref, _this._id, onContinue);
+                    }
+
+                    var promise = ContinueVoidResultPromise<TResult, TDelegate>.GetOrCreate(onContinue);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise<TResult>(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> ContinueWithWait<TDelegate>(Promise _this, in TDelegate onContinue)
-                    where TDelegate : IFunc<Promise.ResultContainer, Promise<TResult>>, IFunc<Promise.ResultContainer, PromiseWrapper<TResult>>
-                    => CallbackHelperImpl<TResult>.ContinueWithWait(_this, onContinue);
+                    where TDelegate : IFunc<Promise.ResultContainer, Promise<TResult>>
+                {
+                    if (_this._ref == null)
+                    {
+                        return InvokeAndAdopt(Promise.ResultContainer.Resolved, onContinue, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return InvokeAndAdoptContinueWith(_this._ref, _this._id, onContinue);
+                    }
+
+                    var promise = ContinueVoidResultWaitPromise<TResult, TDelegate>.GetOrCreate(onContinue);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise<TResult>(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> ContinueWith<TDelegate>(Promise _this, in TDelegate onContinue, CancelationToken cancelationToken)
-                    where TDelegate : IFunc<Promise.ResultContainer, TResult>, IFunc<Promise.ResultContainer, PromiseWrapper<TResult>>
-                    => CallbackHelperImpl<TResult>.ContinueWith(_this, onContinue, cancelationToken);
+                    where TDelegate : IFunc<Promise.ResultContainer, TResult>
+                {
+                    if (cancelationToken.IsCancelationRequested)
+                    {
+                        return Canceled(_this._ref, _this._id);
+                    }
+
+                    if (_this._ref == null)
+                    {
+                        return Invoke(Promise.ResultContainer.Resolved, onContinue, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return InvokeContinueWith(_this._ref, _this._id, onContinue);
+                    }
+
+                    PromiseRef<TResult> promise;
+                    if (cancelationToken.CanBeCanceled)
+                    {
+                        var p = CancelableContinueVoidResultPromise<TResult, TDelegate>.GetOrCreate(onContinue);
+                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
+                    }
+                    else
+                    {
+                        promise = ContinueVoidResultPromise<TResult, TDelegate>.GetOrCreate(onContinue);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                    }
+                    return new Promise<TResult>(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> ContinueWithWait<TDelegate>(Promise _this, in TDelegate onContinue, CancelationToken cancelationToken)
-                    where TDelegate : IFunc<Promise.ResultContainer, Promise<TResult>>, IFunc<Promise.ResultContainer, PromiseWrapper<TResult>>
-                    => CallbackHelperImpl<TResult>.ContinueWithWait(_this, onContinue, cancelationToken);
+                    where TDelegate : IFunc<Promise.ResultContainer, Promise<TResult>>
+                {
+                    if (cancelationToken.IsCancelationRequested)
+                    {
+                        return Canceled(_this._ref, _this._id);
+                    }
+
+                    if (_this._ref == null)
+                    {
+                        return InvokeAndAdopt(Promise.ResultContainer.Resolved, onContinue, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return InvokeAndAdoptContinueWith(_this._ref, _this._id, onContinue);
+                    }
+
+                    PromiseRef<TResult> promise;
+                    if (cancelationToken.CanBeCanceled)
+                    {
+                        var p = CancelableContinueVoidResultWaitPromise<TResult, TDelegate>.GetOrCreate(onContinue);
+                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
+                    }
+                    else
+                    {
+                        promise = ContinueVoidResultWaitPromise<TResult, TDelegate>.GetOrCreate(onContinue);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                    }
+                    return new Promise<TResult>(promise, promise.Id);
+                }
             } // class CallbackHelperResult<TResult>
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -352,65 +1103,351 @@ namespace Proto.Promises
 #endif
             internal static class CallbackHelper<TArg, TResult>
             {
-                [MethodImpl(InlineOption)]
-                internal static Promise<TResult> Then<TDelegate>(PromiseWrapper<TArg> _this, TDelegate onResolve)
-                    where TDelegate : IFunc<TArg, TResult>, IFunc<TArg, PromiseWrapper<TResult>>
-                    => CallbackHelperImpl<TArg, TResult>.Then(_this, onResolve);
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static Promise<TResult> MaybeInvokeResolve<TDelegate>(in Promise<TArg> _this, in TDelegate callback)
+                    where TDelegate : IFunc<TArg, TResult>
+                {
+                    if (_this._ref.State == Promise.State.Resolved)
+                    {
+                        var arg = _this._ref._result;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return CallbackHelperResult<TResult>.Invoke(arg, callback, null);
+                    }
+
+                    var rejectContainer = _this._ref.RejectContainer;
+                    _this._ref.SuppressRejection = true;
+                    _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                    return _this._ref.State == Promise.State.Canceled
+                        ? Promise<TResult>.Canceled()
+                        : Promise<TResult>.Rejected(rejectContainer);
+                }
+
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static Promise<TResult> MaybeInvokeAndAdoptResolve<TDelegate>(in Promise<TArg> _this, in TDelegate callback)
+                    where TDelegate : IFunc<TArg, Promise<TResult>>
+                {
+                    if (_this._ref.State == Promise.State.Resolved)
+                    {
+                        var arg = _this._ref._result;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return CallbackHelperResult<TResult>.InvokeAndAdopt(arg, callback, null);
+                    }
+
+                    var rejectContainer = _this._ref.RejectContainer;
+                    _this._ref.SuppressRejection = true;
+                    _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                    return _this._ref.State == Promise.State.Canceled
+                        ? Promise<TResult>.Canceled()
+                        : Promise<TResult>.Rejected(rejectContainer);
+                }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> ThenWait<TDelegate>(PromiseWrapper<TArg> _this, TDelegate onResolve)
-                    where TDelegate : IFunc<TArg, Promise<TResult>>, IFunc<TArg, PromiseWrapper<TResult>>
-                    => CallbackHelperImpl<TArg, TResult>.ThenWait(_this, onResolve);
+                internal static Promise<TResult> Then<TDelegate>(Promise<TArg> _this, TDelegate onResolve)
+                    where TDelegate : IFunc<TArg, TResult>
+                {
+                    if (_this._ref == null)
+                    {
+                        return CallbackHelperResult<TResult>.Invoke(_this._result, onResolve, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return MaybeInvokeResolve(_this, onResolve);
+                    }
+
+                    var promise = ThenPromise<TArg, TResult, TDelegate>.GetOrCreate(onResolve);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise<TResult>(promise, promise.Id);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> ThenWait<TDelegate>(Promise<TArg> _this, TDelegate onResolve)
+                    where TDelegate : IFunc<TArg, Promise<TResult>>
+                {
+                    if (_this._ref == null)
+                    {
+                        return CallbackHelperResult<TResult>.InvokeAndAdopt(_this._result, onResolve, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return MaybeInvokeAndAdoptResolve(_this, onResolve);
+                    }
+
+                    var promise = ThenWaitPromise<TArg, TResult, TDelegate>.GetOrCreate(onResolve);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise<TResult>(promise, promise.Id);
+                }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
                 [DebuggerNonUserCode, StackTraceHidden]
 #endif
                 internal static class Filter<TReject>
                 {
-                    [MethodImpl(InlineOption)]
-                    internal static Promise<TResult> Then<TDelegateResolve, TDelegateReject>(PromiseWrapper<TArg> _this, TDelegateResolve onResolve, TDelegateReject onReject)
-                        where TDelegateResolve : IFunc<TArg, TResult>, IFunc<TArg, PromiseWrapper<TResult>>
-                        where TDelegateReject : IFunc<TReject, TResult>, IFunc<TReject, PromiseWrapper<TResult>>
-                        => CallbackHelperImpl<TArg, TResult>.Then<TReject, TDelegateResolve, TDelegateReject>(_this, onResolve, onReject);
+                    // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                    [MethodImpl(MethodImplOptions.NoInlining)]
+                    internal static Promise<TResult> MaybeInvokeThen<TDelegateResolve, TDelegateReject>(in Promise<TArg> _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
+                        where TDelegateResolve : IFunc<TArg, TResult>
+                        where TDelegateReject : IFunc<TReject, TResult>
+                    {
+                        if (_this._ref.State == Promise.State.Resolved)
+                        {
+                            var arg = _this._ref._result;
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return CallbackHelperResult<TResult>.Invoke(arg, onResolve, null);
+                        }
+
+                        var rejectContainer = _this._ref.RejectContainer;
+                        if (_this._ref.State == Promise.State.Rejected && GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
+                        {
+                            _this._ref.SuppressRejection = true;
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return CallbackHelperResult<TResult>.Invoke(rejectArg, onReject, rejectContainer);
+                        }
+
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return _this._ref.State == Promise.State.Canceled
+                            ? Promise<TResult>.Canceled()
+                            : Promise<TResult>.Rejected(rejectContainer);
+                    }
+
+                    // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                    [MethodImpl(MethodImplOptions.NoInlining)]
+                    internal static Promise<TResult> MaybeInvokeAndAdoptThen<TDelegateResolve, TDelegateReject>(in Promise<TArg> _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
+                        where TDelegateResolve : IFunc<TArg, Promise<TResult>>
+                        where TDelegateReject : IFunc<TReject, Promise<TResult>>
+                    {
+                        if (_this._ref.State == Promise.State.Resolved)
+                        {
+                            var arg = _this._ref._result;
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return CallbackHelperResult<TResult>.InvokeAndAdopt(arg, onResolve, null);
+                        }
+
+                        var rejectContainer = _this._ref.RejectContainer;
+                        if (_this._ref.State == Promise.State.Rejected && GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
+                        {
+                            _this._ref.SuppressRejection = true;
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return CallbackHelperResult<TResult>.InvokeAndAdopt(rejectArg, onReject, rejectContainer);
+                        }
+
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return _this._ref.State == Promise.State.Canceled
+                            ? Promise<TResult>.Canceled()
+                            : Promise<TResult>.Rejected(rejectContainer);
+                    }
 
                     [MethodImpl(InlineOption)]
-                    internal static Promise<TResult> ThenWait<TDelegateResolve, TDelegateReject>(PromiseWrapper<TArg> _this, TDelegateResolve onResolve, TDelegateReject onReject)
-                        where TDelegateResolve : IFunc<TArg, Promise<TResult>>, IFunc<TArg, PromiseWrapper<TResult>>
-                        where TDelegateReject : IFunc<TReject, Promise<TResult>>, IFunc<TReject, PromiseWrapper<TResult>>
-                        => CallbackHelperImpl<TArg, TResult>.ThenWait<TReject, TDelegateResolve, TDelegateReject>(_this, onResolve, onReject);
+                    internal static Promise<TResult> Then<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, TDelegateResolve onResolve, TDelegateReject onReject)
+                        where TDelegateResolve : IFunc<TArg, TResult>
+                        where TDelegateReject : IFunc<TReject, TResult>
+                    {
+                        if (_this._ref == null)
+                        {
+                            return CallbackHelperResult<TResult>.Invoke(_this._result, onResolve, null);
+                        }
+
+                        if (_this._ref.State != Promise.State.Pending)
+                        {
+                            return MaybeInvokeThen(_this, onResolve, onReject);
+                        }
+
+                        var promise = ThenPromise<TArg, TResult, TReject, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                        return new Promise<TResult>(promise, promise.Id);
+                    }
+
+                    [MethodImpl(InlineOption)]
+                    internal static Promise<TResult> ThenWait<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, TDelegateResolve onResolve, TDelegateReject onReject)
+                        where TDelegateResolve : IFunc<TArg, Promise<TResult>>
+                        where TDelegateReject : IFunc<TReject, Promise<TResult>>
+                    {
+                        if (_this._ref == null)
+                        {
+                            return CallbackHelperResult<TResult>.InvokeAndAdopt(_this._result, onResolve, null);
+                        }
+
+                        if (_this._ref.State != Promise.State.Pending)
+                        {
+                            return MaybeInvokeAndAdoptThen(_this, onResolve, onReject);
+                        }
+
+                        var promise = ThenWaitPromise<TArg, TResult, TReject, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                        return new Promise<TResult>(promise, promise.Id);
+                    }
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> Then<TDelegateResolve, TDelegateReject>(PromiseWrapper<TArg> _this, TDelegateResolve onResolve, TDelegateReject onReject)
-                    where TDelegateResolve : IFunc<TArg, TResult>, IFunc<TArg, PromiseWrapper<TResult>>
-                    where TDelegateReject : IFunc<TResult>, IFunc<VoidResult, PromiseWrapper<TResult>>
-                    => CallbackHelperImpl<TArg, TResult>.Then<VoidResult, TDelegateResolve, TDelegateReject>(_this, onResolve, onReject);
+                internal static Promise<TResult> Then<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, TDelegateResolve onResolve, TDelegateReject onReject)
+                    where TDelegateResolve : IFunc<TArg, TResult>
+                    where TDelegateReject : IFunc<TResult>, IFunc<VoidResult, TResult>
+                {
+                    if (_this._ref == null)
+                    {
+                        return CallbackHelperResult<TResult>.Invoke(_this._result, onResolve, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return Filter<VoidResult>.MaybeInvokeThen(_this, onResolve, onReject);
+                    }
+
+                    var promise = ThenPromise<TArg, TResult, VoidResult, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise<TResult>(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> ThenWait<TDelegateResolve, TDelegateReject>(PromiseWrapper<TArg> _this, TDelegateResolve onResolve, TDelegateReject onReject)
-                    where TDelegateResolve : IFunc<TArg, Promise<TResult>>, IFunc<TArg, PromiseWrapper<TResult>>
-                    where TDelegateReject : IFunc<Promise<TResult>>, IFunc<VoidResult, PromiseWrapper<TResult>>
-                    => CallbackHelperImpl<TArg, TResult>.ThenWait<VoidResult, TDelegateResolve, TDelegateReject>(_this, onResolve, onReject);
+                internal static Promise<TResult> ThenWait<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, TDelegateResolve onResolve, TDelegateReject onReject)
+                    where TDelegateResolve : IFunc<TArg, Promise<TResult>>
+                    where TDelegateReject : IFunc<Promise<TResult>>, IFunc<VoidResult, Promise<TResult>>
+                {
+                    if (_this._ref == null)
+                    {
+                        return CallbackHelperResult<TResult>.InvokeAndAdopt(_this._result, onResolve, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return Filter<VoidResult>.MaybeInvokeAndAdoptThen(_this, onResolve, onReject);
+                    }
+
+                    var promise = ThenWaitPromise<TArg, TResult, VoidResult, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise<TResult>(promise, promise.Id);
+                }
+
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static Promise<TResult> InvokeContinueWith<TDelegate>(PromiseRef<TArg> promise, short promiseId, in TDelegate callback)
+                    where TDelegate : IFunc<Promise<TArg>.ResultContainer, TResult>
+                {
+                    var arg = new Promise<TArg>.ResultContainer(promise._result, promise.RejectContainer, promise.State);
+                    promise.SuppressRejection = true;
+                    promise.MaybeMarkAwaitedAndDispose(promiseId);
+                    return CallbackHelperResult<TResult>.Invoke(arg, callback, null);
+                }
+
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static Promise<TResult> InvokeAndAdoptContinueWith<TDelegate>(PromiseRef<TArg> promise, short promiseId, in TDelegate callback)
+                    where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>
+                {
+                    var arg = new Promise<TArg>.ResultContainer(promise._result, promise.RejectContainer, promise.State);
+                    promise.SuppressRejection = true;
+                    promise.MaybeMarkAwaitedAndDispose(promiseId);
+                    return CallbackHelperResult<TResult>.InvokeAndAdopt(arg, callback, null);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> ContinueWith<TDelegate>(Promise<TArg> _this, in TDelegate onContinue)
-                    where TDelegate : IFunc<Promise<TArg>.ResultContainer, TResult>, IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>
-                    => CallbackHelperImpl<TArg, TResult>.ContinueWith(_this, onContinue);
+                    where TDelegate : IFunc<Promise<TArg>.ResultContainer, TResult>
+                {
+                    if (_this._ref == null)
+                    {
+                        return CallbackHelperResult<TResult>.Invoke(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return InvokeContinueWith(_this._ref, _this._id, onContinue);
+                    }
+
+                    var promise = ContinueArgResultPromise<TArg, TResult, TDelegate>.GetOrCreate(onContinue);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise<TResult>(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> ContinueWithWait<TDelegate>(Promise<TArg> _this, in TDelegate onContinue)
-                    where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>, IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>
-                    => CallbackHelperImpl<TArg, TResult>.ContinueWithWait(_this, onContinue);
+                    where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>
+                {
+                    if (_this._ref == null)
+                    {
+                        return CallbackHelperResult<TResult>.InvokeAndAdopt(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return InvokeAndAdoptContinueWith(_this._ref, _this._id, onContinue);
+                    }
+
+                    var promise = ContinueArgResultWaitPromise<TArg, TResult, TDelegate>.GetOrCreate(onContinue);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise<TResult>(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> ContinueWith<TDelegate>(Promise<TArg> _this, in TDelegate onContinue, CancelationToken cancelationToken)
-                    where TDelegate : IFunc<Promise<TArg>.ResultContainer, TResult>, IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>
-                    => CallbackHelperImpl<TArg, TResult>.ContinueWith(_this, onContinue, cancelationToken);
+                    where TDelegate : IFunc<Promise<TArg>.ResultContainer, TResult>
+                {
+                    if (cancelationToken.IsCancelationRequested)
+                    {
+                        return CallbackHelperResult<TResult>.Canceled(_this._ref, _this._id);
+                    }
+
+                    if (_this._ref == null)
+                    {
+                        return CallbackHelperResult<TResult>.Invoke(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return InvokeContinueWith(_this._ref, _this._id, onContinue);
+                    }
+
+                    PromiseRef<TResult> promise;
+                    if (cancelationToken.CanBeCanceled)
+                    {
+                        var p = CancelableContinueArgResultPromise<TArg, TResult, TDelegate>.GetOrCreate(onContinue);
+                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
+                    }
+                    else
+                    {
+                        promise = ContinueArgResultPromise<TArg, TResult, TDelegate>.GetOrCreate(onContinue);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                    }
+                    return new Promise<TResult>(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> ContinueWithWait<TDelegate>(Promise<TArg> _this, in TDelegate onContinue, CancelationToken cancelationToken)
-                    where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>, IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>
-                    => CallbackHelperImpl<TArg, TResult>.ContinueWithWait(_this, onContinue, cancelationToken);
+                    where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>
+                {
+                    if (cancelationToken.IsCancelationRequested)
+                    {
+                        return CallbackHelperResult<TResult>.Canceled(_this._ref, _this._id);
+                    }
+
+                    if (_this._ref == null)
+                    {
+                        return CallbackHelperResult<TResult>.InvokeAndAdopt(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return InvokeAndAdoptContinueWith(_this._ref, _this._id, onContinue);
+                    }
+
+                    PromiseRef<TResult> promise;
+                    if (cancelationToken.CanBeCanceled)
+                    {
+                        var p = CancelableContinueArgResultWaitPromise<TArg, TResult, TDelegate>.GetOrCreate(onContinue);
+                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
+                    }
+                    else
+                    {
+                        promise = ContinueArgResultWaitPromise<TArg, TResult, TDelegate>.GetOrCreate(onContinue);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                    }
+                    return new Promise<TResult>(promise, promise.Id);
+                }
             } // class CallbackHelper<TArg, TResult>
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -418,6 +1455,92 @@ namespace Proto.Promises
 #endif
             internal static class CallbackHelperVoid
             {
+                [MethodImpl(InlineOption)]
+                internal static Promise Invoke<TDelegate>(in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IAction
+                {
+                    try
+                    {
+                        callback.Invoke();
+                        return Promise.Resolved();
+                    }
+                    catch (RethrowException e)
+                    {
+                        // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
+                        return rejectContainer != null
+                            ? Promise.Rejected(rejectContainer)
+                            : Promise.Rejected(e);
+                    }
+                    catch (Exception e)
+                    {
+                        return Promise.FromException(e);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise Invoke<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IAction<TArg>
+                {
+                    try
+                    {
+                        callback.Invoke(arg);
+                        return Promise.Resolved();
+                    }
+                    catch (RethrowException e)
+                    {
+                        // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
+                        return rejectContainer != null
+                            ? Promise.Rejected(rejectContainer)
+                            : Promise.Rejected(e);
+                    }
+                    catch (Exception e)
+                    {
+                        return Promise.FromException(e);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise InvokeAndAdopt<TDelegate>(in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IFunc<Promise>
+                {
+                    try
+                    {
+                        return callback.Invoke().Duplicate();
+                    }
+                    catch (RethrowException e)
+                    {
+                        // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
+                        return rejectContainer != null
+                            ? Promise.Rejected(rejectContainer)
+                            : Promise.Rejected(e);
+                    }
+                    catch (Exception e)
+                    {
+                        return Promise.FromException(e);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise InvokeAndAdopt<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IFunc<TArg, Promise>
+                {
+                    try
+                    {
+                        return callback.Invoke(arg).Duplicate();
+                    }
+                    catch (RethrowException e)
+                    {
+                        // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
+                        return rejectContainer != null
+                            ? Promise.Rejected(rejectContainer)
+                            : Promise.Rejected(e);
+                    }
+                    catch (Exception e)
+                    {
+                        return Promise.FromException(e);
+                    }
+                }
+
                 [MethodImpl(InlineOption)]
                 private static Promise InvokeCallbackDirect<TDelegate>(TDelegate resolver, in Promise resolved)
                     where TDelegate : IAction
@@ -697,722 +1820,497 @@ namespace Proto.Promises
                     return new Promise<TResult>(promise, promise.Id);
                 }
 
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static Promise MaybeInvokeResolve<TDelegate>(Promise _this, in TDelegate callback)
+                    where TDelegate : IAction
+                {
+                    if (_this._ref.State == Promise.State.Resolved)
+                    {
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return Invoke(callback, null);
+                    }
+
+                    var rejectContainer = _this._ref.RejectContainer;
+                    _this._ref.SuppressRejection = true;
+                    _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                    return _this._ref.State == Promise.State.Canceled
+                        ? Promise.Canceled()
+                        : Promise.Rejected(rejectContainer);
+                }
+
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static Promise MaybeInvokeAndAdoptResolve<TDelegate>(Promise _this, in TDelegate callback)
+                    where TDelegate : IFunc<Promise>
+                {
+                    if (_this._ref.State == Promise.State.Resolved)
+                    {
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return InvokeAndAdopt(callback, null);
+                    }
+
+                    var rejectContainer = _this._ref.RejectContainer;
+                    _this._ref.SuppressRejection = true;
+                    _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                    return _this._ref.State == Promise.State.Canceled
+                        ? Promise.Canceled()
+                        : Promise.Rejected(rejectContainer);
+                }
+
                 [MethodImpl(InlineOption)]
                 internal static Promise Then<TDelegate>(Promise _this, TDelegate onResolve)
-                    where TDelegate : IAction, IFunc<VoidResult, PromiseWrapper<VoidResult>>
-                    => CallbackHelperImpl<VoidResult, VoidResult>.Then(_this, onResolve);
+                    where TDelegate : IAction, IFunc<VoidResult, VoidResult>
+                {
+                    if (_this._ref == null)
+                    {
+                        return Invoke(onResolve, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return MaybeInvokeResolve(_this, onResolve);
+                    }
+
+                    var promise = ThenPromise<VoidResult, VoidResult, TDelegate>.GetOrCreate(onResolve);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise ThenWait<TDelegate>(Promise _this, TDelegate onResolve)
-                    where TDelegate : IFunc<Promise>, IFunc<VoidResult, PromiseWrapper<VoidResult>>
-                    => CallbackHelperImpl<VoidResult, VoidResult>.ThenWait(_this, onResolve);
+                    where TDelegate : IFunc<Promise>, IFunc<VoidResult, Promise>
+                {
+                    if (_this._ref == null)
+                    {
+                        return InvokeAndAdopt(onResolve, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return MaybeInvokeAndAdoptResolve(_this, onResolve);
+                    }
+
+                    var promise = ThenWaitPromise<VoidResult, TDelegate>.GetOrCreate(onResolve);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise Catch<TDelegate>(Promise _this, TDelegate onReject)
-                    where TDelegate : IAction, IFunc<VoidResult, PromiseWrapper<VoidResult>>
-                    => CallbackHelperImpl<VoidResult>.Catch<VoidResult, TDelegate>(_this, onReject);
+                    where TDelegate : IAction, IAction<VoidResult>, IFunc<VoidResult, VoidResult>
+                {
+                    if (_this._ref == null)
+                    {
+                        return _this;
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return Filter<VoidResult>.MaybeInvokeCatch(_this, onReject, Promise.State.Rejected);
+                    }
+
+                    var promise = CatchPromise<VoidResult, VoidResult, TDelegate>.GetOrCreate(onReject);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise CatchWait<TDelegate>(Promise _this, TDelegate onReject)
-                    where TDelegate : IFunc<Promise>, IFunc<VoidResult, PromiseWrapper<VoidResult>>
-                    => CallbackHelperImpl<VoidResult>.CatchWait<VoidResult, TDelegate>(_this, onReject);
+                    where TDelegate : IFunc<Promise>, IFunc<VoidResult, Promise>
+                {
+                    if (_this._ref == null)
+                    {
+                        return _this;
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return Filter<VoidResult>.MaybeInvokeAndAdoptCatch(_this, onReject, Promise.State.Rejected);
+                    }
+
+                    var promise = CatchWaitPromise<VoidResult, TDelegate>.GetOrCreate(onReject);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise(promise, promise.Id);
+                }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
                 [DebuggerNonUserCode, StackTraceHidden]
 #endif
                 internal static class Filter<TReject>
                 {
+                    // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                    [MethodImpl(MethodImplOptions.NoInlining)]
+                    internal static Promise MaybeInvokeCatch<TDelegate>(Promise _this, in TDelegate callback, Promise.State invokeState)
+                        where TDelegate : IAction<TReject>
+                    {
+                        // Support both Catch and CatchCancelation to reduce code duplication.
+                        Debug.Assert(invokeState == Promise.State.Rejected || invokeState == Promise.State.Canceled);
+                        var rejectContainer = _this._ref.RejectContainer;
+                        if (_this._ref.State != invokeState || !GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
+                        {
+                            return _this.Duplicate();
+                        }
+
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return Invoke(rejectArg, callback, rejectContainer);
+                    }
+
+                    // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                    [MethodImpl(MethodImplOptions.NoInlining)]
+                    internal static Promise MaybeInvokeAndAdoptCatch<TDelegate>(Promise _this, in TDelegate callback, Promise.State invokeState)
+                        where TDelegate : IFunc<TReject, Promise>
+                    {
+                        Debug.Assert(invokeState == Promise.State.Rejected || invokeState == Promise.State.Canceled);
+                        var rejectContainer = _this._ref.RejectContainer;
+                        if (_this._ref.State != invokeState || !GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
+                        {
+                            return _this.Duplicate();
+                        }
+
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return InvokeAndAdopt(rejectArg, callback, rejectContainer);
+                    }
+
                     [MethodImpl(InlineOption)]
                     internal static Promise Catch<TDelegate>(Promise _this, TDelegate onReject)
-                        where TDelegate : IAction<TReject>, IFunc<TReject, PromiseWrapper<VoidResult>>
-                        => CallbackHelperImpl<VoidResult>.Catch<TReject, TDelegate>(_this, onReject);
+                        where TDelegate : IAction<TReject>, IFunc<TReject, VoidResult>
+                    {
+                        if (_this._ref == null)
+                        {
+                            return _this;
+                        }
+
+                        if (_this._ref.State != Promise.State.Pending)
+                        {
+                            return MaybeInvokeCatch(_this, onReject, Promise.State.Rejected);
+                        }
+
+                        var promise = CatchPromise<VoidResult, TReject, TDelegate>.GetOrCreate(onReject);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                        return new Promise(promise, promise.Id);
+                    }
 
                     [MethodImpl(InlineOption)]
                     internal static Promise CatchWait<TDelegate>(Promise _this, TDelegate onReject)
-                        where TDelegate : IFunc<TReject, Promise>, IFunc<TReject, PromiseWrapper<VoidResult>>
-                        => CallbackHelperImpl<VoidResult>.CatchWait<TReject, TDelegate>(_this, onReject);
+                        where TDelegate : IFunc<TReject, Promise>
+                    {
+                        if (_this._ref == null)
+                        {
+                            return _this;
+                        }
+
+                        if (_this._ref.State != Promise.State.Pending)
+                        {
+                            return MaybeInvokeAndAdoptCatch(_this, onReject, Promise.State.Rejected);
+                        }
+
+                        var promise = CatchWaitPromise<TReject, TDelegate>.GetOrCreate(onReject);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                        return new Promise(promise, promise.Id);
+                    }
+
+                    // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                    [MethodImpl(MethodImplOptions.NoInlining)]
+                    internal static Promise MaybeInvokeThen<TDelegateResolve, TDelegateReject>(Promise _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
+                        where TDelegateResolve : IAction
+                        where TDelegateReject : IAction<TReject>
+                    {
+                        if (_this._ref.State == Promise.State.Resolved)
+                        {
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return Invoke(onResolve, null);
+                        }
+
+                        var rejectContainer = _this._ref.RejectContainer;
+                        if (_this._ref.State == Promise.State.Rejected && GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
+                        {
+                            _this._ref.SuppressRejection = true;
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return Invoke(rejectArg, onReject, rejectContainer);
+                        }
+
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return _this._ref.State == Promise.State.Canceled
+                            ? Promise.Canceled()
+                            : Promise.Rejected(rejectContainer);
+                    }
+
+                    // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                    [MethodImpl(MethodImplOptions.NoInlining)]
+                    internal static Promise MaybeInvokeAndAdoptThen<TDelegateResolve, TDelegateReject>(Promise _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
+                        where TDelegateResolve : IFunc<Promise>
+                        where TDelegateReject : IFunc<TReject, Promise>
+                    {
+                        if (_this._ref.State == Promise.State.Resolved)
+                        {
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return InvokeAndAdopt(onResolve, null);
+                        }
+
+                        var rejectContainer = _this._ref.RejectContainer;
+                        if (_this._ref.State == Promise.State.Rejected && GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
+                        {
+                            _this._ref.SuppressRejection = true;
+                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                            return InvokeAndAdopt(rejectArg, onReject, rejectContainer);
+                        }
+
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return _this._ref.State == Promise.State.Canceled
+                            ? Promise.Canceled()
+                            : Promise.Rejected(rejectContainer);
+                    }
 
                     [MethodImpl(InlineOption)]
                     internal static Promise Then<TDelegateResolve, TDelegateReject>(Promise _this, TDelegateResolve onResolve, TDelegateReject onReject)
-                        where TDelegateResolve : IAction, IFunc<VoidResult, PromiseWrapper<VoidResult>>
-                        where TDelegateReject : IAction<TReject>, IFunc<TReject, PromiseWrapper<VoidResult>>
-                        => CallbackHelperImpl<VoidResult, VoidResult>.Then<TReject, TDelegateResolve, TDelegateReject>(_this, onResolve, onReject);
+                        where TDelegateResolve : IAction, IFunc<VoidResult, VoidResult>
+                        where TDelegateReject : IAction<TReject>, IFunc<TReject, VoidResult>
+                    {
+                        if (_this._ref == null)
+                        {
+                            return Invoke(onResolve, null);
+                        }
+
+                        if (_this._ref.State != Promise.State.Pending)
+                        {
+                            return MaybeInvokeThen(_this, onResolve, onReject);
+                        }
+
+                        var promise = ThenPromise<VoidResult, VoidResult, TReject, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                        return new Promise(promise, promise.Id);
+                    }
 
                     [MethodImpl(InlineOption)]
                     internal static Promise ThenWait<TDelegateResolve, TDelegateReject>(Promise _this, TDelegateResolve onResolve, TDelegateReject onReject)
-                        where TDelegateResolve : IFunc<Promise>, IFunc<VoidResult, PromiseWrapper<VoidResult>>
-                        where TDelegateReject : IFunc<TReject, Promise>, IFunc<TReject, PromiseWrapper<VoidResult>>
-                        => CallbackHelperImpl<VoidResult, VoidResult>.ThenWait<TReject, TDelegateResolve, TDelegateReject>(_this, onResolve, onReject);
+                        where TDelegateResolve : IFunc<Promise>, IFunc<VoidResult, Promise>
+                        where TDelegateReject : IFunc<TReject, Promise>
+                    {
+                        if (_this._ref == null)
+                        {
+                            return InvokeAndAdopt(onResolve, null);
+                        }
+
+                        if (_this._ref.State != Promise.State.Pending)
+                        {
+                            return MaybeInvokeAndAdoptThen(_this, onResolve, onReject);
+                        }
+
+                        var promise = ThenWaitPromise<VoidResult, TReject, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                        return new Promise(promise, promise.Id);
+                    }
                 }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise Then<TDelegateResolve, TDelegateReject>(Promise _this, TDelegateResolve onResolve, TDelegateReject onReject)
-                    where TDelegateResolve : IAction, IFunc<VoidResult, PromiseWrapper<VoidResult>>
-                    where TDelegateReject : IAction, IFunc<VoidResult, PromiseWrapper<VoidResult>>
-                    => CallbackHelperImpl<VoidResult, VoidResult>.Then<VoidResult, TDelegateResolve, TDelegateReject>(_this, onResolve, onReject);
+                    where TDelegateResolve : IAction, IFunc<VoidResult, VoidResult>
+                    where TDelegateReject : IAction, IAction<VoidResult>, IFunc<VoidResult, VoidResult>
+                {
+                    if (_this._ref == null)
+                    {
+                        return Invoke(onResolve, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return Filter<VoidResult>.MaybeInvokeThen(_this, onResolve, onReject);
+                    }
+
+                    var promise = ThenPromise<VoidResult, VoidResult, VoidResult, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise ThenWait<TDelegateResolve, TDelegateReject>(Promise _this, TDelegateResolve onResolve, TDelegateReject onReject)
-                    where TDelegateResolve : IFunc<Promise>, IFunc<VoidResult, PromiseWrapper<VoidResult>>
-                    where TDelegateReject : IFunc<Promise>, IFunc<VoidResult, PromiseWrapper<VoidResult>>
-                    => CallbackHelperImpl<VoidResult, VoidResult>.ThenWait<VoidResult, TDelegateResolve, TDelegateReject>(_this, onResolve, onReject);
+                    where TDelegateResolve : IFunc<Promise>, IFunc<VoidResult, Promise>
+                    where TDelegateReject : IFunc<Promise>, IFunc<VoidResult, Promise>
+                {
+                    if (_this._ref == null)
+                    {
+                        return InvokeAndAdopt(onResolve, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return Filter<VoidResult>.MaybeInvokeAndAdoptThen(_this, onResolve, onReject);
+                    }
+
+                    var promise = ThenWaitPromise<VoidResult, VoidResult, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise CatchCancelation<TDelegateReject>(Promise _this, TDelegateReject onCancel)
-                    where TDelegateReject : IAction, IFunc<VoidResult, PromiseWrapper<VoidResult>>
-                    => CallbackHelperImpl<VoidResult>.CatchCancelation(_this, onCancel);
+                internal static Promise CatchCancelation<TDelegate>(Promise _this, TDelegate onCancel)
+                    where TDelegate : IAction, IAction<VoidResult>, IFunc<VoidResult, VoidResult>
+                {
+                    if (_this._ref == null)
+                    {
+                        return _this;
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return Filter<VoidResult>.MaybeInvokeCatch(_this, onCancel, Promise.State.Canceled);
+                    }
+
+                    var promise = CatchCancelationPromise<VoidResult, TDelegate>.GetOrCreate(onCancel);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise CatchCancelationWait<TDelegateReject>(Promise _this, TDelegateReject onCancel)
-                    where TDelegateReject : IFunc<Promise>, IFunc<VoidResult, PromiseWrapper<VoidResult>>
-                    => CallbackHelperImpl<VoidResult>.CatchCancelationWait(_this, onCancel);
+                internal static Promise CatchCancelationWait<TDelegate>(Promise _this, TDelegate onCancel)
+                    where TDelegate : IFunc<Promise>, IFunc<VoidResult, Promise>
+                {
+                    if (_this._ref == null)
+                    {
+                        return _this;
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return Filter<VoidResult>.MaybeInvokeAndAdoptCatch(_this, onCancel, Promise.State.Canceled);
+                    }
+
+                    var promise = CatchCancelationWaitPromise<TDelegate>.GetOrCreate(onCancel);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise(promise, promise.Id);
+                }
+
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static Promise InvokeContinueWith<TDelegate>(PromiseRefBase promise, short promiseId, in TDelegate callback)
+                    where TDelegate : IAction<Promise.ResultContainer>
+                {
+                    var arg = new Promise.ResultContainer(promise.RejectContainer, promise.State);
+                    promise.SuppressRejection = true;
+                    promise.MaybeMarkAwaitedAndDispose(promiseId);
+                    return Invoke(arg, callback, null);
+                }
+
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static Promise InvokeAndAdoptContinueWith<TDelegate>(PromiseRefBase promise, short promiseId, in TDelegate callback)
+                    where TDelegate : IFunc<Promise.ResultContainer, Promise>
+                {
+                    var arg = new Promise.ResultContainer(promise.RejectContainer, promise.State);
+                    promise.SuppressRejection = true;
+                    promise.MaybeMarkAwaitedAndDispose(promiseId);
+                    return InvokeAndAdopt(arg, callback, null);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise ContinueWith<TDelegate>(Promise _this, in TDelegate onContinue)
-                    where TDelegate : IAction<Promise.ResultContainer>, IFunc<Promise.ResultContainer, PromiseWrapper<VoidResult>>
-                    => CallbackHelperImpl<VoidResult>.ContinueWith(_this, onContinue);
+                    where TDelegate : IAction<Promise.ResultContainer>, IFunc<Promise.ResultContainer, VoidResult>
+                {
+                    if (_this._ref == null)
+                    {
+                        return Invoke(Promise.ResultContainer.Resolved, onContinue, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return InvokeContinueWith(_this._ref, _this._id, onContinue);
+                    }
+
+                    var promise = ContinueVoidResultPromise<VoidResult, TDelegate>.GetOrCreate(onContinue);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise ContinueWithWait<TDelegate>(Promise _this, in TDelegate onContinue)
-                    where TDelegate : IFunc<Promise.ResultContainer, Promise>, IFunc<Promise.ResultContainer, PromiseWrapper<VoidResult>>
-                    => CallbackHelperImpl<VoidResult>.ContinueWithWait(_this, onContinue);
+                    where TDelegate : IFunc<Promise.ResultContainer, Promise>
+                {
+                    if (_this._ref == null)
+                    {
+                        return InvokeAndAdopt(Promise.ResultContainer.Resolved, onContinue, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return InvokeAndAdoptContinueWith(_this._ref, _this._id, onContinue);
+                    }
+
+                    var promise = ContinueVoidVoidWaitPromise<TDelegate>.GetOrCreate(onContinue);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise ContinueWith<TDelegate>(Promise _this, in TDelegate onContinue, CancelationToken cancelationToken)
-                    where TDelegate : IAction<Promise.ResultContainer>, IFunc<Promise.ResultContainer, PromiseWrapper<VoidResult>>
-                    => CallbackHelperImpl<VoidResult>.ContinueWith(_this, onContinue, cancelationToken);
+                    where TDelegate : IAction<Promise.ResultContainer>, IFunc<Promise.ResultContainer, VoidResult>
+                {
+                    if (cancelationToken.IsCancelationRequested)
+                    {
+                        return Canceled(_this._ref, _this._id);
+                    }
+
+                    if (_this._ref == null)
+                    {
+                        return Invoke(Promise.ResultContainer.Resolved, onContinue, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return InvokeContinueWith(_this._ref, _this._id, onContinue);
+                    }
+
+                    PromiseRefBase promise;
+                    if (cancelationToken.CanBeCanceled)
+                    {
+                        var p = CancelableContinueVoidResultPromise<VoidResult, TDelegate>.GetOrCreate(onContinue);
+                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
+                    }
+                    else
+                    {
+                        promise = ContinueVoidResultPromise<VoidResult, TDelegate>.GetOrCreate(onContinue);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                    }
+                    return new Promise(promise, promise.Id);
+                }
 
                 [MethodImpl(InlineOption)]
                 internal static Promise ContinueWithWait<TDelegate>(Promise _this, in TDelegate onContinue, CancelationToken cancelationToken)
-                    where TDelegate : IFunc<Promise.ResultContainer, Promise>, IFunc<Promise.ResultContainer, PromiseWrapper<VoidResult>>
-                    => CallbackHelperImpl<VoidResult>.ContinueWithWait(_this, onContinue, cancelationToken);
+                    where TDelegate : IFunc<Promise.ResultContainer, Promise>
+                {
+                    if (cancelationToken.IsCancelationRequested)
+                    {
+                        return Canceled(_this._ref, _this._id);
+                    }
+
+                    if (_this._ref == null)
+                    {
+                        return InvokeAndAdopt(Promise.ResultContainer.Resolved, onContinue, null);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return InvokeAndAdoptContinueWith(_this._ref, _this._id, onContinue);
+                    }
+
+                    PromiseRefBase promise;
+                    if (cancelationToken.CanBeCanceled)
+                    {
+                        var p = CancelableContinueVoidVoidWaitPromise<TDelegate>.GetOrCreate(onContinue);
+                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
+                    }
+                    else
+                    {
+                        promise = ContinueVoidVoidWaitPromise<TDelegate>.GetOrCreate(onContinue);
+                        _this._ref.HookupNewPromise(_this._id, promise);
+                    }
+                    return new Promise(promise, promise.Id);
+                }
             } // class CallbackHelperVoid
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            internal static class CallbackHelperImpl<TArg, TResult>
-            {
-                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                private static PromiseWrapper<TResult> InvokeFromCompletedReference<TDelegate>(in PromiseWrapper<TArg> _this, in TDelegate callback)
-                    where TDelegate : IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>
-                {
-                    var state = _this._ref.State;
-                    var rejectContainer = _this._ref.RejectContainer;
-                    _this._ref.SuppressRejection = true;
-                    var arg = _this._ref.GetResult<TArg>();
-                    _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                    try
-                    {
-                        return callback.Invoke(new Promise<TArg>.ResultContainer(arg, rejectContainer, state)).Duplicate();
-                    }
-                    catch (Exception e)
-                    {
-                        return Promise<TResult>.FromException(e);
-                    }
-                }
-
-                internal static PromiseWrapper<TResult> ContinueWith<TDelegate>(PromiseWrapper<TArg> _this, in TDelegate callback)
-                    where TDelegate : IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>
-                {
-                    if (_this._ref == null)
-                    {
-                        try
-                        {
-                            return callback.Invoke(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved)).Duplicate();
-                        }
-                        catch (Exception e)
-                        {
-                            return Promise<TResult>.FromException(e);
-                        }
-                    }
-
-                    if (_this._ref.State != Promise.State.Pending)
-                    {
-                        return InvokeFromCompletedReference(_this, callback);
-                    }
-
-                    var promise = ContinuePromise<TArg, TResult, TDelegate>.GetOrCreate(callback);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
-                }
-
-                internal static PromiseWrapper<TResult> ContinueWith<TDelegate>(PromiseWrapper<TArg> _this, in TDelegate callback, CancelationToken cancelationToken)
-                    where TDelegate : IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>
-                {
-                    if (cancelationToken.IsCancelationRequested)
-                    {
-                        return CallbackHelperResult<TResult>.Canceled(_this._ref, _this._id);
-                    }
-
-                    if (_this._ref == null)
-                    {
-                        try
-                        {
-                            return callback.Invoke(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved)).Duplicate();
-                        }
-                        catch (Exception e)
-                        {
-                            return Promise<TResult>.FromException(e);
-                        }
-                    }
-
-                    if (_this._ref.State != Promise.State.Pending)
-                    {
-                        return InvokeFromCompletedReference(_this, callback);
-                    }
-
-                    PromiseRef<TResult> promise;
-                    if (cancelationToken.CanBeCanceled)
-                    {
-                        var p = CancelableContinuePromise<TArg, TResult, TDelegate>.GetOrCreate(callback);
-                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
-                    }
-                    else
-                    {
-                        promise = ContinuePromise<TArg, TResult, TDelegate>.GetOrCreate(callback);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                    }
-                    return new Promise<TResult>(promise, promise.Id);
-                }
-
-                internal static PromiseWrapper<TResult> ContinueWithWait<TDelegate>(PromiseWrapper<TArg> _this, in TDelegate callback)
-                    where TDelegate : IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>
-                {
-                    if (_this._ref == null)
-                    {
-                        try
-                        {
-                            return callback.Invoke(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved)).Duplicate();
-                        }
-                        catch (Exception e)
-                        {
-                            return Promise<TResult>.FromException(e);
-                        }
-                    }
-
-                    if (_this._ref.State != Promise.State.Pending)
-                    {
-                        return InvokeFromCompletedReference(_this, callback);
-                    }
-
-                    var promise = ContinueWaitPromise<TArg, TResult, TDelegate>.GetOrCreate(callback);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
-                }
-
-                internal static PromiseWrapper<TResult> ContinueWithWait<TDelegate>(PromiseWrapper<TArg> _this, in TDelegate callback, CancelationToken cancelationToken)
-                    where TDelegate : IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>
-                {
-                    if (cancelationToken.IsCancelationRequested)
-                    {
-                        return CallbackHelperResult<TResult>.Canceled(_this._ref, _this._id);
-                    }
-
-                    if (_this._ref == null)
-                    {
-                        try
-                        {
-                            return callback.Invoke(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved)).Duplicate();
-                        }
-                        catch (Exception e)
-                        {
-                            return Promise<TResult>.FromException(e);
-                        }
-                    }
-
-                    if (_this._ref.State != Promise.State.Pending)
-                    {
-                        return InvokeFromCompletedReference(_this, callback);
-                    }
-
-                    PromiseRef<TResult> promise;
-                    if (cancelationToken.CanBeCanceled)
-                    {
-                        var p = CancelableContinueWaitPromise<TArg, TResult, TDelegate>.GetOrCreate(callback);
-                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
-                    }
-                    else
-                    {
-                        promise = ContinueWaitPromise<TArg, TResult, TDelegate>.GetOrCreate(callback);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                    }
-                    return new Promise<TResult>(promise, promise.Id);
-                }
-
-
-                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                private static PromiseWrapper<TResult> MaybeInvokeThenFromCompletedReference<TDelegate>(in PromiseWrapper<TArg> _this, in TDelegate resolveCallback)
-                    where TDelegate : IFunc<TArg, PromiseWrapper<TResult>>
-                {
-                    var state = _this._ref.State;
-                    if (state == Promise.State.Resolved)
-                    {
-                        var arg = _this._ref.GetResult<TArg>();
-                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                        try
-                        {
-                            return resolveCallback.Invoke(arg).Duplicate();
-                        }
-                        catch (Exception e)
-                        {
-                            return Promise<TResult>.FromException(e);
-                        }
-                    }
-
-                    Debug.Assert(state == Promise.State.Canceled || state == Promise.State.Rejected);
-                    var rejectContainer = _this._ref.RejectContainer;
-                    _this._ref.SuppressRejection = true;
-                    _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                    return state == Promise.State.Canceled
-                        ? Promise<TResult>.Canceled()
-                        : Promise<TResult>.Rejected(rejectContainer);
-                }
-
-                internal static PromiseWrapper<TResult> Then<TDelegate>(PromiseWrapper<TArg> _this, in TDelegate callback)
-                    where TDelegate : IFunc<TArg, PromiseWrapper<TResult>>
-                {
-                    if (_this._ref == null)
-                    {
-                        try
-                        {
-                            return callback.Invoke(_this._result).Duplicate();
-                        }
-                        catch (Exception e)
-                        {
-                            return Promise<TResult>.FromException(e);
-                        }
-                    }
-
-                    if (_this._ref.State != Promise.State.Pending)
-                    {
-                        return MaybeInvokeThenFromCompletedReference(_this, callback);
-                    }
-
-                    var promise = ThenPromise<TArg, TResult, TDelegate>.GetOrCreate(callback);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
-                }
-
-                internal static PromiseWrapper<TResult> ThenWait<TDelegate>(PromiseWrapper<TArg> _this, in TDelegate callback)
-                    where TDelegate : IFunc<TArg, PromiseWrapper<TResult>>
-                {
-                    if (_this._ref == null)
-                    {
-                        try
-                        {
-                            return callback.Invoke(_this._result).Duplicate();
-                        }
-                        catch (Exception e)
-                        {
-                            return Promise<TResult>.FromException(e);
-                        }
-                    }
-
-                    if (_this._ref.State != Promise.State.Pending)
-                    {
-                        return MaybeInvokeThenFromCompletedReference(_this, callback);
-                    }
-
-                    var promise = ThenWaitPromise<TArg, TResult, TDelegate>.GetOrCreate(callback);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
-                }
-
-
-                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                private static PromiseWrapper<TResult> MaybeInvokeThenFromCompletedReference<TReject, TDelegateResolve, TDelegateReject>(
-                    in PromiseWrapper<TArg> _this, in TDelegateResolve resolveCallback, in TDelegateReject rejectCallback)
-                    where TDelegateResolve : IFunc<TArg, PromiseWrapper<TResult>>
-                    where TDelegateReject : IFunc<TReject, PromiseWrapper<TResult>>
-                {
-                    var state = _this._ref.State;
-                    var rejectContainer = _this._ref.RejectContainer;
-                    _this._ref.SuppressRejection = true;
-                    try
-                    {
-                        if (state == Promise.State.Resolved)
-                        {
-                            var arg = _this._ref.GetResult<TArg>();
-                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                            return resolveCallback.Invoke(arg).Duplicate();
-                        }
-                        if (state == Promise.State.Rejected && GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
-                        {
-                            _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                            return rejectCallback.Invoke(rejectArg).Duplicate();
-                        }
-                    }
-                    catch (RethrowException e)
-                    {
-                        // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
-                        return state == Promise.State.Rejected
-                            ? Promise<TResult>.Rejected(rejectContainer)
-                            : Promise<TResult>.Rejected(e);
-                    }
-                    catch (Exception e)
-                    {
-                        return Promise<TResult>.FromException(e);
-                    }
-
-                    Debug.Assert(state == Promise.State.Canceled || state == Promise.State.Rejected);
-                    _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                    return state == Promise.State.Canceled
-                        ? Promise<TResult>.Canceled()
-                        : Promise<TResult>.Rejected(rejectContainer);
-                }
-
-                internal static PromiseWrapper<TResult> Then<TReject, TDelegateResolve, TDelegateReject>(PromiseWrapper<TArg> _this, in TDelegateResolve resolveCallback, in TDelegateReject rejectCallback)
-                    where TDelegateResolve : IFunc<TArg, PromiseWrapper<TResult>>
-                    where TDelegateReject : IFunc<TReject, PromiseWrapper<TResult>>
-                {
-                    if (_this._ref == null)
-                    {
-                        try
-                        {
-                            return resolveCallback.Invoke(_this._result).Duplicate();
-                        }
-                        catch (Exception e)
-                        {
-                            return Promise<TResult>.FromException(e);
-                        }
-                    }
-
-                    if (_this._ref.State != Promise.State.Pending)
-                    {
-                        return MaybeInvokeThenFromCompletedReference<TReject, TDelegateResolve, TDelegateReject>(_this, resolveCallback, rejectCallback);
-                    }
-
-                    var promise = ThenPromise<TArg, TResult, TReject, TDelegateResolve, TDelegateReject>.GetOrCreate(resolveCallback, rejectCallback);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
-                }
-
-                internal static PromiseWrapper<TResult> ThenWait<TReject, TDelegateResolve, TDelegateReject>(PromiseWrapper<TArg> _this, in TDelegateResolve resolveCallback, in TDelegateReject rejectCallback)
-                    where TDelegateResolve : IFunc<TArg, PromiseWrapper<TResult>>
-                    where TDelegateReject : IFunc<TReject, PromiseWrapper<TResult>>
-                {
-                    if (_this._ref == null)
-                    {
-                        try
-                        {
-                            return resolveCallback.Invoke(_this._result).Duplicate();
-                        }
-                        catch (Exception e)
-                        {
-                            return Promise<TResult>.FromException(e);
-                        }
-                    }
-
-                    if (_this._ref.State != Promise.State.Pending)
-                    {
-                        return MaybeInvokeThenFromCompletedReference<TReject, TDelegateResolve, TDelegateReject>(_this, resolveCallback, rejectCallback);
-                    }
-
-                    var promise = ThenWaitPromise<TArg, TResult, TReject, TDelegateResolve, TDelegateReject>.GetOrCreate(resolveCallback, rejectCallback);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
-                }
-            } // class CallbackHelperImpl<TArg, TResult>
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            internal static class CallbackHelperImpl<TResult>
-            {
-                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                private static PromiseWrapper<TResult> InvokeFromCompletedReference<TDelegate>(Promise _this, in TDelegate callback)
-                    where TDelegate : IFunc<Promise.ResultContainer, PromiseWrapper<TResult>>
-                {
-                    var state = _this._ref.State;
-                    var rejectContainer = _this._ref.RejectContainer;
-                    _this._ref.SuppressRejection = true;
-                    _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                    try
-                    {
-                        return callback.Invoke(new Promise.ResultContainer(rejectContainer, state)).Duplicate();
-                    }
-                    catch (Exception e)
-                    {
-                        return Promise<TResult>.FromException(e);
-                    }
-                }
-
-                internal static PromiseWrapper<TResult> ContinueWith<TDelegate>(Promise _this, in TDelegate callback)
-                    where TDelegate : IFunc<Promise.ResultContainer, PromiseWrapper<TResult>>
-                {
-                    if (_this._ref == null)
-                    {
-                        try
-                        {
-                            return callback.Invoke(Promise.ResultContainer.Resolved).Duplicate();
-                        }
-                        catch (Exception e)
-                        {
-                            return Promise<TResult>.FromException(e);
-                        }
-                    }
-
-                    if (_this._ref.State != Promise.State.Pending)
-                    {
-                        return InvokeFromCompletedReference(_this, callback);
-                    }
-
-                    var promise = ContinuePromise<TResult, TDelegate>.GetOrCreate(callback);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
-                }
-
-                internal static PromiseWrapper<TResult> ContinueWith<TDelegate>(Promise _this, in TDelegate callback, CancelationToken cancelationToken)
-                    where TDelegate : IFunc<Promise.ResultContainer, PromiseWrapper<TResult>>
-                {
-                    if (cancelationToken.IsCancelationRequested)
-                    {
-                        return CallbackHelperResult<TResult>.Canceled(_this._ref, _this._id);
-                    }
-
-                    if (_this._ref == null)
-                    {
-                        try
-                        {
-                            return callback.Invoke(Promise.ResultContainer.Resolved).Duplicate();
-                        }
-                        catch (Exception e)
-                        {
-                            return Promise<TResult>.FromException(e);
-                        }
-                    }
-
-                    if (_this._ref.State != Promise.State.Pending)
-                    {
-                        return InvokeFromCompletedReference(_this, callback);
-                    }
-
-                    PromiseRef<TResult> promise;
-                    if (cancelationToken.CanBeCanceled)
-                    {
-                        var p = CancelableContinuePromise<TResult, TDelegate>.GetOrCreate(callback);
-                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
-                    }
-                    else
-                    {
-                        promise = ContinuePromise<TResult, TDelegate>.GetOrCreate(callback);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                    }
-                    return new Promise<TResult>(promise, promise.Id);
-                }
-
-                internal static PromiseWrapper<TResult> ContinueWithWait<TDelegate>(Promise _this, in TDelegate callback)
-                    where TDelegate : IFunc<Promise.ResultContainer, PromiseWrapper<TResult>>
-                {
-                    if (_this._ref == null)
-                    {
-                        try
-                        {
-                            return callback.Invoke(Promise.ResultContainer.Resolved).Duplicate();
-                        }
-                        catch (Exception e)
-                        {
-                            return Promise<TResult>.FromException(e);
-                        }
-                    }
-
-                    if (_this._ref.State != Promise.State.Pending)
-                    {
-                        return InvokeFromCompletedReference(_this, callback);
-                    }
-
-                    var promise = ContinueWaitPromise<TResult, TDelegate>.GetOrCreate(callback);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
-                }
-
-                internal static PromiseWrapper<TResult> ContinueWithWait<TDelegate>(Promise _this, in TDelegate callback, CancelationToken cancelationToken)
-                    where TDelegate : IFunc<Promise.ResultContainer, PromiseWrapper<TResult>>
-                {
-                    if (cancelationToken.IsCancelationRequested)
-                    {
-                        return CallbackHelperResult<TResult>.Canceled(_this._ref, _this._id);
-                    }
-
-                    if (_this._ref == null)
-                    {
-                        try
-                        {
-                            return callback.Invoke(Promise.ResultContainer.Resolved).Duplicate();
-                        }
-                        catch (Exception e)
-                        {
-                            return Promise<TResult>.FromException(e);
-                        }
-                    }
-
-                    if (_this._ref.State != Promise.State.Pending)
-                    {
-                        return InvokeFromCompletedReference(_this, callback);
-                    }
-
-                    PromiseRef<TResult> promise;
-                    if (cancelationToken.CanBeCanceled)
-                    {
-                        var p = CancelableContinueWaitPromise<TResult, TDelegate>.GetOrCreate(callback);
-                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
-                    }
-                    else
-                    {
-                        promise = ContinueWaitPromise<TResult, TDelegate>.GetOrCreate(callback);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                    }
-                    return new Promise<TResult>(promise, promise.Id);
-                }
-
-
-                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                private static PromiseWrapper<TResult> MaybeInvokeCatchFromCompletedReference<TReject, TDelegate>(in PromiseWrapper<TResult> _this, in TDelegate callback)
-                    where TDelegate : IFunc<TReject, PromiseWrapper<TResult>>
-                {
-                    var state = _this._ref.State;
-                    var rejectContainer = _this._ref.RejectContainer;
-                    _this._ref.SuppressRejection = true;
-                    if (state == Promise.State.Resolved)
-                    {
-                        var result = _this._ref.GetResult<TResult>();
-                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                        return Promise.Resolved(result);
-                    }
-
-                    if (state == Promise.State.Rejected && GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
-                    {
-                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                        try
-                        {
-                            return callback.Invoke(rejectArg).Duplicate();
-                        }
-                        catch (RethrowException)
-                        {
-                            return Promise<TResult>.Rejected(rejectContainer);
-                        }
-                        catch (Exception e)
-                        {
-                            return Promise<TResult>.FromException(e);
-                        }
-                    }
-
-                    _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                    return state == Promise.State.Canceled
-                        ? Promise<TResult>.Canceled()
-                        : Promise<TResult>.Rejected(rejectContainer);
-                }
-
-                internal static PromiseWrapper<TResult> Catch<TReject, TDelegate>(PromiseWrapper<TResult> _this, in TDelegate callback)
-                    where TDelegate : IFunc<TReject, PromiseWrapper<TResult>>
-                {
-                    if (_this._ref == null)
-                    {
-                        return _this;
-                    }
-
-                    if (_this._ref.State != Promise.State.Pending)
-                    {
-                        return MaybeInvokeCatchFromCompletedReference<TReject, TDelegate>(_this, callback);
-                    }
-
-                    var promise = CatchPromise<TResult, TReject, TDelegate>.GetOrCreate(callback);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
-                }
-
-                internal static PromiseWrapper<TResult> CatchWait<TReject, TDelegate>(PromiseWrapper<TResult> _this, in TDelegate callback)
-                    where TDelegate : IFunc<TReject, PromiseWrapper<TResult>>
-                {
-                    if (_this._ref == null)
-                    {
-                        return _this;
-                    }
-
-                    if (_this._ref.State != Promise.State.Pending)
-                    {
-                        return MaybeInvokeCatchFromCompletedReference<TReject, TDelegate>(_this, callback);
-                    }
-
-                    var promise = CatchWaitPromise<TResult, TReject, TDelegate>.GetOrCreate(callback);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
-                }
-
-                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                private static PromiseWrapper<TResult> MaybeInvokeCatchCancelationFromCompletedReference<TDelegate>(in PromiseWrapper<TResult> _this, in TDelegate callback)
-                    where TDelegate : IFunc<VoidResult, PromiseWrapper<TResult>>
-                {
-                    var state = _this._ref.State;
-                    var rejectContainer = _this._ref.RejectContainer;
-                    _this._ref.SuppressRejection = true;
-                    if (state == Promise.State.Resolved)
-                    {
-                        var result = _this._ref.GetResult<TResult>();
-                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                        return Promise.Resolved(result);
-                    }
-
-                    if (state == Promise.State.Canceled)
-                    {
-                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                        try
-                        {
-                            return callback.Invoke(default).Duplicate();
-                        }
-                        catch (Exception e)
-                        {
-                            return Promise<TResult>.FromException(e);
-                        }
-                    }
-
-                    _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                    return Promise<TResult>.Rejected(rejectContainer);
-                }
-
-                internal static PromiseWrapper<TResult> CatchCancelation<TDelegate>(PromiseWrapper<TResult> _this, in TDelegate callback)
-                    where TDelegate : IFunc<VoidResult, PromiseWrapper<TResult>>
-                {
-                    if (_this._ref == null)
-                    {
-                        return _this;
-                    }
-
-                    if (_this._ref.State != Promise.State.Pending)
-                    {
-                        return MaybeInvokeCatchCancelationFromCompletedReference(_this, callback);
-                    }
-
-                    var promise = CatchCancelationPromise<TResult, TDelegate>.GetOrCreate(callback);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
-                }
-
-                internal static PromiseWrapper<TResult> CatchCancelationWait<TDelegate>(PromiseWrapper<TResult> _this, in TDelegate callback)
-                    where TDelegate : IFunc<VoidResult, PromiseWrapper<TResult>>
-                {
-                    if (_this._ref == null)
-                    {
-                        return _this;
-                    }
-
-                    if (_this._ref.State != Promise.State.Pending)
-                    {
-                        return MaybeInvokeCatchCancelationFromCompletedReference(_this, callback);
-                    }
-
-                    var promise = CatchCancelationWaitPromise<TResult, TDelegate>.GetOrCreate(callback);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
-                }
-            } // class CallbackHelperImpl<TResult>
         } // PromiseRefBase
     } // Internal
 } // namespace Proto.Promises

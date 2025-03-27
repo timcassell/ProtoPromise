@@ -14,56 +14,6 @@ using System.Runtime.CompilerServices;
 
 namespace Proto.Promises
 {
-    // This type allows us to treat `Promise` as `Promise<VoidResult>` to reduce code duplication.
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode, StackTraceHidden]
-#endif
-    internal readonly struct PromiseWrapper<T>
-    {
-        internal readonly Internal.PromiseRefBase _ref;
-        internal readonly T _result;
-        internal readonly short _id;
-
-        [MethodImpl(Internal.InlineOption)]
-        internal PromiseWrapper(Internal.PromiseRefBase promise, short promiseId, in T result)
-        {
-            _ref = promise;
-            _result = result;
-            _id = promiseId;
-        }
-
-        [MethodImpl(Internal.InlineOption)]
-        internal PromiseWrapper<T> Duplicate()
-        {
-            if (_ref == null)
-            {
-                return this;
-            }
-            var duplicate = _ref.GetDuplicate(_id);
-            return new PromiseWrapper<T>(duplicate, duplicate.Id, default);
-        }
-
-        [MethodImpl(Internal.InlineOption)]
-        public static implicit operator Promise<T>(in PromiseWrapper<T> promiseWrapper)
-            => new Promise<T>(promiseWrapper._ref.UnsafeAs<Internal.PromiseRefBase.PromiseRef<T>>(), promiseWrapper._id, promiseWrapper._result);
-
-        [MethodImpl(Internal.InlineOption)]
-        public static implicit operator Promise(in PromiseWrapper<T> promiseWrapper)
-            => new Promise(promiseWrapper._ref, promiseWrapper._id);
-
-        [MethodImpl(Internal.InlineOption)]
-        public static implicit operator PromiseWrapper<T>(in Promise promise)
-            => new PromiseWrapper<T>(promise._ref, promise._id, default);
-
-        [MethodImpl(Internal.InlineOption)]
-        public static implicit operator PromiseWrapper<T>(in Promise<T> promise)
-            => new PromiseWrapper<T>(promise._ref, promise._id, promise._result);
-
-        [MethodImpl(Internal.InlineOption)]
-        public static implicit operator PromiseWrapper<T>(in T result)
-            => new PromiseWrapper<T>(null, 0, result);
-    }
-
     // Unity IL2CPP has a maximum nested generic depth, so unfortunately we have to create separate delegate wrappers,
     // so the generic will only nest <TArg> instead of <Promise<TArg>.ResultContainer>
     partial class DelegateWrapper
@@ -107,7 +57,7 @@ namespace Proto.Promises
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal readonly struct DelegateResultContainerArgVoid<TArg> : IAction<Promise<TArg>.ResultContainer>,
-            IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<VoidResult>>
+            IFunc<Promise<TArg>.ResultContainer, VoidResult>
         {
             private readonly Action<Promise<TArg>.ResultContainer> _callback;
 
@@ -120,7 +70,7 @@ namespace Proto.Promises
                 => _callback.Invoke(arg);
 
             [MethodImpl(InlineOption)]
-            PromiseWrapper<VoidResult> IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<VoidResult>>.Invoke(in Promise<TArg>.ResultContainer arg)
+            VoidResult IFunc<Promise<TArg>.ResultContainer, VoidResult>.Invoke(in Promise<TArg>.ResultContainer arg)
             {
                 _callback.Invoke(arg);
                 return default;
@@ -130,8 +80,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal readonly struct DelegateResultContainerArgResult<TArg, TResult> : IFunc<Promise<TArg>.ResultContainer, TResult>,
-            IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>
+        internal readonly struct DelegateResultContainerArgResult<TArg, TResult> : IFunc<Promise<TArg>.ResultContainer, TResult>
         {
             private readonly Func<Promise<TArg>.ResultContainer, TResult> _callback;
 
@@ -142,17 +91,13 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             public TResult Invoke(in Promise<TArg>.ResultContainer arg)
                 => _callback.Invoke(arg);
-
-            [MethodImpl(InlineOption)]
-            PromiseWrapper<TResult> IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>.Invoke(in Promise<TArg>.ResultContainer arg)
-                => _callback.Invoke(arg);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal readonly struct DelegateResultContainerCaptureArgVoid<TCapture, TArg> : IAction<Promise<TArg>.ResultContainer>,
-            IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<VoidResult>>
+            IFunc<Promise<TArg>.ResultContainer, VoidResult>
         {
             private readonly Action<TCapture, Promise<TArg>.ResultContainer> _callback;
             private readonly TCapture _capturedValue;
@@ -169,7 +114,7 @@ namespace Proto.Promises
                 => _callback.Invoke(_capturedValue, arg);
 
             [MethodImpl(InlineOption)]
-            PromiseWrapper<VoidResult> IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<VoidResult>>.Invoke(in Promise<TArg>.ResultContainer arg)
+            VoidResult IFunc<Promise<TArg>.ResultContainer, VoidResult>.Invoke(in Promise<TArg>.ResultContainer arg)
             {
                 _callback.Invoke(_capturedValue, arg);
                 return default;
@@ -179,8 +124,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal readonly struct DelegateResultContainerCaptureArgResult<TCapture, TArg, TResult> : IFunc<Promise<TArg>.ResultContainer, TResult>,
-            IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>
+        internal readonly struct DelegateResultContainerCaptureArgResult<TCapture, TArg, TResult> : IFunc<Promise<TArg>.ResultContainer, TResult>
         {
             private readonly Func<TCapture, Promise<TArg>.ResultContainer, TResult> _callback;
             private readonly TCapture _capturedValue;
@@ -195,17 +139,12 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             public TResult Invoke(in Promise<TArg>.ResultContainer arg)
                 => _callback.Invoke(_capturedValue, arg);
-
-            [MethodImpl(InlineOption)]
-            PromiseWrapper<TResult> IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>.Invoke(in Promise<TArg>.ResultContainer arg)
-                => _callback.Invoke(_capturedValue, arg);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal readonly struct AsyncDelegateResultContainerArgVoid<TArg> : IFunc<Promise<TArg>.ResultContainer, Promise>,
-            IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<VoidResult>>
+        internal readonly struct AsyncDelegateResultContainerArgVoid<TArg> : IFunc<Promise<TArg>.ResultContainer, Promise>
         {
             private readonly Func<Promise<TArg>.ResultContainer, Promise> _callback;
 
@@ -216,17 +155,12 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             public Promise Invoke(in Promise<TArg>.ResultContainer arg)
                 => _callback.Invoke(arg);
-
-            [MethodImpl(InlineOption)]
-            PromiseWrapper<VoidResult> IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<VoidResult>>.Invoke(in Promise<TArg>.ResultContainer arg)
-                => _callback.Invoke(arg);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal readonly struct AsyncDelegateResultContainerArgResult<TArg, TResult> : IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>,
-            IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>
+        internal readonly struct AsyncDelegateResultContainerArgResult<TArg, TResult> : IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>
         {
             private readonly Func<Promise<TArg>.ResultContainer, Promise<TResult>> _callback;
 
@@ -237,17 +171,12 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             public Promise<TResult> Invoke(in Promise<TArg>.ResultContainer arg)
                 => _callback.Invoke(arg);
-
-            [MethodImpl(InlineOption)]
-            PromiseWrapper<TResult> IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>.Invoke(in Promise<TArg>.ResultContainer arg)
-                => _callback.Invoke(arg);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal readonly struct AsyncDelegateResultContainerCaptureArgVoid<TCapture, TArg> : IFunc<Promise<TArg>.ResultContainer, Promise>,
-            IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<VoidResult>>
+        internal readonly struct AsyncDelegateResultContainerCaptureArgVoid<TCapture, TArg> : IFunc<Promise<TArg>.ResultContainer, Promise>
         {
             private readonly Func<TCapture, Promise<TArg>.ResultContainer, Promise> _callback;
             private readonly TCapture _capturedValue;
@@ -262,17 +191,12 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             public Promise Invoke(in Promise<TArg>.ResultContainer arg)
                 => _callback.Invoke(_capturedValue, arg);
-
-            [MethodImpl(InlineOption)]
-            PromiseWrapper<VoidResult> IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<VoidResult>>.Invoke(in Promise<TArg>.ResultContainer arg)
-                => _callback.Invoke(_capturedValue, arg);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal readonly struct AsyncDelegateResultContainerCaptureArgResult<TCapture, TArg, TResult> : IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>,
-            IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>
+        internal readonly struct AsyncDelegateResultContainerCaptureArgResult<TCapture, TArg, TResult> : IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>
         {
             private readonly Func<TCapture, Promise<TArg>.ResultContainer, Promise<TResult>> _callback;
             private readonly TCapture _capturedValue;
@@ -287,26 +211,146 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             public Promise<TResult> Invoke(in Promise<TArg>.ResultContainer arg)
                 => _callback.Invoke(_capturedValue, arg);
-
-            [MethodImpl(InlineOption)]
-            PromiseWrapper<TResult> IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>.Invoke(in Promise<TArg>.ResultContainer arg)
-                => _callback.Invoke(_capturedValue, arg);
         }
 
         partial class PromiseRefBase
         {
-            partial class PromiseWaitPromise<TResult>
+            partial class PromiseSingleAwait<TResult>
             {
                 [MethodImpl(InlineOption)]
-                protected void InvokeAndAdopt<TArg, TDelegate>(in TArg arg, TDelegate callback, IRejectContainer rejectContainer)
-                    where TDelegate : IFunc<TArg, PromiseWrapper<TResult>>
+                protected void Invoke<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IFunc<TArg, TResult>
+                {
+                    Promise.State state;
+                    SetCurrentInvoker(this);
+                    try
+                    {
+                        _result = callback.Invoke(arg);
+                        state = Promise.State.Resolved;
+                    }
+                    catch (RethrowException e)
+                    {
+                        // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
+                        if (rejectContainer != null)
+                        {
+                            RejectContainer = rejectContainer;
+                        }
+                        else
+                        {
+                            RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        }
+                        state = Promise.State.Rejected;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        state = Promise.State.Canceled;
+                    }
+                    catch (Exception e)
+                    {
+                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        state = Promise.State.Rejected;
+                    }
+                    finally
+                    {
+                        ClearCurrentInvoker();
+                    }
+
+                    // We handle next last, so that if the runtime wants to, it can tail-call optimize.
+                    // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
+                    HandleNextInternal(state);
+                }
+            }
+
+            partial class PromiseWaitPromise<TResult>
+            {
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private Promise.State VerifyAndGetResultFromComplete(PromiseRefBase completePromise, PromiseRefBase promiseSingleAwait)
+                {
+                    if (VerifyWaiter(promiseSingleAwait))
+                    {
+                        completePromise.WaitUntilStateIsNotPending();
+                        RejectContainer = completePromise.RejectContainer;
+                        completePromise.SuppressRejection = true;
+                        _result = completePromise.GetResult<TResult>();
+                        var state = completePromise.State;
+                        completePromise.MaybeDispose();
+                        return state;
+                    }
+
+                    var exception = new InvalidReturnException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", string.Empty);
+                    RejectContainer = CreateRejectContainer(exception, int.MinValue, null, this);
+                    return Promise.State.Rejected;
+                }
+
+                [MethodImpl(InlineOption)]
+                protected void InvokeAndAdoptVoid<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IFunc<TArg, Promise>
                 {
                     Promise.State state;
                     SetCurrentInvoker(this);
                     try
                     {
                         var result = callback.Invoke(arg);
-                        ValidateReturn(result._ref, result._id);
+                        ValidateReturn(result);
+
+                        this.SetPrevious(result._ref);
+                        if (result._ref == null)
+                        {
+                            state = Promise.State.Resolved;
+                        }
+                        else
+                        {
+                            PromiseRefBase promiseSingleAwait = result._ref.AddWaiter(result._id, this, out var previousWaiter);
+                            if (previousWaiter == PendingAwaitSentinel.s_instance)
+                            {
+                                return;
+                            }
+                            state = VerifyAndGetResultFromComplete(result._ref, promiseSingleAwait);
+                        }
+                    }
+                    catch (RethrowException e)
+                    {
+                        // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
+                        if (rejectContainer != null)
+                        {
+                            RejectContainer = rejectContainer;
+                        }
+                        else
+                        {
+                            RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        }
+                        state = Promise.State.Rejected;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        state = Promise.State.Canceled;
+                    }
+                    catch (Exception e)
+                    {
+                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        state = Promise.State.Rejected;
+                    }
+                    finally
+                    {
+                        ClearCurrentInvoker();
+                    }
+
+                    // We handle next last, so that if the runtime wants to, it can tail-call optimize.
+                    // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
+                    HandleNextInternal(state);
+                }
+
+                [MethodImpl(InlineOption)]
+                protected void InvokeAndAdopt<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IFunc<TArg, Promise<TResult>>
+                {
+                    Promise.State state;
+                    SetCurrentInvoker(this);
+                    try
+                    {
+                        var result = callback.Invoke(arg);
+                        ValidateReturn(result);
 
                         this.SetPrevious(result._ref);
                         if (result._ref == null)
@@ -355,49 +399,32 @@ namespace Proto.Promises
                     // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
                     HandleNextInternal(state);
                 }
-
-                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                private Promise.State VerifyAndGetResultFromComplete(PromiseRefBase completePromise, PromiseRefBase promiseSingleAwait)
-                {
-                    if (VerifyWaiter(promiseSingleAwait))
-                    {
-                        completePromise.WaitUntilStateIsNotPending();
-                        RejectContainer = completePromise.RejectContainer;
-                        completePromise.SuppressRejection = true;
-                        _result = completePromise.GetResult<TResult>();
-                        var state = completePromise.State;
-                        completePromise.MaybeDispose();
-                        return state;
-                    }
-
-                    var exception = new InvalidReturnException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", string.Empty);
-                    RejectContainer = CreateRejectContainer(exception, int.MinValue, null, this);
-                    return Promise.State.Rejected;
-                }
             }
 
-            // Ideally all of these would simply be `ContinuePromise<TArg, TResult, TDelegate>`, but `Promise.ResultContainer` is not the same type as `Promise<VoidResult>.ResultContainer`.
-            // There would be much less code duplication if the runtime supported void in generics, but we work with what's available.
+            // Ideally all of these would simply be `ContinuePromise<TArg, TResult, TDelegate>`,
+            // but `Promise.ResultContainer` is not the same type as `Promise<VoidResult>.ResultContainer`,
+            // and `Promise` is not the same type as `Promise<VoidResult>`.
+            // There would be much less code duplication if C# supported void in generics, but we work with what's available.
+            // At least we can still use synchronous `VoidResult` return in place of true `void`.
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class ContinuePromise<TResult, TDelegate> : PromiseWaitPromise<TResult>
-                where TDelegate : IFunc<Promise.ResultContainer, PromiseWrapper<TResult>>
+            private sealed partial class ContinueVoidResultPromise<TResult, TDelegate> : PromiseSingleAwait<TResult>
+                where TDelegate : IFunc<Promise.ResultContainer, TResult>
             {
-                private ContinuePromise() { }
+                private ContinueVoidResultPromise() { }
 
                 [MethodImpl(InlineOption)]
-                private static ContinuePromise<TResult, TDelegate> GetOrCreate()
+                private static ContinueVoidResultPromise<TResult, TDelegate> GetOrCreate()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<ContinuePromise<TResult, TDelegate>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<ContinueVoidResultPromise<TResult, TDelegate>>();
                     return obj == InvalidAwaitSentinel.s_instance
-                        ? new ContinuePromise<TResult, TDelegate>()
-                        : obj.UnsafeAs<ContinuePromise<TResult, TDelegate>>();
+                        ? new ContinueVoidResultPromise<TResult, TDelegate>()
+                        : obj.UnsafeAs<ContinueVoidResultPromise<TResult, TDelegate>>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static ContinuePromise<TResult, TDelegate> GetOrCreate(in TDelegate callback)
+                internal static ContinueVoidResultPromise<TResult, TDelegate> GetOrCreate(in TDelegate callback)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
@@ -422,29 +449,84 @@ namespace Proto.Promises
 
                     var callback = _callback;
                     _callback = default;
-                    InvokeAndAdopt(new Promise.ResultContainer(rejectContainer, state), callback, null);
+                    Invoke(new Promise.ResultContainer(rejectContainer, state), callback, null);
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class ContinueWaitPromise<TResult, TDelegate> : PromiseWaitPromise<TResult>
-                where TDelegate : IFunc<Promise.ResultContainer, PromiseWrapper<TResult>>
+            private sealed partial class ContinueVoidVoidWaitPromise<TDelegate> : PromiseWaitPromise<VoidResult>
+                where TDelegate : IFunc<Promise.ResultContainer, Promise>
             {
-                private ContinueWaitPromise() { }
+                private ContinueVoidVoidWaitPromise() { }
 
                 [MethodImpl(InlineOption)]
-                private static ContinueWaitPromise<TResult, TDelegate> GetOrCreate()
+                private static ContinueVoidVoidWaitPromise<TDelegate> GetOrCreate()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<ContinueWaitPromise<TResult, TDelegate>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<ContinueVoidVoidWaitPromise<TDelegate>>();
                     return obj == InvalidAwaitSentinel.s_instance
-                        ? new ContinueWaitPromise<TResult, TDelegate>()
-                        : obj.UnsafeAs<ContinueWaitPromise<TResult, TDelegate>>();
+                        ? new ContinueVoidVoidWaitPromise<TDelegate>()
+                        : obj.UnsafeAs<ContinueVoidVoidWaitPromise<TDelegate>>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static ContinueWaitPromise<TResult, TDelegate> GetOrCreate(in TDelegate callback)
+                internal static ContinueVoidVoidWaitPromise<TDelegate> GetOrCreate(in TDelegate callback)
+                {
+                    var promise = GetOrCreate();
+                    promise.Reset();
+                    promise._callback = callback;
+                    return promise;
+                }
+
+                internal override void MaybeDispose()
+                {
+                    Dispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                {
+                    ThrowIfInPool(this);
+
+                    handler.SetCompletionState(state);
+
+                    if (!_firstContinue)
+                    {
+                        HandleSelf(handler, state);
+                        return;
+                    }
+                    _firstContinue = false;
+
+                    var rejectContainer = handler.RejectContainer;
+                    handler.SuppressRejection = true;
+                    handler.MaybeDispose();
+
+                    var callback = _callback;
+                    _callback = default;
+                    InvokeAndAdoptVoid(new Promise.ResultContainer(rejectContainer, state), callback, null);
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private sealed partial class ContinueVoidResultWaitPromise<TResult, TDelegate> : PromiseWaitPromise<TResult>
+                where TDelegate : IFunc<Promise.ResultContainer, Promise<TResult>>
+            {
+                private ContinueVoidResultWaitPromise() { }
+
+                [MethodImpl(InlineOption)]
+                private static ContinueVoidResultWaitPromise<TResult, TDelegate> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<ContinueVoidResultWaitPromise<TResult, TDelegate>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new ContinueVoidResultWaitPromise<TResult, TDelegate>()
+                        : obj.UnsafeAs<ContinueVoidResultWaitPromise<TResult, TDelegate>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static ContinueVoidResultWaitPromise<TResult, TDelegate> GetOrCreate(in TDelegate callback)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
@@ -484,22 +566,22 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class ContinuePromise<TArg, TResult, TDelegate> : PromiseWaitPromise<TResult>
-                where TDelegate : IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>
+            private sealed partial class ContinueArgResultPromise<TArg, TResult, TDelegate> : PromiseSingleAwait<TResult>
+                where TDelegate : IFunc<Promise<TArg>.ResultContainer, TResult>
             {
-                private ContinuePromise() { }
+                private ContinueArgResultPromise() { }
 
                 [MethodImpl(InlineOption)]
-                private static ContinuePromise<TArg, TResult, TDelegate> GetOrCreate()
+                private static ContinueArgResultPromise<TArg, TResult, TDelegate> GetOrCreate()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<ContinuePromise<TArg, TResult, TDelegate>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<ContinueArgResultPromise<TArg, TResult, TDelegate>>();
                     return obj == InvalidAwaitSentinel.s_instance
-                        ? new ContinuePromise<TArg, TResult, TDelegate>()
-                        : obj.UnsafeAs<ContinuePromise<TArg, TResult, TDelegate>>();
+                        ? new ContinueArgResultPromise<TArg, TResult, TDelegate>()
+                        : obj.UnsafeAs<ContinueArgResultPromise<TArg, TResult, TDelegate>>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static ContinuePromise<TArg, TResult, TDelegate> GetOrCreate(in TDelegate callback)
+                internal static ContinueArgResultPromise<TArg, TResult, TDelegate> GetOrCreate(in TDelegate callback)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
@@ -525,29 +607,85 @@ namespace Proto.Promises
 
                     var callback = _callback;
                     _callback = default;
-                    InvokeAndAdopt(new Promise<TArg>.ResultContainer(arg, rejectContainer, state), callback, null);
+                    Invoke(new Promise<TArg>.ResultContainer(arg, rejectContainer, state), callback, null);
                 }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class ContinueWaitPromise<TArg, TResult, TDelegate> : PromiseWaitPromise<TResult>
-                where TDelegate : IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>
+            private sealed partial class ContinueArgVoidWaitPromise<TArg, TDelegate> : PromiseWaitPromise<VoidResult>
+                where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise>
             {
-                private ContinueWaitPromise() { }
+                private ContinueArgVoidWaitPromise() { }
 
                 [MethodImpl(InlineOption)]
-                private static ContinueWaitPromise<TArg, TResult, TDelegate> GetOrCreate()
+                private static ContinueArgVoidWaitPromise<TArg, TDelegate> GetOrCreate()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<ContinueWaitPromise<TArg, TResult, TDelegate>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<ContinueArgVoidWaitPromise<TArg, TDelegate>>();
                     return obj == InvalidAwaitSentinel.s_instance
-                        ? new ContinueWaitPromise<TArg, TResult, TDelegate>()
-                        : obj.UnsafeAs<ContinueWaitPromise<TArg, TResult, TDelegate>>();
+                        ? new ContinueArgVoidWaitPromise<TArg, TDelegate>()
+                        : obj.UnsafeAs<ContinueArgVoidWaitPromise<TArg, TDelegate>>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static ContinueWaitPromise<TArg, TResult, TDelegate> GetOrCreate(in TDelegate callback)
+                internal static ContinueArgVoidWaitPromise<TArg, TDelegate> GetOrCreate(in TDelegate callback)
+                {
+                    var promise = GetOrCreate();
+                    promise.Reset();
+                    promise._callback = callback;
+                    return promise;
+                }
+
+                internal override void MaybeDispose()
+                {
+                    Dispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                {
+                    ThrowIfInPool(this);
+
+                    handler.SetCompletionState(state);
+
+                    if (!_firstContinue)
+                    {
+                        HandleSelf(handler, state);
+                        return;
+                    }
+                    _firstContinue = false;
+
+                    var rejectContainer = handler.RejectContainer;
+                    var arg = handler.GetResult<TArg>();
+                    handler.SuppressRejection = true;
+                    handler.MaybeDispose();
+
+                    var callback = _callback;
+                    _callback = default;
+                    InvokeAndAdoptVoid(new Promise<TArg>.ResultContainer(arg, rejectContainer, state), callback, null);
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private sealed partial class ContinueArgResultWaitPromise<TArg, TResult, TDelegate> : PromiseWaitPromise<TResult>
+                where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>
+            {
+                private ContinueArgResultWaitPromise() { }
+
+                [MethodImpl(InlineOption)]
+                private static ContinueArgResultWaitPromise<TArg, TResult, TDelegate> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<ContinueArgResultWaitPromise<TArg, TResult, TDelegate>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new ContinueArgResultWaitPromise<TArg, TResult, TDelegate>()
+                        : obj.UnsafeAs<ContinueArgResultWaitPromise<TArg, TResult, TDelegate>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static ContinueArgResultWaitPromise<TArg, TResult, TDelegate> GetOrCreate(in TDelegate callback)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
@@ -588,22 +726,22 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class CancelableContinuePromise<TResult, TDelegate> : PromiseWaitPromise<TResult>, ICancelable
-                where TDelegate : IFunc<Promise.ResultContainer, PromiseWrapper<TResult>>
+            private sealed partial class CancelableContinueVoidResultPromise<TResult, TDelegate> : PromiseSingleAwait<TResult>, ICancelable
+                where TDelegate : IFunc<Promise.ResultContainer, TResult>
             {
-                private CancelableContinuePromise() { }
+                private CancelableContinueVoidResultPromise() { }
 
                 [MethodImpl(InlineOption)]
-                private static CancelableContinuePromise<TResult, TDelegate> GetOrCreate()
+                private static CancelableContinueVoidResultPromise<TResult, TDelegate> GetOrCreate()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<CancelableContinuePromise<TResult, TDelegate>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<CancelableContinueVoidResultPromise<TResult, TDelegate>>();
                     return obj == InvalidAwaitSentinel.s_instance
-                        ? new CancelableContinuePromise<TResult, TDelegate>()
-                        : obj.UnsafeAs<CancelableContinuePromise<TResult, TDelegate>>();
+                        ? new CancelableContinueVoidResultPromise<TResult, TDelegate>()
+                        : obj.UnsafeAs<CancelableContinueVoidResultPromise<TResult, TDelegate>>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelableContinuePromise<TResult, TDelegate> GetOrCreate(in TDelegate callback)
+                internal static CancelableContinueVoidResultPromise<TResult, TDelegate> GetOrCreate(in TDelegate callback)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
@@ -650,7 +788,7 @@ namespace Proto.Promises
 
                     var callback = _callback;
                     _callback = default;
-                    InvokeAndAdopt(new Promise.ResultContainer(rejectContainer, state), callback, null);
+                    Invoke(new Promise.ResultContainer(rejectContainer, state), callback, null);
                 }
 
                 void ICancelable.Cancel()
@@ -666,22 +804,107 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class CancelableContinueWaitPromise<TResult, TDelegate> : PromiseWaitPromise<TResult>, ICancelable
-                where TDelegate : IFunc<Promise.ResultContainer, PromiseWrapper<TResult>>
+            private sealed partial class CancelableContinueVoidVoidWaitPromise<TDelegate> : PromiseWaitPromise<VoidResult>, ICancelable
+                where TDelegate : IFunc<Promise.ResultContainer, Promise>
             {
-                private CancelableContinueWaitPromise() { }
+                private CancelableContinueVoidVoidWaitPromise() { }
 
                 [MethodImpl(InlineOption)]
-                private static CancelableContinueWaitPromise<TResult, TDelegate> GetOrCreate()
+                private static CancelableContinueVoidVoidWaitPromise<TDelegate> GetOrCreate()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<CancelableContinueWaitPromise<TResult, TDelegate>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<CancelableContinueVoidVoidWaitPromise<TDelegate>>();
                     return obj == InvalidAwaitSentinel.s_instance
-                        ? new CancelableContinueWaitPromise<TResult, TDelegate>()
-                        : obj.UnsafeAs<CancelableContinueWaitPromise<TResult, TDelegate>>();
+                        ? new CancelableContinueVoidVoidWaitPromise<TDelegate>()
+                        : obj.UnsafeAs<CancelableContinueVoidVoidWaitPromise<TDelegate>>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelableContinueWaitPromise<TResult, TDelegate> GetOrCreate(in TDelegate callback)
+                internal static CancelableContinueVoidVoidWaitPromise<TDelegate> GetOrCreate(in TDelegate callback)
+                {
+                    var promise = GetOrCreate();
+                    promise.Reset();
+                    promise._callback = callback;
+                    promise._cancelationHelper.Reset();
+                    return promise;
+                }
+
+                internal override void MaybeDispose()
+                {
+                    if (_cancelationHelper.TryRelease())
+                    {
+                        Dispose();
+                    }
+                }
+
+                new private void Dispose()
+                {
+                    base.Dispose();
+                    _cancelationHelper = default;
+                    _callback = default;
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                {
+                    ThrowIfInPool(this);
+
+                    handler.SetCompletionState(state);
+
+                    if (!_firstContinue)
+                    {
+                        HandleSelf(handler, state);
+                        return;
+                    }
+                    _firstContinue = false;
+
+                    if (!_cancelationHelper.TrySetCompleted())
+                    {
+                        handler.MaybeReportUnhandledAndDispose(state);
+                        MaybeDispose();
+                        return;
+                    }
+
+                    _cancelationHelper.UnregisterAndWait();
+                    _cancelationHelper.ReleaseOne();
+
+                    var rejectContainer = handler.RejectContainer;
+                    handler.SuppressRejection = true;
+                    handler.MaybeDispose();
+
+                    var callback = _callback;
+                    _callback = default;
+                    InvokeAndAdoptVoid(new Promise.ResultContainer(rejectContainer, state), callback, null);
+                }
+
+                void ICancelable.Cancel()
+                {
+                    ThrowIfInPool(this);
+                    if (_cancelationHelper.TrySetCompleted())
+                    {
+                        HandleNextInternal(Promise.State.Canceled);
+                    }
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private sealed partial class CancelableContinueVoidResultWaitPromise<TResult, TDelegate> : PromiseWaitPromise<TResult>, ICancelable
+                where TDelegate : IFunc<Promise.ResultContainer, Promise<TResult>>
+            {
+                private CancelableContinueVoidResultWaitPromise() { }
+
+                [MethodImpl(InlineOption)]
+                private static CancelableContinueVoidResultWaitPromise<TResult, TDelegate> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<CancelableContinueVoidResultWaitPromise<TResult, TDelegate>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new CancelableContinueVoidResultWaitPromise<TResult, TDelegate>()
+                        : obj.UnsafeAs<CancelableContinueVoidResultWaitPromise<TResult, TDelegate>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static CancelableContinueVoidResultWaitPromise<TResult, TDelegate> GetOrCreate(in TDelegate callback)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
@@ -751,22 +974,22 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class CancelableContinuePromise<TArg, TResult, TDelegate> : PromiseWaitPromise<TResult>, ICancelable
-                where TDelegate : IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>
+            private sealed partial class CancelableContinueArgResultPromise<TArg, TResult, TDelegate> : PromiseSingleAwait<TResult>, ICancelable
+                where TDelegate : IFunc<Promise<TArg>.ResultContainer, TResult>
             {
-                private CancelableContinuePromise() { }
+                private CancelableContinueArgResultPromise() { }
 
                 [MethodImpl(InlineOption)]
-                private static CancelableContinuePromise<TArg, TResult, TDelegate> GetOrCreate()
+                private static CancelableContinueArgResultPromise<TArg, TResult, TDelegate> GetOrCreate()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<CancelableContinuePromise<TArg, TResult, TDelegate>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<CancelableContinueArgResultPromise<TArg, TResult, TDelegate>>();
                     return obj == InvalidAwaitSentinel.s_instance
-                        ? new CancelableContinuePromise<TArg, TResult, TDelegate>()
-                        : obj.UnsafeAs<CancelableContinuePromise<TArg, TResult, TDelegate>>();
+                        ? new CancelableContinueArgResultPromise<TArg, TResult, TDelegate>()
+                        : obj.UnsafeAs<CancelableContinueArgResultPromise<TArg, TResult, TDelegate>>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelableContinuePromise<TArg, TResult, TDelegate> GetOrCreate(in TDelegate callback)
+                internal static CancelableContinueArgResultPromise<TArg, TResult, TDelegate> GetOrCreate(in TDelegate callback)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
@@ -814,7 +1037,7 @@ namespace Proto.Promises
 
                     var callback = _callback;
                     _callback = default;
-                    InvokeAndAdopt(new Promise<TArg>.ResultContainer(arg, rejectContainer, state), callback, null);
+                    Invoke(new Promise<TArg>.ResultContainer(arg, rejectContainer, state), callback, null);
                 }
 
                 void ICancelable.Cancel()
@@ -830,22 +1053,108 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class CancelableContinueWaitPromise<TArg, TResult, TDelegate> : PromiseWaitPromise<TResult>, ICancelable
-                where TDelegate : IFunc<Promise<TArg>.ResultContainer, PromiseWrapper<TResult>>
+            private sealed partial class CancelableContinueArgVoidWaitPromise<TArg, TDelegate> : PromiseWaitPromise<VoidResult>, ICancelable
+                where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise>
             {
-                private CancelableContinueWaitPromise() { }
+                private CancelableContinueArgVoidWaitPromise() { }
 
                 [MethodImpl(InlineOption)]
-                private static CancelableContinueWaitPromise<TArg, TResult, TDelegate> GetOrCreate()
+                private static CancelableContinueArgVoidWaitPromise<TArg, TDelegate> GetOrCreate()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<CancelableContinueWaitPromise<TArg, TResult, TDelegate>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<CancelableContinueArgVoidWaitPromise<TArg, TDelegate>>();
                     return obj == InvalidAwaitSentinel.s_instance
-                        ? new CancelableContinueWaitPromise<TArg, TResult, TDelegate>()
-                        : obj.UnsafeAs<CancelableContinueWaitPromise<TArg, TResult, TDelegate>>();
+                        ? new CancelableContinueArgVoidWaitPromise<TArg, TDelegate>()
+                        : obj.UnsafeAs<CancelableContinueArgVoidWaitPromise<TArg, TDelegate>>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static CancelableContinueWaitPromise<TArg, TResult, TDelegate> GetOrCreate(in TDelegate callback)
+                internal static CancelableContinueArgVoidWaitPromise<TArg, TDelegate> GetOrCreate(in TDelegate callback)
+                {
+                    var promise = GetOrCreate();
+                    promise.Reset();
+                    promise._callback = callback;
+                    promise._cancelationHelper.Reset();
+                    return promise;
+                }
+
+                internal override void MaybeDispose()
+                {
+                    if (_cancelationHelper.TryRelease())
+                    {
+                        Dispose();
+                    }
+                }
+
+                new private void Dispose()
+                {
+                    base.Dispose();
+                    _cancelationHelper = default;
+                    _callback = default;
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                {
+                    ThrowIfInPool(this);
+
+                    handler.SetCompletionState(state);
+
+                    if (!_firstContinue)
+                    {
+                        HandleSelf(handler, state);
+                        return;
+                    }
+                    _firstContinue = false;
+
+                    if (!_cancelationHelper.TrySetCompleted())
+                    {
+                        handler.MaybeReportUnhandledAndDispose(state);
+                        MaybeDispose();
+                        return;
+                    }
+
+                    _cancelationHelper.UnregisterAndWait();
+                    _cancelationHelper.ReleaseOne();
+
+                    var rejectContainer = handler.RejectContainer;
+                    var arg = handler.GetResult<TArg>();
+                    handler.SuppressRejection = true;
+                    handler.MaybeDispose();
+
+                    var callback = _callback;
+                    _callback = default;
+                    InvokeAndAdoptVoid(new Promise<TArg>.ResultContainer(arg, rejectContainer, state), callback, null);
+                }
+
+                void ICancelable.Cancel()
+                {
+                    ThrowIfInPool(this);
+                    if (_cancelationHelper.TrySetCompleted())
+                    {
+                        HandleNextInternal(Promise.State.Canceled);
+                    }
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private sealed partial class CancelableContinueArgResultWaitPromise<TArg, TResult, TDelegate> : PromiseWaitPromise<TResult>, ICancelable
+                where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>
+            {
+                private CancelableContinueArgResultWaitPromise() { }
+
+                [MethodImpl(InlineOption)]
+                private static CancelableContinueArgResultWaitPromise<TArg, TResult, TDelegate> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<CancelableContinueArgResultWaitPromise<TArg, TResult, TDelegate>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new CancelableContinueArgResultWaitPromise<TArg, TResult, TDelegate>()
+                        : obj.UnsafeAs<CancelableContinueArgResultWaitPromise<TArg, TResult, TDelegate>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static CancelableContinueArgResultWaitPromise<TArg, TResult, TDelegate> GetOrCreate(in TDelegate callback)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
