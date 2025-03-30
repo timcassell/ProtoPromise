@@ -25,7 +25,7 @@ namespace Proto.Promises
         {
             ValidateArgument(body, nameof(body), 1);
 
-            return Internal.ParallelFor(fromIndex, toIndex, new Internal.ParallelBody<int>(body), cancelationToken, Config.BackgroundContext, maxDegreeOfParallelism);
+            return Internal.ParallelFor(fromIndex, toIndex, DelegateWrapper.Create(body), cancelationToken, Config.BackgroundContext, maxDegreeOfParallelism);
         }
 
         /// <summary>Executes a for loop in which iterations may run in parallel.</summary>
@@ -41,7 +41,7 @@ namespace Proto.Promises
         {
             ValidateArgument(body, nameof(body), 1);
 
-            return Internal.ParallelFor(fromIndex, toIndex, new Internal.ParallelBody<int>(body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
+            return Internal.ParallelFor(fromIndex, toIndex, DelegateWrapper.Create(body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
         }
 
         /// <summary>Executes a for loop in which iterations may run in parallel on <see cref="Config.BackgroundContext"/>.</summary>
@@ -57,7 +57,7 @@ namespace Proto.Promises
         {
             ValidateArgument(body, nameof(body), 1);
 
-            return Internal.ParallelFor(fromIndex, toIndex, new Internal.ParallelCaptureBody<int, TCapture>(captureValue, body), cancelationToken, Config.BackgroundContext, maxDegreeOfParallelism);
+            return Internal.ParallelFor(fromIndex, toIndex, DelegateWrapper.Create(captureValue, body), cancelationToken, Config.BackgroundContext, maxDegreeOfParallelism);
         }
 
         /// <summary>Executes a for loop in which iterations may run in parallel.</summary>
@@ -74,7 +74,7 @@ namespace Proto.Promises
         {
             ValidateArgument(body, nameof(body), 1);
 
-            return Internal.ParallelFor(fromIndex, toIndex, new Internal.ParallelCaptureBody<int, TCapture>(captureValue, body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
+            return Internal.ParallelFor(fromIndex, toIndex, DelegateWrapper.Create(captureValue, body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
         }
 
         /// <summary>Executes a for each operation on an <see cref="IEnumerable{TSource}"/> in which iterations may run in parallel on <see cref="Config.BackgroundContext"/>.</summary>
@@ -342,7 +342,8 @@ namespace Proto.Promises
             ValidateArgument(source, nameof(source), 1);
             ValidateArgument(body, nameof(body), 1);
 
-            return Internal.ParallelForEach<TEnumerator, Internal.ParallelBody<T>, T>(source, new Internal.ParallelBody<T>(body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
+            return Internal.ParallelForEach<TEnumerator, Internal.Delegate2ArgResult<T, CancelationToken, Promise>, T>(
+                source, DelegateWrapper.Create(body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
         }
 
         /// <summary>Executes a for each operation on an <see cref="IEnumerator{T}"/> in which iterations may run in parallel on <see cref="Promise.Config.BackgroundContext"/>.</summary>
@@ -380,7 +381,8 @@ namespace Proto.Promises
             ValidateArgument(source, nameof(source), 1);
             ValidateArgument(body, nameof(body), 1);
 
-            return Internal.ParallelForEach<TEnumerator, Internal.ParallelCaptureBody<T, TCapture>, T>(source, new Internal.ParallelCaptureBody<T, TCapture>(captureValue, body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
+            return Internal.ParallelForEach<TEnumerator, Internal.DelegateArgCaptureArgResult<T, TCapture, CancelationToken, Promise>, T>(
+                source, DelegateWrapper.Create(captureValue, body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
         }
 
 #if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
@@ -482,7 +484,7 @@ namespace Proto.Promises
         {
             ValidateArgument(body, nameof(body), 1);
 
-            return Internal.ParallelForEachAsync(source, new Internal.ParallelBody<T>(body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
+            return Internal.ParallelForEachAsync(source, DelegateWrapper.Create(body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
         }
 
         /// <summary>Executes a for each operation on an <see cref="AsyncEnumerable{T}"/> in which iterations may run in parallel on <see cref="Promise.Config.BackgroundContext"/>.</summary>
@@ -515,7 +517,7 @@ namespace Proto.Promises
         {
             ValidateArgument(body, nameof(body), 1);
 
-            return Internal.ParallelForEachAsync(source, new Internal.ParallelCaptureBody<T, TCapture>(captureValue, body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
+            return Internal.ParallelForEachAsync(source, DelegateWrapper.Create(captureValue, body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
         }
     }
 }

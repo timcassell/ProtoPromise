@@ -50,7 +50,7 @@ namespace Proto.Promises
             return cancelationToken.IsCancelationRequested
                 ? default
                 : Internal.NewProgress(
-                    new Internal.DelegateProgress(handler),
+                    DelegateWrapper.Create(handler),
                     new ContinuationOptions(invokeOption, forceAsync),
                     cancelationToken
                 );
@@ -76,7 +76,7 @@ namespace Proto.Promises
             return cancelationToken.IsCancelationRequested
                 ? default
                 : Internal.NewProgress(
-                    new Internal.DelegateCaptureProgress<TCapture>(captureValue, handler),
+                    DelegateWrapper.Create(captureValue, handler),
                     new ContinuationOptions(invokeOption, forceAsync),
                     cancelationToken
                 );
@@ -127,7 +127,7 @@ namespace Proto.Promises
             return cancelationToken.IsCancelationRequested
                 ? default
                 : Internal.NewProgress(
-                    new Internal.DelegateProgress(handler),
+                    DelegateWrapper.Create(handler),
                     new ContinuationOptions(invokeContext, forceAsync),
                     cancelationToken
                 );
@@ -153,7 +153,7 @@ namespace Proto.Promises
             return cancelationToken.IsCancelationRequested
                 ? default
                 : Internal.NewProgress(
-                    new Internal.DelegateCaptureProgress<TCapture>(captureValue, handler),
+                    DelegateWrapper.Create(captureValue, handler),
                     new ContinuationOptions(invokeContext, forceAsync),
                     cancelationToken
                 );

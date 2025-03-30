@@ -101,7 +101,7 @@ namespace Proto.Promises
         public bool TryRegister(Action callback, out CancelationRegistration cancelationRegistration)
         {
             ValidateArgument(callback, nameof(callback), 1);
-            return Internal.CancelationRef.TryRegister(_ref, _id, new Internal.CancelDelegateTokenVoid(callback), out cancelationRegistration);
+            return Internal.CancelationRef.TryRegister(_ref, _id, DelegateWrapper.Create(callback), out cancelationRegistration);
         }
 
         /// <summary>
@@ -116,7 +116,7 @@ namespace Proto.Promises
         public bool TryRegister<TCapture>(TCapture captureValue, Action<TCapture> callback, out CancelationRegistration cancelationRegistration)
         {
             ValidateArgument(callback, nameof(callback), 1);
-            return Internal.CancelationRef.TryRegister(_ref, _id, new Internal.CancelDelegateToken<TCapture>(captureValue, callback), out cancelationRegistration);
+            return Internal.CancelationRef.TryRegister(_ref, _id, DelegateWrapper.Create(captureValue, callback), out cancelationRegistration);
         }
 
         /// <summary>
@@ -216,7 +216,7 @@ namespace Proto.Promises
         public CancelationRegistration RegisterWithoutImmediateInvoke(Action callback, out bool alreadyCanceled)
         {
             ValidateArgument(callback, nameof(callback), 1);
-            Internal.CancelationRef.TryRegister(_ref, _id, new Internal.CancelDelegateTokenVoid(callback), out var registration, out alreadyCanceled);
+            Internal.CancelationRef.TryRegister(_ref, _id, DelegateWrapper.Create(callback), out var registration, out alreadyCanceled);
             return registration;
         }
 
@@ -231,7 +231,7 @@ namespace Proto.Promises
         public CancelationRegistration RegisterWithoutImmediateInvoke<TCapture>(TCapture captureValue, Action<TCapture> callback, out bool alreadyCanceled)
         {
             ValidateArgument(callback, nameof(callback), 1);
-            Internal.CancelationRef.TryRegister(_ref, _id, new Internal.CancelDelegateToken<TCapture>(captureValue, callback), out var registration, out alreadyCanceled);
+            Internal.CancelationRef.TryRegister(_ref, _id, DelegateWrapper.Create(captureValue, callback), out var registration, out alreadyCanceled);
             return registration;
         }
 

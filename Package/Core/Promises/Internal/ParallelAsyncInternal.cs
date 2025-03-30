@@ -15,7 +15,7 @@ namespace Proto.Promises
     partial class Internal
     {
         internal static Promise ParallelForEachAsync<TParallelBody, TSource>(Linq.AsyncEnumerable<TSource> enumerable, TParallelBody body, CancelationToken cancelationToken, SynchronizationContext synchronizationContext, int maxDegreeOfParallelism)
-            where TParallelBody : IParallelBody<TSource>
+            where TParallelBody : IFunc<TSource, CancelationToken, Promise>
         {
             if (maxDegreeOfParallelism == -1)
             {
@@ -47,7 +47,7 @@ namespace Proto.Promises
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
             internal sealed partial class PromiseParallelForEachAsync<TParallelBody, TSource> : SingleAwaitPromise<VoidResult>, ICancelable
-                where TParallelBody : IParallelBody<TSource>
+                where TParallelBody : IFunc<TSource, CancelationToken, Promise>
             {
                 private TParallelBody _body;
                 private Linq.AsyncEnumerator<TSource> _asyncEnumerator;

@@ -23,44 +23,6 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal readonly struct DelegateProgress : IProgress<double>
-        {
-            private readonly Action<double> _callback;
-
-            [MethodImpl(InlineOption)]
-            public DelegateProgress(Action<double> callback)
-            {
-                _callback = callback;
-            }
-
-            [MethodImpl(InlineOption)]
-            public void Report(double value)
-                => _callback.Invoke(value);
-        }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal readonly struct DelegateCaptureProgress<TCapture> : IProgress<double>
-        {
-            private readonly Action<TCapture, double> _callback;
-            private readonly TCapture _capturedValue;
-
-            [MethodImpl(InlineOption)]
-            public DelegateCaptureProgress(in TCapture capturedValue, Action<TCapture, double> callback)
-            {
-                _capturedValue = capturedValue;
-                _callback = callback;
-            }
-
-            [MethodImpl(InlineOption)]
-            public void Report(double value)
-                => _callback.Invoke(_capturedValue, value);
-        }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
         internal ref struct ProgressReportValues
         {
             internal ProgressBase _reporter;
