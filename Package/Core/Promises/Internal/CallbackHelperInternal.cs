@@ -35,7 +35,7 @@ namespace Proto.Promises
                     {
                         var arg = _this._ref._result;
                         _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                        return CallbackHelperVoid.Invoke(arg, callback, null);
+                        return CallbackHelperVoid.Invoke(arg, callback);
                     }
                     return _this.Duplicate();
                 }
@@ -49,7 +49,7 @@ namespace Proto.Promises
                     {
                         var arg = _this._ref._result;
                         _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                        return CallbackHelperVoid.InvokeAndAdopt(arg, callback, null);
+                        return CallbackHelperVoid.InvokeAndAdopt(arg, callback);
                     }
                     return _this.Duplicate();
                 }
@@ -60,7 +60,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return CallbackHelperVoid.Invoke(_this._result, onResolve, null);
+                        return CallbackHelperVoid.Invoke(_this._result, onResolve);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -79,7 +79,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return CallbackHelperVoid.InvokeAndAdopt(_this._result, onResolve, null);
+                        return CallbackHelperVoid.InvokeAndAdopt(_this._result, onResolve);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -107,7 +107,7 @@ namespace Proto.Promises
                         {
                             var arg = _this._ref._result;
                             _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                            return CallbackHelperVoid.Invoke(arg, onResolve, null);
+                            return CallbackHelperVoid.Invoke(arg, onResolve);
                         }
 
                         var rejectContainer = _this._ref.RejectContainer;
@@ -115,7 +115,7 @@ namespace Proto.Promises
                         {
                             _this._ref.SuppressRejection = true;
                             _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                            return CallbackHelperVoid.Invoke(rejectArg, onReject, rejectContainer);
+                            return CallbackHelperVoid.InvokeCatch(rejectArg, onReject, rejectContainer);
                         }
 
                         return _this.Duplicate();
@@ -131,7 +131,7 @@ namespace Proto.Promises
                         {
                             var arg = _this._ref._result;
                             _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                            return CallbackHelperVoid.InvokeAndAdopt(arg, onResolve, null);
+                            return CallbackHelperVoid.InvokeAndAdopt(arg, onResolve);
                         }
 
                         var rejectContainer = _this._ref.RejectContainer;
@@ -139,7 +139,7 @@ namespace Proto.Promises
                         {
                             _this._ref.SuppressRejection = true;
                             _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                            return CallbackHelperVoid.InvokeAndAdopt(rejectArg, onReject, rejectContainer);
+                            return CallbackHelperVoid.InvokeCatchAndAdopt(rejectArg, onReject, rejectContainer);
                         }
 
                         return _this.Duplicate();
@@ -152,7 +152,7 @@ namespace Proto.Promises
                     {
                         if (_this._ref == null)
                         {
-                            return CallbackHelperVoid.Invoke(_this._result, onResolve, null);
+                            return CallbackHelperVoid.Invoke(_this._result, onResolve);
                         }
 
                         if (_this._ref.State != Promise.State.Pending)
@@ -172,7 +172,7 @@ namespace Proto.Promises
                     {
                         if (_this._ref == null)
                         {
-                            return CallbackHelperVoid.InvokeAndAdopt(_this._result, onResolve, null);
+                            return CallbackHelperVoid.InvokeAndAdopt(_this._result, onResolve);
                         }
 
                         if (_this._ref.State != Promise.State.Pending)
@@ -193,7 +193,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return CallbackHelperVoid.Invoke(_this._result, onResolve, null);
+                        return CallbackHelperVoid.Invoke(_this._result, onResolve);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -213,7 +213,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return CallbackHelperVoid.InvokeAndAdopt(_this._result, onResolve, null);
+                        return CallbackHelperVoid.InvokeAndAdopt(_this._result, onResolve);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -234,7 +234,7 @@ namespace Proto.Promises
                     var arg = new Promise<TArg>.ResultContainer(promise._result, promise.RejectContainer, promise.State);
                     promise.SuppressRejection = true;
                     promise.MaybeMarkAwaitedAndDispose(promiseId);
-                    return CallbackHelperVoid.Invoke(arg, callback, null);
+                    return CallbackHelperVoid.Invoke(arg, callback);
                 }
 
                 // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
@@ -245,7 +245,7 @@ namespace Proto.Promises
                     var arg = new Promise<TArg>.ResultContainer(promise._result, promise.RejectContainer, promise.State);
                     promise.SuppressRejection = true;
                     promise.MaybeMarkAwaitedAndDispose(promiseId);
-                    return CallbackHelperVoid.InvokeAndAdopt(arg, callback, null);
+                    return CallbackHelperVoid.InvokeAndAdopt(arg, callback);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -254,7 +254,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return CallbackHelperVoid.Invoke(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue, null);
+                        return CallbackHelperVoid.Invoke(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -273,7 +273,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return CallbackHelperVoid.InvokeAndAdopt(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue, null);
+                        return CallbackHelperVoid.InvokeAndAdopt(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -297,7 +297,7 @@ namespace Proto.Promises
 
                     if (_this._ref == null)
                     {
-                        return CallbackHelperVoid.Invoke(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue, null);
+                        return CallbackHelperVoid.Invoke(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -330,7 +330,7 @@ namespace Proto.Promises
 
                     if (_this._ref == null)
                     {
-                        return CallbackHelperVoid.InvokeAndAdopt(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue, null);
+                        return CallbackHelperVoid.InvokeAndAdopt(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -365,20 +365,13 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> Invoke<TDelegate>(in TDelegate callback, IRejectContainer rejectContainer)
+                internal static Promise<TResult> Invoke<TDelegate>(in TDelegate callback)
                     where TDelegate : IFunc<TResult>
                 {
                     try
                     {
                         return Promise.Resolved(callback.Invoke());
                     }
-                    catch (RethrowException e)
-                    {
-                        // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
-                        return rejectContainer != null
-                            ? Promise<TResult>.Rejected(rejectContainer)
-                            : Promise<TResult>.Rejected(e);
-                    }
                     catch (Exception e)
                     {
                         return Promise<TResult>.FromException(e);
@@ -386,20 +379,13 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> Invoke<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
+                internal static Promise<TResult> Invoke<TArg, TDelegate>(in TArg arg, in TDelegate callback)
                     where TDelegate : IFunc<TArg, TResult>
                 {
                     try
                     {
                         return Promise.Resolved(callback.Invoke(arg));
                     }
-                    catch (RethrowException e)
-                    {
-                        // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
-                        return rejectContainer != null
-                            ? Promise<TResult>.Rejected(rejectContainer)
-                            : Promise<TResult>.Rejected(e);
-                    }
                     catch (Exception e)
                     {
                         return Promise<TResult>.FromException(e);
@@ -407,19 +393,26 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> InvokeAndAdopt<TDelegate>(in TDelegate callback, IRejectContainer rejectContainer)
+                internal static Promise<TResult> InvokeAndAdopt<TDelegate>(in TDelegate callback)
                     where TDelegate : IFunc<Promise<TResult>>
                 {
                     try
                     {
                         return callback.Invoke().Duplicate();
                     }
-                    catch (RethrowException e)
+                    catch (Exception e)
                     {
-                        // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
-                        return rejectContainer != null
-                            ? Promise<TResult>.Rejected(rejectContainer)
-                            : Promise<TResult>.Rejected(e);
+                        return Promise<TResult>.FromException(e);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> InvokeAndAdopt<TArg, TDelegate>(in TArg arg, in TDelegate callback)
+                    where TDelegate : IFunc<TArg, Promise<TResult>>
+                {
+                    try
+                    {
+                        return callback.Invoke(arg).Duplicate();
                     }
                     catch (Exception e)
                     {
@@ -428,19 +421,70 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> InvokeAndAdopt<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
+                internal static Promise<TResult> InvokeCatch<TDelegate>(in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IFunc<TResult>
+                {
+                    try
+                    {
+                        return Promise.Resolved(callback.Invoke());
+                    }
+                    catch (RethrowException)
+                    {
+                        return Promise<TResult>.Rejected(rejectContainer);
+                    }
+                    catch (Exception e)
+                    {
+                        return Promise<TResult>.FromException(e);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> InvokeCatch<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IFunc<TArg, TResult>
+                {
+                    try
+                    {
+                        return Promise.Resolved(callback.Invoke(arg));
+                    }
+                    catch (RethrowException)
+                    {
+                        return Promise<TResult>.Rejected(rejectContainer);
+                    }
+                    catch (Exception e)
+                    {
+                        return Promise<TResult>.FromException(e);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> InvokeCatchAndAdopt<TDelegate>(in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IFunc<Promise<TResult>>
+                {
+                    try
+                    {
+                        return callback.Invoke().Duplicate();
+                    }
+                    catch (RethrowException)
+                    {
+                        return Promise<TResult>.Rejected(rejectContainer);
+                    }
+                    catch (Exception e)
+                    {
+                        return Promise<TResult>.FromException(e);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> InvokeCatchAndAdopt<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
                     where TDelegate : IFunc<TArg, Promise<TResult>>
                 {
                     try
                     {
                         return callback.Invoke(arg).Duplicate();
                     }
-                    catch (RethrowException e)
+                    catch (RethrowException)
                     {
-                        // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
-                        return rejectContainer != null
-                            ? Promise<TResult>.Rejected(rejectContainer)
-                            : Promise<TResult>.Rejected(e);
+                        return Promise<TResult>.Rejected(rejectContainer);
                     }
                     catch (Exception e)
                     {
@@ -614,7 +658,7 @@ namespace Proto.Promises
                     if (_this._ref.State == Promise.State.Resolved)
                     {
                         _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                        return Invoke(callback, null);
+                        return Invoke(callback);
                     }
 
                     var rejectContainer = _this._ref.RejectContainer;
@@ -633,7 +677,7 @@ namespace Proto.Promises
                     if (_this._ref.State == Promise.State.Resolved)
                     {
                         _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                        return InvokeAndAdopt(callback, null);
+                        return InvokeAndAdopt(callback);
                     }
 
                     var rejectContainer = _this._ref.RejectContainer;
@@ -650,7 +694,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return Invoke(onResolve, null);
+                        return Invoke(onResolve);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -669,7 +713,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return InvokeAndAdopt(onResolve, null);
+                        return InvokeAndAdopt(onResolve);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -740,7 +784,7 @@ namespace Proto.Promises
 
                         _this._ref.SuppressRejection = true;
                         _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                        return Invoke(rejectArg, callback, rejectContainer);
+                        return InvokeCatch(rejectArg, callback, rejectContainer);
                     }
 
                     // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
@@ -757,7 +801,7 @@ namespace Proto.Promises
 
                         _this._ref.SuppressRejection = true;
                         _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                        return InvokeAndAdopt(rejectArg, callback, rejectContainer);
+                        return InvokeCatchAndAdopt(rejectArg, callback, rejectContainer);
                     }
 
                     [MethodImpl(InlineOption)]
@@ -807,7 +851,7 @@ namespace Proto.Promises
                         if (_this._ref.State == Promise.State.Resolved)
                         {
                             _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                            return Invoke(onResolve, null);
+                            return Invoke(onResolve);
                         }
 
                         var rejectContainer = _this._ref.RejectContainer;
@@ -815,7 +859,7 @@ namespace Proto.Promises
                         {
                             _this._ref.SuppressRejection = true;
                             _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                            return Invoke(rejectArg, onReject, rejectContainer);
+                            return InvokeCatch(rejectArg, onReject, rejectContainer);
                         }
 
                         _this._ref.SuppressRejection = true;
@@ -834,7 +878,7 @@ namespace Proto.Promises
                         if (_this._ref.State == Promise.State.Resolved)
                         {
                             _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                            return InvokeAndAdopt(onResolve, null);
+                            return InvokeAndAdopt(onResolve);
                         }
 
                         var rejectContainer = _this._ref.RejectContainer;
@@ -842,7 +886,7 @@ namespace Proto.Promises
                         {
                             _this._ref.SuppressRejection = true;
                             _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                            return InvokeAndAdopt(rejectArg, onReject, rejectContainer);
+                            return InvokeCatchAndAdopt(rejectArg, onReject, rejectContainer);
                         }
 
                         _this._ref.SuppressRejection = true;
@@ -859,7 +903,7 @@ namespace Proto.Promises
                     {
                         if (_this._ref == null)
                         {
-                            return Invoke(onResolve, null);
+                            return Invoke(onResolve);
                         }
 
                         if (_this._ref.State != Promise.State.Pending)
@@ -879,7 +923,7 @@ namespace Proto.Promises
                     {
                         if (_this._ref == null)
                         {
-                            return InvokeAndAdopt(onResolve, null);
+                            return InvokeAndAdopt(onResolve);
                         }
 
                         if (_this._ref.State != Promise.State.Pending)
@@ -900,7 +944,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return Invoke(onResolve, null);
+                        return Invoke(onResolve);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -920,7 +964,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return InvokeAndAdopt(onResolve, null);
+                        return InvokeAndAdopt(onResolve);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -979,7 +1023,7 @@ namespace Proto.Promises
                     var arg = new Promise.ResultContainer(promise.RejectContainer, promise.State);
                     promise.SuppressRejection = true;
                     promise.MaybeMarkAwaitedAndDispose(promiseId);
-                    return Invoke(arg, callback, null);
+                    return Invoke(arg, callback);
                 }
 
                 // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
@@ -990,7 +1034,7 @@ namespace Proto.Promises
                     var arg = new Promise.ResultContainer(promise.RejectContainer, promise.State);
                     promise.SuppressRejection = true;
                     promise.MaybeMarkAwaitedAndDispose(promiseId);
-                    return InvokeAndAdopt(arg, callback, null);
+                    return InvokeAndAdopt(arg, callback);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -999,7 +1043,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return Invoke(Promise.ResultContainer.Resolved, onContinue, null);
+                        return Invoke(Promise.ResultContainer.Resolved, onContinue);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -1018,7 +1062,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return InvokeAndAdopt(Promise.ResultContainer.Resolved, onContinue, null);
+                        return InvokeAndAdopt(Promise.ResultContainer.Resolved, onContinue);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -1042,7 +1086,7 @@ namespace Proto.Promises
 
                     if (_this._ref == null)
                     {
-                        return Invoke(Promise.ResultContainer.Resolved, onContinue, null);
+                        return Invoke(Promise.ResultContainer.Resolved, onContinue);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -1075,7 +1119,7 @@ namespace Proto.Promises
 
                     if (_this._ref == null)
                     {
-                        return InvokeAndAdopt(Promise.ResultContainer.Resolved, onContinue, null);
+                        return InvokeAndAdopt(Promise.ResultContainer.Resolved, onContinue);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -1112,7 +1156,7 @@ namespace Proto.Promises
                     {
                         var arg = _this._ref._result;
                         _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                        return CallbackHelperResult<TResult>.Invoke(arg, callback, null);
+                        return CallbackHelperResult<TResult>.Invoke(arg, callback);
                     }
 
                     var rejectContainer = _this._ref.RejectContainer;
@@ -1132,7 +1176,7 @@ namespace Proto.Promises
                     {
                         var arg = _this._ref._result;
                         _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                        return CallbackHelperResult<TResult>.InvokeAndAdopt(arg, callback, null);
+                        return CallbackHelperResult<TResult>.InvokeAndAdopt(arg, callback);
                     }
 
                     var rejectContainer = _this._ref.RejectContainer;
@@ -1149,7 +1193,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return CallbackHelperResult<TResult>.Invoke(_this._result, onResolve, null);
+                        return CallbackHelperResult<TResult>.Invoke(_this._result, onResolve);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -1168,7 +1212,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return CallbackHelperResult<TResult>.InvokeAndAdopt(_this._result, onResolve, null);
+                        return CallbackHelperResult<TResult>.InvokeAndAdopt(_this._result, onResolve);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -1196,7 +1240,7 @@ namespace Proto.Promises
                         {
                             var arg = _this._ref._result;
                             _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                            return CallbackHelperResult<TResult>.Invoke(arg, onResolve, null);
+                            return CallbackHelperResult<TResult>.Invoke(arg, onResolve);
                         }
 
                         var rejectContainer = _this._ref.RejectContainer;
@@ -1204,7 +1248,7 @@ namespace Proto.Promises
                         {
                             _this._ref.SuppressRejection = true;
                             _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                            return CallbackHelperResult<TResult>.Invoke(rejectArg, onReject, rejectContainer);
+                            return CallbackHelperResult<TResult>.InvokeCatch(rejectArg, onReject, rejectContainer);
                         }
 
                         _this._ref.SuppressRejection = true;
@@ -1224,7 +1268,7 @@ namespace Proto.Promises
                         {
                             var arg = _this._ref._result;
                             _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                            return CallbackHelperResult<TResult>.InvokeAndAdopt(arg, onResolve, null);
+                            return CallbackHelperResult<TResult>.InvokeAndAdopt(arg, onResolve);
                         }
 
                         var rejectContainer = _this._ref.RejectContainer;
@@ -1232,7 +1276,7 @@ namespace Proto.Promises
                         {
                             _this._ref.SuppressRejection = true;
                             _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                            return CallbackHelperResult<TResult>.InvokeAndAdopt(rejectArg, onReject, rejectContainer);
+                            return CallbackHelperResult<TResult>.InvokeCatchAndAdopt(rejectArg, onReject, rejectContainer);
                         }
 
                         _this._ref.SuppressRejection = true;
@@ -1249,7 +1293,7 @@ namespace Proto.Promises
                     {
                         if (_this._ref == null)
                         {
-                            return CallbackHelperResult<TResult>.Invoke(_this._result, onResolve, null);
+                            return CallbackHelperResult<TResult>.Invoke(_this._result, onResolve);
                         }
 
                         if (_this._ref.State != Promise.State.Pending)
@@ -1269,7 +1313,7 @@ namespace Proto.Promises
                     {
                         if (_this._ref == null)
                         {
-                            return CallbackHelperResult<TResult>.InvokeAndAdopt(_this._result, onResolve, null);
+                            return CallbackHelperResult<TResult>.InvokeAndAdopt(_this._result, onResolve);
                         }
 
                         if (_this._ref.State != Promise.State.Pending)
@@ -1290,7 +1334,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return CallbackHelperResult<TResult>.Invoke(_this._result, onResolve, null);
+                        return CallbackHelperResult<TResult>.Invoke(_this._result, onResolve);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -1310,7 +1354,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return CallbackHelperResult<TResult>.InvokeAndAdopt(_this._result, onResolve, null);
+                        return CallbackHelperResult<TResult>.InvokeAndAdopt(_this._result, onResolve);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -1331,7 +1375,7 @@ namespace Proto.Promises
                     var arg = new Promise<TArg>.ResultContainer(promise._result, promise.RejectContainer, promise.State);
                     promise.SuppressRejection = true;
                     promise.MaybeMarkAwaitedAndDispose(promiseId);
-                    return CallbackHelperResult<TResult>.Invoke(arg, callback, null);
+                    return CallbackHelperResult<TResult>.Invoke(arg, callback);
                 }
 
                 // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
@@ -1342,7 +1386,7 @@ namespace Proto.Promises
                     var arg = new Promise<TArg>.ResultContainer(promise._result, promise.RejectContainer, promise.State);
                     promise.SuppressRejection = true;
                     promise.MaybeMarkAwaitedAndDispose(promiseId);
-                    return CallbackHelperResult<TResult>.InvokeAndAdopt(arg, callback, null);
+                    return CallbackHelperResult<TResult>.InvokeAndAdopt(arg, callback);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1351,7 +1395,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return CallbackHelperResult<TResult>.Invoke(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue, null);
+                        return CallbackHelperResult<TResult>.Invoke(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -1370,7 +1414,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return CallbackHelperResult<TResult>.InvokeAndAdopt(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue, null);
+                        return CallbackHelperResult<TResult>.InvokeAndAdopt(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -1394,7 +1438,7 @@ namespace Proto.Promises
 
                     if (_this._ref == null)
                     {
-                        return CallbackHelperResult<TResult>.Invoke(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue, null);
+                        return CallbackHelperResult<TResult>.Invoke(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -1427,7 +1471,7 @@ namespace Proto.Promises
 
                     if (_this._ref == null)
                     {
-                        return CallbackHelperResult<TResult>.InvokeAndAdopt(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue, null);
+                        return CallbackHelperResult<TResult>.InvokeAndAdopt(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -1456,7 +1500,7 @@ namespace Proto.Promises
             internal static class CallbackHelperVoid
             {
                 [MethodImpl(InlineOption)]
-                internal static Promise Invoke<TDelegate>(in TDelegate callback, IRejectContainer rejectContainer)
+                internal static Promise Invoke<TDelegate>(in TDelegate callback)
                     where TDelegate : IAction
                 {
                     try
@@ -1464,13 +1508,6 @@ namespace Proto.Promises
                         callback.Invoke();
                         return Promise.Resolved();
                     }
-                    catch (RethrowException e)
-                    {
-                        // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
-                        return rejectContainer != null
-                            ? Promise.Rejected(rejectContainer)
-                            : Promise.Rejected(e);
-                    }
                     catch (Exception e)
                     {
                         return Promise.FromException(e);
@@ -1478,7 +1515,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise Invoke<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
+                internal static Promise Invoke<TArg, TDelegate>(in TArg arg, in TDelegate callback)
                     where TDelegate : IAction<TArg>
                 {
                     try
@@ -1486,13 +1523,6 @@ namespace Proto.Promises
                         callback.Invoke(arg);
                         return Promise.Resolved();
                     }
-                    catch (RethrowException e)
-                    {
-                        // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
-                        return rejectContainer != null
-                            ? Promise.Rejected(rejectContainer)
-                            : Promise.Rejected(e);
-                    }
                     catch (Exception e)
                     {
                         return Promise.FromException(e);
@@ -1500,19 +1530,45 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise InvokeAndAdopt<TDelegate>(in TDelegate callback, IRejectContainer rejectContainer)
+                internal static Promise InvokeAndAdopt<TDelegate>(in TDelegate callback)
                     where TDelegate : IFunc<Promise>
                 {
                     try
                     {
                         return callback.Invoke().Duplicate();
                     }
-                    catch (RethrowException e)
+                    catch (Exception e)
                     {
-                        // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
-                        return rejectContainer != null
-                            ? Promise.Rejected(rejectContainer)
-                            : Promise.Rejected(e);
+                        return Promise.FromException(e);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise InvokeAndAdopt<TArg, TDelegate>(in TArg arg, in TDelegate callback)
+                    where TDelegate : IFunc<TArg, Promise>
+                {
+                    try
+                    {
+                        return callback.Invoke(arg).Duplicate();
+                    }
+                    catch (Exception e)
+                    {
+                        return Promise.FromException(e);
+                    }
+                }
+                
+                [MethodImpl(InlineOption)]
+                internal static Promise InvokeCatch<TDelegate>(in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IAction
+                {
+                    try
+                    {
+                        callback.Invoke();
+                        return Promise.Resolved();
+                    }
+                    catch (RethrowException)
+                    {
+                        return Promise.Rejected(rejectContainer);
                     }
                     catch (Exception e)
                     {
@@ -1521,19 +1577,53 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise InvokeAndAdopt<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
+                internal static Promise InvokeCatch<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IAction<TArg>
+                {
+                    try
+                    {
+                        callback.Invoke(arg);
+                        return Promise.Resolved();
+                    }
+                    catch (RethrowException)
+                    {
+                        return Promise.Rejected(rejectContainer);
+                    }
+                    catch (Exception e)
+                    {
+                        return Promise.FromException(e);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise InvokeCatchAndAdopt<TDelegate>(in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IFunc<Promise>
+                {
+                    try
+                    {
+                        return callback.Invoke().Duplicate();
+                    }
+                    catch (RethrowException)
+                    {
+                        return Promise.Rejected(rejectContainer);
+                    }
+                    catch (Exception e)
+                    {
+                        return Promise.FromException(e);
+                    }
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise InvokeCatchAndAdopt<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
                     where TDelegate : IFunc<TArg, Promise>
                 {
                     try
                     {
                         return callback.Invoke(arg).Duplicate();
                     }
-                    catch (RethrowException e)
+                    catch (RethrowException)
                     {
-                        // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
-                        return rejectContainer != null
-                            ? Promise.Rejected(rejectContainer)
-                            : Promise.Rejected(e);
+                        return Promise.Rejected(rejectContainer);
                     }
                     catch (Exception e)
                     {
@@ -1828,7 +1918,7 @@ namespace Proto.Promises
                     if (_this._ref.State == Promise.State.Resolved)
                     {
                         _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                        return Invoke(callback, null);
+                        return Invoke(callback);
                     }
 
                     var rejectContainer = _this._ref.RejectContainer;
@@ -1847,7 +1937,7 @@ namespace Proto.Promises
                     if (_this._ref.State == Promise.State.Resolved)
                     {
                         _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                        return InvokeAndAdopt(callback, null);
+                        return InvokeAndAdopt(callback);
                     }
 
                     var rejectContainer = _this._ref.RejectContainer;
@@ -1864,7 +1954,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return Invoke(onResolve, null);
+                        return Invoke(onResolve);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -1883,7 +1973,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return InvokeAndAdopt(onResolve, null);
+                        return InvokeAndAdopt(onResolve);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -1954,7 +2044,7 @@ namespace Proto.Promises
 
                         _this._ref.SuppressRejection = true;
                         _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                        return Invoke(rejectArg, callback, rejectContainer);
+                        return InvokeCatch(rejectArg, callback, rejectContainer);
                     }
 
                     // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
@@ -1971,7 +2061,7 @@ namespace Proto.Promises
 
                         _this._ref.SuppressRejection = true;
                         _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                        return InvokeAndAdopt(rejectArg, callback, rejectContainer);
+                        return InvokeCatchAndAdopt(rejectArg, callback, rejectContainer);
                     }
 
                     [MethodImpl(InlineOption)]
@@ -2021,7 +2111,7 @@ namespace Proto.Promises
                         if (_this._ref.State == Promise.State.Resolved)
                         {
                             _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                            return Invoke(onResolve, null);
+                            return Invoke(onResolve);
                         }
 
                         var rejectContainer = _this._ref.RejectContainer;
@@ -2029,7 +2119,7 @@ namespace Proto.Promises
                         {
                             _this._ref.SuppressRejection = true;
                             _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                            return Invoke(rejectArg, onReject, rejectContainer);
+                            return InvokeCatch(rejectArg, onReject, rejectContainer);
                         }
 
                         _this._ref.SuppressRejection = true;
@@ -2048,7 +2138,7 @@ namespace Proto.Promises
                         if (_this._ref.State == Promise.State.Resolved)
                         {
                             _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                            return InvokeAndAdopt(onResolve, null);
+                            return InvokeAndAdopt(onResolve);
                         }
 
                         var rejectContainer = _this._ref.RejectContainer;
@@ -2056,7 +2146,7 @@ namespace Proto.Promises
                         {
                             _this._ref.SuppressRejection = true;
                             _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
-                            return InvokeAndAdopt(rejectArg, onReject, rejectContainer);
+                            return InvokeCatchAndAdopt(rejectArg, onReject, rejectContainer);
                         }
 
                         _this._ref.SuppressRejection = true;
@@ -2073,7 +2163,7 @@ namespace Proto.Promises
                     {
                         if (_this._ref == null)
                         {
-                            return Invoke(onResolve, null);
+                            return Invoke(onResolve);
                         }
 
                         if (_this._ref.State != Promise.State.Pending)
@@ -2093,7 +2183,7 @@ namespace Proto.Promises
                     {
                         if (_this._ref == null)
                         {
-                            return InvokeAndAdopt(onResolve, null);
+                            return InvokeAndAdopt(onResolve);
                         }
 
                         if (_this._ref.State != Promise.State.Pending)
@@ -2114,7 +2204,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return Invoke(onResolve, null);
+                        return Invoke(onResolve);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -2134,7 +2224,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return InvokeAndAdopt(onResolve, null);
+                        return InvokeAndAdopt(onResolve);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -2193,7 +2283,7 @@ namespace Proto.Promises
                     var arg = new Promise.ResultContainer(promise.RejectContainer, promise.State);
                     promise.SuppressRejection = true;
                     promise.MaybeMarkAwaitedAndDispose(promiseId);
-                    return Invoke(arg, callback, null);
+                    return Invoke(arg, callback);
                 }
 
                 // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
@@ -2204,7 +2294,7 @@ namespace Proto.Promises
                     var arg = new Promise.ResultContainer(promise.RejectContainer, promise.State);
                     promise.SuppressRejection = true;
                     promise.MaybeMarkAwaitedAndDispose(promiseId);
-                    return InvokeAndAdopt(arg, callback, null);
+                    return InvokeAndAdopt(arg, callback);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -2213,7 +2303,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return Invoke(Promise.ResultContainer.Resolved, onContinue, null);
+                        return Invoke(Promise.ResultContainer.Resolved, onContinue);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -2232,7 +2322,7 @@ namespace Proto.Promises
                 {
                     if (_this._ref == null)
                     {
-                        return InvokeAndAdopt(Promise.ResultContainer.Resolved, onContinue, null);
+                        return InvokeAndAdopt(Promise.ResultContainer.Resolved, onContinue);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -2256,7 +2346,7 @@ namespace Proto.Promises
 
                     if (_this._ref == null)
                     {
-                        return Invoke(Promise.ResultContainer.Resolved, onContinue, null);
+                        return Invoke(Promise.ResultContainer.Resolved, onContinue);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)
@@ -2289,7 +2379,7 @@ namespace Proto.Promises
 
                     if (_this._ref == null)
                     {
-                        return InvokeAndAdopt(Promise.ResultContainer.Resolved, onContinue, null);
+                        return InvokeAndAdopt(Promise.ResultContainer.Resolved, onContinue);
                     }
 
                     if (_this._ref.State != Promise.State.Pending)

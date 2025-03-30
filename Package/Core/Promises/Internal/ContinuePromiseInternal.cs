@@ -218,7 +218,7 @@ namespace Proto.Promises
             partial class PromiseSingleAwait<TResult>
             {
                 [MethodImpl(InlineOption)]
-                protected void Invoke<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
+                protected void Invoke<TArg, TDelegate>(in TArg arg, in TDelegate callback)
                     where TDelegate : IFunc<TArg, TResult>
                 {
                     Promise.State state;
@@ -227,19 +227,6 @@ namespace Proto.Promises
                     {
                         _result = callback.Invoke(arg);
                         state = Promise.State.Resolved;
-                    }
-                    catch (RethrowException e)
-                    {
-                        // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
-                        if (rejectContainer != null)
-                        {
-                            RejectContainer = rejectContainer;
-                        }
-                        else
-                        {
-                            RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
-                        }
-                        state = Promise.State.Rejected;
                     }
                     catch (OperationCanceledException)
                     {
@@ -284,7 +271,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                protected void InvokeAndAdoptVoid<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
+                protected void InvokeAndAdoptVoid<TArg, TDelegate>(in TArg arg, in TDelegate callback)
                     where TDelegate : IFunc<TArg, Promise>
                 {
                     Promise.State state;
@@ -309,19 +296,6 @@ namespace Proto.Promises
                             state = VerifyAndGetResultFromComplete(result._ref, promiseSingleAwait);
                         }
                     }
-                    catch (RethrowException e)
-                    {
-                        // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
-                        if (rejectContainer != null)
-                        {
-                            RejectContainer = rejectContainer;
-                        }
-                        else
-                        {
-                            RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
-                        }
-                        state = Promise.State.Rejected;
-                    }
                     catch (OperationCanceledException)
                     {
                         state = Promise.State.Canceled;
@@ -342,7 +316,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                protected void InvokeAndAdopt<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
+                protected void InvokeAndAdopt<TArg, TDelegate>(in TArg arg, in TDelegate callback)
                     where TDelegate : IFunc<TArg, Promise<TResult>>
                 {
                     Promise.State state;
@@ -367,19 +341,6 @@ namespace Proto.Promises
                             }
                             state = VerifyAndGetResultFromComplete(result._ref, promiseSingleAwait);
                         }
-                    }
-                    catch (RethrowException e)
-                    {
-                        // Old Unity IL2CPP doesn't support catch `when` filters, so we have to check it inside the catch block.
-                        if (rejectContainer != null)
-                        {
-                            RejectContainer = rejectContainer;
-                        }
-                        else
-                        {
-                            RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
-                        }
-                        state = Promise.State.Rejected;
                     }
                     catch (OperationCanceledException)
                     {
@@ -449,7 +410,7 @@ namespace Proto.Promises
 
                     var callback = _callback;
                     _callback = default;
-                    Invoke(new Promise.ResultContainer(rejectContainer, state), callback, null);
+                    Invoke(new Promise.ResultContainer(rejectContainer, state), callback);
                 }
             }
 
@@ -504,7 +465,7 @@ namespace Proto.Promises
 
                     var callback = _callback;
                     _callback = default;
-                    InvokeAndAdoptVoid(new Promise.ResultContainer(rejectContainer, state), callback, null);
+                    InvokeAndAdoptVoid(new Promise.ResultContainer(rejectContainer, state), callback);
                 }
             }
 
@@ -559,7 +520,7 @@ namespace Proto.Promises
 
                     var callback = _callback;
                     _callback = default;
-                    InvokeAndAdopt(new Promise.ResultContainer(rejectContainer, state), callback, null);
+                    InvokeAndAdopt(new Promise.ResultContainer(rejectContainer, state), callback);
                 }
             }
 
@@ -607,7 +568,7 @@ namespace Proto.Promises
 
                     var callback = _callback;
                     _callback = default;
-                    Invoke(new Promise<TArg>.ResultContainer(arg, rejectContainer, state), callback, null);
+                    Invoke(new Promise<TArg>.ResultContainer(arg, rejectContainer, state), callback);
                 }
             }
 
@@ -663,7 +624,7 @@ namespace Proto.Promises
 
                     var callback = _callback;
                     _callback = default;
-                    InvokeAndAdoptVoid(new Promise<TArg>.ResultContainer(arg, rejectContainer, state), callback, null);
+                    InvokeAndAdoptVoid(new Promise<TArg>.ResultContainer(arg, rejectContainer, state), callback);
                 }
             }
 
@@ -719,7 +680,7 @@ namespace Proto.Promises
 
                     var callback = _callback;
                     _callback = default;
-                    InvokeAndAdopt(new Promise<TArg>.ResultContainer(arg, rejectContainer, state), callback, null);
+                    InvokeAndAdopt(new Promise<TArg>.ResultContainer(arg, rejectContainer, state), callback);
                 }
             }
 
@@ -788,7 +749,7 @@ namespace Proto.Promises
 
                     var callback = _callback;
                     _callback = default;
-                    Invoke(new Promise.ResultContainer(rejectContainer, state), callback, null);
+                    Invoke(new Promise.ResultContainer(rejectContainer, state), callback);
                 }
 
                 void ICancelable.Cancel()
@@ -873,7 +834,7 @@ namespace Proto.Promises
 
                     var callback = _callback;
                     _callback = default;
-                    InvokeAndAdoptVoid(new Promise.ResultContainer(rejectContainer, state), callback, null);
+                    InvokeAndAdoptVoid(new Promise.ResultContainer(rejectContainer, state), callback);
                 }
 
                 void ICancelable.Cancel()
@@ -958,7 +919,7 @@ namespace Proto.Promises
 
                     var callback = _callback;
                     _callback = default;
-                    InvokeAndAdopt(new Promise.ResultContainer(rejectContainer, state), callback, null);
+                    InvokeAndAdopt(new Promise.ResultContainer(rejectContainer, state), callback);
                 }
 
                 void ICancelable.Cancel()
@@ -1037,7 +998,7 @@ namespace Proto.Promises
 
                     var callback = _callback;
                     _callback = default;
-                    Invoke(new Promise<TArg>.ResultContainer(arg, rejectContainer, state), callback, null);
+                    Invoke(new Promise<TArg>.ResultContainer(arg, rejectContainer, state), callback);
                 }
 
                 void ICancelable.Cancel()
@@ -1123,7 +1084,7 @@ namespace Proto.Promises
 
                     var callback = _callback;
                     _callback = default;
-                    InvokeAndAdoptVoid(new Promise<TArg>.ResultContainer(arg, rejectContainer, state), callback, null);
+                    InvokeAndAdoptVoid(new Promise<TArg>.ResultContainer(arg, rejectContainer, state), callback);
                 }
 
                 void ICancelable.Cancel()
@@ -1209,7 +1170,7 @@ namespace Proto.Promises
 
                     var callback = _callback;
                     _callback = default;
-                    InvokeAndAdopt(new Promise<TArg>.ResultContainer(arg, rejectContainer, state), callback, null);
+                    InvokeAndAdopt(new Promise<TArg>.ResultContainer(arg, rejectContainer, state), callback);
                 }
 
                 void ICancelable.Cancel()

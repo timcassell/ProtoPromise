@@ -60,7 +60,7 @@ namespace Proto.Promises
                     {
                         var arg = handler.GetResult<TArg>();
                         handler.MaybeDispose();
-                        Invoke(arg, callback, null);
+                        Invoke(arg, callback);
                         return;
                     }
 
@@ -119,7 +119,7 @@ namespace Proto.Promises
                     {
                         var arg = handler.GetResult<TArg>();
                         handler.MaybeDispose();
-                        InvokeAndAdoptVoid(arg, callback, null);
+                        InvokeAndAdoptVoid(arg, callback);
                         return;
                     }
 
@@ -178,28 +178,12 @@ namespace Proto.Promises
                     {
                         var arg = handler.GetResult<TArg>();
                         handler.MaybeDispose();
-                        InvokeAndAdopt(arg, callback, null);
+                        InvokeAndAdopt(arg, callback);
                         return;
                     }
 
                     HandleSelfWithoutResult(handler, state);
                 }
-            }
-
-            private static bool GetShouldInvokeOnRejected<TReject>(IRejectContainer rejectContainer, out TReject rejectArg)
-            {
-                if (null != default(TReject) && typeof(TReject) == typeof(VoidResult))
-                {
-                    rejectArg = default;
-                    return true;
-                }
-                if (rejectContainer.Value is TReject reject)
-                {
-                    rejectArg = reject;
-                    return true;
-                }
-                rejectArg = default;
-                return false;
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -250,7 +234,7 @@ namespace Proto.Promises
                     {
                         var arg = handler.GetResult<TArg>();
                         handler.MaybeDispose();
-                        Invoke(arg, resolveCallback, null);
+                        Invoke(arg, resolveCallback);
                         return;
                     }
 
@@ -259,7 +243,7 @@ namespace Proto.Promises
                     handler.MaybeDispose();
                     if (state == Promise.State.Rejected && GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
                     {
-                        Invoke(rejectArg, rejectCallback, rejectContainer);
+                        InvokeCatch(rejectArg, rejectCallback, rejectContainer);
                         return;
                     }
 
@@ -326,7 +310,7 @@ namespace Proto.Promises
                     {
                         var arg = handler.GetResult<TArg>();
                         handler.MaybeDispose();
-                        InvokeAndAdoptVoid(arg, resolveCallback, null);
+                        InvokeAndAdoptVoid(arg, resolveCallback);
                         return;
                     }
 
@@ -335,7 +319,7 @@ namespace Proto.Promises
                     handler.MaybeDispose();
                     if (state == Promise.State.Rejected && GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
                     {
-                        InvokeAndAdoptVoid(rejectArg, rejectCallback, rejectContainer);
+                        InvokeCatchAndAdoptVoid(rejectArg, rejectCallback, rejectContainer);
                         return;
                     }
 
@@ -402,7 +386,7 @@ namespace Proto.Promises
                     {
                         var arg = handler.GetResult<TArg>();
                         handler.MaybeDispose();
-                        InvokeAndAdopt(arg, resolveCallback, null);
+                        InvokeAndAdopt(arg, resolveCallback);
                         return;
                     }
 
@@ -411,7 +395,7 @@ namespace Proto.Promises
                     handler.MaybeDispose();
                     if (state == Promise.State.Rejected && GetShouldInvokeOnRejected(rejectContainer, out TReject rejectArg))
                     {
-                        InvokeAndAdopt(rejectArg, rejectCallback, rejectContainer);
+                        InvokeCatchAndAdopt(rejectArg, rejectCallback, rejectContainer);
                         return;
                     }
 

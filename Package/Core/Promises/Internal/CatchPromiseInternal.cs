@@ -16,6 +16,164 @@ namespace Proto.Promises
     {
         partial class PromiseRefBase
         {
+            partial class PromiseSingleAwait<TResult>
+            {
+                [MethodImpl(InlineOption)]
+                protected void InvokeCatch<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IFunc<TArg, TResult>
+                {
+                    Promise.State state;
+                    SetCurrentInvoker(this);
+                    try
+                    {
+                        _result = callback.Invoke(arg);
+                        state = Promise.State.Resolved;
+                    }
+                    catch (RethrowException)
+                    {
+                        RejectContainer = rejectContainer;
+                        state = Promise.State.Rejected;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        state = Promise.State.Canceled;
+                    }
+                    catch (Exception e)
+                    {
+                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        state = Promise.State.Rejected;
+                    }
+                    finally
+                    {
+                        ClearCurrentInvoker();
+                    }
+
+                    // We handle next last, so that if the runtime wants to, it can tail-call optimize.
+                    // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
+                    HandleNextInternal(state);
+                }
+            }
+
+            partial class PromiseWaitPromise<TResult>
+            {
+                [MethodImpl(InlineOption)]
+                protected void InvokeCatchAndAdoptVoid<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IFunc<TArg, Promise>
+                {
+                    Promise.State state;
+                    SetCurrentInvoker(this);
+                    try
+                    {
+                        var result = callback.Invoke(arg);
+                        ValidateReturn(result);
+
+                        this.SetPrevious(result._ref);
+                        if (result._ref == null)
+                        {
+                            state = Promise.State.Resolved;
+                        }
+                        else
+                        {
+                            PromiseRefBase promiseSingleAwait = result._ref.AddWaiter(result._id, this, out var previousWaiter);
+                            if (previousWaiter == PendingAwaitSentinel.s_instance)
+                            {
+                                return;
+                            }
+                            state = VerifyAndGetResultFromComplete(result._ref, promiseSingleAwait);
+                        }
+                    }
+                    catch (RethrowException)
+                    {
+                        RejectContainer = rejectContainer;
+                        state = Promise.State.Rejected;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        state = Promise.State.Canceled;
+                    }
+                    catch (Exception e)
+                    {
+                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        state = Promise.State.Rejected;
+                    }
+                    finally
+                    {
+                        ClearCurrentInvoker();
+                    }
+
+                    // We handle next last, so that if the runtime wants to, it can tail-call optimize.
+                    // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
+                    HandleNextInternal(state);
+                }
+
+                [MethodImpl(InlineOption)]
+                protected void InvokeCatchAndAdopt<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IFunc<TArg, Promise<TResult>>
+                {
+                    Promise.State state;
+                    SetCurrentInvoker(this);
+                    try
+                    {
+                        var result = callback.Invoke(arg);
+                        ValidateReturn(result);
+
+                        this.SetPrevious(result._ref);
+                        if (result._ref == null)
+                        {
+                            _result = result._result;
+                            state = Promise.State.Resolved;
+                        }
+                        else
+                        {
+                            PromiseRefBase promiseSingleAwait = result._ref.AddWaiter(result._id, this, out var previousWaiter);
+                            if (previousWaiter == PendingAwaitSentinel.s_instance)
+                            {
+                                return;
+                            }
+                            state = VerifyAndGetResultFromComplete(result._ref, promiseSingleAwait);
+                        }
+                    }
+                    catch (RethrowException)
+                    {
+                        RejectContainer = rejectContainer;
+                        state = Promise.State.Rejected;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        state = Promise.State.Canceled;
+                    }
+                    catch (Exception e)
+                    {
+                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        state = Promise.State.Rejected;
+                    }
+                    finally
+                    {
+                        ClearCurrentInvoker();
+                    }
+
+                    // We handle next last, so that if the runtime wants to, it can tail-call optimize.
+                    // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
+                    HandleNextInternal(state);
+                }
+            }
+
+            private static bool GetShouldInvokeOnRejected<TReject>(IRejectContainer rejectContainer, out TReject rejectArg)
+            {
+                if (null != default(TReject) && typeof(TReject) == typeof(VoidResult))
+                {
+                    rejectArg = default;
+                    return true;
+                }
+                if (rejectContainer.Value is TReject reject)
+                {
+                    rejectArg = reject;
+                    return true;
+                }
+                rejectArg = default;
+                return false;
+            }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
@@ -65,7 +223,7 @@ namespace Proto.Promises
 
                     handler.SuppressRejection = true;
                     handler.MaybeDispose();
-                    Invoke(rejectArg, callback, rejectContainer);
+                    InvokeCatch(rejectArg, callback, rejectContainer);
                 }
             }
 
@@ -125,7 +283,7 @@ namespace Proto.Promises
 
                     handler.SuppressRejection = true;
                     handler.MaybeDispose();
-                    InvokeAndAdoptVoid(rejectArg, callback, rejectContainer);
+                    InvokeCatchAndAdoptVoid(rejectArg, callback, rejectContainer);
                 }
             }
 
@@ -185,7 +343,7 @@ namespace Proto.Promises
 
                     handler.SuppressRejection = true;
                     handler.MaybeDispose();
-                    InvokeAndAdopt(rejectArg, callback, rejectContainer);
+                    InvokeCatchAndAdopt(rejectArg, callback, rejectContainer);
                 }
             }
 
@@ -236,7 +394,7 @@ namespace Proto.Promises
                     }
 
                     handler.MaybeDispose();
-                    Invoke(default(VoidResult), callback, null);
+                    Invoke(default(VoidResult), callback);
                 }
             }
 
@@ -294,7 +452,7 @@ namespace Proto.Promises
                     }
 
                     handler.MaybeDispose();
-                    InvokeAndAdoptVoid(default(VoidResult), callback, null);
+                    InvokeAndAdoptVoid(default(VoidResult), callback);
                 }
             }
 
@@ -352,7 +510,7 @@ namespace Proto.Promises
                     }
 
                     handler.MaybeDispose();
-                    InvokeAndAdopt(default(VoidResult), callback, null);
+                    InvokeAndAdopt(default(VoidResult), callback);
                 }
             }
         } // class PromiseRefBase
