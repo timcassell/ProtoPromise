@@ -18,7 +18,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class ConfiguredPromise<TResult> : PromiseSingleAwait<TResult>
+            internal sealed partial class ConfiguredPromise<TResult> : SingleAwaitPromise<TResult>
             {
                 private ConfiguredPromise() { }
 

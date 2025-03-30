@@ -49,7 +49,7 @@ namespace Proto.Timers
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
         // We inherit from PromiseSingleAwait<> to support DisposeAsync.
-        private sealed class UnityRealTimerFactoryTimer : Internal.PromiseRefBase.PromiseSingleAwait<Internal.VoidResult>, ITimerSource
+        private sealed class UnityRealTimerFactoryTimer : Internal.PromiseRefBase.SingleAwaitPromise<Internal.VoidResult>, ITimerSource
         {
             private TimerCallback _callback;
             private object _state;

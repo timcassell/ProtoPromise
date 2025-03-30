@@ -17,7 +17,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class FinallyPromise<TResult, TDelegate> : PromiseSingleAwait<TResult>
+            private sealed partial class FinallyPromise<TResult, TDelegate> : SingleAwaitPromise<TResult>
                 where TDelegate : IAction
             {
                 private FinallyPromise() { }
@@ -86,7 +86,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class FinallyWaitPromise<TResult, TDelegate> : PromiseWaitPromise<TResult>
+            private sealed partial class FinallyWaitPromise<TResult, TDelegate> : CallbackWaitPromiseBase<TResult>
                 where TDelegate : IFunc<Promise>
             {
                 private FinallyWaitPromise() { }

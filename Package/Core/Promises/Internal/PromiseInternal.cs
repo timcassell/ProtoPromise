@@ -326,7 +326,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal abstract partial class PromiseSingleAwait<TResult> : PromiseRef<TResult>
+            internal abstract partial class SingleAwaitPromise<TResult> : PromiseRef<TResult>
             {
                 internal sealed override void Forget(short promiseId)
                     => HookupExistingWaiter(promiseId, PromiseForgetSentinel.s_instance);
@@ -391,11 +391,11 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class PromiseMultiAwait<TResult> : PromiseRef<TResult>
+            internal sealed partial class PreservedPromise<TResult> : PromiseRef<TResult>
             {
-                private PromiseMultiAwait() { }
+                private PreservedPromise() { }
 
-                ~PromiseMultiAwait()
+                ~PreservedPromise()
                 {
                     if (!WasAwaitedOrForgotten)
                     {
@@ -418,16 +418,16 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private static PromiseMultiAwait<TResult> GetOrCreate()
+                private static PreservedPromise<TResult> GetOrCreate()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<PromiseMultiAwait<TResult>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<PreservedPromise<TResult>>();
                     return obj == InvalidAwaitSentinel.s_instance
-                        ? new PromiseMultiAwait<TResult>()
-                        : obj.UnsafeAs<PromiseMultiAwait<TResult>>();
+                        ? new PreservedPromise<TResult>()
+                        : obj.UnsafeAs<PreservedPromise<TResult>>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseMultiAwait<TResult> GetOrCreateAndHookup(PromiseRefBase previous, short id)
+                internal static PreservedPromise<TResult> GetOrCreateAndHookup(PromiseRefBase previous, short id)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
@@ -490,7 +490,7 @@ namespace Proto.Promises
 
                 internal override PromiseRef<TResult> GetDuplicateT(short promiseId)
                 {
-                    var newPromise = PromiseDuplicate<TResult>.GetOrCreate();
+                    var newPromise = DuplicatePromise<TResult>.GetOrCreate();
                     HookupNewPromise(promiseId, newPromise);
                     return newPromise;
                 }
@@ -574,9 +574,9 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class PromiseDuplicate<TResult> : PromiseSingleAwait<TResult>
+            internal sealed partial class DuplicatePromise<TResult> : SingleAwaitPromise<TResult>
             {
-                private PromiseDuplicate() { }
+                private DuplicatePromise() { }
 
                 internal override void MaybeDispose()
                 {
@@ -585,16 +585,16 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private static PromiseDuplicate<TResult> GetOrCreateInstance()
+                private static DuplicatePromise<TResult> GetOrCreateInstance()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<PromiseDuplicate<TResult>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<DuplicatePromise<TResult>>();
                     return obj == InvalidAwaitSentinel.s_instance
-                        ? new PromiseDuplicate<TResult>()
-                        : obj.UnsafeAs<PromiseDuplicate<TResult>>();
+                        ? new DuplicatePromise<TResult>()
+                        : obj.UnsafeAs<DuplicatePromise<TResult>>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseDuplicate<TResult> GetOrCreate()
+                internal static DuplicatePromise<TResult> GetOrCreate()
                 {
                     var promise = GetOrCreateInstance();
                     promise.Reset();
@@ -609,120 +609,15 @@ namespace Proto.Promises
                 }
             }
 
-            [MethodImpl(InlineOption)]
-            internal void WaitFor(Promise other)
-            {
-                ThrowIfInPool(this);
-                ValidateReturn(other);
-                this.UnsafeAs<PromiseWaitPromise<VoidResult>>().WaitFor(other._ref, other._id);
-            }
-
-            [MethodImpl(InlineOption)]
-            internal void WaitFor<TResult>(in Promise<TResult> other)
-            {
-                ThrowIfInPool(this);
-                ValidateReturn(other);
-                this.UnsafeAs<PromiseWaitPromise<TResult>>().WaitFor(other._ref, other._result, other._id);
-            }
-
-            // This is only used in PromiseWaitPromise<TResult>, but we pulled it out to prevent excess generated generic interface types.
-            protected interface IWaitForCompleteHandler
-            {
-                void HandleHookup(PromiseRefBase handler);
-                void HandleNull();
-            }
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal abstract partial class PromiseWaitPromise<TResult> : PromiseSingleAwait<TResult>
+            internal abstract partial class CallbackWaitPromiseBase<TResult> : SingleAwaitPromise<TResult>
             {
                 protected new void Reset()
                 {
                     base.Reset();
                     _firstContinue = true;
-                }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-                [DebuggerNonUserCode, StackTraceHidden]
-#endif
-                private readonly struct DefaultCompleteHandler : IWaitForCompleteHandler
-                {
-                    private readonly PromiseWaitPromise<TResult> _owner;
-
-                    [MethodImpl(InlineOption)]
-                    internal DefaultCompleteHandler(PromiseWaitPromise<TResult> owner)
-                    {
-                        _owner = owner;
-                    }
-
-                    [MethodImpl(InlineOption)]
-                    void IWaitForCompleteHandler.HandleHookup(PromiseRefBase handler)
-                        => _owner.HandleSelf(handler, handler.State);
-
-                    [MethodImpl(InlineOption)]
-                    void IWaitForCompleteHandler.HandleNull()
-                        => _owner.HandleNextInternal(Promise.State.Resolved);
-                }
-
-                [MethodImpl(InlineOption)]
-                internal void WaitFor(PromiseRefBase other, short id)
-                    => WaitFor(other, id, new DefaultCompleteHandler(this));
-
-                [MethodImpl(InlineOption)]
-                internal void WaitFor(PromiseRefBase other, in TResult maybeResult, short id)
-                    => WaitFor(other, maybeResult, id, new DefaultCompleteHandler(this));
-
-                [MethodImpl(InlineOption)]
-                protected void WaitFor<TCompleteHandler>(PromiseRefBase other, short id, TCompleteHandler completeHandler)
-                    where TCompleteHandler : IWaitForCompleteHandler
-                {
-                    if (other == null)
-                    {
-                        this.SetPrevious(null);
-                        completeHandler.HandleNull();
-                        return;
-                    }
-                    SetSecondPreviousAndWaitFor(other, id, completeHandler);
-                }
-
-                [MethodImpl(InlineOption)]
-                protected void WaitFor<TCompleteHandler>(PromiseRefBase other, in TResult maybeResult, short id, TCompleteHandler completeHandler)
-                    where TCompleteHandler : IWaitForCompleteHandler
-                {
-                    if (other == null)
-                    {
-                        _result = maybeResult;
-                        this.SetPrevious(null);
-                        completeHandler.HandleNull();
-                        return;
-                    }
-                    SetSecondPreviousAndWaitFor(other, id, completeHandler);
-                }
-
-                private void SetSecondPreviousAndWaitFor<TCompleteHandler>(PromiseRefBase secondPrevious, short id, TCompleteHandler completeHandler)
-                    where TCompleteHandler : IWaitForCompleteHandler
-                {
-                    PromiseRefBase promiseSingleAwait = secondPrevious.AddWaiter(id, this, out var previousWaiter);
-                    this.SetPrevious(secondPrevious);
-                    if (previousWaiter != PendingAwaitSentinel.s_instance)
-                    {
-                        VerifyAndHandleSelf(secondPrevious, promiseSingleAwait, completeHandler);
-                    }
-                }
-
-                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                private static void VerifyAndHandleSelf<TCompleteHandler>(PromiseRefBase other, PromiseRefBase promiseSingleAwait, TCompleteHandler completeHandler)
-                    where TCompleteHandler : IWaitForCompleteHandler
-                {
-                    if (!VerifyWaiter(promiseSingleAwait))
-                    {
-                        throw new InvalidReturnException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", string.Empty);
-                    }
-
-                    other.WaitUntilStateIsNotPending();
-                    completeHandler.HandleHookup(other);
                 }
             }
 

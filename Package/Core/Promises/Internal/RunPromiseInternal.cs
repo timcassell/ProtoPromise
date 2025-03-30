@@ -18,7 +18,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class RunPromise<TResult, TDelegate> : PromiseSingleAwait<TResult>
+            internal sealed partial class RunPromise<TResult, TDelegate> : SingleAwaitPromise<TResult>
                 where TDelegate : IFunc<VoidResult, TResult>
             {
                 private RunPromise() { }
@@ -67,7 +67,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class RunWaitPromise<TDelegate> : PromiseWaitPromise<VoidResult>
+            internal sealed partial class RunWaitPromise<TDelegate> : CallbackWaitPromiseBase<VoidResult>
                 where TDelegate : IFunc<VoidResult, Promise>
             {
                 private RunWaitPromise() { }
@@ -125,7 +125,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class RunWaitPromise<TResult, TDelegate> : PromiseWaitPromise<TResult>
+            internal sealed partial class RunWaitPromise<TResult, TDelegate> : CallbackWaitPromiseBase<TResult>
                 where TDelegate : IFunc<VoidResult, Promise<TResult>>
             {
                 private RunWaitPromise() { }

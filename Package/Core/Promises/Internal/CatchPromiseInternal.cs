@@ -14,7 +14,7 @@ namespace Proto.Promises
     {
         partial class PromiseRefBase
         {
-            partial class PromiseSingleAwait<TResult>
+            partial class SingleAwaitPromise<TResult>
             {
                 protected void InvokeCatch<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
                     where TDelegate : IFunc<TArg, TResult>
@@ -51,7 +51,7 @@ namespace Proto.Promises
                 }
             }
 
-            partial class PromiseWaitPromise<TResult>
+            partial class CallbackWaitPromiseBase<TResult>
             {
                 protected void InvokeCatchAndAdoptVoid<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
                     where TDelegate : IFunc<TArg, Promise>
@@ -172,7 +172,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class CatchPromise<TResult, TReject, TDelegate> : PromiseSingleAwait<TResult>
+            private sealed partial class CatchPromise<TResult, TReject, TDelegate> : SingleAwaitPromise<TResult>
                 where TDelegate : IFunc<TReject, TResult>
             {
                 private CatchPromise() { }
@@ -225,7 +225,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class CatchWaitPromise<TReject, TDelegate> : PromiseWaitPromise<VoidResult>
+            private sealed partial class CatchWaitPromise<TReject, TDelegate> : CallbackWaitPromiseBase<VoidResult>
                 where TDelegate : IFunc<TReject, Promise>
             {
                 private CatchWaitPromise() { }
@@ -285,7 +285,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class CatchWaitPromise<TResult, TReject, TDelegate> : PromiseWaitPromise<TResult>
+            private sealed partial class CatchWaitPromise<TResult, TReject, TDelegate> : CallbackWaitPromiseBase<TResult>
                 where TDelegate : IFunc<TReject, Promise<TResult>>
             {
                 private CatchWaitPromise() { }
@@ -345,7 +345,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class CatchCancelationPromise<TResult, TDelegate> : PromiseSingleAwait<TResult>
+            private sealed partial class CatchCancelationPromise<TResult, TDelegate> : SingleAwaitPromise<TResult>
                 where TDelegate : IFunc<VoidResult, TResult>
             {
                 private CatchCancelationPromise() { }
@@ -396,7 +396,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class CatchCancelationWaitPromise<TDelegate> : PromiseWaitPromise<VoidResult>
+            private sealed partial class CatchCancelationWaitPromise<TDelegate> : CallbackWaitPromiseBase<VoidResult>
                 where TDelegate : IFunc<VoidResult, Promise>
             {
                 private CatchCancelationWaitPromise() { }
@@ -454,7 +454,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class CatchCancelationWaitPromise<TResult, TDelegate> : PromiseWaitPromise<TResult>
+            private sealed partial class CatchCancelationWaitPromise<TResult, TDelegate> : CallbackWaitPromiseBase<TResult>
                 where TDelegate : IFunc<VoidResult, Promise<TResult>>
             {
                 private CatchCancelationWaitPromise() { }

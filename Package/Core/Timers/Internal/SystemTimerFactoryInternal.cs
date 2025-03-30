@@ -154,7 +154,7 @@ namespace Proto.Timers
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
             // We inherit from PromiseSingleAwait<> to support DisposeAsync.
-            private sealed class CallbackInvoker : Internal.PromiseRefBase.PromiseSingleAwait<Internal.VoidResult>
+            private sealed class CallbackInvoker : Internal.PromiseRefBase.SingleAwaitPromise<Internal.VoidResult>
             {
                 private TimerCallback _callback;
                 private object _state;

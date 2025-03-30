@@ -227,7 +227,7 @@ namespace Proto.Promises
                 {
 #if PROMISE_DEBUG
                     // In DEBUG mode, we return a duplicate so that its usage will be validated properly.
-                    var duplicatePromise = PromiseDuplicate<TResult>.GetOrCreate();
+                    var duplicatePromise = DuplicatePromise<TResult>.GetOrCreate();
                     HookupNewPromise(promiseId, duplicatePromise);
                     return new Promise<TResult>(duplicatePromise, duplicatePromise.Id);
 #else

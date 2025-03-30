@@ -46,7 +46,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class PromiseParallelForEachAsync<TParallelBody, TSource> : PromiseSingleAwait<VoidResult>, ICancelable
+            internal sealed partial class PromiseParallelForEachAsync<TParallelBody, TSource> : SingleAwaitPromise<VoidResult>, ICancelable
                 where TParallelBody : IParallelBody<TSource>
             {
                 private TParallelBody _body;

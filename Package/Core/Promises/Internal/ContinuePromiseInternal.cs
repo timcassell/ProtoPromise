@@ -214,7 +214,7 @@ namespace Proto.Promises
 
         partial class PromiseRefBase
         {
-            partial class PromiseSingleAwait<TResult>
+            partial class SingleAwaitPromise<TResult>
             {
                 [MethodImpl(InlineOption)]
                 protected void Invoke<TArg, TDelegate>(in TArg arg, in TDelegate callback)
@@ -319,7 +319,7 @@ namespace Proto.Promises
                 HandleNextInternal(state);
             }
 
-            partial class PromiseWaitPromise<TResult>
+            partial class CallbackWaitPromiseBase<TResult>
             {
                 // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
                 [MethodImpl(MethodImplOptions.NoInlining)]
@@ -400,7 +400,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class ContinueVoidResultPromise<TResult, TDelegate> : PromiseSingleAwait<TResult>
+            private sealed partial class ContinueVoidResultPromise<TResult, TDelegate> : SingleAwaitPromise<TResult>
                 where TDelegate : IFunc<Promise.ResultContainer, TResult>
             {
                 private ContinueVoidResultPromise() { }
@@ -447,7 +447,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class ContinueVoidVoidWaitPromise<TDelegate> : PromiseWaitPromise<VoidResult>
+            private sealed partial class ContinueVoidVoidWaitPromise<TDelegate> : CallbackWaitPromiseBase<VoidResult>
                 where TDelegate : IFunc<Promise.ResultContainer, Promise>
             {
                 private ContinueVoidVoidWaitPromise() { }
@@ -502,7 +502,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class ContinueVoidResultWaitPromise<TResult, TDelegate> : PromiseWaitPromise<TResult>
+            private sealed partial class ContinueVoidResultWaitPromise<TResult, TDelegate> : CallbackWaitPromiseBase<TResult>
                 where TDelegate : IFunc<Promise.ResultContainer, Promise<TResult>>
             {
                 private ContinueVoidResultWaitPromise() { }
@@ -557,7 +557,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class ContinueArgResultPromise<TArg, TResult, TDelegate> : PromiseSingleAwait<TResult>
+            private sealed partial class ContinueArgResultPromise<TArg, TResult, TDelegate> : SingleAwaitPromise<TResult>
                 where TDelegate : IFunc<Promise<TArg>.ResultContainer, TResult>
             {
                 private ContinueArgResultPromise() { }
@@ -605,7 +605,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class ContinueArgVoidWaitPromise<TArg, TDelegate> : PromiseWaitPromise<VoidResult>
+            private sealed partial class ContinueArgVoidWaitPromise<TArg, TDelegate> : CallbackWaitPromiseBase<VoidResult>
                 where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise>
             {
                 private ContinueArgVoidWaitPromise() { }
@@ -661,7 +661,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class ContinueArgResultWaitPromise<TArg, TResult, TDelegate> : PromiseWaitPromise<TResult>
+            private sealed partial class ContinueArgResultWaitPromise<TArg, TResult, TDelegate> : CallbackWaitPromiseBase<TResult>
                 where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>
             {
                 private ContinueArgResultWaitPromise() { }
@@ -717,7 +717,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class CancelableContinueVoidResultPromise<TResult, TDelegate> : PromiseSingleAwait<TResult>, ICancelable
+            private sealed partial class CancelableContinueVoidResultPromise<TResult, TDelegate> : SingleAwaitPromise<TResult>, ICancelable
                 where TDelegate : IFunc<Promise.ResultContainer, TResult>
             {
                 private CancelableContinueVoidResultPromise() { }
@@ -795,7 +795,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class CancelableContinueVoidVoidWaitPromise<TDelegate> : PromiseWaitPromise<VoidResult>, ICancelable
+            private sealed partial class CancelableContinueVoidVoidWaitPromise<TDelegate> : CallbackWaitPromiseBase<VoidResult>, ICancelable
                 where TDelegate : IFunc<Promise.ResultContainer, Promise>
             {
                 private CancelableContinueVoidVoidWaitPromise() { }
@@ -880,7 +880,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class CancelableContinueVoidResultWaitPromise<TResult, TDelegate> : PromiseWaitPromise<TResult>, ICancelable
+            private sealed partial class CancelableContinueVoidResultWaitPromise<TResult, TDelegate> : CallbackWaitPromiseBase<TResult>, ICancelable
                 where TDelegate : IFunc<Promise.ResultContainer, Promise<TResult>>
             {
                 private CancelableContinueVoidResultWaitPromise() { }
@@ -965,7 +965,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class CancelableContinueArgResultPromise<TArg, TResult, TDelegate> : PromiseSingleAwait<TResult>, ICancelable
+            private sealed partial class CancelableContinueArgResultPromise<TArg, TResult, TDelegate> : SingleAwaitPromise<TResult>, ICancelable
                 where TDelegate : IFunc<Promise<TArg>.ResultContainer, TResult>
             {
                 private CancelableContinueArgResultPromise() { }
@@ -1044,7 +1044,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class CancelableContinueArgVoidWaitPromise<TArg, TDelegate> : PromiseWaitPromise<VoidResult>, ICancelable
+            private sealed partial class CancelableContinueArgVoidWaitPromise<TArg, TDelegate> : CallbackWaitPromiseBase<VoidResult>, ICancelable
                 where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise>
             {
                 private CancelableContinueArgVoidWaitPromise() { }
@@ -1130,7 +1130,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class CancelableContinueArgResultWaitPromise<TArg, TResult, TDelegate> : PromiseWaitPromise<TResult>, ICancelable
+            private sealed partial class CancelableContinueArgResultWaitPromise<TArg, TResult, TDelegate> : CallbackWaitPromiseBase<TResult>, ICancelable
                 where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>
             {
                 private CancelableContinueArgResultWaitPromise() { }

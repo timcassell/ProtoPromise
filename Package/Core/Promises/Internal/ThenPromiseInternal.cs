@@ -16,7 +16,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class ThenPromise<TArg, TResult, TDelegate> : PromiseSingleAwait<TResult>
+            private sealed partial class ThenPromise<TArg, TResult, TDelegate> : SingleAwaitPromise<TResult>
                 where TDelegate : IFunc<TArg, TResult>
             {
                 private ThenPromise() { }
@@ -68,7 +68,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class ThenWaitPromise<TArg, TDelegate> : PromiseWaitPromise<VoidResult>
+            private sealed partial class ThenWaitPromise<TArg, TDelegate> : CallbackWaitPromiseBase<VoidResult>
                 where TDelegate : IFunc<TArg, Promise>
             {
                 private ThenWaitPromise() { }
@@ -127,7 +127,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class ThenWaitPromise<TArg, TResult, TDelegate> : PromiseWaitPromise<TResult>
+            private sealed partial class ThenWaitPromise<TArg, TResult, TDelegate> : CallbackWaitPromiseBase<TResult>
                 where TDelegate : IFunc<TArg, Promise<TResult>>
             {
                 private ThenWaitPromise() { }
@@ -186,7 +186,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class ThenPromise<TArg, TResult, TReject, TDelegateResolve, TDelegateReject> : PromiseSingleAwait<TResult>
+            private sealed partial class ThenPromise<TArg, TResult, TReject, TDelegateResolve, TDelegateReject> : SingleAwaitPromise<TResult>
                 where TDelegateResolve : IFunc<TArg, TResult>
                 where TDelegateReject : IFunc<TReject, TResult>
             {
@@ -255,7 +255,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class ThenWaitPromise<TArg, TReject, TDelegateResolve, TDelegateReject> : PromiseWaitPromise<VoidResult>
+            private sealed partial class ThenWaitPromise<TArg, TReject, TDelegateResolve, TDelegateReject> : CallbackWaitPromiseBase<VoidResult>
                 where TDelegateResolve : IFunc<TArg, Promise>
                 where TDelegateReject : IFunc<TReject, Promise>
             {
@@ -331,7 +331,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed partial class ThenWaitPromise<TArg, TResult, TReject, TDelegateResolve, TDelegateReject> : PromiseWaitPromise<TResult>
+            private sealed partial class ThenWaitPromise<TArg, TResult, TReject, TDelegateResolve, TDelegateReject> : CallbackWaitPromiseBase<TResult>
                 where TDelegateResolve : IFunc<TArg, Promise<TResult>>
                 where TDelegateReject : IFunc<TReject, Promise<TResult>>
             {

@@ -121,7 +121,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal abstract partial class DeferredPromiseBase<TResult> : PromiseSingleAwait<TResult>, IDeferredPromise
+            internal abstract partial class DeferredPromiseBase<TResult> : SingleAwaitPromise<TResult>, IDeferredPromise
             {
                 public int DeferredId
                 {

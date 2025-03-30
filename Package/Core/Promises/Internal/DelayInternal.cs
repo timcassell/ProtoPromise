@@ -19,7 +19,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class DelayPromise : PromiseSingleAwait<VoidResult>
+            internal sealed partial class DelayPromise : SingleAwaitPromise<VoidResult>
             {
                 [MethodImpl(InlineOption)]
                 private static DelayPromise GetFromPoolOrCreate()
@@ -88,7 +88,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class DelayWithCancelationPromise : PromiseSingleAwait<VoidResult>, ICancelable
+            internal sealed partial class DelayWithCancelationPromise : SingleAwaitPromise<VoidResult>, ICancelable
             {
                 [MethodImpl(InlineOption)]
                 private static DelayWithCancelationPromise GetFromPoolOrCreate()

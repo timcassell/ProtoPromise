@@ -19,7 +19,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class WaitAsyncWithCancelationPromise<TResult> : PromiseSingleAwait<TResult>, ICancelable
+            internal sealed partial class WaitAsyncWithCancelationPromise<TResult> : SingleAwaitPromise<TResult>, ICancelable
             {
                 private WaitAsyncWithCancelationPromise() { }
 
@@ -93,7 +93,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class WaitAsyncWithTimeoutPromise<TResult> : PromiseSingleAwait<TResult>
+            internal sealed partial class WaitAsyncWithTimeoutPromise<TResult> : SingleAwaitPromise<TResult>
             {
                 private WaitAsyncWithTimeoutPromise() { }
 
@@ -243,7 +243,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class WaitAsyncWithTimeoutAndCancelationPromise<TResult> : PromiseSingleAwait<TResult>, ICancelable
+            internal sealed partial class WaitAsyncWithTimeoutAndCancelationPromise<TResult> : SingleAwaitPromise<TResult>, ICancelable
             {
                 private WaitAsyncWithTimeoutAndCancelationPromise() { }
 

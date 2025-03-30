@@ -187,7 +187,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class MergePromiseGroup<TResult> : PromiseSingleAwait<TResult>
+            internal sealed partial class MergePromiseGroup<TResult> : SingleAwaitPromise<TResult>
             {
                 private static GetResultDelegate<TResult> s_getResult;
 

@@ -288,7 +288,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal abstract partial class MultiHandleablePromiseBase<TResult> : PromiseSingleAwait<TResult>
+            internal abstract partial class MultiHandleablePromiseBase<TResult> : SingleAwaitPromise<TResult>
             {
                 partial void AddPending(PromiseRefBase pendingPromise);
                 partial void RemoveComplete(PromiseRefBase completePromise);

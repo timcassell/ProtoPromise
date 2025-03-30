@@ -208,7 +208,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class PromiseParallelForEach<TEnumerator, TParallelBody, TSource> : PromiseSingleAwait<VoidResult>, ICancelable
+            internal sealed partial class PromiseParallelForEach<TEnumerator, TParallelBody, TSource> : SingleAwaitPromise<VoidResult>, ICancelable
                 where TEnumerator : IParallelEnumerator<TSource>
                 where TParallelBody : IParallelBody<TSource>
             {

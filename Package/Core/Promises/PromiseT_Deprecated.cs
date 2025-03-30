@@ -44,7 +44,7 @@ namespace Proto.Promises
             {
                 return this;
             }
-            var newPromise = Internal.PromiseRefBase.PromiseMultiAwait<T>.GetOrCreateAndHookup(r, _id);
+            var newPromise = Internal.PromiseRefBase.PreservedPromise<T>.GetOrCreateAndHookup(r, _id);
             return new Promise<T>(newPromise, newPromise.Id);
         }
 

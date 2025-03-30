@@ -66,7 +66,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal partial class AsyncPromiseRef<TResult> : PromiseSingleAwait<TResult>
+            internal partial class AsyncPromiseRef<TResult> : SingleAwaitPromise<TResult>
             {
                 [MethodImpl(InlineOption)]
                 private static AsyncPromiseRef<TResult> GetFromPoolOrCreate()
