@@ -18,7 +18,6 @@ namespace Proto.Promises
         {
             partial class PromiseSingleAwait<TResult>
             {
-                [MethodImpl(InlineOption)]
                 protected void InvokeCatch<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
                     where TDelegate : IFunc<TArg, TResult>
                 {
@@ -56,7 +55,6 @@ namespace Proto.Promises
 
             partial class PromiseWaitPromise<TResult>
             {
-                [MethodImpl(InlineOption)]
                 protected void InvokeCatchAndAdoptVoid<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
                     where TDelegate : IFunc<TArg, Promise>
                 {
@@ -106,7 +104,6 @@ namespace Proto.Promises
                     HandleNextInternal(state);
                 }
 
-                [MethodImpl(InlineOption)]
                 protected void InvokeCatchAndAdopt<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
                     where TDelegate : IFunc<TArg, Promise<TResult>>
                 {

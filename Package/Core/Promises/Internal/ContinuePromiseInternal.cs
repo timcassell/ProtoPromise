@@ -4,7 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0016 // Use 'throw' expression
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0290 // Use primary constructor
 
@@ -225,7 +224,15 @@ namespace Proto.Promises
                     SetCurrentInvoker(this);
                     try
                     {
-                        _result = callback.Invoke(arg);
+                        // JIT removes this check so we will get more optimal assembly if the result is void.
+                        if (null != default(TResult) && typeof(TResult) == typeof(VoidResult))
+                        {
+                            callback.Invoke(arg);
+                        }
+                        else
+                        {
+                            _result = callback.Invoke(arg);
+                        }
                         state = Promise.State.Resolved;
                     }
                     catch (OperationCanceledException)
@@ -248,11 +255,75 @@ namespace Proto.Promises
                 }
             }
 
+            // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private Promise.State VerifyAndGetResultFromComplete(PromiseRefBase completePromise, PromiseRefBase promiseSingleAwait)
+            {
+                if (VerifyWaiter(promiseSingleAwait))
+                {
+                    completePromise.WaitUntilStateIsNotPending();
+                    RejectContainer = completePromise.RejectContainer;
+                    completePromise.SuppressRejection = true;
+                    var state = completePromise.State;
+                    completePromise.MaybeDispose();
+                    return state;
+                }
+
+                var exception = new InvalidReturnException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", string.Empty);
+                RejectContainer = CreateRejectContainer(exception, int.MinValue, null, this);
+                return Promise.State.Rejected;
+            }
+
+            [MethodImpl(InlineOption)]
+            protected void InvokeAndAdoptVoid<TArg, TDelegate>(in TArg arg, in TDelegate callback)
+                where TDelegate : IFunc<TArg, Promise>
+            {
+                Promise.State state;
+                SetCurrentInvoker(this);
+                try
+                {
+                    var result = callback.Invoke(arg);
+                    ValidateReturn(result);
+
+                    this.SetPrevious(result._ref);
+                    if (result._ref == null)
+                    {
+                        state = Promise.State.Resolved;
+                    }
+                    else
+                    {
+                        PromiseRefBase promiseSingleAwait = result._ref.AddWaiter(result._id, this, out var previousWaiter);
+                        if (previousWaiter == PendingAwaitSentinel.s_instance)
+                        {
+                            return;
+                        }
+                        state = VerifyAndGetResultFromComplete(result._ref, promiseSingleAwait);
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    state = Promise.State.Canceled;
+                }
+                catch (Exception e)
+                {
+                    RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                    state = Promise.State.Rejected;
+                }
+                finally
+                {
+                    ClearCurrentInvoker();
+                }
+
+                // We handle next last, so that if the runtime wants to, it can tail-call optimize.
+                // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
+                HandleNextInternal(state);
+            }
+
             partial class PromiseWaitPromise<TResult>
             {
                 // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
                 [MethodImpl(MethodImplOptions.NoInlining)]
-                private Promise.State VerifyAndGetResultFromComplete(PromiseRefBase completePromise, PromiseRefBase promiseSingleAwait)
+                new private Promise.State VerifyAndGetResultFromComplete(PromiseRefBase completePromise, PromiseRefBase promiseSingleAwait)
                 {
                     if (VerifyWaiter(promiseSingleAwait))
                     {
@@ -271,51 +342,6 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                protected void InvokeAndAdoptVoid<TArg, TDelegate>(in TArg arg, in TDelegate callback)
-                    where TDelegate : IFunc<TArg, Promise>
-                {
-                    Promise.State state;
-                    SetCurrentInvoker(this);
-                    try
-                    {
-                        var result = callback.Invoke(arg);
-                        ValidateReturn(result);
-
-                        this.SetPrevious(result._ref);
-                        if (result._ref == null)
-                        {
-                            state = Promise.State.Resolved;
-                        }
-                        else
-                        {
-                            PromiseRefBase promiseSingleAwait = result._ref.AddWaiter(result._id, this, out var previousWaiter);
-                            if (previousWaiter == PendingAwaitSentinel.s_instance)
-                            {
-                                return;
-                            }
-                            state = VerifyAndGetResultFromComplete(result._ref, promiseSingleAwait);
-                        }
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        state = Promise.State.Canceled;
-                    }
-                    catch (Exception e)
-                    {
-                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
-                        state = Promise.State.Rejected;
-                    }
-                    finally
-                    {
-                        ClearCurrentInvoker();
-                    }
-
-                    // We handle next last, so that if the runtime wants to, it can tail-call optimize.
-                    // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
-                    HandleNextInternal(state);
-                }
-
-                [MethodImpl(InlineOption)]
                 protected void InvokeAndAdopt<TArg, TDelegate>(in TArg arg, in TDelegate callback)
                     where TDelegate : IFunc<TArg, Promise<TResult>>
                 {
@@ -329,7 +355,11 @@ namespace Proto.Promises
                         this.SetPrevious(result._ref);
                         if (result._ref == null)
                         {
-                            _result = result._result;
+                            // JIT removes this check so we will get more optimal assembly if the result is void.
+                            if (null == default(TResult) || typeof(TResult) != typeof(VoidResult))
+                            {
+                                _result = result._result;
+                            }
                             state = Promise.State.Resolved;
                         }
                         else
