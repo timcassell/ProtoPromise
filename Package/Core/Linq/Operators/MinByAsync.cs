@@ -53,7 +53,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MinByHelper<TKey>.MinByAsync(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
+            return MinByHelper<TKey>.MinByAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -101,7 +101,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MinByHelper<TKey>.MinByAsync(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return MinByHelper<TKey>.MinByAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -145,7 +145,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MinByHelper<TKey>.MinByAwaitAsync(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
+            return MinByHelper<TKey>.MinByAwaitAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -193,7 +193,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MinByHelper<TKey>.MinByAwaitAsync(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return MinByHelper<TKey>.MinByAwaitAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -235,7 +235,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MinByHelper<TKey>.MinByAsync(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
+            return MinByHelper<TKey>.MinByAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -281,7 +281,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MinByHelper<TKey>.MinByAsync(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return MinByHelper<TKey>.MinByAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -323,7 +323,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MinByHelper<TKey>.MinByAwaitAsync(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
+            return MinByHelper<TKey>.MinByAwaitAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -369,7 +369,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MinByHelper<TKey>.MinByAwaitAsync(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return MinByHelper<TKey>.MinByAwaitAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
 
         private static class MinByHelper<TKey>

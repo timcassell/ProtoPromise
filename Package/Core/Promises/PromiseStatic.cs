@@ -177,7 +177,7 @@ namespace Proto.Promises
         {
             ValidateArgument(resolver, nameof(resolver), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.New(Internal.PromiseRefBase.DelegateWrapper.Create(resolver), new ContinuationOptions(synchronizationOption, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperVoid.New(DelegateWrapper.Create(resolver), new ContinuationOptions(synchronizationOption, forceAsync));
         }
 
         /// <summary>
@@ -192,7 +192,7 @@ namespace Proto.Promises
         {
             ValidateArgument(resolver, nameof(resolver), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.New(Internal.PromiseRefBase.DelegateWrapper.Create(resolver), new ContinuationOptions(synchronizationContext, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperVoid.New(DelegateWrapper.Create(resolver), new ContinuationOptions(synchronizationContext, forceAsync));
         }
 
         /// <summary>
@@ -209,7 +209,7 @@ namespace Proto.Promises
         {
             ValidateArgument(resolver, nameof(resolver), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.New(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, resolver), new ContinuationOptions(synchronizationOption, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperVoid.New(DelegateWrapper.Create(captureValue, resolver), new ContinuationOptions(synchronizationOption, forceAsync));
         }
 
         /// <summary>
@@ -225,7 +225,7 @@ namespace Proto.Promises
         {
             ValidateArgument(resolver, nameof(resolver), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.New(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, resolver), new ContinuationOptions(synchronizationContext, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperVoid.New(DelegateWrapper.Create(captureValue, resolver), new ContinuationOptions(synchronizationContext, forceAsync));
         }
 
         /// <summary>

@@ -57,9 +57,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -111,9 +111,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -165,9 +165,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -223,9 +223,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -273,9 +273,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -327,9 +327,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -381,9 +381,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -439,9 +439,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -491,9 +491,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -547,9 +547,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -603,9 +603,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -663,9 +663,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -715,9 +715,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -771,9 +771,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -827,9 +827,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -887,9 +887,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
         #endregion SingleSeed
@@ -940,9 +940,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -995,9 +995,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -1050,9 +1050,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -1109,9 +1109,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -1160,9 +1160,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -1215,9 +1215,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -1270,9 +1270,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -1329,9 +1329,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -1382,9 +1382,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -1439,9 +1439,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -1496,9 +1496,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -1557,9 +1557,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -1610,9 +1610,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -1667,9 +1667,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -1724,9 +1724,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -1785,9 +1785,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -1840,9 +1840,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -1899,9 +1899,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -1958,9 +1958,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -2021,9 +2021,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -2076,9 +2076,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -2135,9 +2135,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -2194,9 +2194,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -2257,9 +2257,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -2314,9 +2314,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -2375,9 +2375,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -2436,9 +2436,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -2501,9 +2501,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -2558,9 +2558,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -2619,9 +2619,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -2680,9 +2680,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -2745,9 +2745,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
         #endregion SeedSelector

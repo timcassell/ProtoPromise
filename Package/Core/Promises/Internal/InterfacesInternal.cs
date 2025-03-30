@@ -63,11 +63,6 @@ namespace Proto.Promises
                 void Invoke(PromiseRefBase handler, IRejectContainer rejectContainer, Promise.State state, PromiseRefBase owner);
             }
 
-            internal interface IDelegateNew<TResult>
-            {
-                void Invoke(DeferredPromise<TResult> owner);
-            }
-
             internal interface IDelegateRun
             {
                 void Invoke(PromiseRefBase owner);
@@ -77,6 +72,10 @@ namespace Proto.Promises
             {
                 void Invoke(PromiseRefBase owner);
             }
+        }
+        internal interface IDelegateNew<TResult>
+        {
+            void Invoke(PromiseRefBase.DeferredPromise<TResult> owner);
         }
     }
 }

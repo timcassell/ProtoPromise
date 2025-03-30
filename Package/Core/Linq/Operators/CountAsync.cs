@@ -60,7 +60,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountCore(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return CountCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -79,7 +79,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountCore(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return CountCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate));
         }
 
         private static async Promise<int> CountCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
@@ -120,7 +120,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountAwaitCore(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return CountAwaitCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -139,7 +139,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountAwaitCore(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return CountAwaitCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate));
         }
 
         private static async Promise<int> CountAwaitCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
@@ -179,7 +179,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountCore(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return CountCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -197,7 +197,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountCore(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return CountCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
 
         private static async Promise<int> CountCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
@@ -237,7 +237,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountAwaitCore(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return CountAwaitCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -255,7 +255,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountAwaitCore(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return CountAwaitCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
 
         private static async Promise<int> CountAwaitCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)

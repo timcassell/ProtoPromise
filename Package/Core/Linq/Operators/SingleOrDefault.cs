@@ -99,7 +99,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return SingleOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return SingleOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -121,7 +121,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return SingleOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return SingleOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate));
         }
 
         private static async Promise<TSource> SingleOrDefaultAsyncCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
@@ -170,7 +170,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return SingleOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return SingleOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -192,7 +192,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return SingleOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return SingleOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate));
         }
 
         private static async Promise<TSource> SingleOrDefaultAsyncCoreAwait<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
@@ -240,7 +240,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return SingleOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return SingleOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -261,7 +261,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return SingleOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return SingleOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
 
         private static async Promise<TSource> SingleOrDefaultAsyncCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
@@ -309,7 +309,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return SingleOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return SingleOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -330,7 +330,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return SingleOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return SingleOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
 
         private static async Promise<TSource> SingleOrDefaultAsyncCoreAwait<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
@@ -380,7 +380,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return SingleOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(predicate), defaultValue);
+            return SingleOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate), defaultValue);
         }
 
         /// <summary>
@@ -403,7 +403,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return SingleOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate), defaultValue);
+            return SingleOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate), defaultValue);
         }
 
         private static async Promise<TSource> SingleOrDefaultAsyncCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate, TSource d)
@@ -453,7 +453,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return SingleOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(predicate), defaultValue);
+            return SingleOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate), defaultValue);
         }
 
         /// <summary>
@@ -476,7 +476,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return SingleOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate), defaultValue);
+            return SingleOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate), defaultValue);
         }
 
         private static async Promise<TSource> SingleOrDefaultAsyncCoreAwait<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate, TSource d)
@@ -525,7 +525,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return SingleOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate), defaultValue);
+            return SingleOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate), defaultValue);
         }
 
         /// <summary>
@@ -547,7 +547,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return SingleOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate), defaultValue);
+            return SingleOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate), defaultValue);
         }
 
         private static async Promise<TSource> SingleOrDefaultAsyncCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate, TSource d)
@@ -596,7 +596,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return SingleOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate), defaultValue);
+            return SingleOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate), defaultValue);
         }
 
         /// <summary>
@@ -618,7 +618,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return SingleOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate), defaultValue);
+            return SingleOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate), defaultValue);
         }
 
         private static async Promise<TSource> SingleOrDefaultAsyncCoreAwait<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate, TSource d)

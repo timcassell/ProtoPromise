@@ -125,8 +125,8 @@ namespace Proto.Promises.Linq
 
             return Internal.GroupJoinHelper<TKey>.GroupJoin(outer.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(outerKeySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(innerKeySelector),
+                DelegateWrapper.Create(outerKeySelector),
+                DelegateWrapper.Create(innerKeySelector),
                 comparer);
         }
 
@@ -160,8 +160,8 @@ namespace Proto.Promises.Linq
 
             return Internal.GroupJoinHelper<TKey>.GroupJoin(outer.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(outerCaptureValue, outerKeySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(innerKeySelector),
+                DelegateWrapper.Create(outerCaptureValue, outerKeySelector),
+                DelegateWrapper.Create(innerKeySelector),
                 comparer);
         }
 
@@ -195,8 +195,8 @@ namespace Proto.Promises.Linq
 
             return Internal.GroupJoinHelper<TKey>.GroupJoin(outer.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(outerKeySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(innerCaptureValue, innerKeySelector),
+                DelegateWrapper.Create(outerKeySelector),
+                DelegateWrapper.Create(innerCaptureValue, innerKeySelector),
                 comparer);
         }
 
@@ -233,8 +233,8 @@ namespace Proto.Promises.Linq
 
             return Internal.GroupJoinHelper<TKey>.GroupJoin(outer.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(outerCaptureValue, outerKeySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(innerCaptureValue, innerKeySelector),
+                DelegateWrapper.Create(outerCaptureValue, outerKeySelector),
+                DelegateWrapper.Create(innerCaptureValue, innerKeySelector),
                 comparer);
         }
 
@@ -349,8 +349,8 @@ namespace Proto.Promises.Linq
 
             return Internal.GroupJoinHelper<TKey>.GroupJoinAwait(outer.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(outerKeySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(innerKeySelector),
+                DelegateWrapper.Create(outerKeySelector),
+                DelegateWrapper.Create(innerKeySelector),
                 comparer);
         }
 
@@ -384,8 +384,8 @@ namespace Proto.Promises.Linq
 
             return Internal.GroupJoinHelper<TKey>.GroupJoinAwait(outer.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(outerCaptureValue, outerKeySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(innerKeySelector),
+                DelegateWrapper.Create(outerCaptureValue, outerKeySelector),
+                DelegateWrapper.Create(innerKeySelector),
                 comparer);
         }
 
@@ -419,8 +419,8 @@ namespace Proto.Promises.Linq
 
             return Internal.GroupJoinHelper<TKey>.GroupJoinAwait(outer.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(outerKeySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(innerCaptureValue, innerKeySelector),
+                DelegateWrapper.Create(outerKeySelector),
+                DelegateWrapper.Create(innerCaptureValue, innerKeySelector),
                 comparer);
         }
 
@@ -457,8 +457,8 @@ namespace Proto.Promises.Linq
 
             return Internal.GroupJoinHelper<TKey>.GroupJoinAwait(outer.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(outerCaptureValue, outerKeySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(innerCaptureValue, innerKeySelector),
+                DelegateWrapper.Create(outerCaptureValue, outerKeySelector),
+                DelegateWrapper.Create(innerCaptureValue, innerKeySelector),
                 comparer);
         }
         #endregion AsyncEnumerable
@@ -575,8 +575,8 @@ namespace Proto.Promises.Linq
 
             return Internal.GroupJoinHelper<TKey>.GroupJoin(configuredOuter.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(outerKeySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(innerKeySelector),
+                DelegateWrapper.Create(outerKeySelector),
+                DelegateWrapper.Create(innerKeySelector),
                 comparer);
         }
 
@@ -610,8 +610,8 @@ namespace Proto.Promises.Linq
 
             return Internal.GroupJoinHelper<TKey>.GroupJoin(configuredOuter.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(outerCaptureValue, outerKeySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(innerKeySelector),
+                DelegateWrapper.Create(outerCaptureValue, outerKeySelector),
+                DelegateWrapper.Create(innerKeySelector),
                 comparer);
         }
 
@@ -645,8 +645,8 @@ namespace Proto.Promises.Linq
 
             return Internal.GroupJoinHelper<TKey>.GroupJoin(configuredOuter.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(outerKeySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(innerCaptureValue, innerKeySelector),
+                DelegateWrapper.Create(outerKeySelector),
+                DelegateWrapper.Create(innerCaptureValue, innerKeySelector),
                 comparer);
         }
 
@@ -683,8 +683,8 @@ namespace Proto.Promises.Linq
 
             return Internal.GroupJoinHelper<TKey>.GroupJoin(configuredOuter.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(outerCaptureValue, outerKeySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(innerCaptureValue, innerKeySelector),
+                DelegateWrapper.Create(outerCaptureValue, outerKeySelector),
+                DelegateWrapper.Create(innerCaptureValue, innerKeySelector),
                 comparer);
         }
 
@@ -799,8 +799,8 @@ namespace Proto.Promises.Linq
 
             return Internal.GroupJoinHelper<TKey>.GroupJoinAwait(configuredOuter.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(outerKeySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(innerKeySelector),
+                DelegateWrapper.Create(outerKeySelector),
+                DelegateWrapper.Create(innerKeySelector),
                 comparer);
         }
 
@@ -834,8 +834,8 @@ namespace Proto.Promises.Linq
 
             return Internal.GroupJoinHelper<TKey>.GroupJoinAwait(configuredOuter.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(outerCaptureValue, outerKeySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(innerKeySelector),
+                DelegateWrapper.Create(outerCaptureValue, outerKeySelector),
+                DelegateWrapper.Create(innerKeySelector),
                 comparer);
         }
 
@@ -869,8 +869,8 @@ namespace Proto.Promises.Linq
 
             return Internal.GroupJoinHelper<TKey>.GroupJoinAwait(configuredOuter.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(outerKeySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(innerCaptureValue, innerKeySelector),
+                DelegateWrapper.Create(outerKeySelector),
+                DelegateWrapper.Create(innerCaptureValue, innerKeySelector),
                 comparer);
         }
 
@@ -907,8 +907,8 @@ namespace Proto.Promises.Linq
 
             return Internal.GroupJoinHelper<TKey>.GroupJoinAwait(configuredOuter.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(outerCaptureValue, outerKeySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(innerCaptureValue, innerKeySelector),
+                DelegateWrapper.Create(outerCaptureValue, outerKeySelector),
+                DelegateWrapper.Create(innerCaptureValue, innerKeySelector),
                 comparer);
         }
         #endregion ConfiguredAsyncEnumerable

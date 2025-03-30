@@ -23,7 +23,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.TakeWhileHelper.TakeWhile(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return Internal.TakeWhileHelper.TakeWhile(source.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -40,7 +40,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.TakeWhileHelper.TakeWhile(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return Internal.TakeWhileHelper.TakeWhile(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
 
         /// <summary>
@@ -55,7 +55,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.TakeWhileHelper.TakeWhileAwait(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return Internal.TakeWhileHelper.TakeWhileAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -72,7 +72,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.TakeWhileHelper.TakeWhileAwait(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return Internal.TakeWhileHelper.TakeWhileAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
 
         /// <summary>
@@ -88,7 +88,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.TakeWhileHelper.TakeWhileWithIndex(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return Internal.TakeWhileHelper.TakeWhileWithIndex(source.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -106,7 +106,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.TakeWhileHelper.TakeWhileWithIndex(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return Internal.TakeWhileHelper.TakeWhileWithIndex(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
 
         /// <summary>
@@ -122,7 +122,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.TakeWhileHelper.TakeWhileWithIndexAwait(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return Internal.TakeWhileHelper.TakeWhileWithIndexAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -140,7 +140,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.TakeWhileHelper.TakeWhileWithIndexAwait(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return Internal.TakeWhileHelper.TakeWhileWithIndexAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
 
         /// <summary>
@@ -155,7 +155,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.TakeWhileHelper.TakeWhile(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return Internal.TakeWhileHelper.TakeWhile(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -172,7 +172,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.TakeWhileHelper.TakeWhile(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return Internal.TakeWhileHelper.TakeWhile(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
 
         /// <summary>
@@ -187,7 +187,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.TakeWhileHelper.TakeWhileAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return Internal.TakeWhileHelper.TakeWhileAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -204,7 +204,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.TakeWhileHelper.TakeWhileAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return Internal.TakeWhileHelper.TakeWhileAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
 
         /// <summary>
@@ -220,7 +220,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.TakeWhileHelper.TakeWhileWithIndex(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return Internal.TakeWhileHelper.TakeWhileWithIndex(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -238,7 +238,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.TakeWhileHelper.TakeWhileWithIndex(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return Internal.TakeWhileHelper.TakeWhileWithIndex(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
 
         /// <summary>
@@ -254,7 +254,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.TakeWhileHelper.TakeWhileWithIndexAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(predicate));
+            return Internal.TakeWhileHelper.TakeWhileWithIndexAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -272,7 +272,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.TakeWhileHelper.TakeWhileWithIndexAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, predicate));
+            return Internal.TakeWhileHelper.TakeWhileWithIndexAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
     }
 }

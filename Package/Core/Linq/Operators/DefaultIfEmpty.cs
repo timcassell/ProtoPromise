@@ -41,7 +41,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(defaultValueRetriever, nameof(defaultValueRetriever), 1);
 
-            return DefaultIfEmptyHelper.DefaultIfEmpty(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(defaultValueRetriever));
+            return DefaultIfEmptyHelper.DefaultIfEmpty(source.GetAsyncEnumerator(), DelegateWrapper.Create(defaultValueRetriever));
         }
 
         /// <summary>
@@ -57,7 +57,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(defaultValueRetriever, nameof(defaultValueRetriever), 1);
 
-            return DefaultIfEmptyHelper.DefaultIfEmpty(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, defaultValueRetriever));
+            return DefaultIfEmptyHelper.DefaultIfEmpty(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, defaultValueRetriever));
         }
 
         private static class DefaultIfEmptyHelper

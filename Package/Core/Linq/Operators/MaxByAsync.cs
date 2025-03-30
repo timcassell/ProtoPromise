@@ -53,7 +53,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MaxByHelper<TKey>.MaxByAsync(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
+            return MaxByHelper<TKey>.MaxByAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -101,7 +101,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MaxByHelper<TKey>.MaxByAsync(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return MaxByHelper<TKey>.MaxByAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -145,7 +145,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MaxByHelper<TKey>.MaxByAwaitAsync(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
+            return MaxByHelper<TKey>.MaxByAwaitAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -193,7 +193,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MaxByHelper<TKey>.MaxByAwaitAsync(source.GetAsyncEnumerator(cancelationToken), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return MaxByHelper<TKey>.MaxByAwaitAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -235,7 +235,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MaxByHelper<TKey>.MaxByAsync(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
+            return MaxByHelper<TKey>.MaxByAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -281,7 +281,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MaxByHelper<TKey>.MaxByAsync(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return MaxByHelper<TKey>.MaxByAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -323,7 +323,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MaxByHelper<TKey>.MaxByAwaitAsync(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
+            return MaxByHelper<TKey>.MaxByAwaitAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -369,7 +369,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MaxByHelper<TKey>.MaxByAwaitAsync(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return MaxByHelper<TKey>.MaxByAwaitAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
 
         private static class MaxByHelper<TKey>

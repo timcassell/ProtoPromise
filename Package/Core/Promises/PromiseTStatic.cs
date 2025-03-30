@@ -805,7 +805,7 @@ namespace Proto.Promises
         {
             ValidateArgument(resolver, nameof(resolver), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<T>.New(Internal.PromiseRefBase.DelegateWrapper.Create<T>(resolver), new ContinuationOptions(synchronizationOption, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.New(DelegateWrapper.Create<T>(resolver), new ContinuationOptions(synchronizationOption, forceAsync));
         }
 
         /// <summary>
@@ -822,7 +822,7 @@ namespace Proto.Promises
         {
             ValidateArgument(resolver, nameof(resolver), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<T>.New(Internal.PromiseRefBase.DelegateWrapper.Create<TCapture, T>(captureValue, resolver), new ContinuationOptions(synchronizationOption, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.New(DelegateWrapper.Create<TCapture, T>(captureValue, resolver), new ContinuationOptions(synchronizationOption, forceAsync));
         }
 
         /// <summary>
@@ -837,7 +837,7 @@ namespace Proto.Promises
         {
             ValidateArgument(resolver, nameof(resolver), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<T>.New(Internal.PromiseRefBase.DelegateWrapper.Create<T>(resolver), new ContinuationOptions(synchronizationContext, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.New(DelegateWrapper.Create<T>(resolver), new ContinuationOptions(synchronizationContext, forceAsync));
         }
 
         /// <summary>
@@ -853,7 +853,7 @@ namespace Proto.Promises
         {
             ValidateArgument(resolver, nameof(resolver), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<T>.New(Internal.PromiseRefBase.DelegateWrapper.Create<TCapture, T>(captureValue, resolver), new ContinuationOptions(synchronizationContext, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.New(DelegateWrapper.Create<TCapture, T>(captureValue, resolver), new ContinuationOptions(synchronizationContext, forceAsync));
         }
 
         /// <summary>

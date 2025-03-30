@@ -134,7 +134,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.GroupByHelper<TKey, TSource>.GroupBy(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
+            return Internal.GroupByHelper<TKey, TSource>.GroupBy(source.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -160,7 +160,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.GroupByHelper<TKey, TSource>.GroupBy(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
+            return Internal.GroupByHelper<TKey, TSource>.GroupBy(source.GetAsyncEnumerator(), DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -214,7 +214,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.GroupByHelper<TKey, TSource>.GroupByAwait(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
+            return Internal.GroupByHelper<TKey, TSource>.GroupByAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -240,7 +240,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.GroupByHelper<TKey, TSource>.GroupByAwait(source.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
+            return Internal.GroupByHelper<TKey, TSource>.GroupByAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -348,8 +348,8 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.GroupByHelper<TKey, TElement>.GroupBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(elementSelector),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(elementSelector),
                 comparer);
         }
 
@@ -381,8 +381,8 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.GroupByHelper<TKey, TElement>.GroupBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(elementSelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(elementSelector),
                 comparer);
         }
 
@@ -414,8 +414,8 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.GroupByHelper<TKey, TElement>.GroupBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(elementCaptureValue, elementSelector),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(elementCaptureValue, elementSelector),
                 comparer);
         }
 
@@ -450,8 +450,8 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.GroupByHelper<TKey, TElement>.GroupBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(elementCaptureValue, elementSelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(elementCaptureValue, elementSelector),
                 comparer);
         }
 
@@ -560,8 +560,8 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.GroupByHelper<TKey, TElement>.GroupByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(elementSelector),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(elementSelector),
                 comparer);
         }
 
@@ -593,8 +593,8 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.GroupByHelper<TKey, TElement>.GroupByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(elementSelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(elementSelector),
                 comparer);
         }
 
@@ -626,8 +626,8 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.GroupByHelper<TKey, TElement>.GroupByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(elementCaptureValue, elementSelector),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(elementCaptureValue, elementSelector),
                 comparer);
         }
 
@@ -662,8 +662,8 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.GroupByHelper<TKey, TElement>.GroupByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(elementCaptureValue, elementSelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(elementCaptureValue, elementSelector),
                 comparer);
         }
         #endregion AsyncEnumerable
@@ -720,7 +720,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.GroupByHelper<TKey, TSource>.GroupBy(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
+            return Internal.GroupByHelper<TKey, TSource>.GroupBy(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -746,7 +746,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.GroupByHelper<TKey, TSource>.GroupBy(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
+            return Internal.GroupByHelper<TKey, TSource>.GroupBy(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -800,7 +800,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.GroupByHelper<TKey, TSource>.GroupByAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
+            return Internal.GroupByHelper<TKey, TSource>.GroupByAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -826,7 +826,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.GroupByHelper<TKey, TSource>.GroupByAwait(configuredSource.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
+            return Internal.GroupByHelper<TKey, TSource>.GroupByAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -934,8 +934,8 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.GroupByHelper<TKey, TElement>.GroupBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(elementSelector),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(elementSelector),
                 comparer);
         }
 
@@ -967,8 +967,8 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.GroupByHelper<TKey, TElement>.GroupBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(elementSelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(elementSelector),
                 comparer);
         }
 
@@ -1000,8 +1000,8 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.GroupByHelper<TKey, TElement>.GroupBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(elementCaptureValue, elementSelector),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(elementCaptureValue, elementSelector),
                 comparer);
         }
 
@@ -1036,8 +1036,8 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.GroupByHelper<TKey, TElement>.GroupBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(elementCaptureValue, elementSelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(elementCaptureValue, elementSelector),
                 comparer);
         }
 
@@ -1146,8 +1146,8 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.GroupByHelper<TKey, TElement>.GroupByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(elementSelector),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(elementSelector),
                 comparer);
         }
 
@@ -1179,8 +1179,8 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.GroupByHelper<TKey, TElement>.GroupByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(elementSelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(elementSelector),
                 comparer);
         }
 
@@ -1212,8 +1212,8 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.GroupByHelper<TKey, TElement>.GroupByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(elementCaptureValue, elementSelector),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(elementCaptureValue, elementSelector),
                 comparer);
         }
 
@@ -1248,8 +1248,8 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.GroupByHelper<TKey, TElement>.GroupByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(elementCaptureValue, elementSelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(elementCaptureValue, elementSelector),
                 comparer);
         }
         #endregion ConfiguredAsyncEnumerable
