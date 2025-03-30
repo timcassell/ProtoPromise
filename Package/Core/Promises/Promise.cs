@@ -8,6 +8,7 @@
 using Proto.Promises.CompilerServices;
 using Proto.Timers;
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -19,6 +20,9 @@ namespace Proto.Promises
     /// or through its then method, which registers callbacks to be invoked when the <see cref="Promise"/> is resolved,
     /// or the reason why the <see cref="Promise"/> cannot be resolved.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode, StackTraceHidden]
+#endif
     public readonly partial struct Promise : IEquatable<Promise>
     {
 #if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER

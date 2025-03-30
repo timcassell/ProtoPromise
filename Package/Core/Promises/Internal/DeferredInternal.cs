@@ -36,6 +36,11 @@ namespace Proto.Promises
 
     partial class Internal
     {
+        internal interface IDelegateNew<TResult>
+        {
+            void Invoke(PromiseRefBase.DeferredPromise<TResult> owner);
+        }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif

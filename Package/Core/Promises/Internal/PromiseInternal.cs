@@ -14,18 +14,27 @@ using System.Threading;
 
 namespace Proto.Promises
 {
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode, StackTraceHidden]
-#endif
-    partial struct Promise { }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode, StackTraceHidden]
-#endif
-    partial struct Promise<T> { }
-
     partial class Internal
     {
+        // We use abstract classes instead of interfaces, because virtual calls on interfaces are twice as slow as virtual calls on classes.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal abstract partial class HandleablePromiseBase : ILinked<HandleablePromiseBase>
+        {
+            HandleablePromiseBase ILinked<HandleablePromiseBase>.Next
+            {
+                [MethodImpl(InlineOption)]
+                get => _next;
+                [MethodImpl(InlineOption)]
+                set => _next = value;
+            }
+
+            internal virtual void Handle(PromiseRefBase handler, Promise.State state) => throw new System.InvalidOperationException();
+            // For PromisePassThrough
+            internal virtual void Handle(PromiseRefBase handler, Promise.State state, int index) => throw new System.InvalidOperationException();
+        }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
