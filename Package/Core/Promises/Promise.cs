@@ -216,7 +216,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onFinally, nameof(onFinally), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.AddFinally(this, DelegateWrapper.Create(onFinally));
+            return Internal.PromiseRefBase.CallbackHelperVoid.Finally(this, DelegateWrapper.Create(onFinally));
         }
 
         /// <summary>
@@ -237,7 +237,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onFinally, nameof(onFinally), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.AddFinallyWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(onFinally));
+            return Internal.PromiseRefBase.CallbackHelperVoid.FinallyWait(this, DelegateWrapper.Create(onFinally));
         }
 
         /// <summary>
@@ -822,7 +822,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onFinally, nameof(onFinally), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.AddFinally(this, DelegateWrapper.Create(finallyCaptureValue, onFinally));
+            return Internal.PromiseRefBase.CallbackHelperVoid.Finally(this, DelegateWrapper.Create(finallyCaptureValue, onFinally));
         }
 
         /// <summary>
@@ -844,7 +844,7 @@ namespace Proto.Promises
             ValidateOperation(1);
             ValidateArgument(onFinally, nameof(onFinally), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.AddFinallyWait(this, Internal.PromiseRefBase.DelegateWrapper.Create(finallyCaptureValue, onFinally));
+            return Internal.PromiseRefBase.CallbackHelperVoid.FinallyWait(this, DelegateWrapper.Create(finallyCaptureValue, onFinally));
         }
 
         /// <summary>

@@ -275,34 +275,6 @@ namespace Proto.Promises
                 private TDelegate _runner;
             }
 
-            partial class PromiseResolve<TResult, TResolver> : PromiseSingleAwait<TResult>
-                where TResolver : IDelegateResolveOrCancel
-            {
-                private TResolver _resolver;
-            }
-
-            partial class PromiseResolvePromise<TResult, TResolver> : PromiseWaitPromise<TResult>
-                where TResolver : IDelegateResolveOrCancelPromise
-            {
-                private TResolver _resolver;
-            }
-
-            partial class PromiseResolveReject<TResult, TResolver, TRejecter> : PromiseSingleAwait<TResult>
-                where TResolver : IDelegateResolveOrCancel
-                where TRejecter : IDelegateReject
-            {
-                private TResolver _resolver;
-                private TRejecter _rejecter;
-            }
-
-            partial class PromiseResolveRejectPromise<TResult, TResolver, TRejecter> : PromiseWaitPromise<TResult>
-                where TResolver : IDelegateResolveOrCancelPromise
-                where TRejecter : IDelegateRejectPromise
-            {
-                private TResolver _resolver;
-                private TRejecter _rejecter;
-            }
-
             partial class ContinueVoidResultPromise<TResult, TDelegate> : PromiseSingleAwait<TResult>
                 where TDelegate : IFunc<Promise.ResultContainer, TResult>
             {
@@ -462,29 +434,17 @@ namespace Proto.Promises
             }
 
 
-            partial class PromiseFinally<TResult, TFinalizer> : PromiseSingleAwait<TResult>
-                where TFinalizer : IAction
+            partial class FinallyPromise<TResult, TDelegate> : PromiseSingleAwait<TResult>
+                where TDelegate : IAction
             {
-                private TFinalizer _finalizer;
+                private TDelegate _callback;
             }
 
-            partial class PromiseFinallyWait<TResult, TFinalizer> : PromiseWaitPromise<TResult>
-                where TFinalizer : IFunc<Promise>, INullable
+            partial class FinallyWaitPromise<TResult, TDelegate> : PromiseWaitPromise<TResult>
+                where TDelegate : IFunc<Promise>
             {
-                private TFinalizer _finalizer;
+                private TDelegate _callback;
                 private Promise.State _previousState;
-            }
-
-            partial class PromiseCancel<TResult, TCanceler> : PromiseSingleAwait<TResult>
-                where TCanceler : IDelegateResolveOrCancel
-            {
-                private TCanceler _canceler;
-            }
-
-            partial class PromiseCancelPromise<TResult, TCanceler> : PromiseWaitPromise<TResult>
-                where TCanceler : IDelegateResolveOrCancelPromise
-            {
-                private TCanceler _canceler;
             }
 
             #region Multi Promises

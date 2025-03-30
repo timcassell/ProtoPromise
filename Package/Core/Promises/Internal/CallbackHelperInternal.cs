@@ -1632,37 +1632,6 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private static Promise InvokeCallbackDirect<TDelegate>(TDelegate resolver, in Promise resolved)
-                    where TDelegate : IAction
-                {
-                    try
-                    {
-                        resolved._ref?.MaybeMarkAwaitedAndDispose(resolved._id);
-                        resolver.Invoke();
-                        return Promise.Resolved();
-                    }
-                    catch (Exception e)
-                    {
-                        return Promise.FromException(e);
-                    }
-                }
-
-                [MethodImpl(InlineOption)]
-                private static Promise InvokeCallbackAndAdoptDirect<TDelegate>(TDelegate resolver, in Promise resolved)
-                    where TDelegate : IFunc<Promise>
-                {
-                    try
-                    {
-                        resolved._ref?.MaybeMarkAwaitedAndDispose(resolved._id);
-                        return resolver.Invoke().Duplicate();
-                    }
-                    catch (Exception e)
-                    {
-                        return Promise.FromException(e);
-                    }
-                }
-
-                [MethodImpl(InlineOption)]
                 private static Promise InvokeCallbackDirect<TDelegate>(TDelegate runner) where TDelegate : IAction
                 {
                     try
@@ -1836,78 +1805,6 @@ namespace Proto.Promises
                     var promise = RunWaitPromise<VoidResult, TDelegate>.GetOrCreate(runner);
                     promise.ScheduleOnContext(context);
                     return new Promise(promise, promise.Id);
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static Promise AddFinally<TFinalizer>(Promise _this, TFinalizer finalizer)
-                    where TFinalizer : IAction
-                {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
-                    {
-                        return InvokeCallbackDirect(finalizer, _this);
-                    }
-                    var promise = PromiseFinally<VoidResult, TFinalizer>.GetOrCreate(finalizer);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise(promise, promise.Id);
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static Promise AddFinallyWait<TFinalizer>(Promise _this, TFinalizer finalizer)
-                    where TFinalizer : IFunc<Promise>, INullable
-                {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
-                    {
-                        return InvokeCallbackAndAdoptDirect(finalizer, _this);
-                    }
-                    var promise = PromiseFinallyWait<VoidResult, TFinalizer>.GetOrCreate(finalizer);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise(promise, promise.Id);
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static Promise<TResult> AddFinally<TResult, TFinalizer>(Promise<TResult> _this, TFinalizer finalizer)
-                    where TFinalizer : IAction
-                {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
-                    {
-                        TResult result = GetResultFromResolved(_this);
-                        try
-                        {
-                            finalizer.Invoke();
-                            return Promise.Resolved(result);
-                        }
-                        catch (Exception e)
-                        {
-                            return Promise<TResult>.FromException(e);
-                        }
-                    }
-                    var promise = PromiseFinally<TResult, TFinalizer>.GetOrCreate(finalizer);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static Promise<TResult> AddFinallyWait<TResult, TFinalizer>(Promise<TResult> _this, TFinalizer finalizer)
-                    where TFinalizer : IFunc<Promise>, INullable
-                {
-                    if (_this._ref == null || _this._ref.State == Promise.State.Resolved)
-                    {
-                        TResult result = GetResultFromResolved(_this);
-                        try
-                        {
-                            var finallyPromise = finalizer.Invoke();
-                            finallyPromise = new Promise(finallyPromise._ref, finallyPromise._id);
-                            return finallyPromise
-                                .Then(result, r => r);
-                        }
-                        catch (Exception e)
-                        {
-                            return Promise<TResult>.FromException(e);
-                        }
-                    }
-                    var promise = PromiseFinallyWait<TResult, TFinalizer>.GetOrCreate(finalizer);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
                 }
 
                 // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
@@ -2273,6 +2170,259 @@ namespace Proto.Promises
                     var promise = CatchCancelationWaitPromise<TDelegate>.GetOrCreate(onCancel);
                     _this._ref.HookupNewPromise(_this._id, promise);
                     return new Promise(promise, promise.Id);
+                }
+
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static Promise InvokeFinally<TDelegate>(Promise _this, in TDelegate callback)
+                    where TDelegate : IAction
+                {
+                    try
+                    {
+                        callback.Invoke();
+                    }
+                    catch (Exception e)
+                    {
+                        var state = _this._ref.State;
+                        var rejectContainer = _this._ref.RejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
+                        if (state == Promise.State.Rejected)
+                        {
+                            rejectContainer.ReportUnhandled();
+                        }
+                        return Promise.FromException(e);
+                    }
+                    return _this.Duplicate();
+                }
+
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static Promise InvokeAndAdoptFinally<TDelegate>(Promise _this, in TDelegate callback)
+                    where TDelegate : IFunc<Promise>
+                {
+                    Promise.State state;
+                    IRejectContainer rejectContainer;
+                    Promise promise;
+                    try
+                    {
+                        promise = callback.Invoke();
+                    }
+                    catch (Exception e)
+                    {
+                        state = _this._ref.State;
+                        rejectContainer = _this._ref.RejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
+                        if (state == Promise.State.Rejected)
+                        {
+                            rejectContainer.ReportUnhandled();
+                        }
+                        return Promise.FromException(e);
+                    }
+
+                    if (promise._ref == null || promise._ref.State == Promise.State.Resolved)
+                    {
+                        promise._ref?.MaybeMarkAwaitedAndDispose(promise._id);
+                        return _this.Duplicate();
+                    }
+
+                    state = _this._ref.State;
+                    rejectContainer = _this._ref.RejectContainer;
+                    _this._ref.SuppressRejection = true;
+                    _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                    if (state == Promise.State.Resolved | promise._ref.State != Promise.State.Pending)
+                    {
+                        if (state == Promise.State.Rejected)
+                        {
+                            rejectContainer.ReportUnhandled();
+                        }
+                        return promise.Duplicate();
+                    }
+
+                    // The returned promise is still pending, and the previous promise was canceled or rejected.
+                    // We have to store the previous result until the returned promise is complete.
+                    var finallyPromise = FinallyWaitPromise<VoidResult, TDelegate>.GetOrCreate(state, rejectContainer, default);
+                    promise._ref.HookupNewPromise(promise._id, finallyPromise);
+                    return new Promise(finallyPromise, finallyPromise.Id);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise Finally<TDelegate>(Promise _this, in TDelegate onFinally)
+                    where TDelegate : IAction
+                {
+                    if (_this._ref == null)
+                    {
+                        return Invoke(onFinally);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return InvokeFinally(_this, onFinally);
+                    }
+
+                    var promise = FinallyPromise<VoidResult, TDelegate>.GetOrCreate(onFinally);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise(promise, promise.Id);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise FinallyWait<TDelegate>(Promise _this, in TDelegate onFinally)
+                    where TDelegate : IFunc<Promise>
+                {
+                    if (_this._ref == null)
+                    {
+                        return InvokeAndAdopt(onFinally);
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return InvokeAndAdoptFinally(_this, onFinally);
+                    }
+
+                    var promise = FinallyWaitPromise<VoidResult, TDelegate>.GetOrCreate(onFinally);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise(promise, promise.Id);
+                }
+
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static Promise<TResult> InvokeFinally<TResult, TDelegate>(in Promise<TResult> _this, in TDelegate callback)
+                    where TDelegate : IAction
+                {
+                    try
+                    {
+                        callback.Invoke();
+                    }
+                    catch (Exception e)
+                    {
+                        var state = _this._ref.State;
+                        var rejectContainer = _this._ref.RejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
+                        if (state == Promise.State.Rejected)
+                        {
+                            rejectContainer.ReportUnhandled();
+                        }
+                        return Promise<TResult>.FromException(e);
+                    }
+                    return _this.Duplicate();
+                }
+
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static Promise<TResult> InvokeAndAdoptFinally<TResult, TDelegate>(in Promise<TResult> _this, in TDelegate callback)
+                    where TDelegate : IFunc<Promise>
+                {
+                    Promise.State state;
+                    IRejectContainer rejectContainer;
+                    Promise promise;
+                    try
+                    {
+                        promise = callback.Invoke();
+                    }
+                    catch (Exception e)
+                    {
+                        state = _this._ref.State;
+                        rejectContainer = _this._ref.RejectContainer;
+                        _this._ref.SuppressRejection = true;
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
+                        if (state == Promise.State.Rejected)
+                        {
+                            rejectContainer.ReportUnhandled();
+                        }
+                        return Promise<TResult>.FromException(e);
+                    }
+
+                    if (promise._ref == null || promise._ref.State == Promise.State.Resolved)
+                    {
+                        promise._ref?.MaybeMarkAwaitedAndDispose(promise._id);
+                        return _this.Duplicate();
+                    }
+
+                    var result = _this._ref._result;
+                    state = _this._ref.State;
+                    rejectContainer = _this._ref.RejectContainer;
+                    _this._ref.SuppressRejection = true;
+                    _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                    var returnState = promise._ref.State;
+                    if (returnState != Promise.State.Pending)
+                    {
+                        if (state == Promise.State.Rejected)
+                        {
+                            rejectContainer.ReportUnhandled();
+                        }
+                        rejectContainer = promise._ref.RejectContainer;
+                        promise._ref.SuppressRejection = true;
+                        promise._ref.MaybeMarkAwaitedAndDispose(promise._id);
+                        return returnState == Promise.State.Resolved ? Promise.Resolved(result)
+                            : returnState == Promise.State.Canceled ? Promise<TResult>.Canceled()
+                            : Promise<TResult>.Rejected(rejectContainer);
+                    }
+
+                    // The returned promise is still pending.
+                    // We have to store the previous result until the returned promise is complete.
+                    var finallyPromise = FinallyWaitPromise<TResult, TDelegate>.GetOrCreate(state, rejectContainer, result);
+                    promise._ref.HookupNewPromise(promise._id, finallyPromise);
+                    return new Promise<TResult>(finallyPromise, finallyPromise.Id);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> Finally<TResult, TDelegate>(Promise<TResult> _this, in TDelegate onFinally)
+                    where TDelegate : IAction
+                {
+                    if (_this._ref == null)
+                    {
+                        try
+                        {
+                            onFinally.Invoke();
+                            return Promise.Resolved(_this._result);
+                        }
+                        catch (Exception e)
+                        {
+                            return Promise<TResult>.FromException(e);
+                        }
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return InvokeFinally(_this, onFinally);
+                    }
+
+                    var promise = FinallyPromise<TResult, TDelegate>.GetOrCreate(onFinally);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise<TResult>(promise, promise.Id);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> FinallyWait<TResult, TDelegate>(Promise<TResult> _this, in TDelegate onFinally)
+                    where TDelegate : IFunc<Promise>
+                {
+                    if (_this._ref == null)
+                    {
+                        try
+                        {
+                            return onFinally.Invoke()
+                                .Then(_this._result, r => r);
+                        }
+                        catch (Exception e)
+                        {
+                            return Promise<TResult>.FromException(e);
+                        }
+                    }
+
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return InvokeAndAdoptFinally(_this, onFinally);
+                    }
+
+                    var promise = FinallyWaitPromise<TResult, TDelegate>.GetOrCreate(onFinally);
+                    _this._ref.HookupNewPromise(_this._id, promise);
+                    return new Promise<TResult>(promise, promise.Id);
                 }
 
                 // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.

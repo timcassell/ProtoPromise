@@ -4,9 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0016 // Use 'throw' expression
-
-using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
