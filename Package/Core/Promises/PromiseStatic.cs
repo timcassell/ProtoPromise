@@ -239,7 +239,7 @@ namespace Proto.Promises
         {
             ValidateArgument(action, nameof(action), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.Run(Internal.PromiseRefBase.DelegateWrapper.Create(action), new ContinuationOptions(synchronizationOption, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperVoid.Run(DelegateWrapper.Create(action), new ContinuationOptions(synchronizationOption, forceAsync));
         }
 
         /// <summary>
@@ -254,7 +254,7 @@ namespace Proto.Promises
         {
             ValidateArgument(action, nameof(action), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.Run(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, action), new ContinuationOptions(synchronizationOption, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperVoid.Run(DelegateWrapper.Create(captureValue, action), new ContinuationOptions(synchronizationOption, forceAsync));
         }
 
         /// <summary>
@@ -268,7 +268,7 @@ namespace Proto.Promises
         {
             ValidateArgument(action, nameof(action), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.Run(Internal.PromiseRefBase.DelegateWrapper.Create(action), new ContinuationOptions(synchronizationContext, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperVoid.Run(DelegateWrapper.Create(action), new ContinuationOptions(synchronizationContext, forceAsync));
         }
 
         /// <summary>
@@ -283,7 +283,7 @@ namespace Proto.Promises
         {
             ValidateArgument(action, nameof(action), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.Run(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, action), new ContinuationOptions(synchronizationContext, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperVoid.Run(DelegateWrapper.Create(captureValue, action), new ContinuationOptions(synchronizationContext, forceAsync));
         }
 
         /// <summary>
@@ -297,7 +297,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, nameof(function), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<T>.Run(Internal.PromiseRefBase.DelegateWrapper.Create(function), new ContinuationOptions(synchronizationOption, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.Run(DelegateWrapper.Create(function), new ContinuationOptions(synchronizationOption, forceAsync));
         }
 
         /// <summary>
@@ -312,7 +312,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, nameof(function), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<T>.Run(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, function), new ContinuationOptions(synchronizationOption, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.Run(DelegateWrapper.Create(captureValue, function), new ContinuationOptions(synchronizationOption, forceAsync));
         }
 
         /// <summary>
@@ -326,7 +326,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, nameof(function), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<T>.Run(Internal.PromiseRefBase.DelegateWrapper.Create(function), new ContinuationOptions(synchronizationContext, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.Run(DelegateWrapper.Create(function), new ContinuationOptions(synchronizationContext, forceAsync));
         }
 
         /// <summary>
@@ -341,7 +341,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, nameof(function), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<T>.Run(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, function), new ContinuationOptions(synchronizationContext, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.Run(DelegateWrapper.Create(captureValue, function), new ContinuationOptions(synchronizationContext, forceAsync));
         }
 
         /// <summary>
@@ -355,7 +355,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, nameof(function), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(function), new ContinuationOptions(synchronizationOption, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperVoid.RunWait(DelegateWrapper.Create(function), new ContinuationOptions(synchronizationOption, forceAsync));
         }
 
         /// <summary>
@@ -370,7 +370,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, nameof(function), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, function), new ContinuationOptions(synchronizationOption, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperVoid.RunWait(DelegateWrapper.Create(captureValue, function), new ContinuationOptions(synchronizationOption, forceAsync));
         }
 
         /// <summary>
@@ -384,7 +384,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, nameof(function), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(function), new ContinuationOptions(synchronizationContext, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperVoid.RunWait(DelegateWrapper.Create(function), new ContinuationOptions(synchronizationContext, forceAsync));
         }
 
         /// <summary>
@@ -399,7 +399,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, nameof(function), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperVoid.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, function), new ContinuationOptions(synchronizationContext, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperVoid.RunWait(DelegateWrapper.Create(captureValue, function), new ContinuationOptions(synchronizationContext, forceAsync));
         }
 
         /// <summary>
@@ -413,7 +413,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, nameof(function), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<T>.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(function), new ContinuationOptions(synchronizationOption, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.RunWait(DelegateWrapper.Create(function), new ContinuationOptions(synchronizationOption, forceAsync));
         }
 
         /// <summary>
@@ -428,7 +428,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, nameof(function), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<T>.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, function), new ContinuationOptions(synchronizationOption, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.RunWait(DelegateWrapper.Create(captureValue, function), new ContinuationOptions(synchronizationOption, forceAsync));
         }
 
         /// <summary>
@@ -442,7 +442,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, nameof(function), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<T>.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(function), new ContinuationOptions(synchronizationContext, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.RunWait(DelegateWrapper.Create(function), new ContinuationOptions(synchronizationContext, forceAsync));
         }
 
         /// <summary>
@@ -457,7 +457,7 @@ namespace Proto.Promises
         {
             ValidateArgument(function, nameof(function), 1);
 
-            return Internal.PromiseRefBase.CallbackHelperResult<T>.RunWait(Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, function), new ContinuationOptions(synchronizationContext, forceAsync));
+            return Internal.PromiseRefBase.CallbackHelperResult<T>.RunWait(DelegateWrapper.Create(captureValue, function), new ContinuationOptions(synchronizationContext, forceAsync));
         }
 
         /// <summary>

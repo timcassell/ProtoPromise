@@ -227,15 +227,21 @@ namespace Proto.Promises
             }
 
             partial class RunPromise<TResult, TDelegate> : PromiseSingleAwait<TResult>
-                where TDelegate : IDelegateRun
+                where TDelegate : IFunc<VoidResult, TResult>
             {
-                private TDelegate _runner;
+                private TDelegate _callback;
+            }
+
+            partial class RunWaitPromise<TDelegate> : PromiseWaitPromise<VoidResult>
+                where TDelegate : IFunc<VoidResult, Promise>
+            {
+                private TDelegate _callback;
             }
 
             partial class RunWaitPromise<TResult, TDelegate> : PromiseWaitPromise<TResult>
-                where TDelegate : IDelegateRunPromise
+                where TDelegate : IFunc<VoidResult, Promise<TResult>>
             {
-                private TDelegate _runner;
+                private TDelegate _callback;
             }
 
             partial class PromiseMultiAwait<TResult> : PromiseRef<TResult>

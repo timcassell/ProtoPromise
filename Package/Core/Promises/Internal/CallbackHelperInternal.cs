@@ -625,7 +625,7 @@ namespace Proto.Promises
                 }
 
                 internal static Promise<TResult> Run<TDelegate>(TDelegate runner, ContinuationOptions invokeOptions)
-                    where TDelegate : IFunc<TResult>, IDelegateRun
+                    where TDelegate : IFunc<TResult>, IFunc<VoidResult, TResult>
                 {
                     if (invokeOptions.GetShouldContinueImmediately(out var context))
                     {
@@ -638,7 +638,7 @@ namespace Proto.Promises
                 }
 
                 internal static Promise<TResult> RunWait<TDelegate>(TDelegate runner, ContinuationOptions invokeOptions)
-                    where TDelegate : IFunc<Promise<TResult>>, IDelegateRunPromise
+                    where TDelegate : IFunc<Promise<TResult>>, IFunc<VoidResult, Promise<TResult>>
                 {
                     if (invokeOptions.GetShouldContinueImmediately(out var context))
                     {
@@ -1782,7 +1782,7 @@ namespace Proto.Promises
                 }
 
                 internal static Promise Run<TDelegate>(TDelegate runner, ContinuationOptions invokeOptions)
-                    where TDelegate : IAction, IDelegateRun
+                    where TDelegate : IAction, IFunc<VoidResult, VoidResult>
                 {
                     if (invokeOptions.GetShouldContinueImmediately(out var context))
                     {
@@ -1795,14 +1795,14 @@ namespace Proto.Promises
                 }
 
                 internal static Promise RunWait<TDelegate>(TDelegate runner, ContinuationOptions invokeOptions)
-                    where TDelegate : IFunc<Promise>, IDelegateRunPromise
+                    where TDelegate : IFunc<Promise>, IFunc<VoidResult, Promise>
                 {
                     if (invokeOptions.GetShouldContinueImmediately(out var context))
                     {
                         return InvokeCallbackAndAdoptDirect(runner);
                     }
 
-                    var promise = RunWaitPromise<VoidResult, TDelegate>.GetOrCreate(runner);
+                    var promise = RunWaitPromise<TDelegate>.GetOrCreate(runner);
                     promise.ScheduleOnContext(context);
                     return new Promise(promise, promise.Id);
                 }
