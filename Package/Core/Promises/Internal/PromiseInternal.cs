@@ -194,21 +194,6 @@ namespace Proto.Promises
                 }
             }
 
-            internal TPromise HookupCancelablePromise<TPromise>(TPromise promise, short promiseId, CancelationToken cancelationToken, ref CancelationHelper cancelationHelper)
-                where TPromise : PromiseRefBase, ICancelable
-            {
-                promise.SetPrevious(this);
-                cancelationHelper.Register(cancelationToken, promise); // IMPORTANT - must register after promise is fully setup.
-                HookupNewWaiter(promiseId, promise);
-                return promise;
-            }
-
-            internal void HookupNewPromise(short promiseId, PromiseRefBase newPromise)
-            {
-                newPromise.SetPrevious(this);
-                HookupNewWaiter(promiseId, newPromise);
-            }
-
             internal void HookupNewWaiter(short promiseId, HandleablePromiseBase waiter)
             {
                 try
@@ -436,14 +421,15 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static PreservedPromise<TResult> GetOrCreateAndHookup(PromiseRefBase previous, short id)
+                internal static Promise<TResult> New(Promise previous)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
-                    previous.HookupNewPromise(id, promise);
+                    promise.SetPrevious(previous._ref);
+                    previous._ref.HookupNewWaiter(previous._id, promise);
                     // We create the temp collection after we hook up in case the operation is invalid.
                     promise._nextBranches = new TempCollectionBuilder<HandleablePromiseBase>(0);
-                    return promise;
+                    return new Promise<TResult>(promise);
                 }
 
                 private void Retain()
@@ -498,11 +484,7 @@ namespace Proto.Promises
                     => GetDuplicateT(promiseId);
 
                 internal override PromiseRef<TResult> GetDuplicateT(short promiseId)
-                {
-                    var newPromise = DuplicatePromise<TResult>.GetOrCreate();
-                    HookupNewPromise(promiseId, newPromise);
-                    return newPromise;
-                }
+                    => DuplicatePromise<TResult>.New(new Promise(this, promiseId))._ref;
 
                 [MethodImpl(InlineOption)]
                 internal override bool GetIsValid(short promiseId)
@@ -603,11 +585,13 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DuplicatePromise<TResult> GetOrCreate()
+                internal static Promise<TResult> New(Promise previous)
                 {
                     var promise = GetOrCreateInstance();
                     promise.Reset();
-                    return promise;
+                    promise.SetPrevious(previous._ref);
+                    previous._ref.HookupNewWaiter(previous._id, promise);
+                    return new Promise<TResult>(promise);
                 }
 
                 internal override void Handle(PromiseRefBase handler, Promise.State state)

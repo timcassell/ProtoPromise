@@ -55,41 +55,33 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise Then<TDelegate>(Promise<TArg> _this, TDelegate onResolve)
+                internal static Promise Then<TDelegate>(Promise<TArg> _this, in TDelegate onResolve)
                     where TDelegate : IAction<TArg>, IFunc<TArg, VoidResult>
                 {
                     if (_this._ref == null)
                     {
                         return CallbackHelperVoid.Invoke(_this._result, onResolve);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return MaybeInvokeResolve(_this, onResolve);
                     }
-
-                    var promise = ThenPromise<TArg, VoidResult, TDelegate>.GetOrCreate(onResolve);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise(promise, promise.Id);
+                    return ThenPromise<TArg, VoidResult, TDelegate>.New(_this, onResolve);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise ThenWait<TDelegate>(Promise<TArg> _this, TDelegate onResolve)
+                internal static Promise ThenWait<TDelegate>(Promise<TArg> _this, in TDelegate onResolve)
                     where TDelegate : IFunc<TArg, Promise>
                 {
                     if (_this._ref == null)
                     {
                         return CallbackHelperVoid.InvokeAndAdopt(_this._result, onResolve);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return MaybeInvokeAndAdoptResolve(_this, onResolve);
                     }
-
-                    var promise = ThenWaitPromise<TArg, TDelegate>.GetOrCreate(onResolve);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise(promise, promise.Id);
+                    return ThenWaitPromise<TArg, TDelegate>.New(_this, onResolve);
                 }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -146,7 +138,7 @@ namespace Proto.Promises
                     }
 
                     [MethodImpl(InlineOption)]
-                    internal static Promise Then<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, TDelegateResolve onResolve, TDelegateReject onReject)
+                    internal static Promise Then<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
                         where TDelegateResolve : IAction<TArg>, IFunc<TArg, VoidResult>
                         where TDelegateReject : IAction<TReject>, IFunc<TReject, VoidResult>
                     {
@@ -154,19 +146,15 @@ namespace Proto.Promises
                         {
                             return CallbackHelperVoid.Invoke(_this._result, onResolve);
                         }
-
                         if (_this._ref.State != Promise.State.Pending)
                         {
                             return MaybeInvokeThen(_this, onResolve, onReject);
                         }
-
-                        var promise = ThenPromise<TArg, VoidResult, TReject, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                        return new Promise(promise, promise.Id);
+                        return ThenPromise<TArg, VoidResult, TReject, TDelegateResolve, TDelegateReject>.New(_this, onResolve, onReject);
                     }
 
                     [MethodImpl(InlineOption)]
-                    internal static Promise ThenWait<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, TDelegateResolve onResolve, TDelegateReject onReject)
+                    internal static Promise ThenWait<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
                         where TDelegateResolve : IFunc<TArg, Promise>
                         where TDelegateReject : IFunc<TReject, Promise>
                     {
@@ -174,20 +162,16 @@ namespace Proto.Promises
                         {
                             return CallbackHelperVoid.InvokeAndAdopt(_this._result, onResolve);
                         }
-
                         if (_this._ref.State != Promise.State.Pending)
                         {
                             return MaybeInvokeAndAdoptThen(_this, onResolve, onReject);
                         }
-
-                        var promise = ThenWaitPromise<TArg, TReject, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                        return new Promise(promise, promise.Id);
+                        return ThenWaitPromise<TArg, TReject, TDelegateResolve, TDelegateReject>.New(_this, onResolve, onReject);
                     }
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise Then<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, TDelegateResolve onResolve, TDelegateReject onReject)
+                internal static Promise Then<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
                     where TDelegateResolve : IAction<TArg>, IFunc<TArg, VoidResult>
                     where TDelegateReject : IAction, IAction<VoidResult>, IFunc<VoidResult, VoidResult>
                 {
@@ -195,19 +179,15 @@ namespace Proto.Promises
                     {
                         return CallbackHelperVoid.Invoke(_this._result, onResolve);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return Filter<VoidResult>.MaybeInvokeThen(_this, onResolve, onReject);
                     }
-
-                    var promise = ThenPromise<TArg, VoidResult, VoidResult, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise(promise, promise.Id);
+                    return ThenPromise<TArg, VoidResult, VoidResult, TDelegateResolve, TDelegateReject>.New(_this, onResolve, onReject);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise ThenWait<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, TDelegateResolve onResolve, TDelegateReject onReject)
+                internal static Promise ThenWait<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
                     where TDelegateResolve : IFunc<TArg, Promise>
                     where TDelegateReject : IFunc<Promise>, IFunc<VoidResult, Promise>
                 {
@@ -215,15 +195,11 @@ namespace Proto.Promises
                     {
                         return CallbackHelperVoid.InvokeAndAdopt(_this._result, onResolve);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return Filter<VoidResult>.MaybeInvokeAndAdoptThen(_this, onResolve, onReject);
                     }
-
-                    var promise = ThenWaitPromise<TArg, VoidResult, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise(promise, promise.Id);
+                    return ThenWaitPromise<TArg, VoidResult, TDelegateResolve, TDelegateReject>.New(_this, onResolve, onReject);
                 }
 
                 // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
@@ -256,15 +232,11 @@ namespace Proto.Promises
                     {
                         return CallbackHelperVoid.Invoke(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return InvokeContinueWith(_this._ref, _this._id, onContinue);
                     }
-
-                    var promise = ContinueArgResultPromise<TArg, VoidResult, TDelegate>.GetOrCreate(onContinue);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise(promise, promise.Id);
+                    return ContinueArgResultPromise<TArg, VoidResult, TDelegate>.New(_this, onContinue);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -275,15 +247,11 @@ namespace Proto.Promises
                     {
                         return CallbackHelperVoid.InvokeAndAdopt(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return InvokeAndAdoptContinueWith(_this._ref, _this._id, onContinue);
                     }
-
-                    var promise = ContinueArgVoidWaitPromise<TArg, TDelegate>.GetOrCreate(onContinue);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise(promise, promise.Id);
+                    return ContinueArgVoidWaitPromise<TArg, TDelegate>.New(_this, onContinue);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -294,29 +262,19 @@ namespace Proto.Promises
                     {
                         return CallbackHelperVoid.Canceled(_this._ref, _this._id);
                     }
-
                     if (_this._ref == null)
                     {
                         return CallbackHelperVoid.Invoke(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return InvokeContinueWith(_this._ref, _this._id, onContinue);
                     }
-
-                    PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelableContinueArgResultPromise<TArg, VoidResult, TDelegate>.GetOrCreate(onContinue);
-                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
+                        return CancelableContinueArgResultPromise<TArg, VoidResult, TDelegate>.New(_this, onContinue, cancelationToken);
                     }
-                    else
-                    {
-                        promise = ContinueArgResultPromise<TArg, VoidResult, TDelegate>.GetOrCreate(onContinue);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                    }
-                    return new Promise(promise, promise.Id);
+                    return ContinueArgResultPromise<TArg, VoidResult, TDelegate>.New(_this, onContinue);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -327,29 +285,19 @@ namespace Proto.Promises
                     {
                         return CallbackHelperVoid.Canceled(_this._ref, _this._id);
                     }
-
                     if (_this._ref == null)
                     {
                         return CallbackHelperVoid.InvokeAndAdopt(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return InvokeAndAdoptContinueWith(_this._ref, _this._id, onContinue);
                     }
-
-                    PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelableContinueArgVoidWaitPromise<TArg, TDelegate>.GetOrCreate(onContinue);
-                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
+                        return CancelableContinueArgVoidWaitPromise<TArg, TDelegate>.New(_this, onContinue, cancelationToken);
                     }
-                    else
-                    {
-                        promise = ContinueArgVoidWaitPromise<TArg, TDelegate>.GetOrCreate(onContinue);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                    }
-                    return new Promise(promise, promise.Id);
+                    return ContinueArgVoidWaitPromise<TArg, TDelegate>.New(_this, onContinue);
                 }
             } // class CallbackHelperArg<TArg>
 
@@ -539,9 +487,7 @@ namespace Proto.Promises
                     {
                         return Duplicate(_this);
                     }
-                    var promise = WaitAsyncWithCancelationPromise<TResult>.GetOrCreate();
-                    _this._ref.HookupCancelablePromise(promise, _this._id, cancelationToken, ref promise._cancelationHelper);
-                    return new Promise<TResult>(promise, promise.Id, _this._result);
+                    return WaitAsyncWithCancelationPromise<TResult>.New(_this, cancelationToken);
                 }
 
                 internal static Promise<TResult> WaitAsync(Promise<TResult> _this, TimeSpan timeout, TimerFactory timerFactory)
@@ -555,9 +501,7 @@ namespace Proto.Promises
                         _this._ref?.MaybeMarkAwaitedAndDispose(_this._id);
                         return Promise<TResult>.Rejected(new TimeoutException());
                     }
-                    var promise = WaitAsyncWithTimeoutPromise<TResult>.GetOrCreate(timeout, timerFactory);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
+                    return WaitAsyncWithTimeoutPromise<TResult>.New(_this, timeout, timerFactory);
                 }
 
                 internal static Promise<TResult> WaitAsync(Promise<TResult> _this, TimeSpan timeout, TimerFactory timerFactory, CancelationToken cancelationToken)
@@ -570,7 +514,6 @@ namespace Proto.Promises
                     {
                         return WaitAsync(_this, cancelationToken);
                     }
-
                     if (cancelationToken.IsCancelationRequested)
                     {
                         return Canceled(_this._ref, _this._id);
@@ -584,8 +527,7 @@ namespace Proto.Promises
                         _this._ref?.MaybeMarkAwaitedAndDispose(_this._id);
                         return Promise<TResult>.Rejected(new TimeoutException());
                     }
-                    var promise = WaitAsyncWithTimeoutAndCancelationPromise<TResult>.GetOrCreateAndHookup(_this._ref, _this._id, timeout, timerFactory, cancelationToken);
-                    return new Promise<TResult>(promise, promise.Id);
+                    return WaitAsyncWithTimeoutAndCancelationPromise<TResult>.New(_this, timeout, timerFactory, cancelationToken);
                 }
 
                 internal static Promise<TResult> ConfigureContinuation(Promise<TResult> _this, ContinuationOptions continuationOptions)
@@ -594,25 +536,16 @@ namespace Proto.Promises
                     {
                         return Duplicate(_this);
                     }
-
                     if (continuationOptions.CompletedBehavior == CompletedContinuationBehavior.Synchronous
                         && (_this._ref == null || _this._ref.State != Promise.State.Pending))
                     {
                         return Duplicate(_this);
                     }
-
-                    var synchronizationContext = continuationOptions.GetContinuationContext();
-                    ConfiguredPromise<TResult> promise;
                     if (_this._ref == null)
                     {
-                        promise = ConfiguredPromise<TResult>.GetOrCreateFromResolved(synchronizationContext, _this._result, continuationOptions.CompletedBehavior);
+                        return ConfiguredPromise<TResult>.New(continuationOptions.GetContinuationContext(), continuationOptions.CompletedBehavior, _this._result);
                     }
-                    else
-                    {
-                        promise = ConfiguredPromise<TResult>.GetOrCreate(synchronizationContext, continuationOptions.CompletedBehavior);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                    }
-                    return new Promise<TResult>(promise, promise.Id, _this._result);
+                    return ConfiguredPromise<TResult>.New(_this, continuationOptions.GetContinuationContext(), continuationOptions.CompletedBehavior);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -631,10 +564,7 @@ namespace Proto.Promises
                     {
                         return InvokeCallbackDirect(runner);
                     }
-
-                    var promise = RunPromise<TResult, TDelegate>.GetOrCreate(runner);
-                    promise.ScheduleOnContext(context);
-                    return new Promise<TResult>(promise, promise.Id);
+                    return RunPromise<TResult, TDelegate>.New(runner, context);
                 }
 
                 internal static Promise<TResult> RunWait<TDelegate>(TDelegate runner, ContinuationOptions invokeOptions)
@@ -644,10 +574,7 @@ namespace Proto.Promises
                     {
                         return InvokeCallbackAndAdoptDirect(runner);
                     }
-
-                    var promise = RunWaitPromise<TResult, TDelegate>.GetOrCreate(runner);
-                    promise.ScheduleOnContext(context);
-                    return new Promise<TResult>(promise, promise.Id);
+                    return RunWaitPromise<TResult, TDelegate>.New(runner, context);
                 }
 
                 // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
@@ -689,79 +616,63 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> Then<TDelegate>(Promise _this, TDelegate onResolve)
+                internal static Promise<TResult> Then<TDelegate>(Promise _this, in TDelegate onResolve)
                     where TDelegate : IFunc<TResult>, IFunc<VoidResult, TResult>
                 {
                     if (_this._ref == null)
                     {
                         return Invoke(onResolve);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return MaybeInvokeResolve(_this, onResolve);
                     }
-
-                    var promise = ThenPromise<VoidResult, TResult, TDelegate>.GetOrCreate(onResolve);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
+                    return ThenPromise<VoidResult, TResult, TDelegate>.New(_this, onResolve);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> ThenWait<TDelegate>(Promise _this, TDelegate onResolve)
+                internal static Promise<TResult> ThenWait<TDelegate>(Promise _this, in TDelegate onResolve)
                     where TDelegate : IFunc<Promise<TResult>>, IFunc<VoidResult, Promise<TResult>>
                 {
                     if (_this._ref == null)
                     {
                         return InvokeAndAdopt(onResolve);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return MaybeInvokeAndAdoptResolve(_this, onResolve);
                     }
-
-                    var promise = ThenWaitPromise<VoidResult, TResult, TDelegate>.GetOrCreate(onResolve);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
+                    return ThenWaitPromise<VoidResult, TResult, TDelegate>.New(_this, onResolve);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> Catch<TDelegate>(Promise<TResult> _this, TDelegate onReject)
+                internal static Promise<TResult> Catch<TDelegate>(Promise<TResult> _this, in TDelegate onReject)
                     where TDelegate : IFunc<TResult>, IFunc<VoidResult, TResult>
                 {
                     if (_this._ref == null)
                     {
                         return _this;
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return Filter<VoidResult>.MaybeInvokeCatch(_this, onReject, Promise.State.Rejected);
                     }
-
-                    var promise = CatchPromise<TResult, VoidResult, TDelegate>.GetOrCreate(onReject);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
+                    return CatchPromise<TResult, VoidResult, TDelegate>.New(_this, onReject);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> CatchWait<TDelegate>(Promise<TResult> _this, TDelegate onReject)
+                internal static Promise<TResult> CatchWait<TDelegate>(Promise<TResult> _this, in TDelegate onReject)
                     where TDelegate : IFunc<Promise<TResult>>, IFunc<VoidResult, Promise<TResult>>
                 {
                     if (_this._ref == null)
                     {
                         return _this;
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return Filter<VoidResult>.MaybeInvokeAndAdoptCatch(_this, onReject, Promise.State.Rejected);
                     }
-
-                    var promise = CatchWaitPromise<TResult, VoidResult, TDelegate>.GetOrCreate(onReject);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
+                    return CatchWaitPromise<TResult, VoidResult, TDelegate>.New(_this, onReject);
                 }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -805,41 +716,33 @@ namespace Proto.Promises
                     }
 
                     [MethodImpl(InlineOption)]
-                    internal static Promise<TResult> Catch<TDelegate>(Promise<TResult> _this, TDelegate onReject)
+                    internal static Promise<TResult> Catch<TDelegate>(Promise<TResult> _this, in TDelegate onReject)
                         where TDelegate : IFunc<TReject, TResult>
                     {
                         if (_this._ref == null)
                         {
                             return _this;
                         }
-
                         if (_this._ref.State != Promise.State.Pending)
                         {
                             return MaybeInvokeCatch(_this, onReject, Promise.State.Rejected);
                         }
-
-                        var promise = CatchPromise<TResult, TReject, TDelegate>.GetOrCreate(onReject);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                        return new Promise<TResult>(promise, promise.Id);
+                        return CatchPromise<TResult, TReject, TDelegate>.New(_this, onReject);
                     }
 
                     [MethodImpl(InlineOption)]
-                    internal static Promise<TResult> CatchWait<TDelegate>(Promise<TResult> _this, TDelegate onReject)
+                    internal static Promise<TResult> CatchWait<TDelegate>(Promise<TResult> _this, in TDelegate onReject)
                         where TDelegate : IFunc<TReject, Promise<TResult>>
                     {
                         if (_this._ref == null)
                         {
                             return _this;
                         }
-
                         if (_this._ref.State != Promise.State.Pending)
                         {
                             return MaybeInvokeAndAdoptCatch(_this, onReject, Promise.State.Rejected);
                         }
-
-                        var promise = CatchWaitPromise<TResult, TReject, TDelegate>.GetOrCreate(onReject);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                        return new Promise<TResult>(promise, promise.Id);
+                        return CatchWaitPromise<TResult, TReject, TDelegate>.New(_this, onReject);
                     }
 
                     // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
@@ -897,7 +800,7 @@ namespace Proto.Promises
                     }
 
                     [MethodImpl(InlineOption)]
-                    internal static Promise<TResult> Then<TDelegateResolve, TDelegateReject>(Promise _this, TDelegateResolve onResolve, TDelegateReject onReject)
+                    internal static Promise<TResult> Then<TDelegateResolve, TDelegateReject>(Promise _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
                         where TDelegateResolve : IFunc<TResult>, IFunc<VoidResult, TResult>
                         where TDelegateReject : IFunc<TReject, TResult>
                     {
@@ -905,19 +808,15 @@ namespace Proto.Promises
                         {
                             return Invoke(onResolve);
                         }
-
                         if (_this._ref.State != Promise.State.Pending)
                         {
                             return MaybeInvokeThen(_this, onResolve, onReject);
                         }
-
-                        var promise = ThenPromise<VoidResult, TResult, TReject, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                        return new Promise<TResult>(promise, promise.Id);
+                        return ThenPromise<VoidResult, TResult, TReject, TDelegateResolve, TDelegateReject>.New(_this, onResolve, onReject);
                     }
 
                     [MethodImpl(InlineOption)]
-                    internal static Promise<TResult> ThenWait<TDelegateResolve, TDelegateReject>(Promise _this, TDelegateResolve onResolve, TDelegateReject onReject)
+                    internal static Promise<TResult> ThenWait<TDelegateResolve, TDelegateReject>(Promise _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
                         where TDelegateResolve : IFunc<Promise<TResult>>, IFunc<VoidResult, Promise<TResult>>
                         where TDelegateReject : IFunc<TReject, Promise<TResult>>
                     {
@@ -925,20 +824,16 @@ namespace Proto.Promises
                         {
                             return InvokeAndAdopt(onResolve);
                         }
-
                         if (_this._ref.State != Promise.State.Pending)
                         {
                             return MaybeInvokeAndAdoptThen(_this, onResolve, onReject);
                         }
-
-                        var promise = ThenWaitPromise<VoidResult, TResult, TReject, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                        return new Promise<TResult>(promise, promise.Id);
+                        return ThenWaitPromise<VoidResult, TResult, TReject, TDelegateResolve, TDelegateReject>.New(_this, onResolve, onReject);
                     }
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> Then<TDelegateResolve, TDelegateReject>(Promise _this, TDelegateResolve onResolve, TDelegateReject onReject)
+                internal static Promise<TResult> Then<TDelegateResolve, TDelegateReject>(Promise _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
                     where TDelegateResolve : IFunc<TResult>, IFunc<VoidResult, TResult>
                     where TDelegateReject : IFunc<TResult>, IFunc<VoidResult, TResult>
                 {
@@ -946,19 +841,15 @@ namespace Proto.Promises
                     {
                         return Invoke(onResolve);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return Filter<VoidResult>.MaybeInvokeThen(_this, onResolve, onReject);
                     }
-
-                    var promise = ThenPromise<VoidResult, TResult, VoidResult, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
+                    return ThenPromise<VoidResult, TResult, VoidResult, TDelegateResolve, TDelegateReject>.New(_this, onResolve, onReject);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> ThenWait<TDelegateResolve, TDelegateReject>(Promise _this, TDelegateResolve onResolve, TDelegateReject onReject)
+                internal static Promise<TResult> ThenWait<TDelegateResolve, TDelegateReject>(Promise _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
                     where TDelegateResolve : IFunc<Promise<TResult>>, IFunc<VoidResult, Promise<TResult>>
                     where TDelegateReject : IFunc<Promise<TResult>>, IFunc<VoidResult, Promise<TResult>>
                 {
@@ -966,15 +857,11 @@ namespace Proto.Promises
                     {
                         return InvokeAndAdopt(onResolve);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return Filter<VoidResult>.MaybeInvokeAndAdoptThen(_this, onResolve, onReject);
                     }
-
-                    var promise = ThenWaitPromise<VoidResult, TResult, VoidResult, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
+                    return ThenWaitPromise<VoidResult, TResult, VoidResult, TDelegateResolve, TDelegateReject>.New(_this, onResolve, onReject);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -985,15 +872,11 @@ namespace Proto.Promises
                     {
                         return _this;
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return Filter<VoidResult>.MaybeInvokeCatch(_this, onCancel, Promise.State.Canceled);
                     }
-
-                    var promise = CatchCancelationPromise<TResult, TDelegate>.GetOrCreate(onCancel);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
+                    return CatchCancelationPromise<TResult, TDelegate>.New(_this, onCancel);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1004,15 +887,11 @@ namespace Proto.Promises
                     {
                         return _this;
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return Filter<VoidResult>.MaybeInvokeAndAdoptCatch(_this, onCancel, Promise.State.Canceled);
                     }
-
-                    var promise = CatchCancelationWaitPromise<TResult, TDelegate>.GetOrCreate(onCancel);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
+                    return CatchCancelationWaitPromise<TResult, TDelegate>.New(_this, onCancel);
                 }
 
                 // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
@@ -1045,15 +924,11 @@ namespace Proto.Promises
                     {
                         return Invoke(Promise.ResultContainer.Resolved, onContinue);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return InvokeContinueWith(_this._ref, _this._id, onContinue);
                     }
-
-                    var promise = ContinueVoidResultPromise<TResult, TDelegate>.GetOrCreate(onContinue);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
+                    return ContinueVoidResultPromise<TResult, TDelegate>.New(_this, onContinue);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1064,15 +939,11 @@ namespace Proto.Promises
                     {
                         return InvokeAndAdopt(Promise.ResultContainer.Resolved, onContinue);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return InvokeAndAdoptContinueWith(_this._ref, _this._id, onContinue);
                     }
-
-                    var promise = ContinueVoidResultWaitPromise<TResult, TDelegate>.GetOrCreate(onContinue);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
+                    return ContinueVoidResultWaitPromise<TResult, TDelegate>.New(_this, onContinue);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1083,29 +954,19 @@ namespace Proto.Promises
                     {
                         return Canceled(_this._ref, _this._id);
                     }
-
                     if (_this._ref == null)
                     {
                         return Invoke(Promise.ResultContainer.Resolved, onContinue);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return InvokeContinueWith(_this._ref, _this._id, onContinue);
                     }
-
-                    PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelableContinueVoidResultPromise<TResult, TDelegate>.GetOrCreate(onContinue);
-                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
+                        return CancelableContinueVoidResultPromise<TResult, TDelegate>.New(_this, onContinue, cancelationToken);
                     }
-                    else
-                    {
-                        promise = ContinueVoidResultPromise<TResult, TDelegate>.GetOrCreate(onContinue);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                    }
-                    return new Promise<TResult>(promise, promise.Id);
+                    return ContinueVoidResultPromise<TResult, TDelegate>.New(_this, onContinue);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1116,29 +977,19 @@ namespace Proto.Promises
                     {
                         return Canceled(_this._ref, _this._id);
                     }
-
                     if (_this._ref == null)
                     {
                         return InvokeAndAdopt(Promise.ResultContainer.Resolved, onContinue);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return InvokeAndAdoptContinueWith(_this._ref, _this._id, onContinue);
                     }
-
-                    PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelableContinueVoidResultWaitPromise<TResult, TDelegate>.GetOrCreate(onContinue);
-                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
+                        return CancelableContinueVoidResultWaitPromise<TResult, TDelegate>.New(_this, onContinue, cancelationToken);
                     }
-                    else
-                    {
-                        promise = ContinueVoidResultWaitPromise<TResult, TDelegate>.GetOrCreate(onContinue);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                    }
-                    return new Promise<TResult>(promise, promise.Id);
+                    return ContinueVoidResultWaitPromise<TResult, TDelegate>.New(_this, onContinue);
                 }
             } // class CallbackHelperResult<TResult>
 
@@ -1188,41 +1039,33 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> Then<TDelegate>(Promise<TArg> _this, TDelegate onResolve)
+                internal static Promise<TResult> Then<TDelegate>(Promise<TArg> _this, in TDelegate onResolve)
                     where TDelegate : IFunc<TArg, TResult>
                 {
                     if (_this._ref == null)
                     {
                         return CallbackHelperResult<TResult>.Invoke(_this._result, onResolve);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return MaybeInvokeResolve(_this, onResolve);
                     }
-
-                    var promise = ThenPromise<TArg, TResult, TDelegate>.GetOrCreate(onResolve);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
+                    return ThenPromise<TArg, TResult, TDelegate>.New(_this, onResolve);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> ThenWait<TDelegate>(Promise<TArg> _this, TDelegate onResolve)
+                internal static Promise<TResult> ThenWait<TDelegate>(Promise<TArg> _this, in TDelegate onResolve)
                     where TDelegate : IFunc<TArg, Promise<TResult>>
                 {
                     if (_this._ref == null)
                     {
                         return CallbackHelperResult<TResult>.InvokeAndAdopt(_this._result, onResolve);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return MaybeInvokeAndAdoptResolve(_this, onResolve);
                     }
-
-                    var promise = ThenWaitPromise<TArg, TResult, TDelegate>.GetOrCreate(onResolve);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
+                    return ThenWaitPromise<TArg, TResult, TDelegate>.New(_this, onResolve);
                 }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -1287,7 +1130,7 @@ namespace Proto.Promises
                     }
 
                     [MethodImpl(InlineOption)]
-                    internal static Promise<TResult> Then<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, TDelegateResolve onResolve, TDelegateReject onReject)
+                    internal static Promise<TResult> Then<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
                         where TDelegateResolve : IFunc<TArg, TResult>
                         where TDelegateReject : IFunc<TReject, TResult>
                     {
@@ -1295,19 +1138,15 @@ namespace Proto.Promises
                         {
                             return CallbackHelperResult<TResult>.Invoke(_this._result, onResolve);
                         }
-
                         if (_this._ref.State != Promise.State.Pending)
                         {
                             return MaybeInvokeThen(_this, onResolve, onReject);
                         }
-
-                        var promise = ThenPromise<TArg, TResult, TReject, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                        return new Promise<TResult>(promise, promise.Id);
+                        return ThenPromise<TArg, TResult, TReject, TDelegateResolve, TDelegateReject>.New(_this, onResolve, onReject);
                     }
 
                     [MethodImpl(InlineOption)]
-                    internal static Promise<TResult> ThenWait<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, TDelegateResolve onResolve, TDelegateReject onReject)
+                    internal static Promise<TResult> ThenWait<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
                         where TDelegateResolve : IFunc<TArg, Promise<TResult>>
                         where TDelegateReject : IFunc<TReject, Promise<TResult>>
                     {
@@ -1315,20 +1154,16 @@ namespace Proto.Promises
                         {
                             return CallbackHelperResult<TResult>.InvokeAndAdopt(_this._result, onResolve);
                         }
-
                         if (_this._ref.State != Promise.State.Pending)
                         {
                             return MaybeInvokeAndAdoptThen(_this, onResolve, onReject);
                         }
-
-                        var promise = ThenWaitPromise<TArg, TResult, TReject, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                        return new Promise<TResult>(promise, promise.Id);
+                        return ThenWaitPromise<TArg, TResult, TReject, TDelegateResolve, TDelegateReject>.New(_this, onResolve, onReject);
                     }
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> Then<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, TDelegateResolve onResolve, TDelegateReject onReject)
+                internal static Promise<TResult> Then<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
                     where TDelegateResolve : IFunc<TArg, TResult>
                     where TDelegateReject : IFunc<TResult>, IFunc<VoidResult, TResult>
                 {
@@ -1336,19 +1171,15 @@ namespace Proto.Promises
                     {
                         return CallbackHelperResult<TResult>.Invoke(_this._result, onResolve);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return Filter<VoidResult>.MaybeInvokeThen(_this, onResolve, onReject);
                     }
-
-                    var promise = ThenPromise<TArg, TResult, VoidResult, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
+                    return ThenPromise<TArg, TResult, VoidResult, TDelegateResolve, TDelegateReject>.New(_this, onResolve, onReject);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> ThenWait<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, TDelegateResolve onResolve, TDelegateReject onReject)
+                internal static Promise<TResult> ThenWait<TDelegateResolve, TDelegateReject>(Promise<TArg> _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
                     where TDelegateResolve : IFunc<TArg, Promise<TResult>>
                     where TDelegateReject : IFunc<Promise<TResult>>, IFunc<VoidResult, Promise<TResult>>
                 {
@@ -1356,15 +1187,11 @@ namespace Proto.Promises
                     {
                         return CallbackHelperResult<TResult>.InvokeAndAdopt(_this._result, onResolve);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return Filter<VoidResult>.MaybeInvokeAndAdoptThen(_this, onResolve, onReject);
                     }
-
-                    var promise = ThenWaitPromise<TArg, TResult, VoidResult, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
+                    return ThenWaitPromise<TArg, TResult, VoidResult, TDelegateResolve, TDelegateReject>.New(_this, onResolve, onReject);
                 }
 
                 // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
@@ -1397,15 +1224,11 @@ namespace Proto.Promises
                     {
                         return CallbackHelperResult<TResult>.Invoke(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return InvokeContinueWith(_this._ref, _this._id, onContinue);
                     }
-
-                    var promise = ContinueArgResultPromise<TArg, TResult, TDelegate>.GetOrCreate(onContinue);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
+                    return ContinueArgResultPromise<TArg, TResult, TDelegate>.New(_this, onContinue);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1416,15 +1239,11 @@ namespace Proto.Promises
                     {
                         return CallbackHelperResult<TResult>.InvokeAndAdopt(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return InvokeAndAdoptContinueWith(_this._ref, _this._id, onContinue);
                     }
-
-                    var promise = ContinueArgResultWaitPromise<TArg, TResult, TDelegate>.GetOrCreate(onContinue);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
+                    return ContinueArgResultWaitPromise<TArg, TResult, TDelegate>.New(_this, onContinue);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1435,29 +1254,19 @@ namespace Proto.Promises
                     {
                         return CallbackHelperResult<TResult>.Canceled(_this._ref, _this._id);
                     }
-
                     if (_this._ref == null)
                     {
                         return CallbackHelperResult<TResult>.Invoke(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return InvokeContinueWith(_this._ref, _this._id, onContinue);
                     }
-
-                    PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelableContinueArgResultPromise<TArg, TResult, TDelegate>.GetOrCreate(onContinue);
-                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
+                        return CancelableContinueArgResultPromise<TArg, TResult, TDelegate>.New(_this, onContinue, cancelationToken);
                     }
-                    else
-                    {
-                        promise = ContinueArgResultPromise<TArg, TResult, TDelegate>.GetOrCreate(onContinue);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                    }
-                    return new Promise<TResult>(promise, promise.Id);
+                    return ContinueArgResultPromise<TArg, TResult, TDelegate>.New(_this, onContinue);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1468,29 +1277,19 @@ namespace Proto.Promises
                     {
                         return CallbackHelperResult<TResult>.Canceled(_this._ref, _this._id);
                     }
-
                     if (_this._ref == null)
                     {
                         return CallbackHelperResult<TResult>.InvokeAndAdopt(new Promise<TArg>.ResultContainer(_this._result, null, Promise.State.Resolved), onContinue);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return InvokeAndAdoptContinueWith(_this._ref, _this._id, onContinue);
                     }
-
-                    PromiseRef<TResult> promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelableContinueArgResultWaitPromise<TArg, TResult, TDelegate>.GetOrCreate(onContinue);
-                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
+                        return CancelableContinueArgResultWaitPromise<TArg, TResult, TDelegate>.New(_this, onContinue, cancelationToken);
                     }
-                    else
-                    {
-                        promise = ContinueArgResultWaitPromise<TArg, TResult, TDelegate>.GetOrCreate(onContinue);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                    }
-                    return new Promise<TResult>(promise, promise.Id);
+                    return ContinueArgResultWaitPromise<TArg, TResult, TDelegate>.New(_this, onContinue);
                 }
             } // class CallbackHelper<TArg, TResult>
 
@@ -1696,9 +1495,7 @@ namespace Proto.Promises
                     {
                         return Duplicate(_this);
                     }
-                    var promise = WaitAsyncWithCancelationPromise<VoidResult>.GetOrCreate();
-                    _this._ref.HookupCancelablePromise(promise, _this._id, cancelationToken, ref promise._cancelationHelper);
-                    return new Promise(promise, promise.Id);
+                    return WaitAsyncWithCancelationPromise<VoidResult>.New(_this, cancelationToken);
                 }
 
                 internal static Promise WaitAsync(Promise _this, TimeSpan timeout, TimerFactory timerFactory)
@@ -1712,9 +1509,7 @@ namespace Proto.Promises
                         _this._ref?.MaybeMarkAwaitedAndDispose(_this._id);
                         return Promise.Rejected(new TimeoutException());
                     }
-                    var promise = WaitAsyncWithTimeoutPromise<VoidResult>.GetOrCreate(timeout, timerFactory);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise(promise, promise.Id);
+                    return WaitAsyncWithTimeoutPromise<VoidResult>.New(_this, timeout, timerFactory);
                 }
 
                 internal static Promise WaitAsync(Promise _this, TimeSpan timeout, TimerFactory timerFactory, CancelationToken cancelationToken)
@@ -1727,7 +1522,6 @@ namespace Proto.Promises
                     {
                         return WaitAsync(_this, cancelationToken);
                     }
-
                     if (cancelationToken.IsCancelationRequested)
                     {
                         return Canceled(_this._ref, _this._id);
@@ -1741,8 +1535,7 @@ namespace Proto.Promises
                         _this._ref?.MaybeMarkAwaitedAndDispose(_this._id);
                         return Promise.Rejected(new TimeoutException());
                     }
-                    var promise = WaitAsyncWithTimeoutAndCancelationPromise<VoidResult>.GetOrCreateAndHookup(_this._ref, _this._id, timeout, timerFactory, cancelationToken);
-                    return new Promise(promise, promise.Id);
+                    return WaitAsyncWithTimeoutAndCancelationPromise<VoidResult>.New(_this, timeout, timerFactory, cancelationToken);
                 }
 
                 internal static Promise ConfigureContinuation(Promise _this, ContinuationOptions continuationOptions)
@@ -1751,25 +1544,16 @@ namespace Proto.Promises
                     {
                         return Duplicate(_this);
                     }
-
                     if (continuationOptions.CompletedBehavior == CompletedContinuationBehavior.Synchronous
                         && (_this._ref == null || _this._ref.State != Promise.State.Pending))
                     {
                         return Duplicate(_this);
                     }
-
-                    var synchronizationContext = continuationOptions.GetContinuationContext();
-                    ConfiguredPromise<VoidResult> promise;
                     if (_this._ref == null)
                     {
-                        promise = ConfiguredPromise<VoidResult>.GetOrCreateFromResolved(synchronizationContext, default, continuationOptions.CompletedBehavior);
+                        return ConfiguredPromise<VoidResult>.New(continuationOptions.GetContinuationContext(), continuationOptions.CompletedBehavior, default);
                     }
-                    else
-                    {
-                        promise = ConfiguredPromise<VoidResult>.GetOrCreate(synchronizationContext, continuationOptions.CompletedBehavior);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                    }
-                    return new Promise(promise, promise.Id);
+                    return ConfiguredPromise<VoidResult>.New(_this, continuationOptions.GetContinuationContext(), continuationOptions.CompletedBehavior);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1788,10 +1572,7 @@ namespace Proto.Promises
                     {
                         return InvokeCallbackDirect(runner);
                     }
-
-                    var promise = RunPromise<VoidResult, TDelegate>.GetOrCreate(runner);
-                    promise.ScheduleOnContext(context);
-                    return new Promise(promise, promise.Id);
+                    return RunPromise<VoidResult, TDelegate>.New(runner, context);
                 }
 
                 internal static Promise RunWait<TDelegate>(TDelegate runner, ContinuationOptions invokeOptions)
@@ -1801,10 +1582,7 @@ namespace Proto.Promises
                     {
                         return InvokeCallbackAndAdoptDirect(runner);
                     }
-
-                    var promise = RunWaitPromise<TDelegate>.GetOrCreate(runner);
-                    promise.ScheduleOnContext(context);
-                    return new Promise(promise, promise.Id);
+                    return RunWaitPromise<TDelegate>.New(runner, context);
                 }
 
                 // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
@@ -1846,79 +1624,63 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise Then<TDelegate>(Promise _this, TDelegate onResolve)
+                internal static Promise Then<TDelegate>(Promise _this, in TDelegate onResolve)
                     where TDelegate : IAction, IFunc<VoidResult, VoidResult>
                 {
                     if (_this._ref == null)
                     {
                         return Invoke(onResolve);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return MaybeInvokeResolve(_this, onResolve);
                     }
-
-                    var promise = ThenPromise<VoidResult, VoidResult, TDelegate>.GetOrCreate(onResolve);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise(promise, promise.Id);
+                    return ThenPromise<VoidResult, VoidResult, TDelegate>.New(_this, onResolve);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise ThenWait<TDelegate>(Promise _this, TDelegate onResolve)
+                internal static Promise ThenWait<TDelegate>(Promise _this, in TDelegate onResolve)
                     where TDelegate : IFunc<Promise>, IFunc<VoidResult, Promise>
                 {
                     if (_this._ref == null)
                     {
                         return InvokeAndAdopt(onResolve);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return MaybeInvokeAndAdoptResolve(_this, onResolve);
                     }
-
-                    var promise = ThenWaitPromise<VoidResult, TDelegate>.GetOrCreate(onResolve);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise(promise, promise.Id);
+                    return ThenWaitPromise<VoidResult, TDelegate>.New(_this, onResolve);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise Catch<TDelegate>(Promise _this, TDelegate onReject)
+                internal static Promise Catch<TDelegate>(Promise _this, in TDelegate onReject)
                     where TDelegate : IAction, IAction<VoidResult>, IFunc<VoidResult, VoidResult>
                 {
                     if (_this._ref == null)
                     {
                         return _this;
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return Filter<VoidResult>.MaybeInvokeCatch(_this, onReject, Promise.State.Rejected);
                     }
-
-                    var promise = CatchPromise<VoidResult, VoidResult, TDelegate>.GetOrCreate(onReject);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise(promise, promise.Id);
+                    return CatchPromise<VoidResult, VoidResult, TDelegate>.New(_this, onReject);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise CatchWait<TDelegate>(Promise _this, TDelegate onReject)
+                internal static Promise CatchWait<TDelegate>(Promise _this, in TDelegate onReject)
                     where TDelegate : IFunc<Promise>, IFunc<VoidResult, Promise>
                 {
                     if (_this._ref == null)
                     {
                         return _this;
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return Filter<VoidResult>.MaybeInvokeAndAdoptCatch(_this, onReject, Promise.State.Rejected);
                     }
-
-                    var promise = CatchWaitPromise<VoidResult, TDelegate>.GetOrCreate(onReject);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise(promise, promise.Id);
+                    return CatchWaitPromise<VoidResult, TDelegate>.New(_this, onReject);
                 }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -1962,41 +1724,33 @@ namespace Proto.Promises
                     }
 
                     [MethodImpl(InlineOption)]
-                    internal static Promise Catch<TDelegate>(Promise _this, TDelegate onReject)
+                    internal static Promise Catch<TDelegate>(Promise _this, in TDelegate onReject)
                         where TDelegate : IAction<TReject>, IFunc<TReject, VoidResult>
                     {
                         if (_this._ref == null)
                         {
                             return _this;
                         }
-
                         if (_this._ref.State != Promise.State.Pending)
                         {
                             return MaybeInvokeCatch(_this, onReject, Promise.State.Rejected);
                         }
-
-                        var promise = CatchPromise<VoidResult, TReject, TDelegate>.GetOrCreate(onReject);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                        return new Promise(promise, promise.Id);
+                        return CatchPromise<VoidResult, TReject, TDelegate>.New(_this, onReject);
                     }
 
                     [MethodImpl(InlineOption)]
-                    internal static Promise CatchWait<TDelegate>(Promise _this, TDelegate onReject)
+                    internal static Promise CatchWait<TDelegate>(Promise _this, in TDelegate onReject)
                         where TDelegate : IFunc<TReject, Promise>
                     {
                         if (_this._ref == null)
                         {
                             return _this;
                         }
-
                         if (_this._ref.State != Promise.State.Pending)
                         {
                             return MaybeInvokeAndAdoptCatch(_this, onReject, Promise.State.Rejected);
                         }
-
-                        var promise = CatchWaitPromise<TReject, TDelegate>.GetOrCreate(onReject);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                        return new Promise(promise, promise.Id);
+                        return CatchWaitPromise<TReject, TDelegate>.New(_this, onReject);
                     }
 
                     // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
@@ -2054,7 +1808,7 @@ namespace Proto.Promises
                     }
 
                     [MethodImpl(InlineOption)]
-                    internal static Promise Then<TDelegateResolve, TDelegateReject>(Promise _this, TDelegateResolve onResolve, TDelegateReject onReject)
+                    internal static Promise Then<TDelegateResolve, TDelegateReject>(Promise _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
                         where TDelegateResolve : IAction, IFunc<VoidResult, VoidResult>
                         where TDelegateReject : IAction<TReject>, IFunc<TReject, VoidResult>
                     {
@@ -2062,19 +1816,15 @@ namespace Proto.Promises
                         {
                             return Invoke(onResolve);
                         }
-
                         if (_this._ref.State != Promise.State.Pending)
                         {
                             return MaybeInvokeThen(_this, onResolve, onReject);
                         }
-
-                        var promise = ThenPromise<VoidResult, VoidResult, TReject, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                        return new Promise(promise, promise.Id);
+                        return ThenPromise<VoidResult, VoidResult, TReject, TDelegateResolve, TDelegateReject>.New(_this, onResolve, onReject);
                     }
 
                     [MethodImpl(InlineOption)]
-                    internal static Promise ThenWait<TDelegateResolve, TDelegateReject>(Promise _this, TDelegateResolve onResolve, TDelegateReject onReject)
+                    internal static Promise ThenWait<TDelegateResolve, TDelegateReject>(Promise _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
                         where TDelegateResolve : IFunc<Promise>, IFunc<VoidResult, Promise>
                         where TDelegateReject : IFunc<TReject, Promise>
                     {
@@ -2082,20 +1832,16 @@ namespace Proto.Promises
                         {
                             return InvokeAndAdopt(onResolve);
                         }
-
                         if (_this._ref.State != Promise.State.Pending)
                         {
                             return MaybeInvokeAndAdoptThen(_this, onResolve, onReject);
                         }
-
-                        var promise = ThenWaitPromise<VoidResult, TReject, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                        return new Promise(promise, promise.Id);
+                        return ThenWaitPromise<VoidResult, TReject, TDelegateResolve, TDelegateReject>.New(_this, onResolve, onReject);
                     }
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise Then<TDelegateResolve, TDelegateReject>(Promise _this, TDelegateResolve onResolve, TDelegateReject onReject)
+                internal static Promise Then<TDelegateResolve, TDelegateReject>(Promise _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
                     where TDelegateResolve : IAction, IFunc<VoidResult, VoidResult>
                     where TDelegateReject : IAction, IAction<VoidResult>, IFunc<VoidResult, VoidResult>
                 {
@@ -2103,19 +1849,15 @@ namespace Proto.Promises
                     {
                         return Invoke(onResolve);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return Filter<VoidResult>.MaybeInvokeThen(_this, onResolve, onReject);
                     }
-
-                    var promise = ThenPromise<VoidResult, VoidResult, VoidResult, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise(promise, promise.Id);
+                    return ThenPromise<VoidResult, VoidResult, VoidResult, TDelegateResolve, TDelegateReject>.New(_this, onResolve, onReject);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise ThenWait<TDelegateResolve, TDelegateReject>(Promise _this, TDelegateResolve onResolve, TDelegateReject onReject)
+                internal static Promise ThenWait<TDelegateResolve, TDelegateReject>(Promise _this, in TDelegateResolve onResolve, in TDelegateReject onReject)
                     where TDelegateResolve : IFunc<Promise>, IFunc<VoidResult, Promise>
                     where TDelegateReject : IFunc<Promise>, IFunc<VoidResult, Promise>
                 {
@@ -2123,15 +1865,11 @@ namespace Proto.Promises
                     {
                         return InvokeAndAdopt(onResolve);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return Filter<VoidResult>.MaybeInvokeAndAdoptThen(_this, onResolve, onReject);
                     }
-
-                    var promise = ThenWaitPromise<VoidResult, VoidResult, TDelegateResolve, TDelegateReject>.GetOrCreate(onResolve, onReject);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise(promise, promise.Id);
+                    return ThenWaitPromise<VoidResult, VoidResult, TDelegateResolve, TDelegateReject>.New(_this, onResolve, onReject);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -2142,15 +1880,11 @@ namespace Proto.Promises
                     {
                         return _this;
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return Filter<VoidResult>.MaybeInvokeCatch(_this, onCancel, Promise.State.Canceled);
                     }
-
-                    var promise = CatchCancelationPromise<VoidResult, TDelegate>.GetOrCreate(onCancel);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise(promise, promise.Id);
+                    return CatchCancelationPromise<VoidResult, TDelegate>.New(_this, onCancel);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -2161,15 +1895,11 @@ namespace Proto.Promises
                     {
                         return _this;
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return Filter<VoidResult>.MaybeInvokeAndAdoptCatch(_this, onCancel, Promise.State.Canceled);
                     }
-
-                    var promise = CatchCancelationWaitPromise<TDelegate>.GetOrCreate(onCancel);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise(promise, promise.Id);
+                    return CatchCancelationWaitPromise<TDelegate>.New(_this, onCancel);
                 }
 
                 // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
@@ -2244,9 +1974,7 @@ namespace Proto.Promises
 
                     // The returned promise is still pending, and the previous promise was canceled or rejected.
                     // We have to store the previous result until the returned promise is complete.
-                    var finallyPromise = FinallyWaitPromise<VoidResult, TDelegate>.GetOrCreate(state, rejectContainer, default);
-                    promise._ref.HookupNewPromise(promise._id, finallyPromise);
-                    return new Promise(finallyPromise, finallyPromise.Id);
+                    return FinallyWaitPromise<VoidResult, TDelegate>.New(promise, state, rejectContainer, default);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -2257,15 +1985,11 @@ namespace Proto.Promises
                     {
                         return Invoke(onFinally);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return InvokeFinally(_this, onFinally);
                     }
-
-                    var promise = FinallyPromise<VoidResult, TDelegate>.GetOrCreate(onFinally);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise(promise, promise.Id);
+                    return FinallyPromise<VoidResult, TDelegate>.New(_this, onFinally);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -2276,15 +2000,11 @@ namespace Proto.Promises
                     {
                         return InvokeAndAdopt(onFinally);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return InvokeAndAdoptFinally(_this, onFinally);
                     }
-
-                    var promise = FinallyWaitPromise<VoidResult, TDelegate>.GetOrCreate(onFinally);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise(promise, promise.Id);
+                    return FinallyWaitPromise<VoidResult, TDelegate>.New(_this, onFinally);
                 }
 
                 // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
@@ -2366,9 +2086,7 @@ namespace Proto.Promises
 
                     // The returned promise is still pending.
                     // We have to store the previous result until the returned promise is complete.
-                    var finallyPromise = FinallyWaitPromise<TResult, TDelegate>.GetOrCreate(state, rejectContainer, result);
-                    promise._ref.HookupNewPromise(promise._id, finallyPromise);
-                    return new Promise<TResult>(finallyPromise, finallyPromise.Id);
+                    return FinallyWaitPromise<TResult, TDelegate>.New(promise, state, rejectContainer, result);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -2387,15 +2105,11 @@ namespace Proto.Promises
                             return Promise<TResult>.FromException(e);
                         }
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return InvokeFinally(_this, onFinally);
                     }
-
-                    var promise = FinallyPromise<TResult, TDelegate>.GetOrCreate(onFinally);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
+                    return FinallyPromise<TResult, TDelegate>.New(_this, onFinally);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -2414,15 +2128,11 @@ namespace Proto.Promises
                             return Promise<TResult>.FromException(e);
                         }
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return InvokeAndAdoptFinally(_this, onFinally);
                     }
-
-                    var promise = FinallyWaitPromise<TResult, TDelegate>.GetOrCreate(onFinally);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise<TResult>(promise, promise.Id);
+                    return FinallyWaitPromise<TResult, TDelegate>.New(_this, onFinally);
                 }
 
                 // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
@@ -2455,15 +2165,11 @@ namespace Proto.Promises
                     {
                         return Invoke(Promise.ResultContainer.Resolved, onContinue);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return InvokeContinueWith(_this._ref, _this._id, onContinue);
                     }
-
-                    var promise = ContinueVoidResultPromise<VoidResult, TDelegate>.GetOrCreate(onContinue);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise(promise, promise.Id);
+                    return ContinueVoidResultPromise<VoidResult, TDelegate>.New(_this, onContinue);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -2474,15 +2180,11 @@ namespace Proto.Promises
                     {
                         return InvokeAndAdopt(Promise.ResultContainer.Resolved, onContinue);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return InvokeAndAdoptContinueWith(_this._ref, _this._id, onContinue);
                     }
-
-                    var promise = ContinueVoidVoidWaitPromise<TDelegate>.GetOrCreate(onContinue);
-                    _this._ref.HookupNewPromise(_this._id, promise);
-                    return new Promise(promise, promise.Id);
+                    return ContinueVoidVoidWaitPromise<TDelegate>.New(_this, onContinue);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -2493,29 +2195,19 @@ namespace Proto.Promises
                     {
                         return Canceled(_this._ref, _this._id);
                     }
-
                     if (_this._ref == null)
                     {
                         return Invoke(Promise.ResultContainer.Resolved, onContinue);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return InvokeContinueWith(_this._ref, _this._id, onContinue);
                     }
-
-                    PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelableContinueVoidResultPromise<VoidResult, TDelegate>.GetOrCreate(onContinue);
-                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
+                        return CancelableContinueVoidResultPromise<VoidResult, TDelegate>.New(_this, onContinue, cancelationToken);
                     }
-                    else
-                    {
-                        promise = ContinueVoidResultPromise<VoidResult, TDelegate>.GetOrCreate(onContinue);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                    }
-                    return new Promise(promise, promise.Id);
+                    return ContinueVoidResultPromise<VoidResult, TDelegate>.New(_this, onContinue);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -2526,29 +2218,19 @@ namespace Proto.Promises
                     {
                         return Canceled(_this._ref, _this._id);
                     }
-
                     if (_this._ref == null)
                     {
                         return InvokeAndAdopt(Promise.ResultContainer.Resolved, onContinue);
                     }
-
                     if (_this._ref.State != Promise.State.Pending)
                     {
                         return InvokeAndAdoptContinueWith(_this._ref, _this._id, onContinue);
                     }
-
-                    PromiseRefBase promise;
                     if (cancelationToken.CanBeCanceled)
                     {
-                        var p = CancelableContinueVoidVoidWaitPromise<TDelegate>.GetOrCreate(onContinue);
-                        promise = _this._ref.HookupCancelablePromise(p, _this._id, cancelationToken, ref p._cancelationHelper);
+                        return CancelableContinueVoidVoidWaitPromise<TDelegate>.New(_this, onContinue, cancelationToken);
                     }
-                    else
-                    {
-                        promise = ContinueVoidVoidWaitPromise<TDelegate>.GetOrCreate(onContinue);
-                        _this._ref.HookupNewPromise(_this._id, promise);
-                    }
-                    return new Promise(promise, promise.Id);
+                    return ContinueVoidVoidWaitPromise<TDelegate>.New(_this, onContinue);
                 }
             } // class CallbackHelperVoid
         } // PromiseRefBase

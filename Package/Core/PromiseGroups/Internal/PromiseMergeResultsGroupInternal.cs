@@ -31,14 +31,16 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static MergePromiseResultsGroup<TResult> GetOrCreate(in TResult value, GetResultDelegate<TResult> getResultFunc, bool isExtended)
+                internal static Promise<TResult> New(PromiseRefBase.MergePromiseGroupVoid group, in TResult value, GetResultDelegate<TResult> getResultFunc, bool isExtended)
                 {
                     s_getResult = getResultFunc;
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._result = value;
                     promise._isExtended = isExtended;
-                    return promise;
+                    promise.SetPrevious(group);
+                    group.HookupNewWaiter(group.Id, promise);
+                    return new Promise<TResult>(promise);
                 }
 
                 internal override void MaybeDispose()
@@ -92,7 +94,7 @@ namespace Proto.Promises
         } // class PromiseRefBase
 
         [MethodImpl(InlineOption)]
-        internal static PromiseRefBase.MergePromiseResultsGroup<TResult> GetOrCreateMergePromiseResultsGroup<TResult>(in TResult value, GetResultDelegate<TResult> getResultFunc, bool isExtended)
-            => PromiseRefBase.MergePromiseResultsGroup<TResult>.GetOrCreate(value, getResultFunc, isExtended);
+        internal static Promise<TResult> NewMergePromiseResultsGroup<TResult>(PromiseRefBase.MergePromiseGroupVoid group, in TResult value, GetResultDelegate<TResult> getResultFunc, bool isExtended)
+            => PromiseRefBase.MergePromiseResultsGroup<TResult>.New(group, value, getResultFunc, isExtended);
     } // class Internal
 }

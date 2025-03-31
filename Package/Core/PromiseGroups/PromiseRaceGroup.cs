@@ -93,7 +93,7 @@ namespace Proto.Promises
                 if (promise._ref != null)
                 {
                     checked { ++count; }
-                    group.AddPromise(promise._ref, promise._id);
+                    group.AddPromise(promise);
                 }
                 else
                 {
@@ -111,7 +111,7 @@ namespace Proto.Promises
             if (promise._ref != null)
             {
                 group = Internal.GetOrCreateRacePromiseGroup<Internal.VoidResult>(cancelationRef, cancelOnNonResolved);
-                group.AddPromise(promise._ref, promise._id);
+                group.AddPromise(promise);
                 if (isResolved)
                 {
                     group.SetResolved();
@@ -259,7 +259,7 @@ namespace Proto.Promises
                 if (promise._ref != null)
                 {
                     checked { ++count; }
-                    group.AddPromise(promise._ref, promise._id);
+                    group.AddPromise(promise);
                 }
                 else if (!isResolved)
                 {
@@ -278,7 +278,7 @@ namespace Proto.Promises
             if (promise._ref != null)
             {
                 group = Internal.GetOrCreateRacePromiseGroup<T>(cancelationRef, cancelOnNonResolved);
-                group.AddPromise(promise._ref, promise._id);
+                group.AddPromise(promise);
                 if (isResolved)
                 {
                     group.SetResolved(_result);

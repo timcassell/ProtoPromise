@@ -38,7 +38,7 @@ namespace Proto.Promises
                         : obj.UnsafeAs<ConfiguredPromise<TResult>>();
                 }
 
-                private static ConfiguredPromise<TResult> GetOrCreateBase(SynchronizationContext synchronizationContext, CompletedContinuationBehavior completedBehavior)
+                private static ConfiguredPromise<TResult> GetOrCreate(SynchronizationContext synchronizationContext, CompletedContinuationBehavior completedBehavior)
                 {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     if (synchronizationContext == null)
@@ -55,19 +55,23 @@ namespace Proto.Promises
                     return promise;
                 }
 
-                internal static ConfiguredPromise<TResult> GetOrCreate(SynchronizationContext synchronizationContext, CompletedContinuationBehavior completedBehavior)
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> New(Promise previous, SynchronizationContext synchronizationContext, CompletedContinuationBehavior completedBehavior)
                 {
-                    var promise = GetOrCreateBase(synchronizationContext, completedBehavior);
-                    return promise;
+                    var promise = GetOrCreate(synchronizationContext, completedBehavior);
+                    promise.SetPrevious(previous._ref);
+                    previous._ref.HookupNewWaiter(previous._id, promise);
+                    return new Promise<TResult>(promise);
                 }
 
-                internal static ConfiguredPromise<TResult> GetOrCreateFromResolved(SynchronizationContext synchronizationContext, in TResult result, CompletedContinuationBehavior completedBehavior)
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> New(SynchronizationContext synchronizationContext, CompletedContinuationBehavior completedBehavior, in TResult result)
                 {
-                    var promise = GetOrCreateBase(synchronizationContext, completedBehavior);
+                    var promise = GetOrCreate(synchronizationContext, completedBehavior);
                     promise._result = result;
                     promise._tempState = Promise.State.Resolved;
                     promise._next = PromiseCompletionSentinel.s_instance;
-                    return promise;
+                    return new Promise<TResult>(promise);
                 }
 
                 internal override void Handle(PromiseRefBase handler, Promise.State state)

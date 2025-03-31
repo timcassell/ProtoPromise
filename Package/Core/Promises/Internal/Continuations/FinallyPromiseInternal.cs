@@ -32,12 +32,14 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static FinallyPromise<TResult, TDelegate> GetOrCreate(in TDelegate callback)
+                internal static Promise<TResult> New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._callback = callback;
-                    return promise;
+                    promise.SetPrevious(previous._ref);
+                    previous._ref.HookupNewWaiter(previous._id, promise);
+                    return new Promise<TResult>(promise);
                 }
 
                 internal override void MaybeDispose()
@@ -101,16 +103,18 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static FinallyWaitPromise<TResult, TDelegate> GetOrCreate(in TDelegate callback)
+                internal static Promise<TResult> New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._callback = callback;
-                    return promise;
+                    promise.SetPrevious(previous._ref);
+                    previous._ref.HookupNewWaiter(previous._id, promise);
+                    return new Promise<TResult>(promise);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static FinallyWaitPromise<TResult, TDelegate> GetOrCreate(Promise.State previousState, IRejectContainer previousRejectContainer, in TResult previousResult)
+                internal static Promise<TResult> New(Promise previous, Promise.State previousState, IRejectContainer previousRejectContainer, in TResult previousResult)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
@@ -118,7 +122,9 @@ namespace Proto.Promises
                     promise.RejectContainer = previousRejectContainer;
                     promise._result = previousResult;
                     promise._firstContinue = false;
-                    return promise;
+                    promise.SetPrevious(previous._ref);
+                    previous._ref.HookupNewWaiter(previous._id, promise);
+                    return new Promise<TResult>(promise);
                 }
 
                 internal override void MaybeDispose()

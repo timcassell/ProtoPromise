@@ -34,6 +34,13 @@ namespace Proto.Promises
         internal readonly short _id;
 
         [MethodImpl(Internal.InlineOption)]
+        internal Promise(Internal.PromiseRefBase promiseRef)
+        {
+            _ref = promiseRef;
+            _id = promiseRef.Id;
+        }
+
+        [MethodImpl(Internal.InlineOption)]
         internal Promise(Internal.PromiseRefBase promiseRef, short id)
         {
             _ref = promiseRef;
@@ -46,6 +53,14 @@ namespace Proto.Promises
         internal readonly Internal.PromiseRefBase.PromiseRef<T> _ref;
         internal readonly T _result;
         internal readonly short _id;
+
+        [MethodImpl(Internal.InlineOption)]
+        internal Promise(Internal.PromiseRefBase.PromiseRef<T> promiseRef)
+        {
+            _result = default;
+            _ref = promiseRef;
+            _id = promiseRef.Id;
+        }
 
         [MethodImpl(Internal.InlineOption)]
         internal Promise(Internal.PromiseRefBase.PromiseRef<T> promiseRef, short id)
@@ -169,7 +184,7 @@ namespace Proto.Promises
 
             partial class WaitAsyncWithCancelationPromise<TResult> : SingleAwaitPromise<TResult>
             {
-                internal CancelationHelper _cancelationHelper;
+                private CancelationHelper _cancelationHelper;
             }
 
             partial class WaitAsyncWithTimeoutPromise<TResult> : SingleAwaitPromise<TResult>
@@ -320,42 +335,42 @@ namespace Proto.Promises
             partial class CancelableContinueVoidResultPromise<TResult, TDelegate> : SingleAwaitPromise<TResult>
                 where TDelegate : IFunc<Promise.ResultContainer, TResult>
             {
-                internal CancelationHelper _cancelationHelper;
+                private CancelationHelper _cancelationHelper;
                 private TDelegate _callback;
             }
 
             partial class CancelableContinueVoidVoidWaitPromise<TDelegate> : CallbackWaitPromiseBase<VoidResult>
                 where TDelegate : IFunc<Promise.ResultContainer, Promise>
             {
-                internal CancelationHelper _cancelationHelper;
+                private CancelationHelper _cancelationHelper;
                 private TDelegate _callback;
             }
 
             partial class CancelableContinueVoidResultWaitPromise<TResult, TDelegate> : CallbackWaitPromiseBase<TResult>
                 where TDelegate : IFunc<Promise.ResultContainer, Promise<TResult>>
             {
-                internal CancelationHelper _cancelationHelper;
+                private CancelationHelper _cancelationHelper;
                 private TDelegate _callback;
             }
 
             partial class CancelableContinueArgResultPromise<TArg, TResult, TDelegate> : SingleAwaitPromise<TResult>
                 where TDelegate : IFunc<Promise<TArg>.ResultContainer, TResult>
             {
-                internal CancelationHelper _cancelationHelper;
+                private CancelationHelper _cancelationHelper;
                 private TDelegate _callback;
             }
 
             partial class CancelableContinueArgVoidWaitPromise<TArg, TDelegate> : CallbackWaitPromiseBase<VoidResult>
                 where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise>
             {
-                internal CancelationHelper _cancelationHelper;
+                private CancelationHelper _cancelationHelper;
                 private TDelegate _callback;
             }
 
             partial class CancelableContinueArgResultWaitPromise<TArg, TResult, TDelegate> : CallbackWaitPromiseBase<TResult>
                 where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>
             {
-                internal CancelationHelper _cancelationHelper;
+                private CancelationHelper _cancelationHelper;
                 private TDelegate _callback;
             }
 

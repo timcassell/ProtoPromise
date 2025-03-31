@@ -51,14 +51,17 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                protected void Hookup(PromiseRefBase previous, short id)
-                    => previous.HookupNewPromise(id, this);
+                protected void Hookup(Promise previous)
+                {
+                    this.SetPrevious(previous._ref);
+                    previous._ref.HookupNewWaiter(previous._id, this);
+                }
 
                 [MethodImpl(InlineOption)]
-                protected void ResetAndHookup(PromiseRefBase previous, short id)
+                protected void ResetAndHookup(Promise previous)
                 {
                     Reset();
-                    Hookup(previous, id);
+                    Hookup(previous);
                     // We create the temp collection after we hook up in case the operation is invalid.
                     _nextBranches = new TempCollectionBuilder<HandleablePromiseBase>(0);
                 }
@@ -224,17 +227,13 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 private Promise<TResult> GetWaitAsync(short promiseId)
-                {
 #if PROMISE_DEBUG
                     // In DEBUG mode, we return a duplicate so that its usage will be validated properly.
-                    var duplicatePromise = DuplicatePromise<TResult>.GetOrCreate();
-                    HookupNewPromise(promiseId, duplicatePromise);
-                    return new Promise<TResult>(duplicatePromise, duplicatePromise.Id);
+                    => DuplicatePromise<TResult>.New(new Promise(this, promiseId));
 #else
                     // In RELEASE mode, we just return this for efficiency.
-                    return new Promise<TResult>(this, promiseId);
+                    => new Promise<TResult>(this, promiseId);
 #endif
-                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -254,10 +253,10 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseRetainer<TResult> GetOrCreateAndHookup(PromiseRefBase previous, short id)
+                internal static PromiseRetainer<TResult> New(Promise previous)
                 {
                     var promise = GetOrCreate();
-                    promise.ResetAndHookup(previous, id);
+                    promise.ResetAndHookup(previous);
                     return promise;
                 }
 

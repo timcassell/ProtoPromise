@@ -187,12 +187,14 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static CatchPromise<TResult, TReject, TDelegate> GetOrCreate(in TDelegate callback)
+                internal static Promise<TResult> New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._callback = callback;
-                    return promise;
+                    promise.SetPrevious(previous._ref);
+                    previous._ref.HookupNewWaiter(previous._id, promise);
+                    return new Promise<TResult>(promise);
                 }
 
                 internal override void MaybeDispose()
@@ -240,12 +242,14 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static CatchWaitPromise<TReject, TDelegate> GetOrCreate(in TDelegate callback)
+                internal static Promise New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._callback = callback;
-                    return promise;
+                    promise.SetPrevious(previous._ref);
+                    previous._ref.HookupNewWaiter(previous._id, promise);
+                    return new Promise(promise);
                 }
 
                 internal override void MaybeDispose()
@@ -300,12 +304,14 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static CatchWaitPromise<TResult, TReject, TDelegate> GetOrCreate(in TDelegate callback)
+                internal static Promise<TResult> New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._callback = callback;
-                    return promise;
+                    promise.SetPrevious(previous._ref);
+                    previous._ref.HookupNewWaiter(previous._id, promise);
+                    return new Promise<TResult>(promise);
                 }
 
                 internal override void MaybeDispose()
@@ -360,12 +366,14 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static CatchCancelationPromise<TResult, TDelegate> GetOrCreate(in TDelegate callback)
+                internal static Promise<TResult> New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._callback = callback;
-                    return promise;
+                    promise.SetPrevious(previous._ref);
+                    previous._ref.HookupNewWaiter(previous._id, promise);
+                    return new Promise<TResult>(promise);
                 }
 
                 internal override void MaybeDispose()
@@ -411,12 +419,14 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static CatchCancelationWaitPromise<TDelegate> GetOrCreate(in TDelegate callback)
+                internal static Promise New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._callback = callback;
-                    return promise;
+                    promise.SetPrevious(previous._ref);
+                    previous._ref.HookupNewWaiter(previous._id, promise);
+                    return new Promise(promise);
                 }
 
                 internal override void MaybeDispose()
@@ -469,12 +479,14 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static CatchCancelationWaitPromise<TResult, TDelegate> GetOrCreate(in TDelegate callback)
+                internal static Promise<TResult> New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._callback = callback;
-                    return promise;
+                    promise.SetPrevious(previous._ref);
+                    previous._ref.HookupNewWaiter(previous._id, promise);
+                    return new Promise<TResult>(promise);
                 }
 
                 internal override void MaybeDispose()

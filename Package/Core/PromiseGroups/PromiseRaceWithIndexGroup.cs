@@ -94,7 +94,7 @@ namespace Proto.Promises
                 if (promise._ref != null)
                 {
                     ++count;
-                    group.AddPromiseWithIndex(promise._ref, promise._id, index);
+                    group.AddPromiseWithIndex(promise, index);
                 }
                 else if (winIndex == -1)
                 {
@@ -112,7 +112,7 @@ namespace Proto.Promises
             if (promise._ref != null)
             {
                 group = Internal.GetOrCreateRacePromiseWithIndexGroupVoid(cancelationRef, cancelOnNonResolved);
-                group.AddPromiseWithIndex(promise._ref, promise._id, index);
+                group.AddPromiseWithIndex(promise, index);
                 if (winIndex != -1)
                 {
                     group.SetResolved(winIndex);
@@ -263,7 +263,7 @@ namespace Proto.Promises
                 if (promise._ref != null)
                 {
                     ++count;
-                    group.AddPromiseWithIndex(promise._ref, promise._id, index);
+                    group.AddPromiseWithIndex(promise, index);
                 }
                 else if (winIndex == -1)
                 {
@@ -281,7 +281,7 @@ namespace Proto.Promises
             if (promise._ref != null)
             {
                 group = Internal.GetOrCreateRacePromiseWithIndexGroup<T>(cancelationRef, cancelOnNonResolved);
-                group.AddPromiseWithIndex(promise._ref, promise._id, index);
+                group.AddPromiseWithIndex(promise, index);
                 if (winIndex != -1)
                 {
                     group.SetResolved((winIndex, _result));

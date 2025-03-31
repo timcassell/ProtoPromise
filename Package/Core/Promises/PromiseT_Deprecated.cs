@@ -44,8 +44,7 @@ namespace Proto.Promises
             {
                 return this;
             }
-            var newPromise = Internal.PromiseRefBase.PreservedPromise<T>.GetOrCreateAndHookup(r, _id);
-            return new Promise<T>(newPromise, newPromise.Id);
+            return Internal.PromiseRefBase.PreservedPromise<T>.New(new Promise(r, _id));
         }
 
         /// <summary>

@@ -187,14 +187,12 @@ namespace Proto.Promises
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
+            return Internal.NewMergePromiseResultsGroup(group, _value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     s_getResult1Delegate,
                     s_getResult2Delegate),
                 false
-                );
-            group.HookupNewPromise(group.Id, promise);
-            return new Promise<(T1, T2)>(promise, promise.Id);
+            );
         }
     }
 
@@ -277,15 +275,13 @@ namespace Proto.Promises
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
+            return Internal.NewMergePromiseResultsGroup(group, _value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     s_getResult1Delegate,
                     s_getResult2Delegate,
                     s_getResult3Delegate),
                 false
-                );
-            group.HookupNewPromise(group.Id, promise);
-            return new Promise<(T1, T2, T3)>(promise, promise.Id);
+            );
         }
     }
 
@@ -373,16 +369,14 @@ namespace Proto.Promises
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
+            return Internal.NewMergePromiseResultsGroup(group, _value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     s_getResult1Delegate,
                     s_getResult2Delegate,
                     s_getResult3Delegate,
                     s_getResult4Delegate),
                 false
-                );
-            group.HookupNewPromise(group.Id, promise);
-            return new Promise<(T1, T2, T3, T4)>(promise, promise.Id);
+            );
         }
     }
 
@@ -475,7 +469,7 @@ namespace Proto.Promises
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
+            return Internal.NewMergePromiseResultsGroup(group, _value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     s_getResult1Delegate,
                     s_getResult2Delegate,
@@ -483,9 +477,7 @@ namespace Proto.Promises
                     s_getResult4Delegate,
                     s_getResult5Delegate),
                 false
-                );
-            group.HookupNewPromise(group.Id, promise);
-            return new Promise<(T1, T2, T3, T4, T5)>(promise, promise.Id);
+            );
         }
     }
 
@@ -583,7 +575,7 @@ namespace Proto.Promises
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
+            return Internal.NewMergePromiseResultsGroup(group, _value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     s_getResult1Delegate,
                     s_getResult2Delegate,
@@ -592,9 +584,7 @@ namespace Proto.Promises
                     s_getResult5Delegate,
                     s_getResult6Delegate),
                 false
-                );
-            group.HookupNewPromise(group.Id, promise);
-            return new Promise<(T1, T2, T3, T4, T5, T6)>(promise, promise.Id);
+            );
         }
     }
 
@@ -689,7 +679,7 @@ namespace Proto.Promises
             }
 
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
+            var promise = Internal.NewMergePromiseResultsGroup(group, _value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     s_getResult1Delegate,
                     s_getResult2Delegate,
@@ -699,11 +689,10 @@ namespace Proto.Promises
                     s_getResult6Delegate,
                     s_getResult7Delegate),
                 false
-                );
-            group.HookupNewPromise(group.Id, promise);
+            );
 
             return new PromiseMergeGroup(mergeGroup._cancelationRef, true)
-                .MergeForExtension(promise, promise.Id);
+                .MergeForExtension(promise);
         }
 
         /// <summary>
@@ -729,7 +718,7 @@ namespace Proto.Promises
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
+            return Internal.NewMergePromiseResultsGroup(group, _value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     s_getResult1Delegate,
                     s_getResult2Delegate,
@@ -739,9 +728,7 @@ namespace Proto.Promises
                     s_getResult6Delegate,
                     s_getResult7Delegate),
                 false
-                );
-            group.HookupNewPromise(group.Id, promise);
-            return new Promise<(T1, T2, T3, T4, T5, T6, T7)>(promise, promise.Id);
+            );
         }
     }
 
@@ -814,14 +801,12 @@ namespace Proto.Promises
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
+            return Internal.NewMergePromiseResultsGroup(group, _value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     Promise.MergeResultFuncs.GetMergeValue<T1>(),
                     s_getResult2Delegate),
                 true
-                );
-            group.HookupNewPromise(group.Id, promise);
-            return new Promise<(T1, T2)>(promise, promise.Id);
+            );
         }
     }
 
@@ -899,15 +884,13 @@ namespace Proto.Promises
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
+            return Internal.NewMergePromiseResultsGroup(group, _value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     Promise.MergeResultFuncs.GetMergeValue<T1>(),
                     s_getResult2Delegate,
                     s_getResult3Delegate),
                 true
-                );
-            group.HookupNewPromise(group.Id, promise);
-            return new Promise<(T1, T2, T3)>(promise, promise.Id);
+            );
         }
     }
 
@@ -990,16 +973,14 @@ namespace Proto.Promises
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
+            return Internal.NewMergePromiseResultsGroup(group, _value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     Promise.MergeResultFuncs.GetMergeValue<T1>(),
                     s_getResult2Delegate,
                     s_getResult3Delegate,
                     s_getResult4Delegate),
                 true
-                );
-            group.HookupNewPromise(group.Id, promise);
-            return new Promise<(T1, T2, T3, T4)>(promise, promise.Id);
+            );
         }
     }
 
@@ -1087,7 +1068,7 @@ namespace Proto.Promises
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
+            return Internal.NewMergePromiseResultsGroup(group, _value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     Promise.MergeResultFuncs.GetMergeValue<T1>(),
                     s_getResult2Delegate,
@@ -1095,9 +1076,7 @@ namespace Proto.Promises
                     s_getResult4Delegate,
                     s_getResult5Delegate),
                 true
-                );
-            group.HookupNewPromise(group.Id, promise);
-            return new Promise<(T1, T2, T3, T4, T5)>(promise, promise.Id);
+            );
         }
     }
 
@@ -1190,7 +1169,7 @@ namespace Proto.Promises
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
+            return Internal.NewMergePromiseResultsGroup(group, _value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     Promise.MergeResultFuncs.GetMergeValue<T1>(),
                     s_getResult2Delegate,
@@ -1199,9 +1178,7 @@ namespace Proto.Promises
                     s_getResult5Delegate,
                     s_getResult6Delegate),
                 true
-                );
-            group.HookupNewPromise(group.Id, promise);
-            return new Promise<(T1, T2, T3, T4, T5, T6)>(promise, promise.Id);
+            );
         }
     }
 
@@ -1291,7 +1268,7 @@ namespace Proto.Promises
             }
 
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
+            var promise = Internal.NewMergePromiseResultsGroup(group, _value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     Promise.MergeResultFuncs.GetMergeValue<T1>(),
                     s_getResult2Delegate,
@@ -1301,11 +1278,10 @@ namespace Proto.Promises
                     s_getResult6Delegate,
                     s_getResult7Delegate),
                 true
-                );
-            group.HookupNewPromise(group.Id, promise);
+            );
 
             return new PromiseMergeGroup(mergeGroup._cancelationRef, true)
-                .MergeForExtension(promise, promise.Id);
+                .MergeForExtension(promise);
         }
 
         /// <summary>
@@ -1331,7 +1307,7 @@ namespace Proto.Promises
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseResultsGroup(_value,
+            return Internal.NewMergePromiseResultsGroup(group, _value,
                 Promise.MergeResultFuncs.GetCombinedMerger(
                     Promise.MergeResultFuncs.GetMergeValue<T1>(),
                     s_getResult2Delegate,
@@ -1341,9 +1317,7 @@ namespace Proto.Promises
                     s_getResult6Delegate,
                     s_getResult7Delegate),
                 true
-                );
-            group.HookupNewPromise(group.Id, promise);
-            return new Promise<(T1, T2, T3, T4, T5, T6, T7)>(promise, promise.Id);
+            );
         }
     }
 

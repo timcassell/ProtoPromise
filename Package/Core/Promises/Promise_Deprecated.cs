@@ -36,8 +36,7 @@ namespace Proto.Promises
             {
                 return this;
             }
-            var newPromise = Internal.PromiseRefBase.PreservedPromise<Internal.VoidResult>.GetOrCreateAndHookup(r, _id);
-            return new Promise(newPromise, newPromise.Id);
+            return Internal.PromiseRefBase.PreservedPromise<Internal.VoidResult>.New(new Promise(r, _id));
         }
 
         /// <summary>

@@ -39,20 +39,17 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static RunPromise<TResult, TDelegate> GetOrCreate(TDelegate callback)
+                internal static Promise<TResult> New(in TDelegate callback, SynchronizationContext context)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._callback = callback;
-                    return promise;
-                }
-
-                [MethodImpl(InlineOption)]
-                internal void ScheduleOnContext(SynchronizationContext context)
-                    => ScheduleContextCallback(context, this,
+                    ScheduleContextCallback(context, promise,
                         obj => obj.UnsafeAs<RunPromise<TResult, TDelegate>>().Run(),
                         obj => obj.UnsafeAs<RunPromise<TResult, TDelegate>>().Run()
                     );
+                    return new Promise<TResult>(promise);
+                }
 
                 private void Run()
                 {
@@ -88,20 +85,17 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static RunWaitPromise<TDelegate> GetOrCreate(TDelegate callback)
+                internal static Promise New(in TDelegate callback, SynchronizationContext context)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._callback = callback;
-                    return promise;
-                }
-
-                [MethodImpl(InlineOption)]
-                internal void ScheduleOnContext(SynchronizationContext context)
-                    => ScheduleContextCallback(context, this,
+                    ScheduleContextCallback(context, promise,
                         obj => obj.UnsafeAs<RunWaitPromise<TDelegate>>().Run(),
                         obj => obj.UnsafeAs<RunWaitPromise<TDelegate>>().Run()
                     );
+                    return new Promise(promise);
+                }
 
                 private void Run()
                 {
@@ -146,20 +140,17 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static RunWaitPromise<TResult, TDelegate> GetOrCreate(TDelegate callback)
+                internal static Promise<TResult> New(in TDelegate callback, SynchronizationContext context)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._callback = callback;
-                    return promise;
-                }
-
-                [MethodImpl(InlineOption)]
-                internal void ScheduleOnContext(SynchronizationContext context)
-                    => ScheduleContextCallback(context, this,
+                    ScheduleContextCallback(context, promise,
                         obj => obj.UnsafeAs<RunWaitPromise<TResult, TDelegate>>().Run(),
                         obj => obj.UnsafeAs<RunWaitPromise<TResult, TDelegate>>().Run()
                     );
+                    return new Promise<TResult>(promise);
+                }
 
                 private void Run()
                 {

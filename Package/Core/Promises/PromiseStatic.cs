@@ -490,8 +490,7 @@ namespace Proto.Promises
             {
                 return Resolved();
             }
-            var delayPromise = Internal.PromiseRefBase.DelayPromise.GetOrCreate(delay, timerFactory);
-            return new Promise(delayPromise, delayPromise.Id);
+            return Internal.PromiseRefBase.DelayPromise.New(delay, timerFactory);
         }
 
         /// <summary>
@@ -536,10 +535,11 @@ namespace Proto.Promises
             {
                 return Resolved();
             }
-            Internal.PromiseRefBase delayPromise = cancelationToken.CanBeCanceled
-                ? Internal.PromiseRefBase.DelayWithCancelationPromise.GetOrCreate(delay, timerFactory, cancelationToken)
-                : (Internal.PromiseRefBase) Internal.PromiseRefBase.DelayPromise.GetOrCreate(delay, timerFactory);
-            return new Promise(delayPromise, delayPromise.Id);
+            if (cancelationToken.CanBeCanceled)
+            {
+                return Internal.PromiseRefBase.DelayWithCancelationPromise.New(delay, timerFactory, cancelationToken);
+            }
+            return Internal.PromiseRefBase.DelayPromise.New(delay, timerFactory);
         }
 
         /// <summary>

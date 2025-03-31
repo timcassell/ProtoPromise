@@ -35,7 +35,8 @@ namespace Proto.Promises
                 return default;
             }
 #endif
-            return new Retainer(Internal.PromiseRefBase.PromiseRetainer<Internal.VoidResult>.GetOrCreateAndHookup(promiseRef, _id));
+            var retainerRef = Internal.PromiseRefBase.PromiseRetainer<Internal.VoidResult>.New(new Promise(promiseRef, _id));
+            return new Retainer(retainerRef);
         }
 
         /// <summary>
@@ -51,7 +52,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             internal Retainer(Internal.PromiseRefBase.PromiseRetainer<Internal.VoidResult> retainerRef)
             {
-                _impl = new Promise<Internal.VoidResult>.Retainer(retainerRef, retainerRef.Id);
+                _impl = new Promise<Internal.VoidResult>.Retainer(retainerRef);
             }
 
             /// <summary>
@@ -99,8 +100,8 @@ namespace Proto.Promises
                 return retainer;
             }
 #endif
-            var retainerRef = Internal.PromiseRefBase.PromiseRetainer<T>.GetOrCreateAndHookup(promiseRef, _id);
-            return new Retainer(retainerRef, retainerRef.Id);
+            var retainerRef = Internal.PromiseRefBase.PromiseRetainer<T>.New(new Promise(promiseRef, _id));
+            return new Retainer(retainerRef);
         }
 
         /// <summary>
@@ -116,11 +117,11 @@ namespace Proto.Promises
             private readonly short _id;
 
             [MethodImpl(Internal.InlineOption)]
-            internal Retainer(Internal.PromiseRefBase.PromiseRetainer<T> retainerRef, short retainerId)
+            internal Retainer(Internal.PromiseRefBase.PromiseRetainer<T> retainerRef)
             {
                 _ref = retainerRef;
                 _result = default;
-                _id = retainerId;
+                _id = retainerRef.Id;
             }
 
             [MethodImpl(Internal.InlineOption)]

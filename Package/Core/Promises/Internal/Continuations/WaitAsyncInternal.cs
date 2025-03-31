@@ -24,7 +24,7 @@ namespace Proto.Promises
                 private WaitAsyncWithCancelationPromise() { }
 
                 [MethodImpl(InlineOption)]
-                private static WaitAsyncWithCancelationPromise<TResult> GetOrCreateInstance()
+                private static WaitAsyncWithCancelationPromise<TResult> GetOrCreate()
                 {
                     var obj = ObjectPool.TryTakeOrInvalid<WaitAsyncWithCancelationPromise<TResult>>();
                     return obj == InvalidAwaitSentinel.s_instance
@@ -33,12 +33,16 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static WaitAsyncWithCancelationPromise<TResult> GetOrCreate()
+                internal static Promise<TResult> New(Promise previous, CancelationToken cancelationToken)
                 {
-                    var promise = GetOrCreateInstance();
+                    var promise = GetOrCreate();
                     promise.Reset();
+                    promise.SetPrevious(previous._ref);
                     promise._cancelationHelper.Reset();
-                    return promise;
+                    // IMPORTANT - must register after promise is fully setup and before hooking up to the previous.
+                    promise._cancelationHelper.Register(cancelationToken, promise);
+                    previous._ref.HookupNewWaiter(previous._id, promise);
+                    return new Promise<TResult>(promise);
                 }
 
                 internal override void MaybeDispose()
@@ -98,7 +102,7 @@ namespace Proto.Promises
                 private WaitAsyncWithTimeoutPromise() { }
 
                 [MethodImpl(InlineOption)]
-                private static WaitAsyncWithTimeoutPromise<TResult> GetOrCreateInstance()
+                private static WaitAsyncWithTimeoutPromise<TResult> GetOrCreate()
                 {
                     var obj = ObjectPool.TryTakeOrInvalid<WaitAsyncWithTimeoutPromise<TResult>>();
                     return obj == InvalidAwaitSentinel.s_instance
@@ -107,12 +111,13 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static WaitAsyncWithTimeoutPromise<TResult> GetOrCreate(TimeSpan timeout, TimerFactory timerFactory)
+                internal static Promise<TResult> New(Promise previous, TimeSpan timeout, TimerFactory timerFactory)
                 {
-                    var promise = GetOrCreateInstance();
+                    var promise = GetOrCreate();
                     promise.Reset();
                     promise._retainCounter = 2;
                     promise._waitState = WaitAsyncState.Initial;
+                    promise.SetPrevious(previous._ref);
                     // IMPORTANT - must hookup callback after promise is fully setup.
                     using (SuppressExecutionContextFlow())
                     {
@@ -130,7 +135,9 @@ namespace Proto.Promises
                     {
                         ReportRejection(exception, promise);
                     }
-                    return promise;
+                    // Finally, hook up to the awaited promise.
+                    previous._ref.HookupNewWaiter(previous._id, promise);
+                    return new Promise<TResult>(promise);
                 }
 
                 internal override void MaybeDispose()
@@ -257,14 +264,13 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static WaitAsyncWithTimeoutAndCancelationPromise<TResult> GetOrCreateAndHookup(
-                    PromiseRefBase previous, short id, TimeSpan timeout, TimerFactory timerFactory, CancelationToken cancelationToken)
+                internal static Promise<TResult> New(Promise previous, TimeSpan timeout, TimerFactory timerFactory, CancelationToken cancelationToken)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._retainCounter = 2;
                     promise._waitState = WaitAsyncState.Initial;
-                    promise.SetPrevious(previous);
+                    promise.SetPrevious(previous._ref);
                     // IMPORTANT - must hookup callbacks after promise is fully setup.
                     using (SuppressExecutionContextFlow())
                     {
@@ -288,8 +294,8 @@ namespace Proto.Promises
                         }
                     }
                     // Finally, hook up to the awaited promise.
-                    previous.HookupNewWaiter(id, promise);
-                    return promise;
+                    previous._ref.HookupNewWaiter(previous._id, promise);
+                    return new Promise<TResult>(promise);
                 }
 
                 internal override void MaybeDispose()
