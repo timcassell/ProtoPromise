@@ -93,7 +93,7 @@ namespace Proto.Promises
                 if (promise._ref != null)
                 {
                     ++count;
-                    group.AddPromiseForMerge(promise._ref, promise._id, index);
+                    group.AddPromiseForMerge(promise, index);
                 }
                 return new PromiseAllGroup<T>(list, cancelationRef, group, count, index + 1, group.Id);
             }
@@ -108,7 +108,7 @@ namespace Proto.Promises
             if (promise._ref != null)
             {
                 group = Internal.GetOrCreateAllPromiseGroup(cancelationRef, list);
-                group.AddPromiseForMerge(promise._ref, promise._id, index);
+                group.AddPromiseForMerge(promise, index);
                 return new PromiseAllGroup<T>(list, cancelationRef, group, 1, index + 1, group.Id);
             }
 

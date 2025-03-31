@@ -108,7 +108,8 @@ namespace ProtoPromiseTests.APIs
                 }
 
 #if !PROMISE_DEBUG
-                expectedCount -= 40;
+                // Retained promise does not send duplicate rejections to the UncaughtRejectionHandler in RELEASE mode.
+                expectedCount -= 60;
 #endif
                 deferred.Reject(expectedRejectionValue);
                 cancelationSource.Dispose();
@@ -191,7 +192,8 @@ namespace ProtoPromiseTests.APIs
                 }
 
 #if !PROMISE_DEBUG
-                expectedCount -= 40;
+                // Retained promise does not send duplicate rejections to the UncaughtRejectionHandler in RELEASE mode.
+                expectedCount -= 60;
 #endif
                 deferred.Reject(expectedRejectionValue);
                 cancelationSource.Dispose();

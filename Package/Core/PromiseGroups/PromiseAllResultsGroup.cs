@@ -93,7 +93,7 @@ namespace Proto.Promises
                 if (promise._ref != null)
                 {
                     ++count;
-                    group.AddPromiseForMerge(promise._ref, promise._id, index);
+                    group.AddPromiseForMerge(promise, index);
                 }
                 return new PromiseAllResultsGroup(list, cancelationRef, group, count, index + 1, group.Id);
             }
@@ -108,7 +108,7 @@ namespace Proto.Promises
             if (promise._ref != null)
             {
                 group = Internal.GetOrCreateAllPromiseResultsGroup(cancelationRef, list);
-                group.AddPromiseForMerge(promise._ref, promise._id, index);
+                group.AddPromiseForMerge(promise, index);
                 return new PromiseAllResultsGroup(list, cancelationRef, group, 1, index + 1, group.Id);
             }
 
@@ -237,7 +237,7 @@ namespace Proto.Promises
                 if (promise._ref != null)
                 {
                     ++count;
-                    group.AddPromiseForMerge(promise._ref, promise._id, index);
+                    group.AddPromiseForMerge(promise, index);
                 }
                 return new PromiseAllResultsGroup<T>(list, cancelationRef, group, count, index + 1, group.Id);
             }
@@ -252,7 +252,7 @@ namespace Proto.Promises
             if (promise._ref != null)
             {
                 group = Internal.GetOrCreateAllPromiseResultsGroup(cancelationRef, list);
-                group.AddPromiseForMerge(promise._ref, promise._id, index);
+                group.AddPromiseForMerge(promise, index);
                 return new PromiseAllResultsGroup<T>(list, cancelationRef, group, 1, index + 1, group.Id);
             }
 

@@ -72,7 +72,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal abstract class AsyncEnumerableBase<T> : PromiseSingleAwait<bool>, IAsyncEnumerable<T>
+            internal abstract class AsyncEnumerableBase<T> : SingleAwaitPromise<bool>, IAsyncEnumerable<T>
             {
                 internal CancelationToken _cancelationToken;
                 protected T _current;

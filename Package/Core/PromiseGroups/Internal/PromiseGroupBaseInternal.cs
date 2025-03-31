@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0028 // Simplify collection initialization
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 using System;
@@ -21,7 +22,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal abstract partial class PromiseGroupBase<TResult> : PromiseSingleAwait<TResult>
+            internal abstract partial class PromiseGroupBase<TResult> : SingleAwaitPromise<TResult>
             {
                 partial void AddPending(PromiseRefBase pendingPromise);
                 partial void RemoveComplete(PromiseRefBase completePromise);
@@ -59,26 +60,26 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal void AddPromiseWithIndex(PromiseRefBase promise, short id, int index)
+                internal void AddPromiseWithIndex(Promise promise, int index)
                 {
-                    AddPending(promise);
-                    var passthrough = PromisePassThrough.GetOrCreate(promise, this, index);
-                    promise.HookupNewWaiter(id, passthrough);
+                    AddPending(promise._ref);
+                    var passthrough = PromisePassThrough.GetOrCreate(promise._ref, this, index);
+                    promise._ref.HookupNewWaiter(promise._id, passthrough);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal void AddPromiseForMerge(PromiseRefBase promise, short id, int index)
+                internal void AddPromiseForMerge(Promise promise, int index)
                 {
-                    AddPending(promise);
-                    var passthrough = PromisePassThroughForMergeGroup.GetOrCreate(promise, this, index);
-                    promise.HookupNewWaiter(id, passthrough);
+                    AddPending(promise._ref);
+                    var passthrough = PromisePassThroughForMergeGroup.GetOrCreate(promise._ref, this, index);
+                    promise._ref.HookupNewWaiter(promise._id, passthrough);
                 }
 
                 [MethodImpl(InlineOption)]
-                internal void AddPromise(PromiseRefBase promise, short id)
+                internal void AddPromise(Promise promise)
                 {
-                    AddPending(promise);
-                    promise.HookupNewWaiter(id, this);
+                    AddPending(promise._ref);
+                    promise._ref.HookupNewWaiter(promise._id, this);
                 }
 
                 [MethodImpl(InlineOption)]

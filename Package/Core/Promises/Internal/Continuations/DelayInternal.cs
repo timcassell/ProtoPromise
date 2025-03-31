@@ -19,7 +19,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class DelayPromise : PromiseSingleAwait<VoidResult>
+            internal sealed partial class DelayPromise : SingleAwaitPromise<VoidResult>
             {
                 [MethodImpl(InlineOption)]
                 private static DelayPromise GetFromPoolOrCreate()
@@ -31,7 +31,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelayPromise GetOrCreate(TimeSpan delay, TimerFactory timerFactory)
+                internal static Promise New(TimeSpan delay, TimerFactory timerFactory)
                 {
                     var promise = GetFromPoolOrCreate();
                     promise.Reset();
@@ -51,7 +51,7 @@ namespace Proto.Promises
                     // To avoid an invalid timer disposal, we decrement the counter after all fields are definitely assigned,
                     // and only dispose when the counter reaches 0.
                     promise.MaybeDisposeTimer();
-                    return promise;
+                    return new Promise(promise);
                 }
 
                 private void MaybeDisposeTimer()
@@ -88,10 +88,10 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class DelayWithCancelationPromise : PromiseSingleAwait<VoidResult>, ICancelable
+            internal sealed partial class DelayWithCancelationPromise : SingleAwaitPromise<VoidResult>, ICancelable
             {
                 [MethodImpl(InlineOption)]
-                private static DelayWithCancelationPromise GetFromPoolOrCreate()
+                private static DelayWithCancelationPromise GetOrCreate()
                 {
                     var obj = ObjectPool.TryTakeOrInvalid<DelayWithCancelationPromise>();
                     return obj == InvalidAwaitSentinel.s_instance
@@ -100,9 +100,9 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static DelayWithCancelationPromise GetOrCreate(TimeSpan delay, TimerFactory timerFactory, CancelationToken cancelationToken)
+                internal static Promise New(TimeSpan delay, TimerFactory timerFactory, CancelationToken cancelationToken)
                 {
-                    var promise = GetFromPoolOrCreate();
+                    var promise = GetOrCreate();
                     promise.Reset();
                     promise._cancelationHelper.Reset();
                     // IMPORTANT - must hookup callbacks after promise is fully setup.
@@ -121,7 +121,7 @@ namespace Proto.Promises
                     // To avoid invalid disposal, we release the cancelation helper after all fields are definitely assigned,
                     // and only dispose when it is completely released.
                     promise.MaybeDisposeFields();
-                    return promise;
+                    return new Promise(promise);
                 }
 
                 private void MaybeDisposeFields()

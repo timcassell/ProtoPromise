@@ -34,6 +34,13 @@ namespace Proto.Promises
         internal readonly short _id;
 
         [MethodImpl(Internal.InlineOption)]
+        internal Promise(Internal.PromiseRefBase promiseRef)
+        {
+            _ref = promiseRef;
+            _id = promiseRef.Id;
+        }
+
+        [MethodImpl(Internal.InlineOption)]
         internal Promise(Internal.PromiseRefBase promiseRef, short id)
         {
             _ref = promiseRef;
@@ -46,6 +53,14 @@ namespace Proto.Promises
         internal readonly Internal.PromiseRefBase.PromiseRef<T> _ref;
         internal readonly T _result;
         internal readonly short _id;
+
+        [MethodImpl(Internal.InlineOption)]
+        internal Promise(Internal.PromiseRefBase.PromiseRef<T> promiseRef)
+        {
+            _result = default;
+            _ref = promiseRef;
+            _id = promiseRef.Id;
+        }
 
         [MethodImpl(Internal.InlineOption)]
         internal Promise(Internal.PromiseRefBase.PromiseRef<T> promiseRef, short id)
@@ -98,6 +113,7 @@ namespace Proto.Promises
             // We union the fields together to save space.
             // The field may contain the ExecutionContext or SynchronizationContext of the yielded `async Promise` while it is pending.
             // When the promise is complete in a rejected state, it will contain the IRejectContainer.
+            // In theory we could also include the result in this field if it is a reference type, but in practice execution becomes slower when doing it, and the code gets more complicated.
             [StructLayout(LayoutKind.Explicit)]
             private struct ContextRejectUnion
             {
@@ -148,20 +164,30 @@ namespace Proto.Promises
                 internal TResult _result;
             }
 
-            partial class PromiseSingleAwait<TResult> : PromiseRef<TResult>
+            partial class SingleAwaitPromise<TResult> : PromiseRef<TResult>
             {
             }
 
-            partial class PromiseDuplicate<TResult> : PromiseSingleAwait<TResult>
+            partial class DuplicatePromise<TResult> : SingleAwaitPromise<TResult>
             {
             }
 
-            partial class WaitAsyncWithCancelationPromise<TResult> : PromiseSingleAwait<TResult>
+            partial struct CancelationHelper
             {
-                internal CancelationHelper _cancelationHelper;
+                private CancelationRegistration _cancelationRegistration;
+                // int for Interlocked.Exchange.
+                private int _isCompletedFlag;
+                // The retain counter is to ensure the async op(s) we're waiting for and the cancelation callback
+                // are completed or guaranteed to never invoke before we return the object to the pool.
+                private int _retainCounter;
             }
 
-            partial class WaitAsyncWithTimeoutPromise<TResult> : PromiseSingleAwait<TResult>
+            partial class WaitAsyncWithCancelationPromise<TResult> : SingleAwaitPromise<TResult>
+            {
+                private CancelationHelper _cancelationHelper;
+            }
+
+            partial class WaitAsyncWithTimeoutPromise<TResult> : SingleAwaitPromise<TResult>
             {
                 private Timers.Timer _timer;
                 // We're waiting on a promise and a timer,
@@ -173,7 +199,7 @@ namespace Proto.Promises
                 private int _waitState;
             }
 
-            partial class WaitAsyncWithTimeoutAndCancelationPromise<TResult> : PromiseSingleAwait<TResult>
+            partial class WaitAsyncWithTimeoutAndCancelationPromise<TResult> : SingleAwaitPromise<TResult>
             {
                 private Timers.Timer _timer;
                 private CancelationRegistration _cancelationRegistration;
@@ -187,7 +213,7 @@ namespace Proto.Promises
                 private int _waitState;
             }
 
-            partial class DelayPromise : PromiseSingleAwait<VoidResult>
+            partial class DelayPromise : SingleAwaitPromise<VoidResult>
             {
                 // Use ITimerSource and int directly instead of the Timer struct
                 // so that the fields can be packed efficiently without extra padding.
@@ -198,7 +224,7 @@ namespace Proto.Promises
                 private int _timerUseCounter;
             }
 
-            partial class DelayWithCancelationPromise : PromiseSingleAwait<VoidResult>
+            partial class DelayWithCancelationPromise : SingleAwaitPromise<VoidResult>
             {
                 private Timers.Timer _timer;
                 // The timer and cancelation callbacks can race on different threads,
@@ -207,7 +233,7 @@ namespace Proto.Promises
                 private CancelationHelper _cancelationHelper;
             }
 
-            partial class ConfiguredPromise<TResult> : PromiseSingleAwait<TResult>
+            partial class ConfiguredPromise<TResult> : SingleAwaitPromise<TResult>
             {
                 private SynchronizationContext _synchronizationContext;
                 // We have to store the previous state in a separate field until the next awaiter is ready to be invoked on the proper context.
@@ -215,19 +241,25 @@ namespace Proto.Promises
                 private CompletedContinuationBehavior _completedBehavior;
             }
 
-            partial class RunPromise<TResult, TDelegate> : PromiseSingleAwait<TResult>
-                where TDelegate : IDelegateRun
+            partial class RunPromise<TResult, TDelegate> : SingleAwaitPromise<TResult>
+                where TDelegate : IFunc<VoidResult, TResult>
             {
-                private TDelegate _runner;
+                private TDelegate _callback;
             }
 
-            partial class RunWaitPromise<TResult, TDelegate> : PromiseWaitPromise<TResult>
-                where TDelegate : IDelegateRunPromise
+            partial class RunWaitPromise<TDelegate> : CallbackWaitPromiseBase<VoidResult>
+                where TDelegate : IFunc<VoidResult, Promise>
             {
-                private TDelegate _runner;
+                private TDelegate _callback;
             }
 
-            partial class PromiseMultiAwait<TResult> : PromiseRef<TResult>
+            partial class RunWaitPromise<TResult, TDelegate> : CallbackWaitPromiseBase<TResult>
+                where TDelegate : IFunc<VoidResult, Promise<TResult>>
+            {
+                private TDelegate _callback;
+            }
+
+            partial class PreservedPromise<TResult> : PromiseRef<TResult>
             {
                 private TempCollectionBuilder<HandleablePromiseBase> _nextBranches;
                 private int _retainCounter;
@@ -243,16 +275,16 @@ namespace Proto.Promises
             {
             }
 
-            partial class PromiseWaitPromise<TResult> : PromiseSingleAwait<TResult>
+            partial class CallbackWaitPromiseBase<TResult> : SingleAwaitPromise<TResult>
             {
+                protected bool _firstContinue;
             }
 
-            partial class DeferredPromiseBase<TResult> : PromiseSingleAwait<TResult>, IDeferredPromise
+            partial class DeferredPromiseBase<TResult> : SingleAwaitPromise<TResult>, IDeferredPromise
             {
                 protected int _deferredId = 1; // Start with Id 1 instead of 0 to reduce risk of false positives.
             }
 
-            #region Non-cancelable Promises
             partial class DeferredPromise<TResult> : DeferredPromiseBase<TResult>
             {
             }
@@ -264,100 +296,180 @@ namespace Proto.Promises
                 private TDelegate _runner;
             }
 
-            partial class PromiseResolve<TResult, TResolver> : PromiseSingleAwait<TResult>
-                where TResolver : IDelegateResolveOrCancel
+            partial class ContinueVoidResultPromise<TResult, TDelegate> : SingleAwaitPromise<TResult>
+                where TDelegate : IFunc<Promise.ResultContainer, TResult>
             {
-                private TResolver _resolver;
+                private TDelegate _callback;
             }
 
-            partial class PromiseResolvePromise<TResult, TResolver> : PromiseWaitPromise<TResult>
-                where TResolver : IDelegateResolveOrCancelPromise
+            partial class ContinueVoidVoidWaitPromise<TDelegate> : CallbackWaitPromiseBase<VoidResult>
+                where TDelegate : IFunc<Promise.ResultContainer, Promise>
             {
-                private TResolver _resolver;
+                private TDelegate _callback;
             }
 
-            partial class PromiseResolveReject<TResult, TResolver, TRejecter> : PromiseSingleAwait<TResult>
-                where TResolver : IDelegateResolveOrCancel
-                where TRejecter : IDelegateReject
+            partial class ContinueVoidResultWaitPromise<TResult, TDelegate> : CallbackWaitPromiseBase<TResult>
+                where TDelegate : IFunc<Promise.ResultContainer, Promise<TResult>>
             {
-                private TResolver _resolver;
-                private TRejecter _rejecter;
+                private TDelegate _callback;
             }
 
-            partial class PromiseResolveRejectPromise<TResult, TResolver, TRejecter> : PromiseWaitPromise<TResult>
-                where TResolver : IDelegateResolveOrCancelPromise
-                where TRejecter : IDelegateRejectPromise
+            partial class ContinueArgResultPromise<TArg, TResult, TDelegate> : SingleAwaitPromise<TResult>
+                where TDelegate : IFunc<Promise<TArg>.ResultContainer, TResult>
             {
-                private TResolver _resolver;
-                private TRejecter _rejecter;
+                private TDelegate _callback;
             }
 
-            partial class PromiseContinue<TResult, TContinuer> : PromiseSingleAwait<TResult>
-                where TContinuer : IDelegateContinue
+            partial class ContinueArgVoidWaitPromise<TArg, TDelegate> : CallbackWaitPromiseBase<VoidResult>
+                where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise>
             {
-                private TContinuer _continuer;
+                private TDelegate _callback;
             }
 
-            partial class PromiseContinuePromise<TResult, TContinuer> : PromiseWaitPromise<TResult>
-                where TContinuer : IDelegateContinuePromise
+            partial class ContinueArgResultWaitPromise<TArg, TResult, TDelegate> : CallbackWaitPromiseBase<TResult>
+                where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>
             {
-                private TContinuer _continuer;
+                private TDelegate _callback;
             }
 
-            partial class PromiseFinally<TResult, TFinalizer> : PromiseSingleAwait<TResult>
-                where TFinalizer : IAction
+            partial class CancelableContinueVoidResultPromise<TResult, TDelegate> : SingleAwaitPromise<TResult>
+                where TDelegate : IFunc<Promise.ResultContainer, TResult>
             {
-                private TFinalizer _finalizer;
+                private CancelationHelper _cancelationHelper;
+                private TDelegate _callback;
             }
 
-            partial class PromiseFinallyWait<TResult, TFinalizer> : PromiseWaitPromise<TResult>
-                where TFinalizer : IFunc<Promise>, INullable
+            partial class CancelableContinueVoidVoidWaitPromise<TDelegate> : CallbackWaitPromiseBase<VoidResult>
+                where TDelegate : IFunc<Promise.ResultContainer, Promise>
             {
-                private TFinalizer _finalizer;
+                private CancelationHelper _cancelationHelper;
+                private TDelegate _callback;
+            }
+
+            partial class CancelableContinueVoidResultWaitPromise<TResult, TDelegate> : CallbackWaitPromiseBase<TResult>
+                where TDelegate : IFunc<Promise.ResultContainer, Promise<TResult>>
+            {
+                private CancelationHelper _cancelationHelper;
+                private TDelegate _callback;
+            }
+
+            partial class CancelableContinueArgResultPromise<TArg, TResult, TDelegate> : SingleAwaitPromise<TResult>
+                where TDelegate : IFunc<Promise<TArg>.ResultContainer, TResult>
+            {
+                private CancelationHelper _cancelationHelper;
+                private TDelegate _callback;
+            }
+
+            partial class CancelableContinueArgVoidWaitPromise<TArg, TDelegate> : CallbackWaitPromiseBase<VoidResult>
+                where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise>
+            {
+                private CancelationHelper _cancelationHelper;
+                private TDelegate _callback;
+            }
+
+            partial class CancelableContinueArgResultWaitPromise<TArg, TResult, TDelegate> : CallbackWaitPromiseBase<TResult>
+                where TDelegate : IFunc<Promise<TArg>.ResultContainer, Promise<TResult>>
+            {
+                private CancelationHelper _cancelationHelper;
+                private TDelegate _callback;
+            }
+
+
+            partial class ThenPromise<TArg, TResult, TDelegate> : SingleAwaitPromise<TResult>
+                where TDelegate : IFunc<TArg, TResult>
+            {
+                private TDelegate _callback;
+            }
+
+            partial class ThenWaitPromise<TArg, TDelegate> : CallbackWaitPromiseBase<VoidResult>
+                where TDelegate : IFunc<TArg, Promise>
+            {
+                private TDelegate _callback;
+            }
+
+            partial class ThenWaitPromise<TArg, TResult, TDelegate> : CallbackWaitPromiseBase<TResult>
+                where TDelegate : IFunc<TArg, Promise<TResult>>
+            {
+                private TDelegate _callback;
+            }
+
+            partial class ThenPromise<TArg, TResult, TReject, TDelegateResolve, TDelegateReject> : SingleAwaitPromise<TResult>
+                where TDelegateResolve : IFunc<TArg, TResult>
+                where TDelegateReject : IFunc<TReject, TResult>
+            {
+                private TDelegateResolve _resolveCallback;
+                private TDelegateReject _rejectCallback;
+            }
+
+            partial class ThenWaitPromise<TArg, TReject, TDelegateResolve, TDelegateReject> : CallbackWaitPromiseBase<VoidResult>
+                where TDelegateResolve : IFunc<TArg, Promise>
+                where TDelegateReject : IFunc<TReject, Promise>
+            {
+                private TDelegateResolve _resolveCallback;
+                private TDelegateReject _rejectCallback;
+            }
+
+            partial class ThenWaitPromise<TArg, TResult, TReject, TDelegateResolve, TDelegateReject> : CallbackWaitPromiseBase<TResult>
+                where TDelegateResolve : IFunc<TArg, Promise<TResult>>
+                where TDelegateReject : IFunc<TReject, Promise<TResult>>
+            {
+                private TDelegateResolve _resolveCallback;
+                private TDelegateReject _rejectCallback;
+            }
+
+
+            partial class CatchPromise<TResult, TReject, TDelegate> : SingleAwaitPromise<TResult>
+                where TDelegate : IFunc<TReject, TResult>
+            {
+                private TDelegate _callback;
+            }
+
+            partial class CatchWaitPromise<TReject, TDelegate> : CallbackWaitPromiseBase<VoidResult>
+                where TDelegate : IFunc<TReject, Promise>
+            {
+                private TDelegate _callback;
+            }
+
+            partial class CatchWaitPromise<TResult, TReject, TDelegate> : CallbackWaitPromiseBase<TResult>
+                where TDelegate : IFunc<TReject, Promise<TResult>>
+            {
+                private TDelegate _callback;
+            }
+
+            partial class CatchCancelationPromise<TResult, TDelegate> : SingleAwaitPromise<TResult>
+                where TDelegate : IFunc<VoidResult, TResult>
+            {
+                private TDelegate _callback;
+            }
+
+            partial class CatchCancelationWaitPromise<TDelegate> : CallbackWaitPromiseBase<VoidResult>
+                where TDelegate : IFunc<VoidResult, Promise>
+            {
+                private TDelegate _callback;
+            }
+
+            partial class CatchCancelationWaitPromise<TResult, TDelegate> : CallbackWaitPromiseBase<TResult>
+                where TDelegate : IFunc<VoidResult, Promise<TResult>>
+            {
+                private TDelegate _callback;
+            }
+
+
+            partial class FinallyPromise<TResult, TDelegate> : SingleAwaitPromise<TResult>
+                where TDelegate : IAction
+            {
+                private TDelegate _callback;
+            }
+
+            partial class FinallyWaitPromise<TResult, TDelegate> : CallbackWaitPromiseBase<TResult>
+                where TDelegate : IFunc<Promise>
+            {
+                private TDelegate _callback;
                 private Promise.State _previousState;
             }
 
-            partial class PromiseCancel<TResult, TCanceler> : PromiseSingleAwait<TResult>
-                where TCanceler : IDelegateResolveOrCancel
-            {
-                private TCanceler _canceler;
-            }
-
-            partial class PromiseCancelPromise<TResult, TCanceler> : PromiseWaitPromise<TResult>
-                where TCanceler : IDelegateResolveOrCancelPromise
-            {
-                private TCanceler _canceler;
-            }
-            #endregion
-
-            #region Cancelable Promises
-            partial struct CancelationHelper
-            {
-                private CancelationRegistration _cancelationRegistration;
-                // int for Interlocked.Exchange.
-                private int _isCompletedFlag;
-                // The retain counter is to ensure the async op(s) we're waiting for and the cancelation callback
-                // are completed or guaranteed to never invoke before we return the object to the pool.
-                private int _retainCounter;
-            }
-
-            partial class CancelablePromiseContinue<TResult, TContinuer> : PromiseSingleAwait<TResult>
-                where TContinuer : IDelegateContinue
-            {
-                internal CancelationHelper _cancelationHelper;
-                private TContinuer _continuer;
-            }
-
-            partial class CancelablePromiseContinuePromise<TResult, TContinuer> : PromiseWaitPromise<TResult>
-                where TContinuer : IDelegateContinuePromise
-            {
-                internal CancelationHelper _cancelationHelper;
-                private TContinuer _continuer;
-            }
-            #endregion
-
             #region Multi Promises
-            partial class MultiHandleablePromiseBase<TResult> : PromiseSingleAwait<TResult>
+            partial class MultiHandleablePromiseBase<TResult> : SingleAwaitPromise<TResult>
             {
                 protected int _retainCounter;
                 protected int _isComplete; // Flag used to indicate that the promise has already been completed. int for Interlocked.
@@ -416,7 +528,7 @@ namespace Proto.Promises
 #endif
             }
 
-            partial class PromiseGroupBase<TResult> : PromiseSingleAwait<TResult>
+            partial class PromiseGroupBase<TResult> : SingleAwaitPromise<TResult>
             {
                 internal List<Exception> _exceptions;
                 protected CancelationRef _cancelationRef; // Store the reference directly instead of CancelationSource struct to reduce memory.
@@ -434,12 +546,12 @@ namespace Proto.Promises
             {
             }
 
-            partial class MergePromiseGroup<TResult> : PromiseSingleAwait<TResult>
+            partial class MergePromiseGroup<TResult> : SingleAwaitPromise<TResult>
             {
                 private bool _isExtended;
             }
 
-            partial class MergePromiseResultsGroup<TResult> : PromiseSingleAwait<TResult>
+            partial class MergePromiseResultsGroup<TResult> : SingleAwaitPromise<TResult>
             {
                 private bool _isExtended;
             }
@@ -476,7 +588,7 @@ namespace Proto.Promises
             }
             #endregion
 
-            partial class AsyncPromiseRef<TResult> : PromiseSingleAwait<TResult>
+            partial class AsyncPromiseRef<TResult> : SingleAwaitPromise<TResult>
             {
 #if !OPTIMIZED_ASYNC_MODE
                 partial class PromiseMethodContinuer : HandleablePromiseBase

@@ -4,28 +4,34 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0016 // Use 'throw' expression
-
 using Proto.Promises.Collections;
-using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Proto.Promises
 {
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode, StackTraceHidden]
-#endif
-    partial struct Promise { }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode, StackTraceHidden]
-#endif
-    partial struct Promise<T> { }
-
     partial class Internal
     {
+        // We use abstract classes instead of interfaces, because virtual calls on interfaces are twice as slow as virtual calls on classes.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal abstract partial class HandleablePromiseBase : ILinked<HandleablePromiseBase>
+        {
+            HandleablePromiseBase ILinked<HandleablePromiseBase>.Next
+            {
+                [MethodImpl(InlineOption)]
+                get => _next;
+                [MethodImpl(InlineOption)]
+                set => _next = value;
+            }
+
+            internal virtual void Handle(PromiseRefBase handler, Promise.State state) => throw new System.InvalidOperationException();
+            // For PromisePassThrough
+            internal virtual void Handle(PromiseRefBase handler, Promise.State state, int index) => throw new System.InvalidOperationException();
+        }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
@@ -185,21 +191,6 @@ namespace Proto.Promises
                 }
             }
 
-            internal TPromise HookupCancelablePromise<TPromise>(TPromise promise, short promiseId, CancelationToken cancelationToken, ref CancelationHelper cancelationHelper)
-                where TPromise : PromiseRefBase, ICancelable
-            {
-                promise.SetPrevious(this);
-                cancelationHelper.Register(cancelationToken, promise); // IMPORTANT - must register after promise is fully setup.
-                HookupNewWaiter(promiseId, promise);
-                return promise;
-            }
-
-            internal void HookupNewPromise(short promiseId, PromiseRefBase newPromise)
-            {
-                newPromise.SetPrevious(this);
-                HookupNewWaiter(promiseId, newPromise);
-            }
-
             internal void HookupNewWaiter(short promiseId, HandleablePromiseBase waiter)
             {
                 try
@@ -317,10 +308,16 @@ namespace Proto.Promises
                 }
             }
 
+            internal virtual void MaybeReportUnhandledAndDispose(Promise.State state)
+            {
+                MaybeReportUnhandledRejection(state);
+                MaybeDispose();
+            }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal abstract partial class PromiseSingleAwait<TResult> : PromiseRef<TResult>
+            internal abstract partial class SingleAwaitPromise<TResult> : PromiseRef<TResult>
             {
                 internal sealed override void Forget(short promiseId)
                     => HookupExistingWaiter(promiseId, PromiseForgetSentinel.s_instance);
@@ -380,56 +377,16 @@ namespace Proto.Promises
                     previousWaiter = CompareExchangeWaiter(waiter, PendingAwaitSentinel.s_instance);
                     return this;
                 }
-
-                internal override void Handle(PromiseRefBase handler, Promise.State state)
-                {
-                    ThrowIfInPool(this);
-                    handler.SetCompletionState(state);
-
-                    // Handler is disposed in Execute, so we need to cache the reject container in case of a RethrowException.
-                    var rejectContainer = handler.RejectContainer;
-                    bool invokingRejected = false;
-                    SetCurrentInvoker(this);
-                    try
-                    {
-                        Execute(handler, state, ref invokingRejected);
-                    }
-                    catch (RethrowException e)
-                    {
-                        if (invokingRejected)
-                        {
-                            RejectContainer = rejectContainer;
-                        }
-                        else
-                        {
-                            RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
-                            state = Promise.State.Rejected;
-                        }
-                        HandleNextInternal(state);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        HandleNextInternal(Promise.State.Canceled);
-                    }
-                    catch (Exception e)
-                    {
-                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
-                        HandleNextInternal(Promise.State.Rejected);
-                    }
-                    ClearCurrentInvoker();
-                }
-
-                protected virtual void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected) => throw new System.InvalidOperationException();
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class PromiseMultiAwait<TResult> : PromiseRef<TResult>
+            internal sealed partial class PreservedPromise<TResult> : PromiseRef<TResult>
             {
-                private PromiseMultiAwait() { }
+                private PreservedPromise() { }
 
-                ~PromiseMultiAwait()
+                ~PreservedPromise()
                 {
                     if (!WasAwaitedOrForgotten)
                     {
@@ -452,23 +409,24 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private static PromiseMultiAwait<TResult> GetOrCreate()
+                private static PreservedPromise<TResult> GetOrCreate()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<PromiseMultiAwait<TResult>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<PreservedPromise<TResult>>();
                     return obj == InvalidAwaitSentinel.s_instance
-                        ? new PromiseMultiAwait<TResult>()
-                        : obj.UnsafeAs<PromiseMultiAwait<TResult>>();
+                        ? new PreservedPromise<TResult>()
+                        : obj.UnsafeAs<PreservedPromise<TResult>>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseMultiAwait<TResult> GetOrCreateAndHookup(PromiseRefBase previous, short id)
+                internal static Promise<TResult> New(Promise previous)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
-                    previous.HookupNewPromise(id, promise);
+                    promise.SetPrevious(previous._ref);
+                    previous._ref.HookupNewWaiter(previous._id, promise);
                     // We create the temp collection after we hook up in case the operation is invalid.
                     promise._nextBranches = new TempCollectionBuilder<HandleablePromiseBase>(0);
-                    return promise;
+                    return new Promise<TResult>(promise);
                 }
 
                 private void Retain()
@@ -497,6 +455,11 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
+                internal override void MaybeReportUnhandledAndDispose(Promise.State state)
+                    // We don't report unhandled rejection here unless none of the waiters suppressed.
+                    // This way we only report it once in case multiple waiters were canceled.
+                    => MaybeDispose();
+
                 internal override bool GetIsCompleted(short promiseId)
                 {
                     lock (this)
@@ -515,18 +478,10 @@ namespace Proto.Promises
                 }
 
                 internal override PromiseRefBase GetDuplicate(short promiseId)
-                {
-                    var newPromise = PromiseDuplicate<VoidResult>.GetOrCreate();
-                    HookupNewPromise(promiseId, newPromise);
-                    return newPromise;
-                }
+                    => GetDuplicateT(promiseId);
 
                 internal override PromiseRef<TResult> GetDuplicateT(short promiseId)
-                {
-                    var newPromise = PromiseDuplicate<TResult>.GetOrCreate();
-                    HookupNewPromise(promiseId, newPromise);
-                    return newPromise;
-                }
+                    => DuplicatePromise<TResult>.New(new Promise(this, promiseId))._ref;
 
                 [MethodImpl(InlineOption)]
                 internal override bool GetIsValid(short promiseId)
@@ -607,9 +562,9 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class PromiseDuplicate<TResult> : PromiseSingleAwait<TResult>
+            internal sealed partial class DuplicatePromise<TResult> : SingleAwaitPromise<TResult>
             {
-                private PromiseDuplicate() { }
+                private DuplicatePromise() { }
 
                 internal override void MaybeDispose()
                 {
@@ -618,20 +573,22 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                private static PromiseDuplicate<TResult> GetOrCreateInstance()
+                private static DuplicatePromise<TResult> GetOrCreateInstance()
                 {
-                    var obj = ObjectPool.TryTakeOrInvalid<PromiseDuplicate<TResult>>();
+                    var obj = ObjectPool.TryTakeOrInvalid<DuplicatePromise<TResult>>();
                     return obj == InvalidAwaitSentinel.s_instance
-                        ? new PromiseDuplicate<TResult>()
-                        : obj.UnsafeAs<PromiseDuplicate<TResult>>();
+                        ? new DuplicatePromise<TResult>()
+                        : obj.UnsafeAs<DuplicatePromise<TResult>>();
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static PromiseDuplicate<TResult> GetOrCreate()
+                internal static Promise<TResult> New(Promise previous)
                 {
                     var promise = GetOrCreateInstance();
                     promise.Reset();
-                    return promise;
+                    promise.SetPrevious(previous._ref);
+                    previous._ref.HookupNewWaiter(previous._id, promise);
+                    return new Promise<TResult>(promise);
                 }
 
                 internal override void Handle(PromiseRefBase handler, Promise.State state)
@@ -645,835 +602,12 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class RunPromise<TResult, TDelegate> : PromiseSingleAwait<TResult>
-                where TDelegate : IDelegateRun
+            internal abstract partial class CallbackWaitPromiseBase<TResult> : SingleAwaitPromise<TResult>
             {
-                private RunPromise() { }
-
-                internal override void MaybeDispose()
+                protected new void Reset()
                 {
-                    Dispose();
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                [MethodImpl(InlineOption)]
-                private static RunPromise<TResult, TDelegate> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<RunPromise<TResult, TDelegate>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new RunPromise<TResult, TDelegate>()
-                        : obj.UnsafeAs<RunPromise<TResult, TDelegate>>();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static RunPromise<TResult, TDelegate> GetOrCreate(TDelegate runner)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    promise._runner = runner;
-                    return promise;
-                }
-
-                [MethodImpl(InlineOption)]
-                internal void ScheduleOnContext(SynchronizationContext context)
-                    => ScheduleContextCallback(context, this,
-                        obj => obj.UnsafeAs<RunPromise<TResult, TDelegate>>().Run(),
-                        obj => obj.UnsafeAs<RunPromise<TResult, TDelegate>>().Run()
-                    );
-
-                private void Run()
-                {
-                    ThrowIfInPool(this);
-
-                    var runner = _runner;
-                    _runner = default;
-
-                    SetCurrentInvoker(this);
-                    try
-                    {
-                        runner.Invoke(this);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        HandleNextInternal(Promise.State.Canceled);
-                    }
-                    catch (Exception e)
-                    {
-                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
-                        HandleNextInternal(Promise.State.Rejected);
-                    }
-                    ClearCurrentInvoker();
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            internal sealed partial class RunWaitPromise<TResult, TDelegate> : PromiseWaitPromise<TResult>
-                where TDelegate : IDelegateRunPromise
-            {
-                private RunWaitPromise() { }
-
-                internal override void MaybeDispose()
-                {
-                    Dispose();
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                [MethodImpl(InlineOption)]
-                private static RunWaitPromise<TResult, TDelegate> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<RunWaitPromise<TResult, TDelegate>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new RunWaitPromise<TResult, TDelegate>()
-                        : obj.UnsafeAs<RunWaitPromise<TResult, TDelegate>>();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static RunWaitPromise<TResult, TDelegate> GetOrCreate(TDelegate runner)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    promise._runner = runner;
-                    return promise;
-                }
-
-                [MethodImpl(InlineOption)]
-                internal void ScheduleOnContext(SynchronizationContext context)
-                    => ScheduleContextCallback(context, this,
-                        obj => obj.UnsafeAs<RunWaitPromise<TResult, TDelegate>>().Run(),
-                        obj => obj.UnsafeAs<RunWaitPromise<TResult, TDelegate>>().Run()
-                    );
-
-                private void Run()
-                {
-                    ThrowIfInPool(this);
-
-                    var runner = _runner;
-                    _runner = default;
-
-                    SetCurrentInvoker(this);
-                    try
-                    {
-                        runner.Invoke(this);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        HandleNextInternal(Promise.State.Canceled);
-                    }
-                    catch (Exception e)
-                    {
-                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
-                        HandleNextInternal(Promise.State.Rejected);
-                    }
-                    ClearCurrentInvoker();
-                }
-
-                internal override void Handle(PromiseRefBase handler, Promise.State state)
-                {
-                    // The returned promise is handling this.
-                    handler.SetCompletionState(state);
-                    HandleSelf(handler, state);
-                }
-            }
-
-            [MethodImpl(InlineOption)]
-            internal void WaitFor(Promise other)
-            {
-                ThrowIfInPool(this);
-                ValidateReturn(other);
-                this.UnsafeAs<PromiseWaitPromise<VoidResult>>().WaitFor(other._ref, other._id);
-            }
-
-            [MethodImpl(InlineOption)]
-            internal void WaitFor<TResult>(in Promise<TResult> other)
-            {
-                ThrowIfInPool(this);
-                ValidateReturn(other);
-                this.UnsafeAs<PromiseWaitPromise<TResult>>().WaitFor(other._ref, other._result, other._id);
-            }
-
-            // This is only used in PromiseWaitPromise<TResult>, but we pulled it out to prevent excess generated generic interface types.
-            protected interface IWaitForCompleteHandler
-            {
-                void HandleHookup(PromiseRefBase handler);
-                void HandleNull();
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            internal abstract partial class PromiseWaitPromise<TResult> : PromiseSingleAwait<TResult>
-            {
-#if !PROTO_PROMISE_DEVELOPER_MODE
-                [DebuggerNonUserCode, StackTraceHidden]
-#endif
-                private readonly struct DefaultCompleteHandler : IWaitForCompleteHandler
-                {
-                    private readonly PromiseWaitPromise<TResult> _owner;
-
-                    [MethodImpl(InlineOption)]
-                    internal DefaultCompleteHandler(PromiseWaitPromise<TResult> owner)
-                    {
-                        _owner = owner;
-                    }
-
-                    [MethodImpl(InlineOption)]
-                    void IWaitForCompleteHandler.HandleHookup(PromiseRefBase handler)
-                        => _owner.HandleSelf(handler, handler.State);
-
-                    [MethodImpl(InlineOption)]
-                    void IWaitForCompleteHandler.HandleNull()
-                        => _owner.HandleNextInternal(Promise.State.Resolved);
-                }
-
-                [MethodImpl(InlineOption)]
-                internal void WaitFor(PromiseRefBase other, short id)
-                    => WaitFor(other, id, new DefaultCompleteHandler(this));
-
-                [MethodImpl(InlineOption)]
-                internal void WaitFor(PromiseRefBase other, in TResult maybeResult, short id)
-                    => WaitFor(other, maybeResult, id, new DefaultCompleteHandler(this));
-
-                [MethodImpl(InlineOption)]
-                protected void WaitFor<TCompleteHandler>(PromiseRefBase other, short id, TCompleteHandler completeHandler)
-                    where TCompleteHandler : IWaitForCompleteHandler
-                {
-                    if (other == null)
-                    {
-                        this.SetPrevious(null);
-                        completeHandler.HandleNull();
-                        return;
-                    }
-                    SetSecondPreviousAndWaitFor(other, id, completeHandler);
-                }
-
-                [MethodImpl(InlineOption)]
-                protected void WaitFor<TCompleteHandler>(PromiseRefBase other, in TResult maybeResult, short id, TCompleteHandler completeHandler)
-                    where TCompleteHandler : IWaitForCompleteHandler
-                {
-                    if (other == null)
-                    {
-                        _result = maybeResult;
-                        this.SetPrevious(null);
-                        completeHandler.HandleNull();
-                        return;
-                    }
-                    SetSecondPreviousAndWaitFor(other, id, completeHandler);
-                }
-
-                private void SetSecondPreviousAndWaitFor<TCompleteHandler>(PromiseRefBase secondPrevious, short id, TCompleteHandler completeHandler)
-                    where TCompleteHandler : IWaitForCompleteHandler
-                {
-                    PromiseRefBase promiseSingleAwait = secondPrevious.AddWaiter(id, this, out var previousWaiter);
-                    this.SetPrevious(secondPrevious);
-                    if (previousWaiter != PendingAwaitSentinel.s_instance)
-                    {
-                        VerifyAndHandleSelf(secondPrevious, promiseSingleAwait, completeHandler);
-                    }
-                }
-
-                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                private static void VerifyAndHandleSelf<TCompleteHandler>(PromiseRefBase other, PromiseRefBase promiseSingleAwait, TCompleteHandler completeHandler)
-                    where TCompleteHandler : IWaitForCompleteHandler
-                {
-                    if (!VerifyWaiter(promiseSingleAwait))
-                    {
-                        throw new InvalidReturnException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", string.Empty);
-                    }
-
-                    other.WaitUntilStateIsNotPending();
-                    completeHandler.HandleHookup(other);
-                }
-            }
-
-            // IDelegate to reduce the amount of classes I would have to write (Composition Over Inheritance).
-            // Using generics with constraints allows us to use structs to get composition for "free"
-            // (no extra object allocation or extra memory overhead, and the compiler will generate the Promise classes for us).
-            // The only downside is that more classes are created than if we just used straight interfaces (not a problem with JIT, but makes the code size larger with AOT).
-
-            // Resolve types for more common .Then(onResolved) calls to be more efficient (because the runtime does not allow 0-size structs).
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class PromiseResolve<TResult, TResolver> : PromiseSingleAwait<TResult>
-                where TResolver : IDelegateResolveOrCancel
-            {
-                private PromiseResolve() { }
-
-                [MethodImpl(InlineOption)]
-                private static PromiseResolve<TResult, TResolver> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<PromiseResolve<TResult, TResolver>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new PromiseResolve<TResult, TResolver>()
-                        : obj.UnsafeAs<PromiseResolve<TResult, TResolver>>();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static PromiseResolve<TResult, TResolver> GetOrCreate(TResolver resolver)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    promise._resolver = resolver;
-                    return promise;
-                }
-
-                internal override void MaybeDispose()
-                {
-                    Dispose();
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
-                {
-                    var resolveCallback = _resolver;
-                    _resolver = default;
-                    if (state == Promise.State.Resolved)
-                    {
-                        resolveCallback.InvokeResolver(handler, state, this);
-                    }
-                    else
-                    {
-                        HandleSelfWithoutResult(handler, state);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class PromiseResolvePromise<TResult, TResolver> : PromiseWaitPromise<TResult>
-                where TResolver : IDelegateResolveOrCancelPromise
-            {
-                private PromiseResolvePromise() { }
-
-                [MethodImpl(InlineOption)]
-                private static PromiseResolvePromise<TResult, TResolver> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<PromiseResolvePromise<TResult, TResolver>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new PromiseResolvePromise<TResult, TResolver>()
-                        : obj.UnsafeAs<PromiseResolvePromise<TResult, TResolver>>();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static PromiseResolvePromise<TResult, TResolver> GetOrCreate(TResolver resolver)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    promise._resolver = resolver;
-                    return promise;
-                }
-
-                internal override void MaybeDispose()
-                {
-                    Dispose();
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
-                {
-                    if (_resolver.IsNull)
-                    {
-                        // The returned promise is handling this.
-                        HandleSelf(handler, state);
-                        return;
-                    }
-
-                    var resolveCallback = _resolver;
-                    _resolver = default;
-                    if (state == Promise.State.Resolved)
-                    {
-                        resolveCallback.InvokeResolver(handler, state, this);
-                    }
-                    else
-                    {
-                        HandleSelfWithoutResult(handler, state);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class PromiseResolveReject<TResult, TResolver, TRejecter> : PromiseSingleAwait<TResult>
-                where TResolver : IDelegateResolveOrCancel
-                where TRejecter : IDelegateReject
-            {
-                private PromiseResolveReject() { }
-
-                [MethodImpl(InlineOption)]
-                private static PromiseResolveReject<TResult, TResolver, TRejecter> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<PromiseResolveReject<TResult, TResolver, TRejecter>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new PromiseResolveReject<TResult, TResolver, TRejecter>()
-                        : obj.UnsafeAs<PromiseResolveReject<TResult, TResolver, TRejecter>>();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static PromiseResolveReject<TResult, TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    promise._resolver = resolver;
-                    promise._rejecter = rejecter;
-                    return promise;
-                }
-
-                internal override void MaybeDispose()
-                {
-                    Dispose();
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
-                {
-                    var resolveCallback = _resolver;
-                    _resolver = default;
-                    var rejectCallback = _rejecter;
-                    _rejecter = default;
-                    if (state == Promise.State.Resolved)
-                    {
-                        resolveCallback.InvokeResolver(handler, state, this);
-                    }
-                    else if (state == Promise.State.Rejected)
-                    {
-                        var rejectContainer = handler.RejectContainer;
-                        handler.SuppressRejection = true;
-                        handler.MaybeDispose();
-                        invokingRejected = true;
-                        rejectCallback.InvokeRejecter(rejectContainer, this);
-                    }
-                    else
-                    {
-                        HandleSelfWithoutResult(handler, state);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class PromiseResolveRejectPromise<TResult, TResolver, TRejecter> : PromiseWaitPromise<TResult>
-                where TResolver : IDelegateResolveOrCancelPromise
-                where TRejecter : IDelegateRejectPromise
-            {
-                private PromiseResolveRejectPromise() { }
-
-                [MethodImpl(InlineOption)]
-                private static PromiseResolveRejectPromise<TResult, TResolver, TRejecter> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<PromiseResolveRejectPromise<TResult, TResolver, TRejecter>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new PromiseResolveRejectPromise<TResult, TResolver, TRejecter>()
-                        : obj.UnsafeAs<PromiseResolveRejectPromise<TResult, TResolver, TRejecter>>();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static PromiseResolveRejectPromise<TResult, TResolver, TRejecter> GetOrCreate(TResolver resolver, TRejecter rejecter)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    promise._resolver = resolver;
-                    promise._rejecter = rejecter;
-                    return promise;
-                }
-
-                internal override void MaybeDispose()
-                {
-                    Dispose();
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
-                {
-                    if (_resolver.IsNull)
-                    {
-                        // The returned promise is handling this.
-                        HandleSelf(handler, state);
-                        return;
-                    }
-
-                    var resolveCallback = _resolver;
-                    _resolver = default;
-                    var rejectCallback = _rejecter;
-                    _rejecter = default;
-                    if (state == Promise.State.Resolved)
-                    {
-                        resolveCallback.InvokeResolver(handler, state, this);
-                    }
-                    else if (state == Promise.State.Rejected)
-                    {
-                        handler.SuppressRejection = true;
-                        invokingRejected = true;
-                        rejectCallback.InvokeRejecter(handler, handler.RejectContainer, this);
-                    }
-                    else
-                    {
-                        HandleSelfWithoutResult(handler, state);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class PromiseContinue<TResult, TContinuer> : PromiseSingleAwait<TResult>
-                where TContinuer : IDelegateContinue
-            {
-                private PromiseContinue() { }
-
-                [MethodImpl(InlineOption)]
-                private static PromiseContinue<TResult, TContinuer> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<PromiseContinue<TResult, TContinuer>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new PromiseContinue<TResult, TContinuer>()
-                        : obj.UnsafeAs<PromiseContinue<TResult, TContinuer>>();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static PromiseContinue<TResult, TContinuer> GetOrCreate(TContinuer continuer)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    promise._continuer = continuer;
-                    return promise;
-                }
-
-                internal override void MaybeDispose()
-                {
-                    Dispose();
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
-                {
-                    handler.SuppressRejection = true;
-                    var callback = _continuer;
-                    _continuer = default;
-                    callback.Invoke(handler, handler.RejectContainer, state, this);
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class PromiseContinuePromise<TResult, TContinuer> : PromiseWaitPromise<TResult>
-                where TContinuer : IDelegateContinuePromise
-            {
-                private PromiseContinuePromise() { }
-
-                [MethodImpl(InlineOption)]
-                private static PromiseContinuePromise<TResult, TContinuer> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<PromiseContinuePromise<TResult, TContinuer>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new PromiseContinuePromise<TResult, TContinuer>()
-                        : obj.UnsafeAs<PromiseContinuePromise<TResult, TContinuer>>();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static PromiseContinuePromise<TResult, TContinuer> GetOrCreate(TContinuer continuer)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    promise._continuer = continuer;
-                    return promise;
-                }
-
-                internal override void MaybeDispose()
-                {
-                    Dispose();
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
-                {
-                    if (_continuer.IsNull)
-                    {
-                        // The returned promise is handling this.
-                        HandleSelf(handler, state);
-                        return;
-                    }
-
-                    var callback = _continuer;
-                    _continuer = default;
-                    handler.SuppressRejection = true;
-                    callback.Invoke(handler, handler.RejectContainer, state, this);
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class PromiseFinally<TResult, TFinalizer> : PromiseSingleAwait<TResult>
-                where TFinalizer : IAction
-            {
-                private PromiseFinally() { }
-
-                [MethodImpl(InlineOption)]
-                private static PromiseFinally<TResult, TFinalizer> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<PromiseFinally<TResult, TFinalizer>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new PromiseFinally<TResult, TFinalizer>()
-                        : obj.UnsafeAs<PromiseFinally<TResult, TFinalizer>>();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static PromiseFinally<TResult, TFinalizer> GetOrCreate(TFinalizer finalizer)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    promise._finalizer = finalizer;
-                    return promise;
-                }
-
-                internal override void MaybeDispose()
-                {
-                    Dispose();
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
-                {
-                    var callback = _finalizer;
-                    _finalizer = default;
-                    _result = handler.GetResult<TResult>();
-                    RejectContainer = handler.RejectContainer;
-                    handler.SuppressRejection = true;
-                    handler.MaybeDispose();
-                    try
-                    {
-                        callback.Invoke();
-                    }
-                    catch
-                    {
-                        // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
-                        if (state == Promise.State.Rejected)
-                        {
-                            RejectContainer.ReportUnhandled();
-                            RejectContainer = null; // Null it out in case it's a canceled exception.
-                        }
-                        throw;
-                    }
-                    HandleNextInternal(state);
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class PromiseFinallyWait<TResult, TFinalizer> : PromiseWaitPromise<TResult>
-                where TFinalizer : IFunc<Promise>, INullable
-            {
-                private PromiseFinallyWait() { }
-
-                [MethodImpl(InlineOption)]
-                private static PromiseFinallyWait<TResult, TFinalizer> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<PromiseFinallyWait<TResult, TFinalizer>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new PromiseFinallyWait<TResult, TFinalizer>()
-                        : obj.UnsafeAs<PromiseFinallyWait<TResult, TFinalizer>>();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static PromiseFinallyWait<TResult, TFinalizer> GetOrCreate(TFinalizer finalizer)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    promise._finalizer = finalizer;
-                    return promise;
-                }
-
-                internal override void MaybeDispose()
-                {
-                    Dispose();
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
-                {
-                    if (_finalizer.IsNull)
-                    {
-                        // The returned promise is handling this.
-                        HandleFromReturnedPromise(handler, state);
-                        return;
-                    }
-
-                    _result = handler.GetResult<TResult>();
-                    RejectContainer = handler.RejectContainer;
-                    handler.SuppressRejection = true;
-                    handler.MaybeDispose();
-                    var callback = _finalizer;
-                    _finalizer = default;
-                    Promise result;
-                    try
-                    {
-                        result = callback.Invoke();
-                    }
-                    catch
-                    {
-                        if (state == Promise.State.Rejected)
-                        {
-                            // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
-                            RejectContainer.ReportUnhandled();
-                            RejectContainer = null; // Null it out in case it's a canceled exception.
-                        }
-                        throw;
-                    }
-                    // Store the state until the returned promise is complete.
-                    _previousState = state;
-                    WaitFor(result._ref, result._id, new CompleteHandler(this));
-                }
-
-                private void HandleFromReturnedPromise(PromiseRefBase handler, Promise.State state)
-                {
-                    if (state == Promise.State.Resolved)
-                    {
-                        state = _previousState;
-                    }
-                    else
-                    {
-                        if (_previousState == Promise.State.Rejected)
-                        {
-                            // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
-                            RejectContainer.ReportUnhandled();
-                        }
-                        RejectContainer = handler.RejectContainer;
-                    }
-                    handler.SuppressRejection = true;
-                    handler.MaybeDispose();
-                    HandleNextInternal(state);
-                }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-                [DebuggerNonUserCode, StackTraceHidden]
-#endif
-                private readonly struct CompleteHandler : IWaitForCompleteHandler
-                {
-                    private readonly PromiseFinallyWait<TResult, TFinalizer> _owner;
-
-                    [MethodImpl(InlineOption)]
-                    internal CompleteHandler(PromiseFinallyWait<TResult, TFinalizer> owner)
-                    {
-                        _owner = owner;
-                    }
-
-                    [MethodImpl(InlineOption)]
-                    void IWaitForCompleteHandler.HandleHookup(PromiseRefBase handler)
-                        => _owner.HandleFromReturnedPromise(handler, handler.State);
-
-                    [MethodImpl(InlineOption)]
-                    void IWaitForCompleteHandler.HandleNull()
-                        => _owner.HandleNextInternal(_owner._previousState);
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class PromiseCancel<TResult, TCanceler> : PromiseSingleAwait<TResult>
-                where TCanceler : IDelegateResolveOrCancel
-            {
-                private PromiseCancel() { }
-
-                [MethodImpl(InlineOption)]
-                private static PromiseCancel<TResult, TCanceler> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<PromiseCancel<TResult, TCanceler>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new PromiseCancel<TResult, TCanceler>()
-                        : obj.UnsafeAs<PromiseCancel<TResult, TCanceler>>();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static PromiseCancel<TResult, TCanceler> GetOrCreate(TCanceler canceler)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    promise._canceler = canceler;
-                    return promise;
-                }
-
-                internal override void MaybeDispose()
-                {
-                    Dispose();
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
-                {
-                    var callback = _canceler;
-                    _canceler = default;
-                    if (state == Promise.State.Canceled)
-                    {
-                        callback.InvokeResolver(handler, state, this);
-                    }
-                    else
-                    {
-                        HandleSelf(handler, state);
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private sealed partial class PromiseCancelPromise<TResult, TCanceler> : PromiseWaitPromise<TResult>
-                where TCanceler : IDelegateResolveOrCancelPromise
-            {
-                private PromiseCancelPromise() { }
-
-                [MethodImpl(InlineOption)]
-                private static PromiseCancelPromise<TResult, TCanceler> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<PromiseCancelPromise<TResult, TCanceler>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new PromiseCancelPromise<TResult, TCanceler>()
-                        : obj.UnsafeAs<PromiseCancelPromise<TResult, TCanceler>>();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static PromiseCancelPromise<TResult, TCanceler> GetOrCreate(TCanceler resolver)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset();
-                    promise._canceler = resolver;
-                    return promise;
-                }
-
-                internal override void MaybeDispose()
-                {
-                    Dispose();
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                protected override void Execute(PromiseRefBase handler, Promise.State state, ref bool invokingRejected)
-                {
-                    if (_canceler.IsNull)
-                    {
-                        // The returned promise is handling this.
-                        HandleSelf(handler, state);
-                        return;
-                    }
-
-                    var callback = _canceler;
-                    _canceler = default;
-                    if (state == Promise.State.Canceled)
-                    {
-                        callback.InvokeResolver(handler, state, this);
-                    }
-                    else
-                    {
-                        HandleSelf(handler, state);
-                    }
+                    base.Reset();
+                    _firstContinue = true;
                 }
             }
 

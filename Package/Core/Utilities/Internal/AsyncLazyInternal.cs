@@ -323,7 +323,7 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            Hookup(promise._ref, promise._id);
+                            Hookup(promise);
                         }
                     }
                     catch (OperationCanceledException)
@@ -353,7 +353,7 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            Hookup(promise._ref, promise._id);
+                            Hookup(promise);
                         }
                     }
                     catch (OperationCanceledException)

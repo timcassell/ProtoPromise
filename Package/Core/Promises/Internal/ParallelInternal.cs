@@ -24,13 +24,13 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal struct ForLoopEnumerator : IParallelEnumerator<int>
+        internal struct ParallelForEnumerator : IParallelEnumerator<int>
         {
             private int _current;
             private readonly int _toIndex;
 
             [MethodImpl(InlineOption)]
-            internal ForLoopEnumerator(int fromIndex, int toIndex)
+            internal ParallelForEnumerator(int fromIndex, int toIndex)
             {
                 _current = fromIndex;
                 _toIndex = toIndex;
@@ -65,7 +65,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal struct GenericEnumerator<TEnumerator, T> : IParallelEnumerator<T>
+        internal struct ParallelForEachEnumerator<TEnumerator, T> : IParallelEnumerator<T>
             where TEnumerator : IEnumerator<T>
         {
             // This must not be readonly, in case the enumerator is a struct.
@@ -74,7 +74,7 @@ namespace Proto.Promises
 #pragma warning restore IDE0044 // Add readonly modifier
 
             [MethodImpl(InlineOption)]
-            internal GenericEnumerator(TEnumerator enumerator)
+            internal ParallelForEachEnumerator(TEnumerator enumerator)
             {
                 _enumerator = enumerator;
             }
@@ -108,45 +108,8 @@ namespace Proto.Promises
             }
         }
 
-        internal interface IParallelBody<TSource>
-        {
-            Promise Invoke(TSource source, CancelationToken cancelationToken);
-        }
-
-        internal readonly struct ParallelBody<TSource> : IParallelBody<TSource>
-        {
-            private readonly Func<TSource, CancelationToken, Promise> _body;
-
-            [MethodImpl(InlineOption)]
-            internal ParallelBody(Func<TSource, CancelationToken, Promise> body)
-            {
-                _body = body;
-            }
-
-            [MethodImpl(InlineOption)]
-            Promise IParallelBody<TSource>.Invoke(TSource source, CancelationToken cancelationToken)
-                => _body.Invoke(source, cancelationToken);
-        }
-
-        internal readonly struct ParallelCaptureBody<TSource, TCapture> : IParallelBody<TSource>
-        {
-            private readonly Func<TSource, TCapture, CancelationToken, Promise> _body;
-            private readonly TCapture _capturedValue;
-
-            [MethodImpl(InlineOption)]
-            internal ParallelCaptureBody(TCapture capturedValue, Func<TSource, TCapture, CancelationToken, Promise> body)
-            {
-                _capturedValue = capturedValue;
-                _body = body;
-            }
-
-            [MethodImpl(InlineOption)]
-            Promise IParallelBody<TSource>.Invoke(TSource source, CancelationToken cancelationToken)
-                => _body.Invoke(source, _capturedValue, cancelationToken);
-        }
-
         internal static Promise ParallelFor<TParallelBody>(int fromIndex, int toIndex, TParallelBody body, CancelationToken cancelationToken, SynchronizationContext synchronizationContext, int maxDegreeOfParallelism)
-            where TParallelBody : IParallelBody<int>
+            where TParallelBody : IFunc<int, CancelationToken, Promise>
         {
             if (maxDegreeOfParallelism == -1)
             {
@@ -169,15 +132,15 @@ namespace Proto.Promises
                 return Promise.Canceled();
             }
 
-            var promise = PromiseRefBase.PromiseParallelForEach<ForLoopEnumerator, TParallelBody, int>.GetOrCreate(
-                new ForLoopEnumerator(fromIndex, toIndex), body, cancelationToken, synchronizationContext, maxDegreeOfParallelism);
+            var promise = PromiseRefBase.PromiseParallelForEach<ParallelForEnumerator, TParallelBody, int>.GetOrCreate(
+                new ParallelForEnumerator(fromIndex, toIndex), body, cancelationToken, synchronizationContext, maxDegreeOfParallelism);
             promise.MaybeLaunchWorker(true);
             return new Promise(promise, promise.Id);
         }
 
         internal static Promise ParallelForEach<TEnumerator, TParallelBody, TSource>(TEnumerator enumerator, TParallelBody body, CancelationToken cancelationToken, SynchronizationContext synchronizationContext, int maxDegreeOfParallelism)
             where TEnumerator : IEnumerator<TSource>
-            where TParallelBody : IParallelBody<TSource>
+            where TParallelBody : IFunc<TSource, CancelationToken, Promise>
         {
             if (maxDegreeOfParallelism == -1)
             {
@@ -196,8 +159,8 @@ namespace Proto.Promises
                 return Promise.Canceled();
             }
 
-            var promise = PromiseRefBase.PromiseParallelForEach<GenericEnumerator<TEnumerator, TSource>, TParallelBody, TSource>.GetOrCreate(
-                new GenericEnumerator<TEnumerator, TSource>(enumerator), body, cancelationToken, synchronizationContext, maxDegreeOfParallelism);
+            var promise = PromiseRefBase.PromiseParallelForEach<ParallelForEachEnumerator<TEnumerator, TSource>, TParallelBody, TSource>.GetOrCreate(
+                new ParallelForEachEnumerator<TEnumerator, TSource>(enumerator), body, cancelationToken, synchronizationContext, maxDegreeOfParallelism);
             promise.MaybeLaunchWorker(true);
             return new Promise(promise, promise.Id);
         }
@@ -208,9 +171,9 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class PromiseParallelForEach<TEnumerator, TParallelBody, TSource> : PromiseSingleAwait<VoidResult>, ICancelable
+            internal sealed partial class PromiseParallelForEach<TEnumerator, TParallelBody, TSource> : SingleAwaitPromise<VoidResult>, ICancelable
                 where TEnumerator : IParallelEnumerator<TSource>
-                where TParallelBody : IParallelBody<TSource>
+                where TParallelBody : IFunc<TSource, CancelationToken, Promise>
             {
                 private TParallelBody _body;
                 private TEnumerator _enumerator;
