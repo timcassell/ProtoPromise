@@ -128,7 +128,7 @@ jobs:
           unityVersion: ${{ matrix.unity.version }}
         timeout-minutes: 180
 
-      - uses: dorny/test-reporter@main
+      - uses: dorny/test-reporter@v2
         if: always()
         with:
           name: unity-test-results-${{ matrix.unity.major }}-${{ matrix.testMode.name }}-${{ matrix.configuration.name }}-${{ matrix.objectPooling.name }}
