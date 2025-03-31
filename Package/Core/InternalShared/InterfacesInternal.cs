@@ -29,11 +29,6 @@ namespace Proto.Promises
             void ReportUnhandled();
             ExceptionDispatchInfo GetExceptionDispatchInfo();
         }
-
-        internal interface INullable
-        {
-            bool IsNull { get; }
-        }
     }
 
     internal interface IAction
