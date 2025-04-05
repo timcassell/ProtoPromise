@@ -98,6 +98,44 @@ namespace ProtoPromiseTests.Unity
         }
 
         [UnityTest]
+        public IEnumerator UnityRealTimerFactory_InvokeOnce(
+            [Values(-1, 0)] int createPeriod,
+            [Values(-1, 0)] int changePeriod)
+        {
+            TimerFactory provider = UnityRealTimerFactory.Instance;
+            TimerState state = new TimerState();
+
+            state.Timer = provider.CreateTimer(
+                stat =>
+                {
+                    TimerState s = (TimerState) stat;
+                    lock (s)
+                    {
+                        s.Counter++;
+                    }
+                },
+                state,
+                TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(createPeriod));
+
+            yield return new WaitUntil(() => state.Counter > 0);
+            Assert.AreEqual(1, state.Counter);
+            yield return new WaitForSecondsRealtime(0.2f);
+            Assert.AreEqual(1, state.Counter);
+
+            state.Timer.Change(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(changePeriod));
+
+            yield return new WaitUntil(() => state.Counter > 1);
+            Assert.AreEqual(2, state.Counter);
+            yield return new WaitForSecondsRealtime(0.2f);
+            Assert.AreEqual(2, state.Counter);
+
+            using (var yieldInstruction = state.Timer.DisposeAsync().ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+            }
+        }
+
+        [UnityTest]
         public IEnumerator UnitySimulatedTimerFactory_CreateTimer(
             [Values(0.5f, 1f, 2f)] float timeScale)
         {
@@ -148,6 +186,44 @@ namespace ProtoPromiseTests.Unity
             Assert.GreaterOrEqual(elapsed, minSeconds, $"The total fired periods {elapsed}s expected to be greater than the expected min {minSeconds}s");
 
             Time.timeScale = oldTimeScale;
+        }
+
+        [UnityTest]
+        public IEnumerator UnitySimulatedTimerFactory_InvokeOnce(
+            [Values(-1, 0)] int createPeriod,
+            [Values(-1, 0)] int changePeriod)
+        {
+            TimerFactory provider = UnitySimulatedTimerFactory.Instance;
+            TimerState state = new TimerState();
+
+            state.Timer = provider.CreateTimer(
+                stat =>
+                {
+                    TimerState s = (TimerState) stat;
+                    lock (s)
+                    {
+                        s.Counter++;
+                    }
+                },
+                state,
+                TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(createPeriod));
+
+            yield return new WaitUntil(() => state.Counter > 0);
+            Assert.AreEqual(1, state.Counter);
+            yield return new WaitForSeconds(0.2f);
+            Assert.AreEqual(1, state.Counter);
+
+            state.Timer.Change(TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(changePeriod));
+
+            yield return new WaitUntil(() => state.Counter > 1);
+            Assert.AreEqual(2, state.Counter);
+            yield return new WaitForSeconds(0.2f);
+            Assert.AreEqual(2, state.Counter);
+
+            using (var yieldInstruction = state.Timer.DisposeAsync().ToYieldInstruction())
+            {
+                yield return yieldInstruction;
+            }
         }
     }
 }
