@@ -47,19 +47,20 @@ Of course, async functions are powerful enough where this retry behavior can be 
 ```cs
 public async Promise<string> Download(string url, int maxRetries = 0)
 {
-Retry:
-    try
+    while (true)
     {
-        return await Download(url);
-    }
-    catch
-    {
-        if (--maxRetries < 0)
+        try
         {
-            throw; // Rethrow the rejection without processing it so that the caller can catch it.
+            return await Download(url);
         }
-        Console.Log($"There was an error downloading {url}, retrying..."); 
-        goto Retry;
+        catch
+        {
+            if (--maxRetries < 0)
+            {
+                throw; // Rethrow the rejection without processing it so that the caller can catch it.
+            }
+            Console.Log($"There was an error downloading {url}, retrying..."); 
+        }
     }
 }
 ```
