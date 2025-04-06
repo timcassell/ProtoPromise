@@ -15,6 +15,54 @@ namespace Proto.Promises.Linq
         // This is mostly because async enumerable values are expected to be evaluated lazily rather than all at once.
         // There are a few cases where the optimization would help (like array.ToAsyncEnumerable()), but it's not worth the added complexity to support those.
 
+        private static async Promise<long> LongCountCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate, CancelationToken cancelationToken)
+            where TPredicate : IFunc<TSource, CancelationToken, Promise<bool>>
+        {
+            try
+            {
+                long count = 0;
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    if (await predicate.Invoke(asyncEnumerator.Current, cancelationToken))
+                    {
+                        checked
+                        {
+                            ++count;
+                        }
+                    }
+                }
+                return count;
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+        }
+
+        private static async Promise<long> LongCountCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate, CancelationToken cancelationToken)
+            where TPredicate : IFunc<TSource, CancelationToken, Promise<bool>>
+        {
+            try
+            {
+                long count = 0;
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    if (await predicate.Invoke(asyncEnumerator.Current, cancelationToken))
+                    {
+                        checked
+                        {
+                            ++count;
+                        }
+                    }
+                }
+                return count;
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+        }
+
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> resulting in a <see cref="long"/> of the number of elements in an async-enumerable sequence.
         /// </summary>
@@ -60,7 +108,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return LongCountCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate));
+            return LongCountCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate), cancelationToken);
         }
 
         /// <summary>
@@ -79,31 +127,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return LongCountCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<long> LongCountCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, bool>
-        {
-            try
-            {
-                long count = 0;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    if (predicate.Invoke(asyncEnumerator.Current))
-                    {
-                        checked
-                        {
-                            ++count;
-                        }
-                    }
-                }
-                return count;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return LongCountCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate), cancelationToken);
         }
 
         /// <summary>
@@ -120,7 +144,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return LongCountAwaitCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate));
+            return LongCountCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate), cancelationToken);
         }
 
         /// <summary>
@@ -139,31 +163,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return LongCountAwaitCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<long> LongCountAwaitCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, Promise<bool>>
-        {
-            try
-            {
-                long count = 0;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    if (await predicate.Invoke(asyncEnumerator.Current))
-                    {
-                        checked
-                        {
-                            ++count;
-                        }
-                    }
-                }
-                return count;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return LongCountCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate), cancelationToken);
         }
 
         /// <summary>
@@ -179,7 +179,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return LongCountCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
+            return LongCountCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate), configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -197,31 +197,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return LongCountCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<long> LongCountCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, bool>
-        {
-            try
-            {
-                long count = 0;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    if (predicate.Invoke(asyncEnumerator.Current))
-                    {
-                        checked
-                        {
-                            ++count;
-                        }
-                    }
-                }
-                return count;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return LongCountCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate), configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -237,7 +213,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return LongCountAwaitCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
+            return LongCountCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate), configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -255,31 +231,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return LongCountAwaitCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<long> LongCountAwaitCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, Promise<bool>>
-        {
-            try
-            {
-                long count = 0;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    if (await predicate.Invoke(asyncEnumerator.Current))
-                    {
-                        checked
-                        {
-                            ++count;
-                        }
-                    }
-                }
-                return count;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return LongCountCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate), configuredSource.CancelationToken);
         }
     }
 }

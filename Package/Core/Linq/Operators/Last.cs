@@ -13,6 +13,66 @@ namespace Proto.Promises.Linq
 {
     partial class AsyncEnumerable
     {
+        private static async Promise<TSource> LastAsyncCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate, CancelationToken cancelationToken)
+            where TPredicate : IFunc<TSource, CancelationToken, Promise<bool>>
+        {
+            try
+            {
+                TSource last = default;
+                bool hasLast = false;
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    var item = asyncEnumerator.Current;
+                    if (await predicate.Invoke(item, cancelationToken))
+                    {
+                        hasLast = true;
+                        last = item;
+                    }
+                }
+
+                if (hasLast)
+                {
+                    return last;
+                }
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+
+            throw new InvalidOperationException("source must contain at least 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+        }
+
+        private static async Promise<TSource> LastAsyncCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate, CancelationToken cancelationToken)
+            where TPredicate : IFunc<TSource, CancelationToken, Promise<bool>>
+        {
+            try
+            {
+                TSource last = default;
+                bool hasLast = false;
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    var item = asyncEnumerator.Current;
+                    if (await predicate.Invoke(item, cancelationToken))
+                    {
+                        hasLast = true;
+                        last = item;
+                    }
+                }
+
+                if (hasLast)
+                {
+                    return last;
+                }
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+
+            throw new InvalidOperationException("source must contain at least 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+        }
+
         /// <summary>
         /// Asynchronously returns the last element of an async-enumerable sequence.
         /// </summary>
@@ -63,7 +123,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return LastAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate));
+            return LastAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate), cancelationToken);
         }
 
         /// <summary>
@@ -82,37 +142,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return LastAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<TSource> LastAsyncCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, bool>
-        {
-            try
-            {
-                TSource last = default;
-                bool hasLast = false;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    var item = asyncEnumerator.Current;
-                    if (predicate.Invoke(item))
-                    {
-                        hasLast = true;
-                        last = item;
-                    }
-                }
-
-                if (hasLast)
-                {
-                    return last;
-                }
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
-
-            throw new InvalidOperationException("source must contain at least 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+            return LastAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate), cancelationToken);
         }
 
         /// <summary>
@@ -129,7 +159,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return LastAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate));
+            return LastAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate), cancelationToken);
         }
 
         /// <summary>
@@ -148,37 +178,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return LastAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<TSource> LastAsyncCoreAwait<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, Promise<bool>>
-        {
-            try
-            {
-                TSource last = default;
-                bool hasLast = false;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    var item = asyncEnumerator.Current;
-                    if (await predicate.Invoke(item))
-                    {
-                        hasLast = true;
-                        last = item;
-                    }
-                }
-
-                if (hasLast)
-                {
-                    return last;
-                }
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
-
-            throw new InvalidOperationException("source must contain at least 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+            return LastAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate), cancelationToken);
         }
 
         /// <summary>
@@ -194,7 +194,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return LastAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
+            return LastAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate), configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -212,37 +212,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return LastAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<TSource> LastAsyncCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, bool>
-        {
-            try
-            {
-                TSource last = default;
-                bool hasLast = false;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    var item = asyncEnumerator.Current;
-                    if (predicate.Invoke(item))
-                    {
-                        hasLast = true;
-                        last = item;
-                    }
-                }
-
-                if (hasLast)
-                {
-                    return last;
-                }
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
-
-            throw new InvalidOperationException("source must contain at least 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+            return LastAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate), configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -258,7 +228,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return LastAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
+            return LastAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate), configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -276,37 +246,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return LastAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<TSource> LastAsyncCoreAwait<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, Promise<bool>>
-        {
-            try
-            {
-                TSource last = default;
-                bool hasLast = false;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    var item = asyncEnumerator.Current;
-                    if (await predicate.Invoke(item))
-                    {
-                        hasLast = true;
-                        last = item;
-                    }
-                }
-
-                if (hasLast)
-                {
-                    return last;
-                }
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
-
-            throw new InvalidOperationException("source must contain at least 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+            return LastAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate), configuredSource.CancelationToken);
         }
     }
 }

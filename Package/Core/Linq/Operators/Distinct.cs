@@ -229,7 +229,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.DistinctByHelper<TKey>.DistinctByAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
+            return Internal.DistinctByHelper<TKey>.DistinctBy(source.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -265,7 +265,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.DistinctByHelper<TKey>.DistinctByAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return Internal.DistinctByHelper<TKey>.DistinctBy(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -297,7 +297,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.DistinctByHelper<TKey>.DistinctByAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
+            return Internal.DistinctByHelper<TKey>.DistinctBy(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -333,7 +333,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.DistinctByHelper<TKey>.DistinctByAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return Internal.DistinctByHelper<TKey>.DistinctBy(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
     }
 }

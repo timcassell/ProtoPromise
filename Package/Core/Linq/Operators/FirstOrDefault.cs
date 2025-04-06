@@ -13,6 +13,48 @@ namespace Proto.Promises.Linq
 {
     partial class AsyncEnumerable
     {
+        private static async Promise<TSource> FirstOrDefaultAsyncCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate, TSource defaultValue, CancelationToken cancelationToken)
+            where TPredicate : IFunc<TSource, CancelationToken, Promise<bool>>
+        {
+            try
+            {
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    var item = asyncEnumerator.Current;
+                    if (await predicate.Invoke(item, cancelationToken))
+                    {
+                        return item;
+                    }
+                }
+                return defaultValue;
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+        }
+
+        private static async Promise<TSource> FirstOrDefaultAsyncCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate, TSource defaultValue, CancelationToken cancelationToken)
+            where TPredicate : IFunc<TSource, CancelationToken, Promise<bool>>
+        {
+            try
+            {
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    var item = asyncEnumerator.Current;
+                    if (await predicate.Invoke(item, cancelationToken))
+                    {
+                        return item;
+                    }
+                }
+                return defaultValue;
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+        }
+
         /// <summary>
         /// Asynchronously returns the first element of an async-enumerable sequence, or a default value if no element is found.
         /// </summary>
@@ -21,23 +63,7 @@ namespace Proto.Promises.Linq
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A <see cref="Promise{T}"/> resulting in the first element, or a default value if <paramref name="source"/> is empty.</returns>
         public static Promise<TSource> FirstOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, CancelationToken cancelationToken = default)
-        {
-            return Core(source.GetAsyncEnumerator(cancelationToken));
-
-            async Promise<TSource> Core(AsyncEnumerator<TSource> asyncEnumerator)
-            {
-                try
-                {
-                    return await asyncEnumerator.MoveNextAsync()
-                        ? asyncEnumerator.Current
-                        : default;
-                }
-                finally
-                {
-                    await asyncEnumerator.DisposeAsync();
-                }
-            }
-        }
+            => FirstOrDefaultAsync(source, default(TSource), cancelationToken);
 
         /// <summary>
         /// Asynchronously returns the first element of an async-enumerable sequence, or a specified default value if no element is found.
@@ -79,11 +105,7 @@ namespace Proto.Promises.Linq
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> FirstOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, bool> predicate, CancelationToken cancelationToken = default)
-        {
-            ValidateArgument(predicate, nameof(predicate), 1);
-
-            return FirstOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate));
-        }
+            => FirstOrDefaultAsync(source, predicate, default(TSource), cancelationToken);
 
         /// <summary>
         /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
@@ -100,32 +122,7 @@ namespace Proto.Promises.Linq
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> FirstOrDefaultAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, bool> predicate, CancelationToken cancelationToken = default)
-        {
-            ValidateArgument(predicate, nameof(predicate), 1);
-
-            return FirstOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<TSource> FirstOrDefaultAsyncCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, bool>
-        {
-            try
-            {
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    var item = asyncEnumerator.Current;
-                    if (predicate.Invoke(item))
-                    {
-                        return item;
-                    }
-                }
-                return default;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
-        }
+            => FirstOrDefaultAsync(source, captureValue, predicate, default(TSource), cancelationToken);
 
         /// <summary>
         /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
@@ -140,11 +137,7 @@ namespace Proto.Promises.Linq
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> FirstOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<bool>> predicate, CancelationToken cancelationToken = default)
-        {
-            ValidateArgument(predicate, nameof(predicate), 1);
-
-            return FirstOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate));
-        }
+            => FirstOrDefaultAsync(source, predicate, default(TSource), cancelationToken);
 
         /// <summary>
         /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
@@ -161,32 +154,7 @@ namespace Proto.Promises.Linq
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> FirstOrDefaultAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate, CancelationToken cancelationToken = default)
-        {
-            ValidateArgument(predicate, nameof(predicate), 1);
-
-            return FirstOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<TSource> FirstOrDefaultAsyncCoreAwait<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, Promise<bool>>
-        {
-            try
-            {
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    var item = asyncEnumerator.Current;
-                    if (await predicate.Invoke(item))
-                    {
-                        return item;
-                    }
-                }
-                return default;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
-        }
+            => FirstOrDefaultAsync(source, captureValue, predicate, default(TSource), cancelationToken);
 
         /// <summary>
         /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
@@ -200,11 +168,7 @@ namespace Proto.Promises.Linq
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> FirstOrDefaultAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, bool> predicate)
-        {
-            ValidateArgument(predicate, nameof(predicate), 1);
-
-            return FirstOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
-        }
+            => FirstOrDefaultAsync(configuredSource, predicate, default(TSource));
 
         /// <summary>
         /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
@@ -220,32 +184,7 @@ namespace Proto.Promises.Linq
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> FirstOrDefaultAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, bool> predicate)
-        {
-            ValidateArgument(predicate, nameof(predicate), 1);
-
-            return FirstOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<TSource> FirstOrDefaultAsyncCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, bool>
-        {
-            try
-            {
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    var item = asyncEnumerator.Current;
-                    if (predicate.Invoke(item))
-                    {
-                        return item;
-                    }
-                }
-                return default;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
-        }
+            => FirstOrDefaultAsync(configuredSource, captureValue, predicate, default(TSource));
 
         /// <summary>
         /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
@@ -259,11 +198,7 @@ namespace Proto.Promises.Linq
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> FirstOrDefaultAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<bool>> predicate)
-        {
-            ValidateArgument(predicate, nameof(predicate), 1);
-
-            return FirstOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
-        }
+            => FirstOrDefaultAsync(configuredSource, predicate, default(TSource));
 
         /// <summary>
         /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a default value if no such element is found.
@@ -279,32 +214,7 @@ namespace Proto.Promises.Linq
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> FirstOrDefaultAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate)
-        {
-            ValidateArgument(predicate, nameof(predicate), 1);
-
-            return FirstOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<TSource> FirstOrDefaultAsyncCoreAwait<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, Promise<bool>>
-        {
-            try
-            {
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    var item = asyncEnumerator.Current;
-                    if (await predicate.Invoke(item))
-                    {
-                        return item;
-                    }
-                }
-                return default;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
-        }
+            => FirstOrDefaultAsync(configuredSource, captureValue, predicate, default(TSource));
 
         /// <summary>
         /// Asynchronously returns the first element of an async-enumerable sequence that satisfies a specified condition, or a specified default value if no such element is found.
@@ -323,7 +233,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate), defaultValue);
+            return FirstOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate), defaultValue, cancelationToken);
         }
 
         /// <summary>
@@ -345,28 +255,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate), defaultValue);
-        }
-
-        private static async Promise<TSource> FirstOrDefaultAsyncCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate, TSource d)
-            where TPredicate : IFunc<TSource, bool>
-        {
-            try
-            {
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    var item = asyncEnumerator.Current;
-                    if (predicate.Invoke(item))
-                    {
-                        return item;
-                    }
-                }
-                return d;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return FirstOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate), defaultValue, cancelationToken);
         }
 
         /// <summary>
@@ -386,7 +275,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate), defaultValue);
+            return FirstOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate), defaultValue, cancelationToken);
         }
 
         /// <summary>
@@ -408,28 +297,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate), defaultValue);
-        }
-
-        private static async Promise<TSource> FirstOrDefaultAsyncCoreAwait<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate, TSource d)
-            where TPredicate : IFunc<TSource, Promise<bool>>
-        {
-            try
-            {
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    var item = asyncEnumerator.Current;
-                    if (await predicate.Invoke(item))
-                    {
-                        return item;
-                    }
-                }
-                return d;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return FirstOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate), defaultValue, cancelationToken);
         }
 
         /// <summary>
@@ -448,7 +316,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate), defaultValue);
+            return FirstOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate), defaultValue, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -469,28 +337,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate), defaultValue);
-        }
-
-        private static async Promise<TSource> FirstOrDefaultAsyncCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate, TSource d)
-            where TPredicate : IFunc<TSource, bool>
-        {
-            try
-            {
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    var item = asyncEnumerator.Current;
-                    if (predicate.Invoke(item))
-                    {
-                        return item;
-                    }
-                }
-                return d;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return FirstOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate), defaultValue, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -509,7 +356,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate), defaultValue);
+            return FirstOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate), defaultValue, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -530,28 +377,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate), defaultValue);
-        }
-
-        private static async Promise<TSource> FirstOrDefaultAsyncCoreAwait<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate, TSource d)
-            where TPredicate : IFunc<TSource, Promise<bool>>
-        {
-            try
-            {
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    var item = asyncEnumerator.Current;
-                    if (await predicate.Invoke(item))
-                    {
-                        return item;
-                    }
-                }
-                return d;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return FirstOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate), defaultValue, configuredSource.CancelationToken);
         }
     }
 }

@@ -65,7 +65,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.LookupHelper<TKey, TSource>.GetOrCreateAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(keySelector), comparer);
+            return Internal.LookupHelper<TKey, TSource>.GetOrCreateAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(keySelector), comparer, cancelationToken);
         }
 
         /// <summary>
@@ -93,7 +93,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.LookupHelper<TKey, TSource>.GetOrCreateAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
+            return Internal.LookupHelper<TKey, TSource>.GetOrCreateAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(keyCaptureValue, keySelector), comparer, cancelationToken);
         }
 
         /// <summary>
@@ -153,7 +153,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.LookupHelper<TKey, TSource>.GetOrCreateAwaitAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(keySelector), comparer);
+            return Internal.LookupHelper<TKey, TSource>.GetOrCreateAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(keySelector), comparer, cancelationToken);
         }
 
         /// <summary>
@@ -181,7 +181,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.LookupHelper<TKey, TSource>.GetOrCreateAwaitAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
+            return Internal.LookupHelper<TKey, TSource>.GetOrCreateAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(keyCaptureValue, keySelector), comparer, cancelationToken);
         }
 
         /// <summary>
@@ -301,7 +301,7 @@ namespace Proto.Promises.Linq
             return Internal.LookupHelper<TKey, TElement>.GetOrCreateAsync(source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -336,7 +336,7 @@ namespace Proto.Promises.Linq
             return Internal.LookupHelper<TKey, TElement>.GetOrCreateAsync(source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -371,7 +371,7 @@ namespace Proto.Promises.Linq
             return Internal.LookupHelper<TKey, TElement>.GetOrCreateAsync(source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(elementCaptureValue, elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -409,7 +409,7 @@ namespace Proto.Promises.Linq
             return Internal.LookupHelper<TKey, TElement>.GetOrCreateAsync(source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
                 DelegateWrapper.Create(elementCaptureValue, elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -526,10 +526,10 @@ namespace Proto.Promises.Linq
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.LookupHelper<TKey, TElement>.GetOrCreateAwaitAsync(source.GetAsyncEnumerator(cancelationToken),
+            return Internal.LookupHelper<TKey, TElement>.GetOrCreateAsync(source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -561,10 +561,10 @@ namespace Proto.Promises.Linq
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.LookupHelper<TKey, TElement>.GetOrCreateAwaitAsync(source.GetAsyncEnumerator(cancelationToken),
+            return Internal.LookupHelper<TKey, TElement>.GetOrCreateAsync(source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -596,10 +596,10 @@ namespace Proto.Promises.Linq
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.LookupHelper<TKey, TElement>.GetOrCreateAwaitAsync(source.GetAsyncEnumerator(cancelationToken),
+            return Internal.LookupHelper<TKey, TElement>.GetOrCreateAsync(source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(elementCaptureValue, elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -634,10 +634,10 @@ namespace Proto.Promises.Linq
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.LookupHelper<TKey, TElement>.GetOrCreateAwaitAsync(source.GetAsyncEnumerator(cancelationToken),
+            return Internal.LookupHelper<TKey, TElement>.GetOrCreateAsync(source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
                 DelegateWrapper.Create(elementCaptureValue, elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
         #endregion AsyncEnumerable
 
@@ -693,7 +693,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.LookupHelper<TKey, TSource>.GetOrCreateAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
+            return Internal.LookupHelper<TKey, TSource>.GetOrCreateAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -719,7 +719,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.LookupHelper<TKey, TSource>.GetOrCreateAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
+            return Internal.LookupHelper<TKey, TSource>.GetOrCreateAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keyCaptureValue, keySelector), comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -773,7 +773,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.LookupHelper<TKey, TSource>.GetOrCreateAwaitAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
+            return Internal.LookupHelper<TKey, TSource>.GetOrCreateAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -799,7 +799,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.LookupHelper<TKey, TSource>.GetOrCreateAwaitAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
+            return Internal.LookupHelper<TKey, TSource>.GetOrCreateAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keyCaptureValue, keySelector), comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -909,7 +909,7 @@ namespace Proto.Promises.Linq
             return Internal.LookupHelper<TKey, TElement>.GetOrCreateAsync(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -942,7 +942,7 @@ namespace Proto.Promises.Linq
             return Internal.LookupHelper<TKey, TElement>.GetOrCreateAsync(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -975,7 +975,7 @@ namespace Proto.Promises.Linq
             return Internal.LookupHelper<TKey, TElement>.GetOrCreateAsync(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(elementCaptureValue, elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -1011,7 +1011,7 @@ namespace Proto.Promises.Linq
             return Internal.LookupHelper<TKey, TElement>.GetOrCreateAsync(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
                 DelegateWrapper.Create(elementCaptureValue, elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -1118,10 +1118,10 @@ namespace Proto.Promises.Linq
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.LookupHelper<TKey, TElement>.GetOrCreateAwaitAsync(configuredSource.GetAsyncEnumerator(),
+            return Internal.LookupHelper<TKey, TElement>.GetOrCreateAsync(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -1151,10 +1151,10 @@ namespace Proto.Promises.Linq
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.LookupHelper<TKey, TElement>.GetOrCreateAwaitAsync(configuredSource.GetAsyncEnumerator(),
+            return Internal.LookupHelper<TKey, TElement>.GetOrCreateAsync(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -1184,10 +1184,10 @@ namespace Proto.Promises.Linq
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.LookupHelper<TKey, TElement>.GetOrCreateAwaitAsync(configuredSource.GetAsyncEnumerator(),
+            return Internal.LookupHelper<TKey, TElement>.GetOrCreateAsync(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(elementCaptureValue, elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -1220,10 +1220,10 @@ namespace Proto.Promises.Linq
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.LookupHelper<TKey, TElement>.GetOrCreateAwaitAsync(configuredSource.GetAsyncEnumerator(),
+            return Internal.LookupHelper<TKey, TElement>.GetOrCreateAsync(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
                 DelegateWrapper.Create(elementCaptureValue, elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
         #endregion ConfiguredAsyncEnumerable
     }

@@ -7,11 +7,170 @@
 using Proto.Promises.CompilerServices;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace Proto.Promises.Linq
 {
     partial class AsyncEnumerable
     {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        private static class MaxByHelper<TKey>
+        {
+            internal static async Promise<TSource> MaxByAsync<TSource, TKeySelector, TComparer>(AsyncEnumerator<TSource> asyncEnumerator, TKeySelector keySelector, TComparer comparer, CancelationToken cancelationToken)
+                where TComparer : IComparer<TKey>
+                where TKeySelector : IFunc<TSource, CancelationToken, Promise<TKey>>
+            {
+                try
+                {
+                    if (!await asyncEnumerator.MoveNextAsync())
+                    {
+                        // Check if nullable type. This check is eliminated by the JIT.
+                        if (default(TSource) == null)
+                        {
+                            return default;
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("source must contain at least 1 element.", Internal.GetFormattedStacktrace(1));
+                        }
+                    }
+
+                    TSource value = asyncEnumerator.Current;
+                    TKey key = await keySelector.Invoke(value, cancelationToken);
+
+                    // Check if nullable type. This check is eliminated by the JIT.
+                    if (default(TKey) == null)
+                    {
+                        if (key == null)
+                        {
+                            TSource firstValue = value;
+
+                            do
+                            {
+                                if (!await asyncEnumerator.MoveNextAsync())
+                                {
+                                    // All keys are null, surface the first element.
+                                    return firstValue;
+                                }
+
+                                value = asyncEnumerator.Current;
+                                key = await keySelector.Invoke(value, cancelationToken);
+                            }
+                            while (key == null);
+                        }
+
+                        while (await asyncEnumerator.MoveNextAsync())
+                        {
+                            TSource nextValue = asyncEnumerator.Current;
+                            TKey nextKey = await keySelector.Invoke(nextValue, cancelationToken);
+                            if (nextKey != null && comparer.Compare(nextKey, key) > 0)
+                            {
+                                key = nextKey;
+                                value = nextValue;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        while (await asyncEnumerator.MoveNextAsync())
+                        {
+                            TSource nextValue = asyncEnumerator.Current;
+                            TKey nextKey = await keySelector.Invoke(nextValue, cancelationToken);
+                            if (comparer.Compare(nextKey, key) > 0)
+                            {
+                                key = nextKey;
+                                value = nextValue;
+                            }
+                        }
+                    }
+
+                    return value;
+                }
+                finally
+                {
+                    await asyncEnumerator.DisposeAsync();
+                }
+            }
+
+            internal static async Promise<TSource> MaxByAsync<TSource, TKeySelector, TComparer>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TKeySelector keySelector, TComparer comparer, CancelationToken cancelationToken)
+                where TComparer : IComparer<TKey>
+                where TKeySelector : IFunc<TSource, CancelationToken, Promise<TKey>>
+            {
+                try
+                {
+                    if (!await asyncEnumerator.MoveNextAsync())
+                    {
+                        // Check if nullable type. This check is eliminated by the JIT.
+                        if (default(TSource) == null)
+                        {
+                            return default;
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("source must contain at least 1 element.", Internal.GetFormattedStacktrace(1));
+                        }
+                    }
+
+                    TSource value = asyncEnumerator.Current;
+                    TKey key = await keySelector.Invoke(value, cancelationToken);
+
+                    // Check if nullable type. This check is eliminated by the JIT.
+                    if (default(TKey) == null)
+                    {
+                        if (key == null)
+                        {
+                            TSource firstValue = value;
+
+                            do
+                            {
+                                if (!await asyncEnumerator.MoveNextAsync())
+                                {
+                                    // All keys are null, surface the first element.
+                                    return firstValue;
+                                }
+
+                                value = asyncEnumerator.Current;
+                                key = await keySelector.Invoke(value, cancelationToken);
+                            }
+                            while (key == null);
+                        }
+
+                        while (await asyncEnumerator.MoveNextAsync())
+                        {
+                            TSource nextValue = asyncEnumerator.Current;
+                            TKey nextKey = await keySelector.Invoke(nextValue, cancelationToken);
+                            if (nextKey != null && comparer.Compare(nextKey, key) > 0)
+                            {
+                                key = nextKey;
+                                value = nextValue;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        while (await asyncEnumerator.MoveNextAsync())
+                        {
+                            TSource nextValue = asyncEnumerator.Current;
+                            TKey nextKey = await keySelector.Invoke(nextValue, cancelationToken);
+                            if (comparer.Compare(nextKey, key) > 0)
+                            {
+                                key = nextKey;
+                                value = nextValue;
+                            }
+                        }
+                    }
+
+                    return value;
+                }
+                finally
+                {
+                    await asyncEnumerator.DisposeAsync();
+                }
+            }
+        }
+
         /// <summary>
         /// Asynchronously returns the maximum element of an async-enumerable sequence according to the specified key selector function using the default comparer.
         /// </summary>
@@ -53,7 +212,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MaxByHelper<TKey>.MaxByAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(keySelector), comparer);
+            return MaxByHelper<TKey>.MaxByAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(keySelector), comparer, cancelationToken);
         }
 
         /// <summary>
@@ -101,7 +260,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MaxByHelper<TKey>.MaxByAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return MaxByHelper<TKey>.MaxByAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, keySelector), comparer, cancelationToken);
         }
 
         /// <summary>
@@ -145,7 +304,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MaxByHelper<TKey>.MaxByAwaitAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(keySelector), comparer);
+            return MaxByHelper<TKey>.MaxByAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(keySelector), comparer, cancelationToken);
         }
 
         /// <summary>
@@ -193,7 +352,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MaxByHelper<TKey>.MaxByAwaitAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return MaxByHelper<TKey>.MaxByAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, keySelector), comparer, cancelationToken);
         }
 
         /// <summary>
@@ -235,7 +394,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MaxByHelper<TKey>.MaxByAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
+            return MaxByHelper<TKey>.MaxByAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -281,7 +440,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MaxByHelper<TKey>.MaxByAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return MaxByHelper<TKey>.MaxByAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -323,7 +482,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MaxByHelper<TKey>.MaxByAwaitAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
+            return MaxByHelper<TKey>.MaxByAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -369,314 +528,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return MaxByHelper<TKey>.MaxByAwaitAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
-        }
-
-        private static class MaxByHelper<TKey>
-        {
-            internal static async Promise<TSource> MaxByAsync<TSource, TKeySelector, TComparer>(AsyncEnumerator<TSource> asyncEnumerator, TKeySelector keySelector, TComparer comparer)
-                where TComparer : IComparer<TKey>
-                where TKeySelector : IFunc<TSource, TKey>
-            {
-                try
-                {
-                    if (!await asyncEnumerator.MoveNextAsync())
-                    {
-                        // Check if nullable type. This check is eliminated by the JIT.
-                        if (default(TSource) == null)
-                        {
-                            return default;
-                        }
-                        else
-                        {
-                            throw new InvalidOperationException("source must contain at least 1 element.", Internal.GetFormattedStacktrace(1));
-                        }
-                    }
-
-                    TSource value = asyncEnumerator.Current;
-                    TKey key = keySelector.Invoke(value);
-
-                    // Check if nullable type. This check is eliminated by the JIT.
-                    if (default(TKey) == null)
-                    {
-                        if (key == null)
-                        {
-                            TSource firstValue = value;
-
-                            do
-                            {
-                                if (!await asyncEnumerator.MoveNextAsync())
-                                {
-                                    // All keys are null, surface the first element.
-                                    return firstValue;
-                                }
-
-                                value = asyncEnumerator.Current;
-                                key = keySelector.Invoke(value);
-                            }
-                            while (key == null);
-                        }
-
-                        while (await asyncEnumerator.MoveNextAsync())
-                        {
-                            TSource nextValue = asyncEnumerator.Current;
-                            TKey nextKey = keySelector.Invoke(nextValue);
-                            if (nextKey != null && comparer.Compare(nextKey, key) > 0)
-                            {
-                                key = nextKey;
-                                value = nextValue;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        while (await asyncEnumerator.MoveNextAsync())
-                        {
-                            TSource nextValue = asyncEnumerator.Current;
-                            TKey nextKey = keySelector.Invoke(nextValue);
-                            if (comparer.Compare(nextKey, key) > 0)
-                            {
-                                key = nextKey;
-                                value = nextValue;
-                            }
-                        }
-                    }
-
-                    return value;
-                }
-                finally
-                {
-                    await asyncEnumerator.DisposeAsync();
-                }
-            }
-
-            internal static async Promise<TSource> MaxByAwaitAsync<TSource, TKeySelector, TComparer>(AsyncEnumerator<TSource> asyncEnumerator, TKeySelector keySelector, TComparer comparer)
-                where TComparer : IComparer<TKey>
-                where TKeySelector : IFunc<TSource, Promise<TKey>>
-            {
-                try
-                {
-                    if (!await asyncEnumerator.MoveNextAsync())
-                    {
-                        // Check if nullable type. This check is eliminated by the JIT.
-                        if (default(TSource) == null)
-                        {
-                            return default;
-                        }
-                        else
-                        {
-                            throw new InvalidOperationException("source must contain at least 1 element.", Internal.GetFormattedStacktrace(1));
-                        }
-                    }
-
-                    TSource value = asyncEnumerator.Current;
-                    TKey key = await keySelector.Invoke(value);
-
-                    // Check if nullable type. This check is eliminated by the JIT.
-                    if (default(TKey) == null)
-                    {
-                        if (key == null)
-                        {
-                            TSource firstValue = value;
-
-                            do
-                            {
-                                if (!await asyncEnumerator.MoveNextAsync())
-                                {
-                                    // All keys are null, surface the first element.
-                                    return firstValue;
-                                }
-
-                                value = asyncEnumerator.Current;
-                                key = await keySelector.Invoke(value);
-                            }
-                            while (key == null);
-                        }
-
-                        while (await asyncEnumerator.MoveNextAsync())
-                        {
-                            TSource nextValue = asyncEnumerator.Current;
-                            TKey nextKey = await keySelector.Invoke(nextValue);
-                            if (nextKey != null && comparer.Compare(nextKey, key) > 0)
-                            {
-                                key = nextKey;
-                                value = nextValue;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        while (await asyncEnumerator.MoveNextAsync())
-                        {
-                            TSource nextValue = asyncEnumerator.Current;
-                            TKey nextKey = await keySelector.Invoke(nextValue);
-                            if (comparer.Compare(nextKey, key) > 0)
-                            {
-                                key = nextKey;
-                                value = nextValue;
-                            }
-                        }
-                    }
-
-                    return value;
-                }
-                finally
-                {
-                    await asyncEnumerator.DisposeAsync();
-                }
-            }
-
-            internal static async Promise<TSource> MaxByAsync<TSource, TKeySelector, TComparer>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TKeySelector keySelector, TComparer comparer)
-                where TComparer : IComparer<TKey>
-                where TKeySelector : IFunc<TSource, TKey>
-            {
-                try
-                {
-                    if (!await asyncEnumerator.MoveNextAsync())
-                    {
-                        // Check if nullable type. This check is eliminated by the JIT.
-                        if (default(TSource) == null)
-                        {
-                            return default;
-                        }
-                        else
-                        {
-                            throw new InvalidOperationException("source must contain at least 1 element.", Internal.GetFormattedStacktrace(1));
-                        }
-                    }
-
-                    TSource value = asyncEnumerator.Current;
-                    TKey key = keySelector.Invoke(value);
-
-                    // Check if nullable type. This check is eliminated by the JIT.
-                    if (default(TKey) == null)
-                    {
-                        if (key == null)
-                        {
-                            TSource firstValue = value;
-
-                            do
-                            {
-                                if (!await asyncEnumerator.MoveNextAsync())
-                                {
-                                    // All keys are null, surface the first element.
-                                    return firstValue;
-                                }
-
-                                value = asyncEnumerator.Current;
-                                key = keySelector.Invoke(value);
-                            }
-                            while (key == null);
-                        }
-
-                        while (await asyncEnumerator.MoveNextAsync())
-                        {
-                            TSource nextValue = asyncEnumerator.Current;
-                            TKey nextKey = keySelector.Invoke(nextValue);
-                            if (nextKey != null && comparer.Compare(nextKey, key) > 0)
-                            {
-                                key = nextKey;
-                                value = nextValue;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        while (await asyncEnumerator.MoveNextAsync())
-                        {
-                            TSource nextValue = asyncEnumerator.Current;
-                            TKey nextKey = keySelector.Invoke(nextValue);
-                            if (comparer.Compare(nextKey, key) > 0)
-                            {
-                                key = nextKey;
-                                value = nextValue;
-                            }
-                        }
-                    }
-
-                    return value;
-                }
-                finally
-                {
-                    await asyncEnumerator.DisposeAsync();
-                }
-            }
-
-            internal static async Promise<TSource> MaxByAwaitAsync<TSource, TKeySelector, TComparer>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TKeySelector keySelector, TComparer comparer)
-                where TComparer : IComparer<TKey>
-                where TKeySelector : IFunc<TSource, Promise<TKey>>
-            {
-                try
-                {
-                    if (!await asyncEnumerator.MoveNextAsync())
-                    {
-                        // Check if nullable type. This check is eliminated by the JIT.
-                        if (default(TSource) == null)
-                        {
-                            return default;
-                        }
-                        else
-                        {
-                            throw new InvalidOperationException("source must contain at least 1 element.", Internal.GetFormattedStacktrace(1));
-                        }
-                    }
-
-                    TSource value = asyncEnumerator.Current;
-                    TKey key = await keySelector.Invoke(value);
-
-                    // Check if nullable type. This check is eliminated by the JIT.
-                    if (default(TKey) == null)
-                    {
-                        if (key == null)
-                        {
-                            TSource firstValue = value;
-
-                            do
-                            {
-                                if (!await asyncEnumerator.MoveNextAsync())
-                                {
-                                    // All keys are null, surface the first element.
-                                    return firstValue;
-                                }
-
-                                value = asyncEnumerator.Current;
-                                key = await keySelector.Invoke(value);
-                            }
-                            while (key == null);
-                        }
-
-                        while (await asyncEnumerator.MoveNextAsync())
-                        {
-                            TSource nextValue = asyncEnumerator.Current;
-                            TKey nextKey = await keySelector.Invoke(nextValue);
-                            if (nextKey != null && comparer.Compare(nextKey, key) > 0)
-                            {
-                                key = nextKey;
-                                value = nextValue;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        while (await asyncEnumerator.MoveNextAsync())
-                        {
-                            TSource nextValue = asyncEnumerator.Current;
-                            TKey nextKey = await keySelector.Invoke(nextValue);
-                            if (comparer.Compare(nextKey, key) > 0)
-                            {
-                                key = nextKey;
-                                value = nextValue;
-                            }
-                        }
-                    }
-
-                    return value;
-                }
-                finally
-                {
-                    await asyncEnumerator.DisposeAsync();
-                }
-            }
+            return MaxByHelper<TKey>.MaxByAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer, configuredSource.CancelationToken);
         }
     }
 }

@@ -250,7 +250,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
+            return Internal.OrderHelper<TSource, TKey>.OrderBy(source.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -276,7 +276,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
+            return Internal.OrderHelper<TSource, TKey>.OrderBy(source.GetAsyncEnumerator(), DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -410,7 +410,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
+            return Internal.OrderHelper<TSource, TKey>.OrderBy(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -436,7 +436,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
+            return Internal.OrderHelper<TSource, TKey>.OrderBy(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -570,7 +570,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
+            return Internal.OrderHelper<TSource, TKey>.OrderBy(source.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
         }
 
         /// <summary>
@@ -596,7 +596,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(keyCaptureValue, keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
+            return Internal.OrderHelper<TSource, TKey>.OrderBy(source.GetAsyncEnumerator(), DelegateWrapper.Create(keyCaptureValue, keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
         }
 
         /// <summary>
@@ -730,7 +730,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
+            return Internal.OrderHelper<TSource, TKey>.OrderBy(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
         }
 
         /// <summary>
@@ -756,7 +756,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.OrderByAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keyCaptureValue, keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
+            return Internal.OrderHelper<TSource, TKey>.OrderBy(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keyCaptureValue, keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
         }
         #endregion OrderBy
 
@@ -892,7 +892,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.ThenByAwait(source, DelegateWrapper.Create(keySelector), comparer);
+            return Internal.OrderHelper<TSource, TKey>.ThenBy(source, DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -918,7 +918,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.ThenByAwait(source, DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
+            return Internal.OrderHelper<TSource, TKey>.ThenBy(source, DelegateWrapper.Create(keyCaptureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -1052,7 +1052,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.ThenByAwait(source, DelegateWrapper.Create(keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
+            return Internal.OrderHelper<TSource, TKey>.ThenBy(source, DelegateWrapper.Create(keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
         }
 
         /// <summary>
@@ -1078,7 +1078,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.OrderHelper<TSource, TKey>.ThenByAwait(source, DelegateWrapper.Create(keyCaptureValue, keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
+            return Internal.OrderHelper<TSource, TKey>.ThenBy(source, DelegateWrapper.Create(keyCaptureValue, keySelector), new Internal.ReverseComparer<TKey, TComparer>(comparer));
         }
         #endregion ThenBy
     }

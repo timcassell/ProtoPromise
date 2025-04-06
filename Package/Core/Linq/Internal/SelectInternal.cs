@@ -21,13 +21,13 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private readonly struct SelectSyncIterator<TSource, TSelector> : IAsyncIterator<TResult>
-                where TSelector : IFunc<TSource, TResult>
+            private readonly struct SelectIterator<TSource, TSelector> : IAsyncIterator<TResult>
+                where TSelector : IFunc<TSource, CancelationToken, Promise<TResult>>
             {
                 private readonly AsyncEnumerator<TSource> _asyncEnumerator;
                 private readonly TSelector _selector;
 
-                internal SelectSyncIterator(AsyncEnumerator<TSource> asyncEnumerator, TSelector selector)
+                internal SelectIterator(AsyncEnumerator<TSource> asyncEnumerator, TSelector selector)
                 {
                     _asyncEnumerator = asyncEnumerator;
                     _selector = selector;
@@ -42,7 +42,7 @@ namespace Proto.Promises
                     {
                         while (await _asyncEnumerator.MoveNextAsync())
                         {
-                            await writer.YieldAsync(_selector.Invoke(_asyncEnumerator.Current));
+                            await writer.YieldAsync(await _selector.Invoke(_asyncEnumerator.Current, cancelationToken));
                         }
                         // We don't dispose the source enumerator until the owner is disposed.
                         // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
@@ -62,70 +62,19 @@ namespace Proto.Promises
             }
 
             internal static AsyncEnumerable<TResult> Select<TSource, TSelector>(AsyncEnumerator<TSource> source, TSelector selector)
-                where TSelector : IFunc<TSource, TResult>
-            {
-                return AsyncEnumerable<TResult>.Create(new SelectSyncIterator<TSource, TSelector>(source, selector));
-            }
+                where TSelector : IFunc<TSource, CancelationToken, Promise<TResult>>
+                => AsyncEnumerable<TResult>.Create(new SelectIterator<TSource, TSelector>(source, selector));
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private readonly struct SelectAsyncIterator<TSource, TSelector> : IAsyncIterator<TResult>
-                where TSelector : IFunc<TSource, Promise<TResult>>
-            {
-                private readonly AsyncEnumerator<TSource> _asyncEnumerator;
-                private readonly TSelector _selector;
-
-                internal SelectAsyncIterator(AsyncEnumerator<TSource> asyncEnumerator, TSelector selector)
-                {
-                    _asyncEnumerator = asyncEnumerator;
-                    _selector = selector;
-                }
-
-                public async AsyncIteratorMethod Start(AsyncStreamWriter<TResult> writer, CancelationToken cancelationToken)
-                {
-                    // The enumerator was retrieved without a cancelation token when the original function was called.
-                    // We need to propagate the token that was passed in, so we assign it before starting iteration.
-                    _asyncEnumerator._target._cancelationToken = cancelationToken;
-                    try
-                    {
-                        while (await _asyncEnumerator.MoveNextAsync())
-                        {
-                            await writer.YieldAsync(await _selector.Invoke(_asyncEnumerator.Current));
-                        }
-                        // We don't dispose the source enumerator until the owner is disposed.
-                        // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
-
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
-                    }
-                    finally
-                    {
-                        await _asyncEnumerator.DisposeAsync();
-                    }
-                }
-
-                [MethodImpl(InlineOption)]
-                public Promise DisposeAsyncWithoutStart()
-                    => _asyncEnumerator.DisposeAsync();
-            }
-
-            internal static AsyncEnumerable<TResult> SelectAwait<TSource, TSelector>(AsyncEnumerator<TSource> source, TSelector selector)
-                where TSelector : IFunc<TSource, Promise<TResult>>
-            {
-                return AsyncEnumerable<TResult>.Create(new SelectAsyncIterator<TSource, TSelector>(source, selector));
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private readonly struct ConfiguredSelectSyncIterator<TSource, TSelector> : IAsyncIterator<TResult>
-                where TSelector : IFunc<TSource, TResult>
+            private readonly struct ConfiguredSelectIterator<TSource, TSelector> : IAsyncIterator<TResult>
+                where TSelector : IFunc<TSource, CancelationToken, Promise<TResult>>
             {
                 private readonly ConfiguredAsyncEnumerable<TSource>.Enumerator _configuredAsyncEnumerator;
                 private readonly TSelector _selector;
 
-                internal ConfiguredSelectSyncIterator(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator, TSelector selector)
+                internal ConfiguredSelectIterator(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator, TSelector selector)
                 {
                     _configuredAsyncEnumerator = configuredAsyncEnumerator;
                     _selector = selector;
@@ -134,14 +83,13 @@ namespace Proto.Promises
                 public async AsyncIteratorMethod Start(AsyncStreamWriter<TResult> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
-                    var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
-                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(ref cancelationToken, ref _configuredAsyncEnumerator._enumerator._target._cancelationToken);
 
                     try
                     {
                         while (await _configuredAsyncEnumerator.MoveNextAsync())
                         {
-                            await writer.YieldAsync(_selector.Invoke(_configuredAsyncEnumerator.Current));
+                            await writer.YieldAsync(await _selector.Invoke(_configuredAsyncEnumerator.Current, cancelationToken));
                         }
                         // We don't dispose the source enumerator until the owner is disposed.
                         // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
@@ -161,73 +109,20 @@ namespace Proto.Promises
                     => _configuredAsyncEnumerator.DisposeAsync();
             }
 
-            internal static AsyncEnumerable<TResult> Select<TSource, TSelector>(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredSource, TSelector selector)
-                where TSelector : IFunc<TSource, TResult>
-            {
-                return AsyncEnumerable<TResult>.Create(new ConfiguredSelectSyncIterator<TSource, TSelector>(configuredSource, selector));
-            }
+            internal static AsyncEnumerable<TResult> Select<TSource, TSelector>(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator, TSelector selector)
+                where TSelector : IFunc<TSource, CancelationToken, Promise<TResult>>
+                => AsyncEnumerable<TResult>.Create(new ConfiguredSelectIterator<TSource, TSelector>(configuredAsyncEnumerator, selector));
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private readonly struct ConfiguredSelectAsyncIterator<TSource, TSelector> : IAsyncIterator<TResult>
-                where TSelector : IFunc<TSource, Promise<TResult>>
-            {
-                private readonly ConfiguredAsyncEnumerable<TSource>.Enumerator _configuredAsyncEnumerator;
-                private readonly TSelector _selector;
-
-                internal ConfiguredSelectAsyncIterator(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator, TSelector selector)
-                {
-                    _configuredAsyncEnumerator = configuredAsyncEnumerator;
-                    _selector = selector;
-                }
-
-                public async AsyncIteratorMethod Start(AsyncStreamWriter<TResult> writer, CancelationToken cancelationToken)
-                {
-                    // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
-                    var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
-                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
-
-                    try
-                    {
-                        while (await _configuredAsyncEnumerator.MoveNextAsync())
-                        {
-                            await writer.YieldAsync(await _selector.Invoke(_configuredAsyncEnumerator.Current));
-                        }
-                        // We don't dispose the source enumerator until the owner is disposed.
-                        // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
-
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
-                    }
-                    finally
-                    {
-                        maybeJoinedCancelationSource.Dispose();
-                        await _configuredAsyncEnumerator.DisposeAsync();
-                    }
-                }
-
-                [MethodImpl(InlineOption)]
-                public Promise DisposeAsyncWithoutStart()
-                    => _configuredAsyncEnumerator.DisposeAsync();
-            }
-
-            internal static AsyncEnumerable<TResult> SelectAwait<TSource, TSelector>(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredSource, TSelector selector)
-                where TSelector : IFunc<TSource, Promise<TResult>>
-            {
-                return AsyncEnumerable<TResult>.Create(new ConfiguredSelectAsyncIterator<TSource, TSelector>(configuredSource, selector));
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private readonly struct SelectWithIndexSyncIterator<TSource, TSelector> : IAsyncIterator<TResult>
-                where TSelector : IFunc<TSource, int, TResult>
+            private readonly struct SelectWithIndexIterator<TSource, TSelector> : IAsyncIterator<TResult>
+                where TSelector : IFunc<TSource, int, CancelationToken, Promise<TResult>>
             {
                 private readonly AsyncEnumerator<TSource> _asyncEnumerator;
                 private readonly TSelector _selector;
 
-                internal SelectWithIndexSyncIterator(AsyncEnumerator<TSource> asyncEnumerator, TSelector selector)
+                internal SelectWithIndexIterator(AsyncEnumerator<TSource> asyncEnumerator, TSelector selector)
                 {
                     _asyncEnumerator = asyncEnumerator;
                     _selector = selector;
@@ -243,7 +138,7 @@ namespace Proto.Promises
                         int i = 0;
                         while (await _asyncEnumerator.MoveNextAsync())
                         {
-                            await writer.YieldAsync(_selector.Invoke(_asyncEnumerator.Current, checked(i++)));
+                            await writer.YieldAsync(await _selector.Invoke(_asyncEnumerator.Current, checked(i++), cancelationToken));
                         }
                         // We don't dispose the source enumerator until the owner is disposed.
                         // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
@@ -263,71 +158,19 @@ namespace Proto.Promises
             }
 
             internal static AsyncEnumerable<TResult> SelectWithIndex<TSource, TSelector>(AsyncEnumerator<TSource> source, TSelector selector)
-                where TSelector : IFunc<TSource, int, TResult>
-            {
-                return AsyncEnumerable<TResult>.Create(new SelectWithIndexSyncIterator<TSource, TSelector>(source, selector));
-            }
+                where TSelector : IFunc<TSource, int, CancelationToken, Promise<TResult>>
+                => AsyncEnumerable<TResult>.Create(new SelectWithIndexIterator<TSource, TSelector>(source, selector));
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private readonly struct SelectWithIndexAsyncIterator<TSource, TSelector> : IAsyncIterator<TResult>
-                where TSelector : IFunc<TSource, int, Promise<TResult>>
-            {
-                private readonly AsyncEnumerator<TSource> _asyncEnumerator;
-                private readonly TSelector _selector;
-
-                internal SelectWithIndexAsyncIterator(AsyncEnumerator<TSource> asyncEnumerator, TSelector selector)
-                {
-                    _asyncEnumerator = asyncEnumerator;
-                    _selector = selector;
-                }
-
-                public async AsyncIteratorMethod Start(AsyncStreamWriter<TResult> writer, CancelationToken cancelationToken)
-                {
-                    // The enumerator was retrieved without a cancelation token when the original function was called.
-                    // We need to propagate the token that was passed in, so we assign it before starting iteration.
-                    _asyncEnumerator._target._cancelationToken = cancelationToken;
-                    try
-                    {
-                        int i = 0;
-                        while (await _asyncEnumerator.MoveNextAsync())
-                        {
-                            await writer.YieldAsync(await _selector.Invoke(_asyncEnumerator.Current, checked(i++)));
-                        }
-                        // We don't dispose the source enumerator until the owner is disposed.
-                        // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
-
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
-                    }
-                    finally
-                    {
-                        await _asyncEnumerator.DisposeAsync();
-                    }
-                }
-
-                [MethodImpl(InlineOption)]
-                public Promise DisposeAsyncWithoutStart()
-                    => _asyncEnumerator.DisposeAsync();
-            }
-
-            internal static AsyncEnumerable<TResult> SelectWithIndexAwait<TSource, TSelector>(AsyncEnumerator<TSource> source, TSelector selector)
-                where TSelector : IFunc<TSource, int, Promise<TResult>>
-            {
-                return AsyncEnumerable<TResult>.Create(new SelectWithIndexAsyncIterator<TSource, TSelector>(source, selector));
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private readonly struct ConfiguredSelectWithIndexSyncIterator<TSource, TSelector> : IAsyncIterator<TResult>
-                where TSelector : IFunc<TSource, int, TResult>
+            private readonly struct ConfiguredSelectWithIndexIterator<TSource, TSelector> : IAsyncIterator<TResult>
+                where TSelector : IFunc<TSource, int, CancelationToken, Promise<TResult>>
             {
                 private readonly ConfiguredAsyncEnumerable<TSource>.Enumerator _configuredAsyncEnumerator;
                 private readonly TSelector _selector;
 
-                internal ConfiguredSelectWithIndexSyncIterator(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator, TSelector selector)
+                internal ConfiguredSelectWithIndexIterator(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator, TSelector selector)
                 {
                     _configuredAsyncEnumerator = configuredAsyncEnumerator;
                     _selector = selector;
@@ -336,15 +179,14 @@ namespace Proto.Promises
                 public async AsyncIteratorMethod Start(AsyncStreamWriter<TResult> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
-                    var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
-                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(ref cancelationToken, ref _configuredAsyncEnumerator._enumerator._target._cancelationToken);
 
                     try
                     {
                         int i = 0;
                         while (await _configuredAsyncEnumerator.MoveNextAsync())
                         {
-                            await writer.YieldAsync(_selector.Invoke(_configuredAsyncEnumerator.Current, checked(i++)));
+                            await writer.YieldAsync(await _selector.Invoke(_configuredAsyncEnumerator.Current, checked(i++), cancelationToken));
                         }
                         // We don't dispose the source enumerator until the owner is disposed.
                         // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
@@ -364,63 +206,9 @@ namespace Proto.Promises
                     => _configuredAsyncEnumerator.DisposeAsync();
             }
 
-            internal static AsyncEnumerable<TResult> SelectWithIndex<TSource, TSelector>(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredSource, TSelector selector)
-                where TSelector : IFunc<TSource, int, TResult>
-            {
-                return AsyncEnumerable<TResult>.Create(new ConfiguredSelectWithIndexSyncIterator<TSource, TSelector>(configuredSource, selector));
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private readonly struct ConfiguredSelectWithIndexAsyncIterator<TSource, TSelector> : IAsyncIterator<TResult>
-                where TSelector : IFunc<TSource, int, Promise<TResult>>
-            {
-                private readonly ConfiguredAsyncEnumerable<TSource>.Enumerator _configuredAsyncEnumerator;
-                private readonly TSelector _selector;
-
-                internal ConfiguredSelectWithIndexAsyncIterator(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator, TSelector selector)
-                {
-                    _configuredAsyncEnumerator = configuredAsyncEnumerator;
-                    _selector = selector;
-                }
-
-                public async AsyncIteratorMethod Start(AsyncStreamWriter<TResult> writer, CancelationToken cancelationToken)
-                {
-                    // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
-                    var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
-                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
-
-                    try
-                    {
-                        int i = 0;
-                        while (await _configuredAsyncEnumerator.MoveNextAsync())
-                        {
-                            await writer.YieldAsync(await _selector.Invoke(_configuredAsyncEnumerator.Current, checked(i++)));
-                        }
-                        // We don't dispose the source enumerator until the owner is disposed.
-                        // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
-
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
-                    }
-                    finally
-                    {
-                        maybeJoinedCancelationSource.Dispose();
-                        await _configuredAsyncEnumerator.DisposeAsync();
-                    }
-                }
-
-                [MethodImpl(InlineOption)]
-                public Promise DisposeAsyncWithoutStart()
-                    => _configuredAsyncEnumerator.DisposeAsync();
-            }
-
-            internal static AsyncEnumerable<TResult> SelectWithIndexAwait<TSource, TSelector>(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredSource, TSelector selector)
-                where TSelector : IFunc<TSource, int, Promise<TResult>>
-            {
-                return AsyncEnumerable<TResult>.Create(new ConfiguredSelectWithIndexAsyncIterator<TSource, TSelector>(configuredSource, selector));
-            }
+            internal static AsyncEnumerable<TResult> SelectWithIndex<TSource, TSelector>(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator, TSelector selector)
+                where TSelector : IFunc<TSource, int, CancelationToken, Promise<TResult>>
+                => AsyncEnumerable<TResult>.Create(new ConfiguredSelectWithIndexIterator<TSource, TSelector>(configuredAsyncEnumerator, selector));
         }
     } // class Internal
 } // namespace Proto.Promises

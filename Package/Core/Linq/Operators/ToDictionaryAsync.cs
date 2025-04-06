@@ -30,10 +30,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
 
-            return ToDictionaryHelper<TKey>.ToDictionaryAsyncCore(
-                source.GetAsyncEnumerator(cancelationToken),
-                DelegateWrapper.Create(keySelector),
-                comparer);
+            return ToDictionaryHelper<TKey>.ToDictionaryAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(keySelector), comparer, cancelationToken);
         }
 
         /// <summary>
@@ -55,10 +52,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
 
-            return ToDictionaryHelper<TKey>.ToDictionaryAsyncCore(
-                source.GetAsyncEnumerator(cancelationToken),
-                DelegateWrapper.Create(captureValue, keySelector),
-                comparer);
+            return ToDictionaryHelper<TKey>.ToDictionaryAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, keySelector), comparer, cancelationToken);
         }
 
         /// <summary>
@@ -78,10 +72,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
 
-            return ToDictionaryHelper<TKey>.ToDictionaryAsyncCoreAwait(
-                source.GetAsyncEnumerator(cancelationToken),
-                DelegateWrapper.Create(keySelector),
-                comparer);
+            return ToDictionaryHelper<TKey>.ToDictionaryAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(keySelector), comparer, cancelationToken);
         }
 
         /// <summary>
@@ -103,10 +94,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
 
-            return ToDictionaryHelper<TKey>.ToDictionaryAsyncCoreAwait(
-                source.GetAsyncEnumerator(cancelationToken),
-                DelegateWrapper.Create(captureValue, keySelector),
-                comparer);
+            return ToDictionaryHelper<TKey>.ToDictionaryAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, keySelector), comparer, cancelationToken);
         }
 
         /// <summary>
@@ -125,10 +113,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
 
-            return ToDictionaryHelper<TKey>.ToDictionaryAsyncCore(
-                configuredSource.GetAsyncEnumerator(),
-                DelegateWrapper.Create(keySelector),
-                comparer);
+            return ToDictionaryHelper<TKey>.ToDictionaryAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -149,10 +134,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
 
-            return ToDictionaryHelper<TKey>.ToDictionaryAsyncCore(
-                configuredSource.GetAsyncEnumerator(),
-                DelegateWrapper.Create(captureValue, keySelector),
-                comparer);
+            return ToDictionaryHelper<TKey>.ToDictionaryAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -171,10 +153,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
 
-            return ToDictionaryHelper<TKey>.ToDictionaryAsyncCoreAwait(
-                configuredSource.GetAsyncEnumerator(),
-                DelegateWrapper.Create(keySelector),
-                comparer);
+            return ToDictionaryHelper<TKey>.ToDictionaryAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -195,19 +174,14 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
 
-            return ToDictionaryHelper<TKey>.ToDictionaryAsyncCoreAwait(
-                configuredSource.GetAsyncEnumerator(),
-                DelegateWrapper.Create(captureValue, keySelector),
-                comparer);
+            return ToDictionaryHelper<TKey>.ToDictionaryAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer, configuredSource.CancelationToken);
         }
 
         private static class ToDictionaryHelper<TKey>
         {
-            internal static async Promise<Dictionary<TKey, TSource>> ToDictionaryAsyncCore<TSource, TKeySelector>(
-                AsyncEnumerator<TSource> asyncEnumerator,
-                TKeySelector keySelector,
-                IEqualityComparer<TKey> comparer)
-                where TKeySelector : IFunc<TSource, TKey>
+            internal static async Promise<Dictionary<TKey, TSource>> ToDictionaryAsync<TSource, TKeySelector>(
+                AsyncEnumerator<TSource> asyncEnumerator, TKeySelector keySelector, IEqualityComparer<TKey> comparer, CancelationToken cancelationToken)
+                where TKeySelector : IFunc<TSource, CancelationToken, Promise<TKey>>
             {
                 try
                 {
@@ -215,7 +189,7 @@ namespace Proto.Promises.Linq
                     while (await asyncEnumerator.MoveNextAsync())
                     {
                         var element = asyncEnumerator.Current;
-                        dictionary.Add(keySelector.Invoke(element), element);
+                        dictionary.Add(await keySelector.Invoke(element, cancelationToken), element);
                     }
                     return dictionary;
                 }
@@ -225,11 +199,9 @@ namespace Proto.Promises.Linq
                 }
             }
 
-            internal static async Promise<Dictionary<TKey, TSource>> ToDictionaryAsyncCoreAwait<TSource, TKeySelector>(
-                AsyncEnumerator<TSource> asyncEnumerator,
-                TKeySelector keySelector,
-                IEqualityComparer<TKey> comparer)
-                where TKeySelector : IFunc<TSource, Promise<TKey>>
+            internal static async Promise<Dictionary<TKey, TSource>> ToDictionaryAsync<TSource, TKeySelector>(
+                ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TKeySelector keySelector, IEqualityComparer<TKey> comparer, CancelationToken cancelationToken)
+                where TKeySelector : IFunc<TSource, CancelationToken, Promise<TKey>>
             {
                 try
                 {
@@ -237,51 +209,7 @@ namespace Proto.Promises.Linq
                     while (await asyncEnumerator.MoveNextAsync())
                     {
                         var element = asyncEnumerator.Current;
-                        dictionary.Add(await keySelector.Invoke(element), element);
-                    }
-                    return dictionary;
-                }
-                finally
-                {
-                    await asyncEnumerator.DisposeAsync();
-                }
-            }
-
-            internal static async Promise<Dictionary<TKey, TSource>> ToDictionaryAsyncCore<TSource, TKeySelector>(
-                ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator,
-                TKeySelector keySelector,
-                IEqualityComparer<TKey> comparer)
-                where TKeySelector : IFunc<TSource, TKey>
-            {
-                try
-                {
-                    var dictionary = new Dictionary<TKey, TSource>(comparer);
-                    while (await asyncEnumerator.MoveNextAsync())
-                    {
-                        var element = asyncEnumerator.Current;
-                        dictionary.Add(keySelector.Invoke(element), element);
-                    }
-                    return dictionary;
-                }
-                finally
-                {
-                    await asyncEnumerator.DisposeAsync();
-                }
-            }
-
-            internal static async Promise<Dictionary<TKey, TSource>> ToDictionaryAsyncCoreAwait<TSource, TKeySelector>(
-                ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator,
-                TKeySelector keySelector,
-                IEqualityComparer<TKey> comparer)
-                where TKeySelector : IFunc<TSource, Promise<TKey>>
-            {
-                try
-                {
-                    var dictionary = new Dictionary<TKey, TSource>(comparer);
-                    while (await asyncEnumerator.MoveNextAsync())
-                    {
-                        var element = asyncEnumerator.Current;
-                        dictionary.Add(await keySelector.Invoke(element), element);
+                        dictionary.Add(await keySelector.Invoke(element, cancelationToken), element);
                     }
                     return dictionary;
                 }
@@ -314,11 +242,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCore(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -343,11 +271,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCore(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(captureKeyValue, keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -370,11 +298,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKey(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -399,11 +327,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKey(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(captureKeyValue, keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -425,11 +353,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCore(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -453,11 +381,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCore(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(captureKeyValue, keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -479,11 +407,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKey(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -507,11 +435,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKey(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(captureKeyValue, keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -536,11 +464,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCore(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(captureElementValue, elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -567,11 +495,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCore(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(captureKeyValue, keySelector),
                 DelegateWrapper.Create(captureElementValue, elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -596,11 +524,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKey(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(captureElementValue, elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -627,11 +555,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKey(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(captureKeyValue, keySelector),
                 DelegateWrapper.Create(captureElementValue, elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -655,11 +583,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCore(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(captureElementValue, elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -685,11 +613,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCore(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(captureKeyValue, keySelector),
                 DelegateWrapper.Create(captureElementValue, elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -713,11 +641,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKey(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(captureElementValue, elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -743,11 +671,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKey(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(captureKeyValue, keySelector),
                 DelegateWrapper.Create(captureElementValue, elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -770,11 +698,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitElement(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -799,11 +727,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitElement(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(captureKeyValue, keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -826,11 +754,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKeyElement(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -855,11 +783,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKeyElement(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(captureKeyValue, keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -881,11 +809,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitElement(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -909,11 +837,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitElement(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(captureKeyValue, keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -935,11 +863,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKeyElement(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -963,11 +891,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKeyElement(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(captureKeyValue, keySelector),
                 DelegateWrapper.Create(elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -992,11 +920,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitElement(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(captureElementValue, elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -1023,11 +951,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitElement(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(captureKeyValue, keySelector),
                 DelegateWrapper.Create(captureElementValue, elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -1052,11 +980,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKeyElement(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(captureElementValue, elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -1083,11 +1011,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKeyElement(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 source.GetAsyncEnumerator(cancelationToken),
                 DelegateWrapper.Create(captureKeyValue, keySelector),
                 DelegateWrapper.Create(captureElementValue, elementSelector),
-                comparer);
+                comparer, cancelationToken);
         }
 
         /// <summary>
@@ -1111,11 +1039,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitElement(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(captureElementValue, elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -1141,11 +1069,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitElement(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(captureKeyValue, keySelector),
                 DelegateWrapper.Create(captureElementValue, elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -1169,11 +1097,11 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKeyElement(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(captureElementValue, elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -1199,22 +1127,19 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
 
-            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKeyElement(
+            return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsync(
                 configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(captureKeyValue, keySelector),
                 DelegateWrapper.Create(captureElementValue, elementSelector),
-                comparer);
+                comparer, configuredSource.CancelationToken);
         }
 
         private static class ToDictionaryHelper<TKey, TElement>
         {
-            internal static async Promise<Dictionary<TKey, TElement>> ToDictionaryAsyncCore<TSource, TKeySelector, TElementSelector>(
-                AsyncEnumerator<TSource> asyncEnumerator,
-                TKeySelector keySelector,
-                TElementSelector elementSelector,
-                IEqualityComparer<TKey> comparer)
-                where TKeySelector : IFunc<TSource, TKey>
-                where TElementSelector : IFunc<TSource, TElement>
+            internal static async Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKeySelector, TElementSelector>(
+                AsyncEnumerator<TSource> asyncEnumerator, TKeySelector keySelector, TElementSelector elementSelector, IEqualityComparer<TKey> comparer, CancelationToken cancelationToken)
+                where TKeySelector : IFunc<TSource, CancelationToken, Promise<TKey>>
+                where TElementSelector : IFunc<TSource, CancelationToken, Promise<TElement>>
             {
                 try
                 {
@@ -1222,7 +1147,7 @@ namespace Proto.Promises.Linq
                     while (await asyncEnumerator.MoveNextAsync())
                     {
                         var element = asyncEnumerator.Current;
-                        dictionary.Add(keySelector.Invoke(element), elementSelector.Invoke(element));
+                        dictionary.Add(await keySelector.Invoke(element, cancelationToken), await elementSelector.Invoke(element, cancelationToken));
                     }
                     return dictionary;
                 }
@@ -1232,13 +1157,10 @@ namespace Proto.Promises.Linq
                 }
             }
 
-            internal static async Promise<Dictionary<TKey, TElement>> ToDictionaryAsyncCoreAwaitKey<TSource, TKeySelector, TElementSelector>(
-                AsyncEnumerator<TSource> asyncEnumerator,
-                TKeySelector keySelector,
-                TElementSelector elementSelector,
-                IEqualityComparer<TKey> comparer)
-                where TKeySelector : IFunc<TSource, Promise<TKey>>
-                where TElementSelector : IFunc<TSource, TElement>
+            internal static async Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKeySelector, TElementSelector>(
+                ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TKeySelector keySelector, TElementSelector elementSelector, IEqualityComparer<TKey> comparer, CancelationToken cancelationToken)
+                where TKeySelector : IFunc<TSource, CancelationToken, Promise<TKey>>
+                where TElementSelector : IFunc<TSource, CancelationToken, Promise<TElement>>
             {
                 try
                 {
@@ -1246,151 +1168,7 @@ namespace Proto.Promises.Linq
                     while (await asyncEnumerator.MoveNextAsync())
                     {
                         var element = asyncEnumerator.Current;
-                        dictionary.Add(await keySelector.Invoke(element), elementSelector.Invoke(element));
-                    }
-                    return dictionary;
-                }
-                finally
-                {
-                    await asyncEnumerator.DisposeAsync();
-                }
-            }
-
-            internal static async Promise<Dictionary<TKey, TElement>> ToDictionaryAsyncCore<TSource, TKeySelector, TElementSelector>(
-                ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator,
-                TKeySelector keySelector,
-                TElementSelector elementSelector,
-                IEqualityComparer<TKey> comparer)
-                where TKeySelector : IFunc<TSource, TKey>
-                where TElementSelector : IFunc<TSource, TElement>
-            {
-                try
-                {
-                    var dictionary = new Dictionary<TKey, TElement>(comparer);
-                    while (await asyncEnumerator.MoveNextAsync())
-                    {
-                        var element = asyncEnumerator.Current;
-                        dictionary.Add(keySelector.Invoke(element), elementSelector.Invoke(element));
-                    }
-                    return dictionary;
-                }
-                finally
-                {
-                    await asyncEnumerator.DisposeAsync();
-                }
-            }
-
-            internal static async Promise<Dictionary<TKey, TElement>> ToDictionaryAsyncCoreAwaitKey<TSource, TKeySelector, TElementSelector>(
-                ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator,
-                TKeySelector keySelector,
-                TElementSelector elementSelector,
-                IEqualityComparer<TKey> comparer)
-                where TKeySelector : IFunc<TSource, Promise<TKey>>
-                where TElementSelector : IFunc<TSource, TElement>
-            {
-                try
-                {
-                    var dictionary = new Dictionary<TKey, TElement>(comparer);
-                    while (await asyncEnumerator.MoveNextAsync())
-                    {
-                        var element = asyncEnumerator.Current;
-                        dictionary.Add(await keySelector.Invoke(element), elementSelector.Invoke(element));
-                    }
-                    return dictionary;
-                }
-                finally
-                {
-                    await asyncEnumerator.DisposeAsync();
-                }
-            }
-
-            internal static async Promise<Dictionary<TKey, TElement>> ToDictionaryAsyncCoreAwaitElement<TSource, TKeySelector, TElementSelector>(
-                AsyncEnumerator<TSource> asyncEnumerator,
-                TKeySelector keySelector,
-                TElementSelector elementSelector,
-                IEqualityComparer<TKey> comparer)
-                where TKeySelector : IFunc<TSource, TKey>
-                where TElementSelector : IFunc<TSource, Promise<TElement>>
-            {
-                try
-                {
-                    var dictionary = new Dictionary<TKey, TElement>(comparer);
-                    while (await asyncEnumerator.MoveNextAsync())
-                    {
-                        var element = asyncEnumerator.Current;
-                        dictionary.Add(keySelector.Invoke(element), await elementSelector.Invoke(element));
-                    }
-                    return dictionary;
-                }
-                finally
-                {
-                    await asyncEnumerator.DisposeAsync();
-                }
-            }
-
-            internal static async Promise<Dictionary<TKey, TElement>> ToDictionaryAsyncCoreAwaitKeyElement<TSource, TKeySelector, TElementSelector>(
-                AsyncEnumerator<TSource> asyncEnumerator,
-                TKeySelector keySelector,
-                TElementSelector elementSelector,
-                IEqualityComparer<TKey> comparer)
-                where TKeySelector : IFunc<TSource, Promise<TKey>>
-                where TElementSelector : IFunc<TSource, Promise<TElement>>
-            {
-                try
-                {
-                    var dictionary = new Dictionary<TKey, TElement>(comparer);
-                    while (await asyncEnumerator.MoveNextAsync())
-                    {
-                        var element = asyncEnumerator.Current;
-                        dictionary.Add(await keySelector.Invoke(element), await elementSelector.Invoke(element));
-                    }
-                    return dictionary;
-                }
-                finally
-                {
-                    await asyncEnumerator.DisposeAsync();
-                }
-            }
-
-            internal static async Promise<Dictionary<TKey, TElement>> ToDictionaryAsyncCoreAwaitElement<TSource, TKeySelector, TElementSelector>(
-                ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator,
-                TKeySelector keySelector,
-                TElementSelector elementSelector,
-                IEqualityComparer<TKey> comparer)
-                where TKeySelector : IFunc<TSource, TKey>
-                where TElementSelector : IFunc<TSource, Promise<TElement>>
-            {
-                try
-                {
-                    var dictionary = new Dictionary<TKey, TElement>(comparer);
-                    while (await asyncEnumerator.MoveNextAsync())
-                    {
-                        var element = asyncEnumerator.Current;
-                        dictionary.Add(keySelector.Invoke(element), await elementSelector.Invoke(element));
-                    }
-                    return dictionary;
-                }
-                finally
-                {
-                    await asyncEnumerator.DisposeAsync();
-                }
-            }
-
-            internal static async Promise<Dictionary<TKey, TElement>> ToDictionaryAsyncCoreAwaitKeyElement<TSource, TKeySelector, TElementSelector>(
-                ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator,
-                TKeySelector keySelector,
-                TElementSelector elementSelector,
-                IEqualityComparer<TKey> comparer)
-                where TKeySelector : IFunc<TSource, Promise<TKey>>
-                where TElementSelector : IFunc<TSource, Promise<TElement>>
-            {
-                try
-                {
-                    var dictionary = new Dictionary<TKey, TElement>(comparer);
-                    while (await asyncEnumerator.MoveNextAsync())
-                    {
-                        var element = asyncEnumerator.Current;
-                        dictionary.Add(await keySelector.Invoke(element), await elementSelector.Invoke(element));
+                        dictionary.Add(await keySelector.Invoke(element, cancelationToken), await elementSelector.Invoke(element, cancelationToken));
                     }
                     return dictionary;
                 }

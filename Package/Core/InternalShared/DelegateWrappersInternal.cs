@@ -107,6 +107,14 @@ namespace Proto.Promises
         [MethodImpl(Internal.InlineOption)]
         internal static Internal.DelegateArgCaptureArgResult<TArg1, TCapture, TArg2, TResult> Create<TArg1, TCapture, TArg2, TResult>(in TCapture capturedValue, Func<TArg1, TCapture, TArg2, TResult> callback)
             => new Internal.DelegateArgCaptureArgResult<TArg1, TCapture, TArg2, TResult>(capturedValue, callback);
+
+        [MethodImpl(Internal.InlineOption)]
+        internal static Internal.Delegate3ArgResult<TArg1, TArg2, TArg3, TResult> Create<TArg1, TArg2, TArg3, TResult>(Func<TArg1, TArg2, TArg3, TResult> callback)
+            => new Internal.Delegate3ArgResult<TArg1, TArg2, TArg3, TResult>(callback);
+
+        [MethodImpl(Internal.InlineOption)]
+        internal static Internal.DelegateCapture3ArgResult<TCapture, TArg1, TArg2, TArg3, TResult> Create<TCapture, TArg1, TArg2, TArg3, TResult>(in TCapture capturedValue, Func<TCapture, TArg1, TArg2, TArg3, TResult> callback)
+            => new Internal.DelegateCapture3ArgResult<TCapture, TArg1, TArg2, TArg3, TResult>(capturedValue, callback);
     }
 
     partial class Internal
@@ -233,7 +241,9 @@ namespace Proto.Promises
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal readonly struct DelegateArgResult<TArg, TResult> : IFunc<TArg, TResult>,
-            IFunc<TArg, Promise<TResult>>
+            IFunc<TArg, Promise<TResult>>,
+            IFunc<TArg, CancelationToken, TResult>,
+            IFunc<TArg, CancelationToken, Promise<TResult>>
         {
             private readonly Func<TArg, TResult> _callback;
 
@@ -248,6 +258,14 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             Promise<TResult> IFunc<TArg, Promise<TResult>>.Invoke(in TArg arg)
                 => Promise.Resolved(_callback.Invoke(arg));
+
+            [MethodImpl(InlineOption)]
+            TResult IFunc<TArg, CancelationToken, TResult>.Invoke(in TArg arg1, in CancelationToken arg2)
+                => _callback.Invoke(arg1);
+
+            [MethodImpl(InlineOption)]
+            Promise<TResult> IFunc<TArg, CancelationToken, Promise<TResult>>.Invoke(in TArg arg1, in CancelationToken arg2)
+                => Promise.Resolved(_callback.Invoke(arg1));
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -384,7 +402,9 @@ namespace Proto.Promises
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal readonly struct DelegateCaptureArgResult<TCapture, TArg, TResult> : IFunc<TArg, TResult>,
-            IFunc<TArg, Promise<TResult>>
+            IFunc<TArg, Promise<TResult>>,
+            IFunc<TArg, CancelationToken, TResult>,
+            IFunc<TArg, CancelationToken, Promise<TResult>>
         {
             private readonly Func<TCapture, TArg, TResult> _callback;
             private readonly TCapture _capturedValue;
@@ -403,6 +423,14 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             Promise<TResult> IFunc<TArg, Promise<TResult>>.Invoke(in TArg arg)
                 => Promise.Resolved(_callback.Invoke(_capturedValue, arg));
+
+            [MethodImpl(InlineOption)]
+            TResult IFunc<TArg, CancelationToken, TResult>.Invoke(in TArg arg1, in CancelationToken arg2)
+                => _callback.Invoke(_capturedValue, arg1);
+
+            [MethodImpl(InlineOption)]
+            Promise<TResult> IFunc<TArg, CancelationToken, Promise<TResult>>.Invoke(in TArg arg1, in CancelationToken arg2)
+                => Promise.Resolved(_callback.Invoke(_capturedValue, arg1));
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -466,7 +494,8 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal readonly struct AsyncDelegateArgResult<TArg, TResult> : IFunc<TArg, Promise<TResult>>
+        internal readonly struct AsyncDelegateArgResult<TArg, TResult> : IFunc<TArg, Promise<TResult>>,
+            IFunc<TArg, CancelationToken, Promise<TResult>>
         {
             private readonly Func<TArg, Promise<TResult>> _callback;
 
@@ -477,6 +506,10 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             public Promise<TResult> Invoke(in TArg arg)
                 => _callback.Invoke(arg);
+
+            [MethodImpl(InlineOption)]
+            Promise<TResult> IFunc<TArg, CancelationToken, Promise<TResult>>.Invoke(in TArg arg1, in CancelationToken arg2)
+                => _callback.Invoke(arg1);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -552,7 +585,8 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal readonly struct AsyncDelegateCaptureArgResult<TCapture, TArg, TResult> : IFunc<TArg, Promise<TResult>>
+        internal readonly struct AsyncDelegateCaptureArgResult<TCapture, TArg, TResult> : IFunc<TArg, Promise<TResult>>,
+            IFunc<TArg, CancelationToken, Promise<TResult>>
         {
             private readonly Func<TCapture, TArg, Promise<TResult>> _callback;
             private readonly TCapture _capturedValue;
@@ -567,6 +601,10 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             public Promise<TResult> Invoke(in TArg arg)
                 => _callback.Invoke(_capturedValue, arg);
+
+            [MethodImpl(InlineOption)]
+            Promise<TResult> IFunc<TArg, CancelationToken, Promise<TResult>>.Invoke(in TArg arg1, in CancelationToken arg2)
+                => _callback.Invoke(_capturedValue, arg1);
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -625,7 +663,9 @@ namespace Proto.Promises
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal readonly struct Delegate2ArgResult<TArg1, TArg2, TResult> : IFunc<TArg1, TArg2, TResult>,
-            IFunc<TArg1, TArg2, Promise<TResult>>
+            IFunc<TArg1, TArg2, Promise<TResult>>,
+            IFunc<TArg1, TArg2, CancelationToken, TResult>,
+            IFunc<TArg1, TArg2, CancelationToken, Promise<TResult>>
         {
             private readonly Func<TArg1, TArg2, TResult> _callback;
 
@@ -640,13 +680,23 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             Promise<TResult> IFunc<TArg1, TArg2, Promise<TResult>>.Invoke(in TArg1 arg1, in TArg2 arg2)
                 => Promise.Resolved(_callback.Invoke(arg1, arg2));
+
+            [MethodImpl(InlineOption)]
+            TResult IFunc<TArg1, TArg2, CancelationToken, TResult>.Invoke(in TArg1 arg1, in TArg2 arg2, in CancelationToken arg3)
+                => _callback.Invoke(arg1, arg2);
+
+            [MethodImpl(InlineOption)]
+            Promise<TResult> IFunc<TArg1, TArg2, CancelationToken, Promise<TResult>>.Invoke(in TArg1 arg1, in TArg2 arg2, in CancelationToken arg3)
+                => Promise.Resolved(_callback.Invoke(arg1, arg2));
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
         internal readonly struct DelegateCapture2ArgResult<TCapture, TArg1, TArg2, TResult> : IFunc<TArg1, TArg2, TResult>,
-            IFunc<TArg1, TArg2, Promise<TResult>>
+            IFunc<TArg1, TArg2, Promise<TResult>>,
+            IFunc<TArg1, TArg2, CancelationToken, TResult>,
+            IFunc<TArg1, TArg2, CancelationToken, Promise<TResult>>
         {
             private readonly Func<TCapture, TArg1, TArg2, TResult> _callback;
             private readonly TCapture _capturedValue;
@@ -664,6 +714,14 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
             Promise<TResult> IFunc<TArg1, TArg2, Promise<TResult>>.Invoke(in TArg1 arg1, in TArg2 arg2)
+                => Promise.Resolved(_callback.Invoke(_capturedValue, arg1, arg2));
+
+            [MethodImpl(InlineOption)]
+            TResult IFunc<TArg1, TArg2, CancelationToken, TResult>.Invoke(in TArg1 arg1, in TArg2 arg2, in CancelationToken arg3)
+                => _callback.Invoke(_capturedValue, arg1, arg2);
+
+            [MethodImpl(InlineOption)]
+            Promise<TResult> IFunc<TArg1, TArg2, CancelationToken, Promise<TResult>>.Invoke(in TArg1 arg1, in TArg2 arg2, in CancelationToken arg3)
                 => Promise.Resolved(_callback.Invoke(_capturedValue, arg1, arg2));
         }
 
@@ -690,6 +748,52 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             Promise<TResult> IFunc<TArg1, TArg2, Promise<TResult>>.Invoke(in TArg1 arg1, in TArg2 arg2)
                 => Promise.Resolved(_callback.Invoke(arg1, _capturedValue, arg2));
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal readonly struct Delegate3ArgResult<TArg1, TArg2, TArg3, TResult> : IFunc<TArg1, TArg2, TArg3, TResult>,
+            IFunc<TArg1, TArg2, TArg3, Promise<TResult>>
+        {
+            private readonly Func<TArg1, TArg2, TArg3, TResult> _callback;
+
+            [MethodImpl(InlineOption)]
+            public Delegate3ArgResult(Func<TArg1, TArg2, TArg3, TResult> callback)
+                => _callback = callback;
+
+            [MethodImpl(InlineOption)]
+            public TResult Invoke(in TArg1 arg1, in TArg2 arg2, in TArg3 arg3)
+                => _callback.Invoke(arg1, arg2, arg3);
+
+            [MethodImpl(InlineOption)]
+            Promise<TResult> IFunc<TArg1, TArg2, TArg3, Promise<TResult>>.Invoke(in TArg1 arg1, in TArg2 arg2, in TArg3 arg3)
+                => Promise.Resolved(_callback.Invoke(arg1, arg2, arg3));
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal readonly struct DelegateCapture3ArgResult<TCapture, TArg1, TArg2, TArg3, TResult> : IFunc<TArg1, TArg2, TArg3, TResult>,
+            IFunc<TArg1, TArg2, TArg3, Promise<TResult>>
+        {
+            private readonly Func<TCapture, TArg1, TArg2, TArg3, TResult> _callback;
+            private readonly TCapture _capturedValue;
+
+            [MethodImpl(InlineOption)]
+            public DelegateCapture3ArgResult(in TCapture capturedValue, Func<TCapture, TArg1, TArg2, TArg3, TResult> callback)
+            {
+                _callback = callback;
+                _capturedValue = capturedValue;
+            }
+
+            [MethodImpl(InlineOption)]
+            public TResult Invoke(in TArg1 arg1, in TArg2 arg2, in TArg3 arg3)
+                => _callback.Invoke(_capturedValue, arg1, arg2, arg3);
+
+            [MethodImpl(InlineOption)]
+            Promise<TResult> IFunc<TArg1, TArg2, TArg3, Promise<TResult>>.Invoke(in TArg1 arg1, in TArg2 arg2, in TArg3 arg3)
+                => Promise.Resolved(_callback.Invoke(_capturedValue, arg1, arg2, arg3));
         }
     }
 }

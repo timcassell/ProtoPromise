@@ -36,11 +36,9 @@ namespace Proto.Promises.Linq
             }
 
             public Promise DisposeAsyncWithoutStart()
-            {
                 // We consume less memory by using .Finally instead of async/await.
-                return _first.DisposeAsync()
+                => _first.DisposeAsync()
                   .Finally(_second, e => e.DisposeAsync());
-            }
 
             public async AsyncIteratorMethod Start(AsyncStreamWriter<(TFirst First, TSecond Second)> writer, CancelationToken cancelationToken)
             {
@@ -103,12 +101,10 @@ namespace Proto.Promises.Linq
             }
 
             public Promise DisposeAsyncWithoutStart()
-            {
                 // We consume less memory by using .Finally instead of async/await.
-                return _first.DisposeAsync()
+                => _first.DisposeAsync()
                   .Finally(_second, e => e.DisposeAsync())
                   .Finally(_third, e => e.DisposeAsync());
-            }
 
             public async AsyncIteratorMethod Start(AsyncStreamWriter<(TFirst First, TSecond Second, TThird Third)> writer, CancelationToken cancelationToken)
             {

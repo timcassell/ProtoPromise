@@ -202,7 +202,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.UnionByHelper<TKey>.UnionByAwait(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
+            return Internal.UnionByHelper<TKey>.UnionBy(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -239,7 +239,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.UnionByHelper<TKey>.UnionByAwait(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return Internal.UnionByHelper<TKey>.UnionBy(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -342,7 +342,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.UnionByHelper<TKey>.UnionByAwait(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
+            return Internal.UnionByHelper<TKey>.UnionBy(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -379,7 +379,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.UnionByHelper<TKey>.UnionByAwait(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return Internal.UnionByHelper<TKey>.UnionBy(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
     }
 }

@@ -182,15 +182,15 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private readonly struct CountBySyncIterator<TSource, TEqualityComparer, TKeySelector> : IAsyncIterator<KeyValuePair<TKey, int>>
-                where TKeySelector : IFunc<TSource, TKey>
+            private readonly struct CountByIterator<TSource, TEqualityComparer, TKeySelector> : IAsyncIterator<KeyValuePair<TKey, int>>
+                where TKeySelector : IFunc<TSource, CancelationToken, Promise<TKey>>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
                 private readonly AsyncEnumerator<TSource> _asyncEnumerator;
                 private readonly TKeySelector _keySelector;
                 private readonly TEqualityComparer _comparer;
 
-                internal CountBySyncIterator(AsyncEnumerator<TSource> asyncEnumerator, TKeySelector keySelector, TEqualityComparer comparer)
+                internal CountByIterator(AsyncEnumerator<TSource> asyncEnumerator, TKeySelector keySelector, TEqualityComparer comparer)
                 {
                     _asyncEnumerator = asyncEnumerator;
                     _keySelector = keySelector;
@@ -215,7 +215,7 @@ namespace Proto.Promises
                         {
                             do
                             {
-                                var key = _keySelector.Invoke(_asyncEnumerator.Current);
+                                var key = await _keySelector.Invoke(_asyncEnumerator.Current, cancelationToken);
                                 ++dict.GetOrCreateNode(key, out _)._value;
                             } while (await _asyncEnumerator.MoveNextAsync());
 
@@ -243,90 +243,22 @@ namespace Proto.Promises
             }
 
             internal static AsyncEnumerable<KeyValuePair<TKey, int>> CountBy<TSource, TEqualityComparer, TKeySelector>(AsyncEnumerator<TSource> asyncEnumerator, TKeySelector keySelector, TEqualityComparer comparer)
-                where TKeySelector : IFunc<TSource, TKey>
+                where TKeySelector : IFunc<TSource, CancelationToken, Promise<TKey>>
                 where TEqualityComparer : IEqualityComparer<TKey>
-                => AsyncEnumerable<KeyValuePair<TKey, int>>.Create(new CountBySyncIterator<TSource, TEqualityComparer, TKeySelector>(asyncEnumerator, keySelector, comparer));
+                => AsyncEnumerable<KeyValuePair<TKey, int>>.Create(new CountByIterator<TSource, TEqualityComparer, TKeySelector>(asyncEnumerator, keySelector, comparer));
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private readonly struct CountByAsyncIterator<TSource, TEqualityComparer, TKeySelector> : IAsyncIterator<KeyValuePair<TKey, int>>
-                where TKeySelector : IFunc<TSource, Promise<TKey>>
-                where TEqualityComparer : IEqualityComparer<TKey>
-            {
-                private readonly AsyncEnumerator<TSource> _asyncEnumerator;
-                private readonly TKeySelector _keySelector;
-                private readonly TEqualityComparer _comparer;
-
-                internal CountByAsyncIterator(AsyncEnumerator<TSource> asyncEnumerator, TKeySelector keySelector, TEqualityComparer comparer)
-                {
-                    _asyncEnumerator = asyncEnumerator;
-                    _keySelector = keySelector;
-                    _comparer = comparer;
-                }
-
-                public async AsyncIteratorMethod Start(AsyncStreamWriter<KeyValuePair<TKey, int>> writer, CancelationToken cancelationToken)
-                {
-                    // The enumerator was retrieved without a cancelation token when the original function was called.
-                    // We need to propagate the token that was passed in, so we assign it before starting iteration.
-                    _asyncEnumerator._target._cancelationToken = cancelationToken;
-
-                    try
-                    {
-                        // Make sure at least 1 element exists before creating the dictionary.
-                        if (!await _asyncEnumerator.MoveNextAsync())
-                        {
-                            return;
-                        }
-
-                        using (var dict = new LookupSingleValue<TKey, int, TEqualityComparer>(_comparer))
-                        {
-                            do
-                            {
-                                var key = await _keySelector.Invoke(_asyncEnumerator.Current);
-                                ++dict.GetOrCreateNode(key, out _)._value;
-                            } while (await _asyncEnumerator.MoveNextAsync());
-
-                            // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                            var node = dict._lastNode;
-                            do
-                            {
-                                node = node._nextNode;
-                                await writer.YieldAsync(new KeyValuePair<TKey, int>(node._key, node._value));
-                            } while (node != dict._lastNode);
-                        }
-
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
-                    }
-                    finally
-                    {
-                        await _asyncEnumerator.DisposeAsync();
-                    }
-                }
-
-                [MethodImpl(InlineOption)]
-                public Promise DisposeAsyncWithoutStart()
-                    => _asyncEnumerator.DisposeAsync();
-            }
-
-            internal static AsyncEnumerable<KeyValuePair<TKey, int>> CountByAwait<TSource, TEqualityComparer, TKeySelector>(AsyncEnumerator<TSource> asyncEnumerator, TKeySelector keySelector, TEqualityComparer comparer)
-                where TKeySelector : IFunc<TSource, Promise<TKey>>
-                where TEqualityComparer : IEqualityComparer<TKey>
-                => AsyncEnumerable<KeyValuePair<TKey, int>>.Create(new CountByAsyncIterator<TSource, TEqualityComparer, TKeySelector>(asyncEnumerator, keySelector, comparer));
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private readonly struct ConfiguredCountBySyncIterator<TSource, TEqualityComparer, TKeySelector> : IAsyncIterator<KeyValuePair<TKey, int>>
-                where TKeySelector : IFunc<TSource, TKey>
+            private readonly struct ConfiguredCountByIterator<TSource, TEqualityComparer, TKeySelector> : IAsyncIterator<KeyValuePair<TKey, int>>
+                where TKeySelector : IFunc<TSource, CancelationToken, Promise<TKey>>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
                 private readonly ConfiguredAsyncEnumerable<TSource>.Enumerator _configuredAsyncEnumerator;
                 private readonly TKeySelector _keySelector;
                 private readonly TEqualityComparer _comparer;
 
-                internal ConfiguredCountBySyncIterator(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator, TKeySelector keySelector, TEqualityComparer comparer)
+                internal ConfiguredCountByIterator(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator, TKeySelector keySelector, TEqualityComparer comparer)
                 {
                     _configuredAsyncEnumerator = configuredAsyncEnumerator;
                     _keySelector = keySelector;
@@ -336,8 +268,7 @@ namespace Proto.Promises
                 public async AsyncIteratorMethod Start(AsyncStreamWriter<KeyValuePair<TKey, int>> writer, CancelationToken cancelationToken)
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
-                    var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
-                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(ref cancelationToken, ref _configuredAsyncEnumerator._enumerator._target._cancelationToken);
 
                     try
                     {
@@ -351,7 +282,8 @@ namespace Proto.Promises
                         {
                             do
                             {
-                                var key = _keySelector.Invoke(_configuredAsyncEnumerator.Current);
+                                // The async selector function could have switched context, make sure we're on the configured context before invoking the comparer.
+                                var key = await _keySelector.Invoke(_configuredAsyncEnumerator.Current, cancelationToken).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 ++dict.GetOrCreateNode(key, out _)._value;
                             } while (await _configuredAsyncEnumerator.MoveNextAsync());
 
@@ -381,80 +313,9 @@ namespace Proto.Promises
 
             internal static AsyncEnumerable<KeyValuePair<TKey, int>> CountBy<TSource, TEqualityComparer, TKeySelector>(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator,
                 TKeySelector keySelector, TEqualityComparer comparer)
-                where TKeySelector : IFunc<TSource, TKey>
+                where TKeySelector : IFunc<TSource, CancelationToken, Promise<TKey>>
                 where TEqualityComparer : IEqualityComparer<TKey>
-                => AsyncEnumerable<KeyValuePair<TKey, int>>.Create(new ConfiguredCountBySyncIterator<TSource, TEqualityComparer, TKeySelector>(configuredAsyncEnumerator, keySelector, comparer));
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private readonly struct ConfiguredCountByAsyncIterator<TSource, TEqualityComparer, TKeySelector> : IAsyncIterator<KeyValuePair<TKey, int>>
-                where TKeySelector : IFunc<TSource, Promise<TKey>>
-                where TEqualityComparer : IEqualityComparer<TKey>
-            {
-                private readonly ConfiguredAsyncEnumerable<TSource>.Enumerator _configuredAsyncEnumerator;
-                private readonly TKeySelector _keySelector;
-                private readonly TEqualityComparer _comparer;
-
-                internal ConfiguredCountByAsyncIterator(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator, TKeySelector keySelector, TEqualityComparer comparer)
-                {
-                    _configuredAsyncEnumerator = configuredAsyncEnumerator;
-                    _keySelector = keySelector;
-                    _comparer = comparer;
-                }
-
-                public async AsyncIteratorMethod Start(AsyncStreamWriter<KeyValuePair<TKey, int>> writer, CancelationToken cancelationToken)
-                {
-                    // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
-                    var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
-                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
-
-                    try
-                    {
-                        // Make sure at least 1 element exists before creating the dictionary.
-                        if (!await _configuredAsyncEnumerator.MoveNextAsync())
-                        {
-                            return;
-                        }
-
-                        using (var dict = new LookupSingleValue<TKey, int, TEqualityComparer>(_comparer))
-                        {
-                            do
-                            {
-                                // The async selector function could have switched context, make sure we're on the configured context before invoking the comparer.
-                                var key = await _keySelector.Invoke(_configuredAsyncEnumerator.Current).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
-                                ++dict.GetOrCreateNode(key, out _)._value;
-                            } while (await _configuredAsyncEnumerator.MoveNextAsync());
-
-                            // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
-                            var node = dict._lastNode;
-                            do
-                            {
-                                node = node._nextNode;
-                                await writer.YieldAsync(new KeyValuePair<TKey, int>(node._key, node._value));
-                            } while (node != dict._lastNode);
-                        }
-
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
-                    }
-                    finally
-                    {
-                        maybeJoinedCancelationSource.Dispose();
-                        await _configuredAsyncEnumerator.DisposeAsync();
-                    }
-                }
-
-                [MethodImpl(InlineOption)]
-                public Promise DisposeAsyncWithoutStart()
-                    => _configuredAsyncEnumerator.DisposeAsync();
-            }
-
-            internal static AsyncEnumerable<KeyValuePair<TKey, int>> CountByAwait<TSource, TEqualityComparer, TKeySelector>(ConfiguredAsyncEnumerable<TSource>.Enumerator configuredAsyncEnumerator,
-                TKeySelector keySelector, TEqualityComparer comparer)
-                where TKeySelector : IFunc<TSource, Promise<TKey>>
-                where TEqualityComparer : IEqualityComparer<TKey>
-                => AsyncEnumerable<KeyValuePair<TKey, int>>.Create(new ConfiguredCountByAsyncIterator<TSource, TEqualityComparer, TKeySelector>(configuredAsyncEnumerator, keySelector, comparer));
+                => AsyncEnumerable<KeyValuePair<TKey, int>>.Create(new ConfiguredCountByIterator<TSource, TEqualityComparer, TKeySelector>(configuredAsyncEnumerator, keySelector, comparer));
         }
     } // class Internal
 } // namespace Proto.Promises

@@ -55,7 +55,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.SkipWhileHelper.SkipWhileAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
+            return Internal.SkipWhileHelper.SkipWhile(source.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -72,7 +72,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.SkipWhileHelper.SkipWhileAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
+            return Internal.SkipWhileHelper.SkipWhile(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
 
         /// <summary>
@@ -122,7 +122,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.SkipWhileHelper.SkipWhileWithIndexAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
+            return Internal.SkipWhileHelper.SkipWhileWithIndex(source.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -140,7 +140,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.SkipWhileHelper.SkipWhileWithIndexAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
+            return Internal.SkipWhileHelper.SkipWhileWithIndex(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
 
         /// <summary>
@@ -187,7 +187,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.SkipWhileHelper.SkipWhileAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
+            return Internal.SkipWhileHelper.SkipWhile(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -204,7 +204,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.SkipWhileHelper.SkipWhileAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
+            return Internal.SkipWhileHelper.SkipWhile(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
 
         /// <summary>
@@ -254,7 +254,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.SkipWhileHelper.SkipWhileWithIndexAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
+            return Internal.SkipWhileHelper.SkipWhileWithIndex(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -272,7 +272,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.SkipWhileHelper.SkipWhileWithIndexAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
+            return Internal.SkipWhileHelper.SkipWhileWithIndex(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
     }
 }

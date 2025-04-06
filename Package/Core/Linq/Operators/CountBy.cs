@@ -121,7 +121,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.CountByHelper<TKey>.CountByAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
+            return Internal.CountByHelper<TKey>.CountBy(source.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -161,7 +161,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.CountByHelper<TKey>.CountByAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return Internal.CountByHelper<TKey>.CountBy(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
         
         /// <summary>
@@ -273,7 +273,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.CountByHelper<TKey>.CountByAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
+            return Internal.CountByHelper<TKey>.CountBy(source.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -313,7 +313,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.CountByHelper<TKey>.CountByAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return Internal.CountByHelper<TKey>.CountBy(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
     }
 }

@@ -38,12 +38,12 @@ namespace Proto.Promises.Linq
             {
                 try
                 {
-                    var list = new HashSet<TSource>(c);
+                    var set = new HashSet<TSource>(c);
                     while (await asyncEnumerator.MoveNextAsync())
                     {
-                        list.Add(asyncEnumerator.Current);
+                        set.Add(asyncEnumerator.Current);
                     }
-                    return list;
+                    return set;
                 }
                 finally
                 {

@@ -582,10 +582,9 @@ namespace Proto.Promises
             public override async AsyncIteratorMethod Start(AsyncStreamWriter<TSource> writer, CancelationToken cancelationToken)
             {
                 // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
-                var enumerableRef = _configuredFirst._enumerator._target;
-                var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+                var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(ref cancelationToken, ref _configuredFirst._enumerator._target._cancelationToken);
                 // Use the same cancelation token for both enumerators.
-                _second._target._cancelationToken = enumerableRef._cancelationToken;
+                _second._target._cancelationToken = cancelationToken;
 
                 try
                 {

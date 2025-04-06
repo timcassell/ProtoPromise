@@ -272,7 +272,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey>.AggregateByAwait(source.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 seed,
                 DelegateWrapper.Create(accumulator),
@@ -326,7 +326,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey>.AggregateByAwait(source.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
                 seed,
                 DelegateWrapper.Create(accumulator),
@@ -380,7 +380,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey>.AggregateByAwait(source.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 seed,
                 DelegateWrapper.Create(accumulateCaptureValue, accumulator),
@@ -438,7 +438,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey>.AggregateByAwait(source.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
                 seed,
                 DelegateWrapper.Create(accumulateCaptureValue, accumulator),
@@ -714,7 +714,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 seed,
                 DelegateWrapper.Create(accumulator),
@@ -770,7 +770,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
                 seed,
                 DelegateWrapper.Create(accumulator),
@@ -826,7 +826,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 seed,
                 DelegateWrapper.Create(accumulateCaptureValue, accumulator),
@@ -886,7 +886,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
                 seed,
                 DelegateWrapper.Create(accumulateCaptureValue, accumulator),
@@ -1159,7 +1159,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(seedSelector),
                 DelegateWrapper.Create(accumulator),
@@ -1214,7 +1214,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
                 DelegateWrapper.Create(seedSelector),
                 DelegateWrapper.Create(accumulator),
@@ -1269,7 +1269,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(seedSelector),
                 DelegateWrapper.Create(accumulateCaptureValue, accumulator),
@@ -1328,7 +1328,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
                 DelegateWrapper.Create(seedSelector),
                 DelegateWrapper.Create(accumulateCaptureValue, accumulator),
@@ -1609,7 +1609,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(seedSelector),
                 DelegateWrapper.Create(accumulator),
@@ -1666,7 +1666,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
                 DelegateWrapper.Create(seedSelector),
                 DelegateWrapper.Create(accumulator),
@@ -1723,7 +1723,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(seedSelector),
                 DelegateWrapper.Create(accumulateCaptureValue, accumulator),
@@ -1784,7 +1784,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
                 DelegateWrapper.Create(seedSelector),
                 DelegateWrapper.Create(accumulateCaptureValue, accumulator),
@@ -2075,7 +2075,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(seedCaptureValue, seedSelector),
                 DelegateWrapper.Create(accumulator),
@@ -2134,7 +2134,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
                 DelegateWrapper.Create(seedCaptureValue, seedSelector),
                 DelegateWrapper.Create(accumulator),
@@ -2193,7 +2193,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(seedCaptureValue, seedSelector),
                 DelegateWrapper.Create(accumulateCaptureValue, accumulator),
@@ -2256,7 +2256,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
                 DelegateWrapper.Create(seedCaptureValue, seedSelector),
                 DelegateWrapper.Create(accumulateCaptureValue, accumulator),
@@ -2557,7 +2557,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(seedCaptureValue, seedSelector),
                 DelegateWrapper.Create(accumulator),
@@ -2618,7 +2618,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
                 DelegateWrapper.Create(seedCaptureValue, seedSelector),
                 DelegateWrapper.Create(accumulator),
@@ -2679,7 +2679,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
                 DelegateWrapper.Create(seedCaptureValue, seedSelector),
                 DelegateWrapper.Create(accumulateCaptureValue, accumulator),
@@ -2744,7 +2744,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(accumulator, nameof(accumulator), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
+            return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
                 DelegateWrapper.Create(seedCaptureValue, seedSelector),
                 DelegateWrapper.Create(accumulateCaptureValue, accumulator),

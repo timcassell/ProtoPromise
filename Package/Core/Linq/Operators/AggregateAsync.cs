@@ -11,6 +11,88 @@ namespace Proto.Promises.Linq
 {
     partial class AsyncEnumerable
     {
+        private static async Promise<TSource> AggregateCore<TSource, TAccumulator>(AsyncEnumerator<TSource> asyncEnumerator, TAccumulator asyncAccumulator, CancelationToken cancelationToken)
+            where TAccumulator : IFunc<TSource, TSource, CancelationToken, Promise<TSource>>
+        {
+            try
+            {
+                if (!await asyncEnumerator.MoveNextAsync())
+                {
+                    throw new InvalidOperationException("source contains no elements.");
+                }
+
+                var acc = asyncEnumerator.Current;
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    acc = await asyncAccumulator.Invoke(acc, asyncEnumerator.Current, cancelationToken);
+                }
+                return acc;
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+        }
+
+        private static async Promise<TSource> AggregateCore<TSource, TAccumulator>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TAccumulator asyncAccumulator, CancelationToken cancelationToken)
+            where TAccumulator : IFunc<TSource, TSource, CancelationToken, Promise<TSource>>
+        {
+            try
+            {
+                if (!await asyncEnumerator.MoveNextAsync())
+                {
+                    throw new InvalidOperationException("configuredSource contains no elements.");
+                }
+
+                var acc = asyncEnumerator.Current;
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    acc = await asyncAccumulator.Invoke(acc, asyncEnumerator.Current, cancelationToken);
+                }
+                return acc;
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+        }
+
+        private static async Promise<TAccumulate> AggregateCore<TSource, TAccumulate, TAccumulator>(AsyncEnumerator<TSource> asyncEnumerator, TAccumulate seed, TAccumulator asyncAccumulator, CancelationToken cancelationToken)
+            where TAccumulator : IFunc<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>>
+        {
+            try
+            {
+                var acc = seed;
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    acc = await asyncAccumulator.Invoke(acc, asyncEnumerator.Current, cancelationToken);
+                }
+                return acc;
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+        }
+
+        private static async Promise<TAccumulate> AggregateCore<TSource, TAccumulate, TAccumulator>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TAccumulate seed, TAccumulator asyncAccumulator, CancelationToken cancelationToken)
+            where TAccumulator : IFunc<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>>
+        {
+            try
+            {
+                var acc = seed;
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    acc = await asyncAccumulator.Invoke(acc, asyncEnumerator.Current, cancelationToken);
+                }
+                return acc;
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+        }
+
         /// <summary>
         /// Applies an accumulator function over an async-enumerable sequence.
         /// </summary>
@@ -25,7 +107,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
-            return AggregateCoreSync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(accumulator));
+            return AggregateCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(accumulator), cancelationToken);
         }
 
         /// <summary>
@@ -44,30 +126,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
-            return AggregateCoreSync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, accumulator));
-        }
-
-        private static async Promise<TSource> AggregateCoreSync<TSource, TAccumulator>(AsyncEnumerator<TSource> asyncEnumerator, TAccumulator accumulator)
-            where TAccumulator : IFunc<TSource, TSource, TSource>
-        {
-            try
-            {
-                if (!await asyncEnumerator.MoveNextAsync())
-                {
-                    throw new InvalidOperationException("source contains no elements.");
-                }
-
-                var acc = asyncEnumerator.Current;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    acc = accumulator.Invoke(acc, asyncEnumerator.Current);
-                }
-                return acc;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return AggregateCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, accumulator), cancelationToken);
         }
 
         /// <summary>
@@ -83,7 +142,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
-            return AggregateCoreSync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(accumulator));
+            return AggregateCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(accumulator), configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -101,30 +160,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
-            return AggregateCoreSync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, accumulator));
-        }
-
-        private static async Promise<TSource> AggregateCoreSync<TSource, TAccumulator>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TAccumulator accumulator)
-            where TAccumulator : IFunc<TSource, TSource, TSource>
-        {
-            try
-            {
-                if (!await asyncEnumerator.MoveNextAsync())
-                {
-                    throw new InvalidOperationException("configuredSource contains no elements.");
-                }
-
-                var acc = asyncEnumerator.Current;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    acc = accumulator.Invoke(acc, asyncEnumerator.Current);
-                }
-                return acc;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return AggregateCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, accumulator), configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -141,7 +177,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
-            return AggregateCoreAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(asyncAccumulator));
+            return AggregateCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(asyncAccumulator), cancelationToken);
         }
 
         /// <summary>
@@ -160,30 +196,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
-            return AggregateCoreAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, asyncAccumulator));
-        }
-
-        private static async Promise<TSource> AggregateCoreAsync<TSource, TAccumulator>(AsyncEnumerator<TSource> asyncEnumerator, TAccumulator asyncAccumulator)
-            where TAccumulator : IFunc<TSource, TSource, Promise<TSource>>
-        {
-            try
-            {
-                if (!await asyncEnumerator.MoveNextAsync())
-                {
-                    throw new InvalidOperationException("source contains no elements.");
-                }
-
-                var acc = asyncEnumerator.Current;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    acc = await asyncAccumulator.Invoke(acc, asyncEnumerator.Current);
-                }
-                return acc;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return AggregateCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, asyncAccumulator), cancelationToken);
         }
 
         /// <summary>
@@ -199,7 +212,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
-            return AggregateCoreAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(asyncAccumulator));
+            return AggregateCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(asyncAccumulator), configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -217,30 +230,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
-            return AggregateCoreAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, asyncAccumulator));
-        }
-
-        private static async Promise<TSource> AggregateCoreAsync<TSource, TAccumulator>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TAccumulator asyncAccumulator)
-            where TAccumulator : IFunc<TSource, TSource, Promise<TSource>>
-        {
-            try
-            {
-                if (!await asyncEnumerator.MoveNextAsync())
-                {
-                    throw new InvalidOperationException("configuredSource contains no elements.");
-                }
-
-                var acc = asyncEnumerator.Current;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    acc = await asyncAccumulator.Invoke(acc, asyncEnumerator.Current);
-                }
-                return acc;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return AggregateCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, asyncAccumulator), configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -258,7 +248,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
-            return AggregateCoreSync(source.GetAsyncEnumerator(cancelationToken), seed, DelegateWrapper.Create(accumulator));
+            return AggregateCore(source.GetAsyncEnumerator(cancelationToken), seed, DelegateWrapper.Create(accumulator), cancelationToken);
         }
 
         /// <summary>
@@ -278,25 +268,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
-            return AggregateCoreSync(source.GetAsyncEnumerator(cancelationToken), seed, DelegateWrapper.Create(captureValue, accumulator));
-        }
-
-        private static async Promise<TAccumulate> AggregateCoreSync<TSource, TAccumulate, TAccumulator>(AsyncEnumerator<TSource> asyncEnumerator, TAccumulate seed, TAccumulator accumulator)
-            where TAccumulator : IFunc<TAccumulate, TSource, TAccumulate>
-        {
-            try
-            {
-                var acc = seed;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    acc = accumulator.Invoke(acc, asyncEnumerator.Current);
-                }
-                return acc;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return AggregateCore(source.GetAsyncEnumerator(cancelationToken), seed, DelegateWrapper.Create(captureValue, accumulator), cancelationToken);
         }
 
         /// <summary>
@@ -313,7 +285,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
-            return AggregateCoreSync(configuredSource.GetAsyncEnumerator(), seed, DelegateWrapper.Create(accumulator));
+            return AggregateCore(configuredSource.GetAsyncEnumerator(), seed, DelegateWrapper.Create(accumulator), configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -333,25 +305,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
-            return AggregateCoreSync(configuredSource.GetAsyncEnumerator(), seed, DelegateWrapper.Create(captureValue, accumulator));
-        }
-
-        private static async Promise<TAccumulate> AggregateCoreSync<TSource, TAccumulate, TAccumulator>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TAccumulate seed, TAccumulator accumulator)
-            where TAccumulator : IFunc<TAccumulate, TSource, TAccumulate>
-        {
-            try
-            {
-                var acc = seed;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    acc = accumulator.Invoke(acc, asyncEnumerator.Current);
-                }
-                return acc;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return AggregateCore(configuredSource.GetAsyncEnumerator(), seed, DelegateWrapper.Create(captureValue, accumulator), configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -370,7 +324,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
-            return AggregateCoreAsync(source.GetAsyncEnumerator(cancelationToken), seed, DelegateWrapper.Create(asyncAccumulator));
+            return AggregateCore(source.GetAsyncEnumerator(cancelationToken), seed, DelegateWrapper.Create(asyncAccumulator), cancelationToken);
         }
 
         /// <summary>
@@ -391,25 +345,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
-            return AggregateCoreAsync(source.GetAsyncEnumerator(cancelationToken), seed, DelegateWrapper.Create(captureValue, asyncAccumulator));
-        }
-
-        private static async Promise<TAccumulate> AggregateCoreAsync<TSource, TAccumulate, TAccumulator>(AsyncEnumerator<TSource> asyncEnumerator, TAccumulate seed, TAccumulator asyncAccumulator)
-            where TAccumulator : IFunc<TAccumulate, TSource, Promise<TAccumulate>>
-        {
-            try
-            {
-                var acc = seed;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    acc = await asyncAccumulator.Invoke(acc, asyncEnumerator.Current);
-                }
-                return acc;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return AggregateCore(source.GetAsyncEnumerator(cancelationToken), seed, DelegateWrapper.Create(captureValue, asyncAccumulator), cancelationToken);
         }
 
         /// <summary>
@@ -427,7 +363,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
-            return AggregateCoreAsync(configuredSource.GetAsyncEnumerator(), seed, DelegateWrapper.Create(asyncAccumulator));
+            return AggregateCore(configuredSource.GetAsyncEnumerator(), seed, DelegateWrapper.Create(asyncAccumulator), configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -447,25 +383,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
-            return AggregateCoreAsync(configuredSource.GetAsyncEnumerator(), seed, DelegateWrapper.Create(captureValue, asyncAccumulator));
-        }
-
-        private static async Promise<TAccumulate> AggregateCoreAsync<TSource, TAccumulate, TAccumulator>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TAccumulate seed, TAccumulator asyncAccumulator)
-            where TAccumulator : IFunc<TAccumulate, TSource, Promise<TAccumulate>>
-        {
-            try
-            {
-                var acc = seed;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    acc = await asyncAccumulator.Invoke(acc, asyncEnumerator.Current);
-                }
-                return acc;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return AggregateCore(configuredSource.GetAsyncEnumerator(), seed, DelegateWrapper.Create(captureValue, asyncAccumulator), configuredSource.CancelationToken);
         }
     }
 }

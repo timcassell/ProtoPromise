@@ -13,6 +13,50 @@ namespace Proto.Promises.Linq
 {
     partial class AsyncEnumerable
     {
+        private static async Promise<TSource> FirstAsyncCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate, CancelationToken cancelationToken)
+            where TPredicate : IFunc<TSource, CancelationToken, Promise<bool>>
+        {
+            try
+            {
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    var item = asyncEnumerator.Current;
+                    if (await predicate.Invoke(item, cancelationToken))
+                    {
+                        return item;
+                    }
+                }
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+
+            throw new InvalidOperationException("source must contain at least 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+        }
+
+        private static async Promise<TSource> FirstAsyncCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate, CancelationToken cancelationToken)
+            where TPredicate : IFunc<TSource, CancelationToken, Promise<bool>>
+        {
+            try
+            {
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    var item = asyncEnumerator.Current;
+                    if (await predicate.Invoke(item, cancelationToken))
+                    {
+                        return item;
+                    }
+                }
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+
+            throw new InvalidOperationException("source must contain at least 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+        }
+
         /// <summary>
         /// Asynchronously returns the first element of an async-enumerable sequence.
         /// </summary>
@@ -57,7 +101,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate));
+            return FirstAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate), cancelationToken);
         }
 
         /// <summary>
@@ -76,29 +120,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<TSource> FirstAsyncCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, bool>
-        {
-            try
-            {
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    var item = asyncEnumerator.Current;
-                    if (predicate.Invoke(item))
-                    {
-                        return item;
-                    }
-                }
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
-
-            throw new InvalidOperationException("source must contain at least 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+            return FirstAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate), cancelationToken);
         }
 
         /// <summary>
@@ -115,7 +137,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate));
+            return FirstAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate), cancelationToken);
         }
 
         /// <summary>
@@ -134,29 +156,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<TSource> FirstAsyncCoreAwait<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, Promise<bool>>
-        {
-            try
-            {
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    var item = asyncEnumerator.Current;
-                    if (await predicate.Invoke(item))
-                    {
-                        return item;
-                    }
-                }
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
-
-            throw new InvalidOperationException("source must contain at least 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+            return FirstAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate), cancelationToken);
         }
 
         /// <summary>
@@ -172,7 +172,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
+            return FirstAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate), configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -190,29 +190,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<TSource> FirstAsyncCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, bool>
-        {
-            try
-            {
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    var item = asyncEnumerator.Current;
-                    if (predicate.Invoke(item))
-                    {
-                        return item;
-                    }
-                }
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
-
-            throw new InvalidOperationException("source must contain at least 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+            return FirstAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate), configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -228,7 +206,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
+            return FirstAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate), configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -246,29 +224,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return FirstAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<TSource> FirstAsyncCoreAwait<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, Promise<bool>>
-        {
-            try
-            {
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    var item = asyncEnumerator.Current;
-                    if (await predicate.Invoke(item))
-                    {
-                        return item;
-                    }
-                }
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
-
-            throw new InvalidOperationException("source must contain at least 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+            return FirstAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate), configuredSource.CancelationToken);
         }
     }
 }

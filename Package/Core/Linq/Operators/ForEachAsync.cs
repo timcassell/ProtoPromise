@@ -6,13 +6,77 @@
 
 using Proto.Promises.CompilerServices;
 using System;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
 
 namespace Proto.Promises.Linq
 {
     partial class AsyncEnumerable
     {
+        private static async Promise ForEachCore<T, TAction>(AsyncEnumerator<T> asyncEnumerator, TAction action)
+            where TAction : IFunc<T, Promise>
+        {
+            try
+            {
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    await action.Invoke(asyncEnumerator.Current);
+                }
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+        }
+
+        private static async Promise ForEachCore<T, TAction>(ConfiguredAsyncEnumerable<T>.Enumerator asyncEnumerator, TAction action)
+            where TAction : IFunc<T, Promise>
+        {
+            try
+            {
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    await action.Invoke(asyncEnumerator.Current);
+                }
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+        }
+
+        private static async Promise ForEachWithIndexCore<T, TAction>(AsyncEnumerator<T> asyncEnumerator, TAction action)
+            where TAction : IFunc<T, int, Promise>
+        {
+            try
+            {
+                int index = 0;
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    await action.Invoke(asyncEnumerator.Current, checked(index++));
+                }
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+        }
+
+        private static async Promise ForEachWithIndexCore<T, TAction>(ConfiguredAsyncEnumerable<T>.Enumerator asyncEnumerator, TAction action)
+            where TAction : IFunc<T, int, Promise>
+        {
+            try
+            {
+                int index = 0;
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    await action.Invoke(asyncEnumerator.Current, checked(index++));
+                }
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+        }
+
         /// <summary>
         /// Invokes an <see cref="Action{T}"/> for each element in the <see cref="AsyncEnumerable{T}"/> sequence.
         /// Returns a <see cref="Promise"/> that represents the entire operation.
@@ -27,7 +91,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(action, nameof(action), 1);
 
-            return ForEachCoreSync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(action));
+            return ForEachCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(action));
         }
 
         /// <summary>
@@ -46,23 +110,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(action, nameof(action), 1);
 
-            return ForEachCoreSync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, action));
-        }
-
-        private static async Promise ForEachCoreSync<T, TAction>(AsyncEnumerator<T> asyncEnumerator, TAction action)
-            where TAction : IAction<T>
-        {
-            try
-            {
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    action.Invoke(asyncEnumerator.Current);
-                }
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return ForEachCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, action));
         }
 
         /// <summary>
@@ -78,7 +126,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(action, nameof(action), 1);
 
-            return ForEachCoreSync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(action));
+            return ForEachCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(action));
         }
 
         /// <summary>
@@ -96,23 +144,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(action, nameof(action), 1);
 
-            return ForEachCoreSync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, action));
-        }
-
-        private static async Promise ForEachCoreSync<T, TAction>(ConfiguredAsyncEnumerable<T>.Enumerator asyncEnumerator, TAction action)
-            where TAction : IAction<T>
-        {
-            try
-            {
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    action.Invoke(asyncEnumerator.Current);
-                }
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return ForEachCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, action));
         }
 
         /// <summary>
@@ -129,7 +161,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(action, nameof(action), 1);
 
-            return ForEachWithIndexCoreSync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(action));
+            return ForEachWithIndexCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(action));
         }
 
         /// <summary>
@@ -148,24 +180,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(action, nameof(action), 1);
 
-            return ForEachWithIndexCoreSync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, action));
-        }
-
-        private static async Promise ForEachWithIndexCoreSync<T, TAction>(AsyncEnumerator<T> asyncEnumerator, TAction action)
-            where TAction : IAction<T, int>
-        {
-            try
-            {
-                int index = 0;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    action.Invoke(asyncEnumerator.Current, checked(index++));
-                }
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return ForEachWithIndexCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, action));
         }
 
         /// <summary>
@@ -181,7 +196,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(action, nameof(action), 1);
 
-            return ForEachWithIndexCoreSync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(action));
+            return ForEachWithIndexCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(action));
         }
 
         /// <summary>
@@ -200,24 +215,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(action, nameof(action), 1);
 
-            return ForEachWithIndexCoreSync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, action));
-        }
-
-        private static async Promise ForEachWithIndexCoreSync<T, TAction>(ConfiguredAsyncEnumerable<T>.Enumerator asyncEnumerator, TAction action)
-            where TAction : IAction<T, int>
-        {
-            try
-            {
-                int index = 0;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    action.Invoke(asyncEnumerator.Current, checked(index++));
-                }
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return ForEachWithIndexCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, action));
         }
 
         /// <summary>
@@ -235,7 +233,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
-            return ForEachCoreAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(asyncAction));
+            return ForEachCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(asyncAction));
         }
 
         /// <summary>
@@ -255,23 +253,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
-            return ForEachCoreAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, asyncAction));
-        }
-
-        private static async Promise ForEachCoreAsync<T, TAction>(AsyncEnumerator<T> asyncEnumerator, TAction action)
-            where TAction : IFunc<T, Promise>
-        {
-            try
-            {
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    await action.Invoke(asyncEnumerator.Current);
-                }
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return ForEachCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, asyncAction));
         }
 
         /// <summary>
@@ -288,7 +270,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
-            return ForEachCoreAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(asyncAction));
+            return ForEachCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(asyncAction));
         }
 
         /// <summary>
@@ -307,23 +289,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
-            return ForEachCoreAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, asyncAction));
-        }
-
-        private static async Promise ForEachCoreAsync<T, TAction>(ConfiguredAsyncEnumerable<T>.Enumerator asyncEnumerator, TAction action)
-            where TAction : IFunc<T, Promise>
-        {
-            try
-            {
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    await action.Invoke(asyncEnumerator.Current);
-                }
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return ForEachCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, asyncAction));
         }
 
         /// <summary>
@@ -341,7 +307,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
-            return ForEachWithIndexCoreAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(asyncAction));
+            return ForEachWithIndexCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(asyncAction));
         }
 
         /// <summary>
@@ -361,24 +327,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
-            return ForEachWithIndexCoreAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, asyncAction));
-        }
-
-        private static async Promise ForEachWithIndexCoreAsync<T, TAction>(AsyncEnumerator<T> asyncEnumerator, TAction action)
-            where TAction : IFunc<T, int, Promise>
-        {
-            try
-            {
-                int index = 0;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    await action.Invoke(asyncEnumerator.Current, checked(index++));
-                }
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return ForEachWithIndexCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, asyncAction));
         }
 
         /// <summary>
@@ -395,7 +344,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
-            return ForEachWithIndexCoreAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(asyncAction));
+            return ForEachWithIndexCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(asyncAction));
         }
 
         /// <summary>
@@ -414,24 +363,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(asyncAction, nameof(asyncAction), 1);
 
-            return ForEachWithIndexCoreAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, asyncAction));
-        }
-
-        private static async Promise ForEachWithIndexCoreAsync<T, TAction>(ConfiguredAsyncEnumerable<T>.Enumerator asyncEnumerator, TAction action)
-            where TAction : IFunc<T, int, Promise>
-        {
-            try
-            {
-                int index = 0;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    await action.Invoke(asyncEnumerator.Current, checked(index++));
-                }
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return ForEachWithIndexCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, asyncAction));
         }
     }
 

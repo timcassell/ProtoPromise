@@ -59,7 +59,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(selector, nameof(selector), 1);
 
-            return Internal.SelectManyHelper<TResult>.SelectManyAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
+            return Internal.SelectManyHelper<TResult>.SelectMany(source.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
         }
 
         /// <summary>
@@ -77,7 +77,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(selector, nameof(selector), 1);
 
-            return Internal.SelectManyHelper<TResult>.SelectManyAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
+            return Internal.SelectManyHelper<TResult>.SelectMany(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
         }
 
         /// <summary>
@@ -127,7 +127,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(selector, nameof(selector), 1);
 
-            return Internal.SelectManyHelper<TResult>.SelectManyAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
+            return Internal.SelectManyHelper<TResult>.SelectMany(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
         }
 
         /// <summary>
@@ -145,7 +145,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(selector, nameof(selector), 1);
 
-            return Internal.SelectManyHelper<TResult>.SelectManyAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
+            return Internal.SelectManyHelper<TResult>.SelectMany(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
         }
 
         /// <summary>
@@ -198,7 +198,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(selector, nameof(selector), 1);
 
-            return Internal.SelectManyHelper<TResult>.SelectManyWithIndexAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
+            return Internal.SelectManyHelper<TResult>.SelectManyWithIndex(source.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
         }
 
         /// <summary>
@@ -217,7 +217,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(selector, nameof(selector), 1);
 
-            return Internal.SelectManyHelper<TResult>.SelectManyWithIndexAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
+            return Internal.SelectManyHelper<TResult>.SelectManyWithIndex(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
         }
 
         /// <summary>
@@ -270,7 +270,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(selector, nameof(selector), 1);
 
-            return Internal.SelectManyHelper<TResult>.SelectManyWithIndexAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
+            return Internal.SelectManyHelper<TResult>.SelectManyWithIndex(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
         }
 
         /// <summary>
@@ -289,7 +289,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(selector, nameof(selector), 1);
 
-            return Internal.SelectManyHelper<TResult>.SelectManyWithIndexAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
+            return Internal.SelectManyHelper<TResult>.SelectManyWithIndex(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
         }
         #endregion NoResultSelector
 
@@ -369,7 +369,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
             ValidateArgument(resultSelector, nameof(resultSelector), 1);
 
-            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyAwait(source.GetAsyncEnumerator(),
+            return Internal.SelectManyHelper<TCollection, TResult>.SelectMany(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
                 DelegateWrapper.Create(resultSelector));
         }
@@ -397,7 +397,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
             ValidateArgument(resultSelector, nameof(resultSelector), 1);
 
-            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyAwait(source.GetAsyncEnumerator(),
+            return Internal.SelectManyHelper<TCollection, TResult>.SelectMany(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
                 DelegateWrapper.Create(resultSelector));
         }
@@ -477,7 +477,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
             ValidateArgument(resultSelector, nameof(resultSelector), 1);
 
-            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyAwait(configuredSource.GetAsyncEnumerator(),
+            return Internal.SelectManyHelper<TCollection, TResult>.SelectMany(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
                 DelegateWrapper.Create(resultSelector));
         }
@@ -505,7 +505,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
             ValidateArgument(resultSelector, nameof(resultSelector), 1);
 
-            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyAwait(configuredSource.GetAsyncEnumerator(),
+            return Internal.SelectManyHelper<TCollection, TResult>.SelectMany(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
                 DelegateWrapper.Create(resultSelector));
         }
@@ -588,7 +588,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
             ValidateArgument(resultSelector, nameof(resultSelector), 1);
 
-            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndexAwait(source.GetAsyncEnumerator(),
+            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndex(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
                 DelegateWrapper.Create(resultSelector));
         }
@@ -617,7 +617,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
             ValidateArgument(resultSelector, nameof(resultSelector), 1);
 
-            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndexAwait(source.GetAsyncEnumerator(),
+            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndex(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
                 DelegateWrapper.Create(resultSelector));
         }
@@ -700,7 +700,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
             ValidateArgument(resultSelector, nameof(resultSelector), 1);
 
-            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndexAwait(configuredSource.GetAsyncEnumerator(),
+            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndex(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
                 DelegateWrapper.Create(resultSelector));
         }
@@ -729,7 +729,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
             ValidateArgument(resultSelector, nameof(resultSelector), 1);
 
-            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndexAwait(configuredSource.GetAsyncEnumerator(),
+            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndex(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
                 DelegateWrapper.Create(resultSelector));
         }
@@ -815,7 +815,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
             ValidateArgument(resultSelector, nameof(resultSelector), 1);
 
-            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyAwait(source.GetAsyncEnumerator(),
+            return Internal.SelectManyHelper<TCollection, TResult>.SelectMany(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
                 DelegateWrapper.Create(resultCaptureValue, resultSelector));
         }
@@ -845,7 +845,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
             ValidateArgument(resultSelector, nameof(resultSelector), 1);
 
-            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyAwait(source.GetAsyncEnumerator(),
+            return Internal.SelectManyHelper<TCollection, TResult>.SelectMany(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
                 DelegateWrapper.Create(resultCaptureValue, resultSelector));
         }
@@ -931,7 +931,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
             ValidateArgument(resultSelector, nameof(resultSelector), 1);
 
-            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyAwait(configuredSource.GetAsyncEnumerator(),
+            return Internal.SelectManyHelper<TCollection, TResult>.SelectMany(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
                 DelegateWrapper.Create(resultCaptureValue, resultSelector));
         }
@@ -961,7 +961,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
             ValidateArgument(resultSelector, nameof(resultSelector), 1);
 
-            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyAwait(configuredSource.GetAsyncEnumerator(),
+            return Internal.SelectManyHelper<TCollection, TResult>.SelectMany(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
                 DelegateWrapper.Create(resultCaptureValue, resultSelector));
         }
@@ -1050,7 +1050,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
             ValidateArgument(resultSelector, nameof(resultSelector), 1);
 
-            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndexAwait(source.GetAsyncEnumerator(),
+            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndex(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
                 DelegateWrapper.Create(resultCaptureValue, resultSelector));
         }
@@ -1081,7 +1081,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
             ValidateArgument(resultSelector, nameof(resultSelector), 1);
 
-            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndexAwait(source.GetAsyncEnumerator(),
+            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndex(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
                 DelegateWrapper.Create(resultCaptureValue, resultSelector));
         }
@@ -1170,7 +1170,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
             ValidateArgument(resultSelector, nameof(resultSelector), 1);
 
-            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndexAwait(configuredSource.GetAsyncEnumerator(),
+            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndex(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
                 DelegateWrapper.Create(resultCaptureValue, resultSelector));
         }
@@ -1201,7 +1201,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
             ValidateArgument(resultSelector, nameof(resultSelector), 1);
 
-            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndexAwait(configuredSource.GetAsyncEnumerator(),
+            return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndex(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
                 DelegateWrapper.Create(resultCaptureValue, resultSelector));
         }

@@ -346,7 +346,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(innerKeySelector, nameof(innerKeySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.JoinHelper<TKey>.JoinAwait(outer.GetAsyncEnumerator(),
+            return Internal.JoinHelper<TKey>.Join(outer.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
                 DelegateWrapper.Create(outerKeySelector),
                 DelegateWrapper.Create(innerKeySelector),
@@ -381,7 +381,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(innerKeySelector, nameof(innerKeySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.JoinHelper<TKey>.JoinAwait(outer.GetAsyncEnumerator(),
+            return Internal.JoinHelper<TKey>.Join(outer.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
                 DelegateWrapper.Create(outerCaptureValue, outerKeySelector),
                 DelegateWrapper.Create(innerKeySelector),
@@ -416,7 +416,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(innerKeySelector, nameof(innerKeySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.JoinHelper<TKey>.JoinAwait(outer.GetAsyncEnumerator(),
+            return Internal.JoinHelper<TKey>.Join(outer.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
                 DelegateWrapper.Create(outerKeySelector),
                 DelegateWrapper.Create(innerCaptureValue, innerKeySelector),
@@ -454,7 +454,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(innerKeySelector, nameof(innerKeySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.JoinHelper<TKey>.JoinAwait(outer.GetAsyncEnumerator(),
+            return Internal.JoinHelper<TKey>.Join(outer.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
                 DelegateWrapper.Create(outerCaptureValue, outerKeySelector),
                 DelegateWrapper.Create(innerCaptureValue, innerKeySelector),
@@ -796,7 +796,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(innerKeySelector, nameof(innerKeySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.JoinHelper<TKey>.JoinAwait(configuredOuter.GetAsyncEnumerator(),
+            return Internal.JoinHelper<TKey>.Join(configuredOuter.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
                 DelegateWrapper.Create(outerKeySelector),
                 DelegateWrapper.Create(innerKeySelector),
@@ -831,7 +831,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(innerKeySelector, nameof(innerKeySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.JoinHelper<TKey>.JoinAwait(configuredOuter.GetAsyncEnumerator(),
+            return Internal.JoinHelper<TKey>.Join(configuredOuter.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
                 DelegateWrapper.Create(outerCaptureValue, outerKeySelector),
                 DelegateWrapper.Create(innerKeySelector),
@@ -866,7 +866,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(innerKeySelector, nameof(innerKeySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.JoinHelper<TKey>.JoinAwait(configuredOuter.GetAsyncEnumerator(),
+            return Internal.JoinHelper<TKey>.Join(configuredOuter.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
                 DelegateWrapper.Create(outerKeySelector),
                 DelegateWrapper.Create(innerCaptureValue, innerKeySelector),
@@ -904,7 +904,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(innerKeySelector, nameof(innerKeySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.JoinHelper<TKey>.JoinAwait(configuredOuter.GetAsyncEnumerator(),
+            return Internal.JoinHelper<TKey>.Join(configuredOuter.GetAsyncEnumerator(),
                 inner.GetAsyncEnumerator(),
                 DelegateWrapper.Create(outerCaptureValue, outerKeySelector),
                 DelegateWrapper.Create(innerCaptureValue, innerKeySelector),

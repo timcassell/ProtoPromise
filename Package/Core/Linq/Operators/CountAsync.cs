@@ -15,17 +15,6 @@ namespace Proto.Promises.Linq
         // This is mostly because async enumerable values are expected to be evaluated lazily rather than all at once.
         // There are a few cases where the optimization would help (like array.ToAsyncEnumerable()), but it's not worth the added complexity to support those.
 
-        /// <summary>
-        /// Returns a <see cref="Promise{T}"/> resulting in the number of elements in an async-enumerable sequence.
-        /// </summary>
-        /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
-        /// <param name="source">The sequence that contains elements to be counted.</param>
-        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
-        /// <returns>A <see cref="Promise{T}"/> resulting in number of elements in the input sequence.</returns>
-        /// <exception cref="OverflowException">The number of elements in the source sequence is larger than <see cref="int.MaxValue"/>.</exception>
-        public static Promise<int> CountAsync<TSource>(this AsyncEnumerable<TSource> source, CancelationToken cancelationToken = default)
-            => CountCore(source.GetAsyncEnumerator(cancelationToken));
-
         private static async Promise<int> CountCore<TSource>(AsyncEnumerator<TSource> asyncEnumerator)
         {
             try
@@ -46,6 +35,65 @@ namespace Proto.Promises.Linq
             }
         }
 
+        private static async Promise<int> CountCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate, CancelationToken cancelationToken)
+            where TPredicate : IFunc<TSource, CancelationToken, Promise<bool>>
+        {
+            try
+            {
+                int count = 0;
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    if (await predicate.Invoke(asyncEnumerator.Current, cancelationToken))
+                    {
+                        checked
+                        {
+                            ++count;
+                        }
+                    }
+                }
+                return count;
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+        }
+
+        private static async Promise<int> CountCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate, CancelationToken cancelationToken)
+            where TPredicate : IFunc<TSource, CancelationToken, Promise<bool>>
+        {
+            try
+            {
+                int count = 0;
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    if (await predicate.Invoke(asyncEnumerator.Current, cancelationToken))
+                    {
+                        checked
+                        {
+                            ++count;
+                        }
+                    }
+                }
+                return count;
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+        }
+
+        /// <summary>
+        /// Returns a <see cref="Promise{T}"/> resulting in the number of elements in an async-enumerable sequence.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
+        /// <param name="source">The sequence that contains elements to be counted.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
+        /// <returns>A <see cref="Promise{T}"/> resulting in number of elements in the input sequence.</returns>
+        /// <exception cref="OverflowException">The number of elements in the source sequence is larger than <see cref="int.MaxValue"/>.</exception>
+        public static Promise<int> CountAsync<TSource>(this AsyncEnumerable<TSource> source, CancelationToken cancelationToken = default)
+            => CountCore(source.GetAsyncEnumerator(cancelationToken));
+
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> resulting in how many elements in the specified async-enumerable sequence satisfy a condition.
         /// </summary>
@@ -60,7 +108,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate));
+            return CountCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate), cancelationToken);
         }
 
         /// <summary>
@@ -79,31 +127,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<int> CountCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, bool>
-        {
-            try
-            {
-                int count = 0;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    if (predicate.Invoke(asyncEnumerator.Current))
-                    {
-                        checked
-                        {
-                            ++count;
-                        }
-                    }
-                }
-                return count;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return CountCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate), cancelationToken);
         }
 
         /// <summary>
@@ -120,7 +144,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountAwaitCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate));
+            return CountCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate), cancelationToken);
         }
 
         /// <summary>
@@ -139,31 +163,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountAwaitCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<int> CountAwaitCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, Promise<bool>>
-        {
-            try
-            {
-                int count = 0;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    if (await predicate.Invoke(asyncEnumerator.Current))
-                    {
-                        checked
-                        {
-                            ++count;
-                        }
-                    }
-                }
-                return count;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return CountCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate), cancelationToken);
         }
 
         /// <summary>
@@ -179,7 +179,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
+            return CountCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate), configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -197,31 +197,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<int> CountCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, bool>
-        {
-            try
-            {
-                int count = 0;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    if (predicate.Invoke(asyncEnumerator.Current))
-                    {
-                        checked
-                        {
-                            ++count;
-                        }
-                    }
-                }
-                return count;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return CountCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate), configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -237,7 +213,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountAwaitCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
+            return CountCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate), configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -255,31 +231,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return CountAwaitCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<int> CountAwaitCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, Promise<bool>>
-        {
-            try
-            {
-                int count = 0;
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    if (await predicate.Invoke(asyncEnumerator.Current))
-                    {
-                        checked
-                        {
-                            ++count;
-                        }
-                    }
-                }
-                return count;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return CountCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate), configuredSource.CancelationToken);
         }
     }
 }

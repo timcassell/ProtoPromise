@@ -11,6 +11,46 @@ namespace Proto.Promises.Linq
 {
     partial class AsyncEnumerable
     {
+        private static async Promise<bool> AllCore<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate, CancelationToken cancelationToken)
+            where TPredicate : IFunc<TSource, CancelationToken, Promise<bool>>
+        {
+            try
+            {
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    if (!await predicate.Invoke(asyncEnumerator.Current, cancelationToken))
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+        }
+
+        private static async Promise<bool> AllCore<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate, CancelationToken cancelationToken)
+            where TPredicate : IFunc<TSource, CancelationToken, Promise<bool>>
+        {
+            try
+            {
+                while (await asyncEnumerator.MoveNextAsync())
+                {
+                    if (!await predicate.Invoke(asyncEnumerator.Current, cancelationToken))
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            finally
+            {
+                await asyncEnumerator.DisposeAsync();
+            }
+        }
+
         /// <summary>
         /// Determines whether all elements of an async-enumerable sequence satisfy a condition.
         /// </summary>
@@ -24,7 +64,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return AllCoreSync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate));
+            return AllCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate), cancelationToken);
         }
 
         /// <summary>
@@ -42,27 +82,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return AllCoreSync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<bool> AllCoreSync<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, bool>
-        {
-            try
-            {
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    if (!predicate.Invoke(asyncEnumerator.Current))
-                    {
-                        return false;
-                    }
-                }
-                return true;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return AllCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate), cancelationToken);
         }
 
         /// <summary>
@@ -78,7 +98,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return AllCoreAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate));
+            return AllCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate), cancelationToken);
         }
 
         /// <summary>
@@ -96,27 +116,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return AllCoreAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<bool> AllCoreAsync<TSource, TPredicate>(AsyncEnumerator<TSource> asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, Promise<bool>>
-        {
-            try
-            {
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    if (!await predicate.Invoke(asyncEnumerator.Current))
-                    {
-                        return false;
-                    }
-                }
-                return true;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return AllCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate), cancelationToken);
         }
 
         /// <summary>
@@ -131,7 +131,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return AllCoreSync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
+            return AllCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate), configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -148,27 +148,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return AllCoreSync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<bool> AllCoreSync<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, bool>
-        {
-            try
-            {
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    if (!predicate.Invoke(asyncEnumerator.Current))
-                    {
-                        return false;
-                    }
-                }
-                return true;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return AllCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate), configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -183,7 +163,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return AllCoreAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
+            return AllCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate), configuredSource.CancelationToken);
         }
 
         /// <summary>
@@ -200,27 +180,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return AllCoreAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
-        }
-
-        private static async Promise<bool> AllCoreAsync<TSource, TPredicate>(ConfiguredAsyncEnumerable<TSource>.Enumerator asyncEnumerator, TPredicate predicate)
-            where TPredicate : IFunc<TSource, Promise<bool>>
-        {
-            try
-            {
-                while (await asyncEnumerator.MoveNextAsync())
-                {
-                    if (!await predicate.Invoke(asyncEnumerator.Current))
-                    {
-                        return false;
-                    }
-                }
-                return true;
-            }
-            finally
-            {
-                await asyncEnumerator.DisposeAsync();
-            }
+            return AllCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate), configuredSource.CancelationToken);
         }
     }
 }

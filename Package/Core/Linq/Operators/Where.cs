@@ -55,7 +55,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.WhereHelper.WhereAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
+            return Internal.WhereHelper.Where(source.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -72,7 +72,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.WhereHelper.WhereAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
+            return Internal.WhereHelper.Where(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
 
         /// <summary>
@@ -119,7 +119,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.WhereHelper.WhereAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
+            return Internal.WhereHelper.Where(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -136,7 +136,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.WhereHelper.WhereAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
+            return Internal.WhereHelper.Where(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
 
         /// <summary>
@@ -183,7 +183,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.WhereHelper.WhereWithIndexAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
+            return Internal.WhereHelper.WhereWithIndex(source.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -200,7 +200,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.WhereHelper.WhereWithIndexAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
+            return Internal.WhereHelper.WhereWithIndex(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
 
         /// <summary>
@@ -247,7 +247,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.WhereHelper.WhereWithIndexAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
+            return Internal.WhereHelper.WhereWithIndex(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
 
         /// <summary>
@@ -264,7 +264,7 @@ namespace Proto.Promises.Linq
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
-            return Internal.WhereHelper.WhereWithIndexAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
+            return Internal.WhereHelper.WhereWithIndex(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
     }
 }

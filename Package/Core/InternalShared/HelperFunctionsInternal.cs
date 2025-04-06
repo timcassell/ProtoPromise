@@ -170,25 +170,25 @@ namespace Proto.Promises
 #endif
         }
 
-        internal static MaybeJoinedCancelationSource MaybeJoinCancelationTokens(CancelationToken first, CancelationToken second, out CancelationToken maybeJoinedToken)
+        internal static MaybeJoinedCancelationSource MaybeJoinCancelationTokens(ref CancelationToken first, ref CancelationToken second)
         {
             if (first == second | !first.CanBeCanceled)
             {
-                maybeJoinedToken = second;
+                first = second;
                 return default;
             }
             if (!second.CanBeCanceled)
             {
-                maybeJoinedToken = first;
+                second = first;
                 return default;
             }
             if (first.IsCancelationRequested | second.IsCancelationRequested)
             {
-                maybeJoinedToken = CancelationToken.Canceled();
+                first = second = CancelationToken.Canceled();
                 return default;
             }
             var source = CancelationSource.New(first, second);
-            maybeJoinedToken = source.Token;
+            first = second = source.Token;
             return new MaybeJoinedCancelationSource(source);
         }
 
@@ -197,6 +197,7 @@ namespace Proto.Promises
 #endif
         internal readonly struct MaybeJoinedCancelationSource: IDisposable
         {
+            // TODO: Use class reference instead of struct.
             private readonly CancelationSource _source;
 
             [MethodImpl(InlineOption)]
