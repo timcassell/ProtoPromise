@@ -252,7 +252,7 @@ namespace Proto.Promises
                         if (_writers.IsEmpty)
                         {
                             _smallFields._locker.Exit();
-                            goto ReturnSuccess;
+                            return Promise.Resolved(new ChannelReadResult<T>(item, ChannelReadResult.Success));
                         }
 
                         // There was at least 1 writer waiting for capacity. Grab one, add its item to the queue, and resolve it outside of the lock.
@@ -260,8 +260,6 @@ namespace Proto.Promises
                         _queue.EnqueueTail(writer.GetItem());
                         _smallFields._locker.Exit();
                         writer.Resolve(new ChannelWriteResult<T>(default, ChannelWriteResult.Success));
-
-                    ReturnSuccess:
                         return Promise.Resolved(new ChannelReadResult<T>(item, ChannelReadResult.Success));
                     }
 

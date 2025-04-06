@@ -88,17 +88,13 @@ namespace Proto.Promises
                     if (stopExecuting || !_enumerator.MoveNext())
                     {
                         stopExecuting = true;
-                        // Exit the lock before writing the value.
-                        goto ReturnFalse;
+                        value = default;
+                        return false;
                     }
 
                     value = _enumerator.Current;
+                    return true;
                 }
-                return true;
-
-            ReturnFalse:
-                value = default;
-                return false;
             }
 
             [MethodImpl(InlineOption)]
