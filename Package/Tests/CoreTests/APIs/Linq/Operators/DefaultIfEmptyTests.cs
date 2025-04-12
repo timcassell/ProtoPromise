@@ -36,8 +36,8 @@ namespace ProtoPromiseTests.APIs.Linq
         {
             var enumerable = AsyncEnumerable.Range(0, 10);
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.DefaultIfEmpty(default(Func<Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.DefaultIfEmpty("capture", default(Func<string, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.DefaultIfEmpty(default(Func<CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.DefaultIfEmpty("capture", default(Func<string, CancelationToken, Promise<int>>)));
 
             enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
         }
@@ -170,12 +170,12 @@ namespace ProtoPromiseTests.APIs.Linq
             const string capturedValue = "capturedValue";
 
             return captureValue
-                ? source.DefaultIfEmpty(capturedValue, cv =>
+                ? source.DefaultIfEmpty(capturedValue, (cv, _) =>
                 {
                     Assert.AreEqual(capturedValue, cv);
                     return Promise.Resolved(retriever.Invoke());
                 })
-                : source.DefaultIfEmpty(() => Promise.Resolved(retriever.Invoke()));
+                : source.DefaultIfEmpty(_ => Promise.Resolved(retriever.Invoke()));
         }
 
         [Test]

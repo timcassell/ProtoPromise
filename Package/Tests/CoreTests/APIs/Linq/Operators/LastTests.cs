@@ -39,9 +39,9 @@ namespace ProtoPromiseTests.APIs.Linq
             var enumerable = AsyncEnumerable.Range(0, 10);
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.LastAsync(default(Func<int, bool>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.LastAsync(default(Func<int, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.LastAsync(default(Func<int, CancelationToken, Promise<bool>>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).LastAsync(default(Func<int, bool>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).LastAsync(default(Func<int, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).LastAsync(default(Func<int, CancelationToken, Promise<bool>>)));
 
             enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
         }
@@ -110,13 +110,13 @@ namespace ProtoPromiseTests.APIs.Linq
             if (!captureValue)
             {
                 return async
-                    ? source.LastAsync(async x => predicate(x), cancelationToken)
+                    ? source.LastAsync(async (x, _) => predicate(x), cancelationToken)
                     : source.LastAsync(predicate, cancelationToken);
             }
             else
             {
                 return async
-                    ? source.LastAsync(valueCapture, async (cv, x) =>
+                    ? source.LastAsync(valueCapture, async (cv, x, _) =>
                     {
                         Assert.AreEqual(valueCapture, cv);
                         return predicate(x);
@@ -139,13 +139,13 @@ namespace ProtoPromiseTests.APIs.Linq
             if (!captureValue)
             {
                 return async
-                    ? source.LastAsync(async x => predicate(x))
+                    ? source.LastAsync(async (x, _) => predicate(x))
                     : source.LastAsync(predicate);
             }
             else
             {
                 return async
-                    ? source.LastAsync(valueCapture, async (cv, x) =>
+                    ? source.LastAsync(valueCapture, async (cv, x, _) =>
                     {
                         Assert.AreEqual(valueCapture, cv);
                         return predicate(x);

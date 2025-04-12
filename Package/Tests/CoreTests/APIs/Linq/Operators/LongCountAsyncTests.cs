@@ -42,12 +42,12 @@ namespace ProtoPromiseTests.APIs.Linq
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.LongCountAsync(default(Func<int, bool>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.LongCountAsync(captureValue, default(Func<string, int, bool>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.LongCountAsync(default(Func<int, Promise<bool>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.LongCountAsync(captureValue, default(Func<string, int, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.LongCountAsync(default(Func<int, CancelationToken, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.LongCountAsync(captureValue, default(Func<string, int, CancelationToken, Promise<bool>>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).LongCountAsync(default(Func<int, bool>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).LongCountAsync(captureValue, default(Func<string, int, bool>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).LongCountAsync(default(Func<int, Promise<bool>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).LongCountAsync(captureValue, default(Func<string, int, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).LongCountAsync(default(Func<int, CancelationToken, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).LongCountAsync(captureValue, default(Func<string, int, CancelationToken, Promise<bool>>)));
 
             enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
         }
@@ -71,13 +71,13 @@ namespace ProtoPromiseTests.APIs.Linq
             if (!captureValue)
             {
                 return async
-                    ? source.LongCountAsync(async x => predicate(x), cancelationToken)
+                    ? source.LongCountAsync(async (x, _) => predicate(x), cancelationToken)
                     : source.LongCountAsync(predicate, cancelationToken);
             }
             else
             {
                 return async
-                    ? source.LongCountAsync(capturedValue, async (cv, x) =>
+                    ? source.LongCountAsync(capturedValue, async (cv, x, _) =>
                     {
                         Assert.AreEqual(capturedValue, cv);
                         return predicate(x);
@@ -100,13 +100,13 @@ namespace ProtoPromiseTests.APIs.Linq
             if (!captureValue)
             {
                 return async
-                    ? source.LongCountAsync(async x => predicate(x))
+                    ? source.LongCountAsync(async (x, _) => predicate(x))
                     : source.LongCountAsync(predicate);
             }
             else
             {
                 return async
-                    ? source.LongCountAsync(capturedValue, async (cv, x) =>
+                    ? source.LongCountAsync(capturedValue, async (cv, x, _) =>
                     {
                         Assert.AreEqual(capturedValue, cv);
                         return predicate(x);

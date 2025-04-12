@@ -77,7 +77,8 @@ namespace Proto.Promises.Linq
         /// <param name="second">An async-enumerable sequence whose distinct elements that also appear in <paramref name="first"/> will be returned.</param>
         /// <param name="keySelector">A function to extract the key for each element.</param>
         /// <returns>An async-enumerable sequence that contains the set intersection of the elements of two async-enumerable sequences.</returns>
-        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey>(this AsyncEnumerable<TSource> first, AsyncEnumerable<TSource> second, Func<TSource, TKey> keySelector)
+        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey>(this AsyncEnumerable<TSource> first, AsyncEnumerable<TSource> second,
+            Func<TSource, TKey> keySelector)
             => IntersectBy(first, second, keySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -92,7 +93,8 @@ namespace Proto.Promises.Linq
         /// <param name="comparer">An equality comparer to compare values.</param>
         /// <returns>An async-enumerable sequence that contains the set intersection of the elements of two async-enumerable sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="comparer"/> is null.</exception>
-        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TEqualityComparer>(this AsyncEnumerable<TSource> first, AsyncEnumerable<TSource> second, Func<TSource, TKey> keySelector, TEqualityComparer comparer)
+        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TEqualityComparer>(this AsyncEnumerable<TSource> first, AsyncEnumerable<TSource> second,
+            Func<TSource, TKey> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
@@ -112,7 +114,8 @@ namespace Proto.Promises.Linq
         /// <param name="captureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">A function to extract the key for each element.</param>
         /// <returns>An async-enumerable sequence that contains the set intersection of the elements of two async-enumerable sequences.</returns>
-        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TCapture>(this AsyncEnumerable<TSource> first, AsyncEnumerable<TSource> second, TCapture captureValue, Func<TCapture, TSource, TKey> keySelector)
+        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TCapture>(this AsyncEnumerable<TSource> first, AsyncEnumerable<TSource> second,
+            TCapture captureValue, Func<TCapture, TSource, TKey> keySelector)
             => IntersectBy(first, second, captureValue, keySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -129,7 +132,8 @@ namespace Proto.Promises.Linq
         /// <param name="comparer">An equality comparer to compare values.</param>
         /// <returns>An async-enumerable sequence that contains the set intersection of the elements of two async-enumerable sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="comparer"/> is null.</exception>
-        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TCapture, TEqualityComparer>(this AsyncEnumerable<TSource> first, AsyncEnumerable<TSource> second, TCapture captureValue, Func<TCapture, TSource, TKey> keySelector, TEqualityComparer comparer)
+        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TCapture, TEqualityComparer>(this AsyncEnumerable<TSource> first, AsyncEnumerable<TSource> second,
+            TCapture captureValue, Func<TCapture, TSource, TKey> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
@@ -147,7 +151,8 @@ namespace Proto.Promises.Linq
         /// <param name="second">An async-enumerable sequence whose distinct elements that also appear in <paramref name="first"/> will be returned.</param>
         /// <param name="keySelector">An async function to extract the key for each element.</param>
         /// <returns>An async-enumerable sequence that contains the set intersection of the elements of two async-enumerable sequences.</returns>
-        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey>(this AsyncEnumerable<TSource> first, AsyncEnumerable<TSource> second, Func<TSource, Promise<TKey>> keySelector)
+        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey>(this AsyncEnumerable<TSource> first, AsyncEnumerable<TSource> second,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector)
             => IntersectBy(first, second, keySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -162,7 +167,8 @@ namespace Proto.Promises.Linq
         /// <param name="comparer">An equality comparer to compare values.</param>
         /// <returns>An async-enumerable sequence that contains the set intersection of the elements of two async-enumerable sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="comparer"/> is null.</exception>
-        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TEqualityComparer>(this AsyncEnumerable<TSource> first, AsyncEnumerable<TSource> second, Func<TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
+        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TEqualityComparer>(this AsyncEnumerable<TSource> first, AsyncEnumerable<TSource> second,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
@@ -182,7 +188,8 @@ namespace Proto.Promises.Linq
         /// <param name="captureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">An async function to extract the key for each element.</param>
         /// <returns>An async-enumerable sequence that contains the set intersection of the elements of two async-enumerable sequences.</returns>
-        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TCapture>(this AsyncEnumerable<TSource> first, AsyncEnumerable<TSource> second, TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector)
+        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TCapture>(this AsyncEnumerable<TSource> first, AsyncEnumerable<TSource> second,
+            TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<TKey>> keySelector)
             => IntersectBy(first, second, captureValue, keySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -199,7 +206,8 @@ namespace Proto.Promises.Linq
         /// <param name="comparer">An equality comparer to compare values.</param>
         /// <returns>An async-enumerable sequence that contains the set intersection of the elements of two async-enumerable sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="comparer"/> is null.</exception>
-        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TCapture, TEqualityComparer>(this AsyncEnumerable<TSource> first, AsyncEnumerable<TSource> second, TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
+        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TCapture, TEqualityComparer>(this AsyncEnumerable<TSource> first, AsyncEnumerable<TSource> second,
+            TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
@@ -217,7 +225,8 @@ namespace Proto.Promises.Linq
         /// <param name="second">An async-enumerable sequence whose distinct elements that also appear in <paramref name="configuredFirst"/> will be returned.</param>
         /// <param name="keySelector">A function to extract the key for each element.</param>
         /// <returns>An async-enumerable sequence that contains the set intersection of the elements of two async-enumerable sequences.</returns>
-        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second, Func<TSource, TKey> keySelector)
+        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second,
+            Func<TSource, TKey> keySelector)
             => IntersectBy(configuredFirst, second, keySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -232,7 +241,8 @@ namespace Proto.Promises.Linq
         /// <param name="comparer">An equality comparer to compare values.</param>
         /// <returns>An async-enumerable sequence that contains the set intersection of the elements of two async-enumerable sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="comparer"/> is null.</exception>
-        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second, Func<TSource, TKey> keySelector, TEqualityComparer comparer)
+        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second,
+            Func<TSource, TKey> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
@@ -252,7 +262,8 @@ namespace Proto.Promises.Linq
         /// <param name="captureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">A function to extract the key for each element.</param>
         /// <returns>An async-enumerable sequence that contains the set intersection of the elements of two async-enumerable sequences.</returns>
-        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second, TCapture captureValue, Func<TCapture, TSource, TKey> keySelector)
+        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second,
+            TCapture captureValue, Func<TCapture, TSource, TKey> keySelector)
             => IntersectBy(configuredFirst, second, captureValue, keySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -269,7 +280,8 @@ namespace Proto.Promises.Linq
         /// <param name="comparer">An equality comparer to compare values.</param>
         /// <returns>An async-enumerable sequence that contains the set intersection of the elements of two async-enumerable sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="comparer"/> is null.</exception>
-        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TCapture, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second, TCapture captureValue, Func<TCapture, TSource, TKey> keySelector, TEqualityComparer comparer)
+        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TCapture, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second,
+            TCapture captureValue, Func<TCapture, TSource, TKey> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
@@ -287,7 +299,8 @@ namespace Proto.Promises.Linq
         /// <param name="second">An async-enumerable sequence whose distinct elements that also appear in <paramref name="configuredFirst"/> will be returned.</param>
         /// <param name="keySelector">An async function to extract the key for each element.</param>
         /// <returns>An async-enumerable sequence that contains the set intersection of the elements of two async-enumerable sequences.</returns>
-        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second, Func<TSource, Promise<TKey>> keySelector)
+        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector)
             => IntersectBy(configuredFirst, second, keySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -302,7 +315,8 @@ namespace Proto.Promises.Linq
         /// <param name="comparer">An equality comparer to compare values.</param>
         /// <returns>An async-enumerable sequence that contains the set intersection of the elements of two async-enumerable sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="comparer"/> is null.</exception>
-        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second, Func<TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
+        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
@@ -322,7 +336,8 @@ namespace Proto.Promises.Linq
         /// <param name="captureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">An async function to extract the key for each element.</param>
         /// <returns>An async-enumerable sequence that contains the set intersection of the elements of two async-enumerable sequences.</returns>
-        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second, TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector)
+        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second,
+            TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<TKey>> keySelector)
             => IntersectBy(configuredFirst, second, captureValue, keySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -339,7 +354,8 @@ namespace Proto.Promises.Linq
         /// <param name="comparer">An equality comparer to compare values.</param>
         /// <returns>An async-enumerable sequence that contains the set intersection of the elements of two async-enumerable sequences.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="comparer"/> is null.</exception>
-        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TCapture, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second, TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
+        public static AsyncEnumerable<TSource> IntersectBy<TSource, TKey, TCapture, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second,
+            TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);

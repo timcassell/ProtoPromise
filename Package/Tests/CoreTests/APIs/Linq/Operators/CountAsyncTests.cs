@@ -42,12 +42,12 @@ namespace ProtoPromiseTests.APIs.Linq
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.CountAsync(default(Func<int, bool>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.CountAsync(captureValue, default(Func<string, int, bool>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.CountAsync(default(Func<int, Promise<bool>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.CountAsync(captureValue, default(Func<string, int, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.CountAsync(default(Func<int, CancelationToken, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.CountAsync(captureValue, default(Func<string, int, CancelationToken, Promise<bool>>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).CountAsync(default(Func<int, bool>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).CountAsync(captureValue, default(Func<string, int, bool>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).CountAsync(default(Func<int, Promise<bool>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).CountAsync(captureValue, default(Func<string, int, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).CountAsync(default(Func<int, CancelationToken, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).CountAsync(captureValue, default(Func<string, int, CancelationToken, Promise<bool>>)));
 
             enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
         }
@@ -71,13 +71,13 @@ namespace ProtoPromiseTests.APIs.Linq
             if (!captureValue)
             {
                 return async
-                    ? source.CountAsync(async x => predicate(x), cancelationToken)
+                    ? source.CountAsync(async (x, _) => predicate(x), cancelationToken)
                     : source.CountAsync(predicate, cancelationToken);
             }
             else
             {
                 return async
-                    ? source.CountAsync(capturedValue, async (cv, x) =>
+                    ? source.CountAsync(capturedValue, async (cv, x, _) =>
                     {
                         Assert.AreEqual(capturedValue, cv);
                         return predicate(x);
@@ -100,13 +100,13 @@ namespace ProtoPromiseTests.APIs.Linq
             if (!captureValue)
             {
                 return async
-                    ? source.CountAsync(async x => predicate(x))
+                    ? source.CountAsync(async (x, _) => predicate(x))
                     : source.CountAsync(predicate);
             }
             else
             {
                 return async
-                    ? source.CountAsync(capturedValue, async (cv, x) =>
+                    ? source.CountAsync(capturedValue, async (cv, x, _) =>
                     {
                         Assert.AreEqual(capturedValue, cv);
                         return predicate(x);

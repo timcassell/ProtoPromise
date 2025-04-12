@@ -41,23 +41,23 @@ namespace ProtoPromiseTests.APIs.Linq
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.MaxByAsync(default(Func<int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.MaxByAsync(x => x, default(IComparer<int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.MaxByAsync(default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.MaxByAsync(async x => x, default(IComparer<int>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.MaxByAsync(default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.MaxByAsync(async (x, _) => x, default(IComparer<int>)));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.MaxByAsync(captureValue, default(Func<string, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.MaxByAsync(captureValue, (cv, x) => x, default(IComparer<int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.MaxByAsync(captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.MaxByAsync(captureValue, async (cv, x) => x, default(IComparer<int>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.MaxByAsync(captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.MaxByAsync(captureValue, async (cv, x, _) => x, default(IComparer<int>)));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MaxByAsync(default(Func<int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MaxByAsync(x => x, default(IComparer<int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MaxByAsync(default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MaxByAsync(async x => x, default(IComparer<int>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MaxByAsync(default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MaxByAsync(async (x, _) => x, default(IComparer<int>)));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MaxByAsync(captureValue, default(Func<string, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MaxByAsync(captureValue, (cv, x) => x, default(IComparer<int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MaxByAsync(captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MaxByAsync(captureValue, async (cv, x) => x, default(IComparer<int>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MaxByAsync(captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MaxByAsync(captureValue, async (cv, x, _) => x, default(IComparer<int>)));
 
             enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
         }
@@ -82,11 +82,11 @@ namespace ProtoPromiseTests.APIs.Linq
             return async
                 ? captureValue
                     ? comparer != null
-                        ? source.MaxByAsync(capturedValue, async (cv, x) => keySelector(x), comparer, cancelationToken)
-                        : source.MaxByAsync(capturedValue, async (cv, x) => keySelector(x), cancelationToken)
+                        ? source.MaxByAsync(capturedValue, async (cv, x, _) => keySelector(x), comparer, cancelationToken)
+                        : source.MaxByAsync(capturedValue, async (cv, x, _) => keySelector(x), cancelationToken)
                     : comparer != null
-                        ? source.MaxByAsync(async x => keySelector(x), comparer, cancelationToken)
-                        : source.MaxByAsync(async x => keySelector(x), cancelationToken)
+                        ? source.MaxByAsync(async (x, _) => keySelector(x), comparer, cancelationToken)
+                        : source.MaxByAsync(async (x, _) => keySelector(x), cancelationToken)
                 : captureValue
                     ? comparer != null
                         ? source.MaxByAsync(capturedValue, (cv, x) => keySelector(x), comparer, cancelationToken)
@@ -107,11 +107,11 @@ namespace ProtoPromiseTests.APIs.Linq
             return async
                 ? captureValue
                     ? comparer != null
-                        ? source.MaxByAsync(capturedValue, async (cv, x) => keySelector(x), comparer)
-                        : source.MaxByAsync(capturedValue, async (cv, x) => keySelector(x))
+                        ? source.MaxByAsync(capturedValue, async (cv, x, _) => keySelector(x), comparer)
+                        : source.MaxByAsync(capturedValue, async (cv, x, _) => keySelector(x))
                     : comparer != null
-                        ? source.MaxByAsync(async x => keySelector(x), comparer)
-                        : source.MaxByAsync(async x => keySelector(x))
+                        ? source.MaxByAsync(async (x, _) => keySelector(x), comparer)
+                        : source.MaxByAsync(async (x, _) => keySelector(x))
                 : captureValue
                     ? comparer != null
                         ? source.MaxByAsync(capturedValue, (cv, x) => keySelector(x), comparer)

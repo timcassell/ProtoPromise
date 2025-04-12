@@ -55,23 +55,15 @@ namespace ProtoPromiseTests.APIs.Linq
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ForEachAsync(default(Action<int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).ForEachAsync(default(Action<int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ForEachAsync(default(Action<int, int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).ForEachAsync(default(Action<int, int>)));
                                                              
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ForEachAsync("captured", default(Action<string, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).ForEachAsync("captured", default(Action<string, int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ForEachAsync("captured", default(Action<string, int, int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).ForEachAsync("captured", default(Action<string, int, int>)));
                                                              
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ForEachAsync(default(Func<int, Promise>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).ForEachAsync(default(Func<int, Promise>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ForEachAsync(default(Func<int, int, Promise>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).ForEachAsync(default(Func<int, int, Promise>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ForEachAsync(default(Func<int, CancelationToken, Promise>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).ForEachAsync(default(Func<int, CancelationToken, Promise>)));
                                                              
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ForEachAsync("captured", default(Func<string, int, Promise>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).ForEachAsync("captured", default(Func<string, int, Promise>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ForEachAsync("captured", default(Func<string, int, int, Promise>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).ForEachAsync("captured", default(Func<string, int, int, Promise>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ForEachAsync("captured", default(Func<string, int, CancelationToken, Promise>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).ForEachAsync("captured", default(Func<string, int, CancelationToken, Promise>)));
 
             enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
         }
@@ -143,72 +135,6 @@ namespace ProtoPromiseTests.APIs.Linq
             }
         }
 
-        // We test all the different overloads.
-        private static Promise ForEachAsync<TSource>(AsyncEnumerable<TSource> source,
-            bool configured,
-            bool async,
-            bool captureValue,
-            Action<TSource, int> action,
-            CancelationToken cancelationToken = default)
-        {
-            if (configured)
-            {
-                return ForEachAsync(source.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(cancelationToken), async, captureValue, action);
-            }
-
-            const string valueCapture = "valueCapture";
-
-            if (!captureValue)
-            {
-                return async
-                    ? source.ForEachAsync(async (x, i) => action(x, i), cancelationToken)
-                    : source.ForEachAsync(action, cancelationToken);
-            }
-            else
-            {
-                return async
-                    ? source.ForEachAsync(valueCapture, async (cv, x, i) =>
-                    {
-                        Assert.AreEqual(valueCapture, cv);
-                        action(x, i);
-                    }, cancelationToken)
-                    : source.ForEachAsync(valueCapture, (cv, x, i) =>
-                    {
-                        Assert.AreEqual(valueCapture, cv);
-                        action(x, i);
-                    }, cancelationToken);
-            }
-        }
-
-        private static Promise ForEachAsync<TSource>(ConfiguredAsyncEnumerable<TSource> source,
-            bool async,
-            bool captureValue,
-            Action<TSource, int> action)
-        {
-            const string valueCapture = "valueCapture";
-
-            if (!captureValue)
-            {
-                return async
-                    ? source.ForEachAsync(async (x, i) => action(x, i))
-                    : source.ForEachAsync(action);
-            }
-            else
-            {
-                return async
-                    ? source.ForEachAsync(valueCapture, async (cv, x, i) =>
-                    {
-                        Assert.AreEqual(valueCapture, cv);
-                        action(x, i);
-                    })
-                    : source.ForEachAsync(valueCapture, (cv, x, i) =>
-                    {
-                        Assert.AreEqual(valueCapture, cv);
-                        action(x, i);
-                    });
-            }
-        }
-
         [Test]
         public void ForEachAsync_Simple(
             [Values] bool configured,
@@ -222,18 +148,6 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void ForEachAsync_Indexed(
-            [Values] bool configured,
-            [Values] bool async,
-            [Values] bool captureValue)
-        {
-            var sum = 0;
-            ForEachAsync(EnumerableRangeAsync(1, 4), configured, async, captureValue, (x, i) => sum += x * i)
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-            Assert.AreEqual(1 * 0 + 2 * 1 + 3 * 2 + 4 * 3, sum);
-        }
-
-        [Test]
         public void ForEachAsync_Throws_Action(
             [Values] bool configured,
             [Values] bool async,
@@ -243,21 +157,6 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 var ex = new Exception("Bang");
                 var res = ForEachAsync(EnumerableRangeAsync(1, 4), configured, async, captureValue, x => { throw ex; });
-                await TestHelper.AssertThrowsAsync(() => res, ex);
-            }, SynchronizationOption.Synchronous)
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-        }
-
-        [Test]
-        public void ForEachAsync_Indexed_Throws_Action(
-            [Values] bool configured,
-            [Values] bool async,
-            [Values] bool captureValue)
-        {
-            Promise.Run(async () =>
-            {
-                var ex = new Exception("Bang");
-                var res = ForEachAsync(EnumerableRangeAsync(1, 4), configured, async, captureValue, (x, i) => { throw ex; });
                 await TestHelper.AssertThrowsAsync(() => res, ex);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
@@ -283,38 +182,6 @@ namespace ProtoPromiseTests.APIs.Linq
                 using (var cancelationSource = CancelationSource.New())
                 {
                     var res = ForEachAsync(xs, configured, async, captureValue, x =>
-                    {
-                        if (x == 2)
-                        {
-                            cancelationSource.Cancel();
-                        }
-                    }, cancelationSource.Token);
-                    await TestHelper.AssertCanceledAsync(() => res);
-                }
-            }, SynchronizationOption.Synchronous)
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-        }
-
-        [Test]
-        public void ForEachAsync_Indexed_Cancel(
-            [Values] bool configured,
-            [Values] bool async,
-            [Values] bool captureValue)
-        {
-            Promise.Run(async () =>
-            {
-                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
-                {
-                    cancelationToken.ThrowIfCancelationRequested();
-                    await writer.YieldAsync(1);
-                    cancelationToken.ThrowIfCancelationRequested();
-                    await writer.YieldAsync(2);
-                    cancelationToken.ThrowIfCancelationRequested();
-                    await writer.YieldAsync(3);
-                });
-                using (var cancelationSource = CancelationSource.New())
-                {
-                    var res = ForEachAsync(xs, configured, async, captureValue, (x, i) =>
                     {
                         if (x == 2)
                         {

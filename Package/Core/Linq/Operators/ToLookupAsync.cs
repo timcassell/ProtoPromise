@@ -108,7 +108,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TKey>(
             this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
             CancelationToken cancelationToken = default)
             => ToLookupAsync<TSource, TKey, IEqualityComparer<TKey>>(source, keySelector, EqualityComparer<TKey>.Default, cancelationToken);
 
@@ -127,7 +127,7 @@ namespace Proto.Promises.Linq
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TCaptureKey, TKey>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
             CancelationToken cancelationToken = default)
             => ToLookupAsync<TSource, TCaptureKey, TKey, IEqualityComparer<TKey>>(source, keyCaptureValue, keySelector, EqualityComparer<TKey>.Default, cancelationToken);
 
@@ -145,7 +145,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TKey, TEqualityComparer>(
             this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
             TEqualityComparer comparer,
             CancelationToken cancelationToken = default)
             where TEqualityComparer : IEqualityComparer<TKey>
@@ -173,7 +173,7 @@ namespace Proto.Promises.Linq
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TCaptureKey, TKey, TEqualityComparer>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
             TEqualityComparer comparer,
             CancelationToken cancelationToken = default)
             where TEqualityComparer : IEqualityComparer<TKey>
@@ -426,8 +426,8 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TElement>(
             this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
-            Func<TSource, Promise<TElement>> elementSelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TElement>> elementSelector,
             CancelationToken cancelationToken = default)
             => ToLookupAsync<TSource, TKey, TElement, IEqualityComparer<TKey>>(source, keySelector, elementSelector, EqualityComparer<TKey>.Default, cancelationToken);
 
@@ -448,8 +448,8 @@ namespace Proto.Promises.Linq
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TElement>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            Func<TSource, Promise<TElement>> elementSelector,
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TElement>> elementSelector,
             CancelationToken cancelationToken = default)
             => ToLookupAsync<TSource, TCaptureKey, TKey, TElement, IEqualityComparer<TKey>>(source, keyCaptureValue, keySelector, elementSelector, EqualityComparer<TKey>.Default, cancelationToken);
 
@@ -469,9 +469,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TCaptureElement, TElement>(
             this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
-            Func<TCaptureElement, TSource, Promise<TElement>> elementSelector,
+            Func<TCaptureElement, TSource, CancelationToken, Promise<TElement>> elementSelector,
             CancelationToken cancelationToken = default)
             => ToLookupAsync<TSource, TKey, TCaptureElement, TElement, IEqualityComparer<TKey>>(source, keySelector, elementCaptureValue, elementSelector, EqualityComparer<TKey>.Default, cancelationToken);
 
@@ -494,9 +494,9 @@ namespace Proto.Promises.Linq
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TCaptureElement, TElement>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
-            Func<TCaptureElement, TSource, Promise<TElement>> elementSelector,
+            Func<TCaptureElement, TSource, CancelationToken, Promise<TElement>> elementSelector,
             CancelationToken cancelationToken = default)
             => ToLookupAsync<TSource, TCaptureKey, TKey, TCaptureElement, TElement, IEqualityComparer<TKey>>(source, keyCaptureValue, keySelector, elementCaptureValue, elementSelector, EqualityComparer<TKey>.Default, cancelationToken);
 
@@ -516,8 +516,8 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TElement, TEqualityComparer>(
             this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
-            Func<TSource, Promise<TElement>> elementSelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TElement>> elementSelector,
             TEqualityComparer comparer,
             CancelationToken cancelationToken = default)
             where TEqualityComparer : IEqualityComparer<TKey>
@@ -551,8 +551,8 @@ namespace Proto.Promises.Linq
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TElement, TEqualityComparer>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            Func<TSource, Promise<TElement>> elementSelector,
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TElement>> elementSelector,
             TEqualityComparer comparer,
             CancelationToken cancelationToken = default)
             where TEqualityComparer : IEqualityComparer<TKey>
@@ -585,9 +585,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TCaptureElement, TElement, TEqualityComparer>(
             this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
-            Func<TCaptureElement, TSource, Promise<TElement>> elementSelector,
+            Func<TCaptureElement, TSource, CancelationToken, Promise<TElement>> elementSelector,
             TEqualityComparer comparer,
             CancelationToken cancelationToken = default)
             where TEqualityComparer : IEqualityComparer<TKey>
@@ -623,9 +623,9 @@ namespace Proto.Promises.Linq
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TCaptureElement, TElement, TEqualityComparer>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
-            Func<TCaptureElement, TSource, Promise<TElement>> elementSelector,
+            Func<TCaptureElement, TSource, CancelationToken, Promise<TElement>> elementSelector,
             TEqualityComparer comparer,
             CancelationToken cancelationToken = default)
             where TEqualityComparer : IEqualityComparer<TKey>
@@ -733,7 +733,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TKey>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector)
             => ToLookupAsync<TSource, TKey, IEqualityComparer<TKey>>(configuredSource, keySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -750,7 +750,7 @@ namespace Proto.Promises.Linq
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TCaptureKey, TKey>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector)
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector)
             => ToLookupAsync<TSource, TCaptureKey, TKey, IEqualityComparer<TKey>>(configuredSource, keyCaptureValue, keySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -766,7 +766,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TKey, TEqualityComparer>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -792,7 +792,7 @@ namespace Proto.Promises.Linq
         public static Promise<ILookup<TKey, TSource>> ToLookupAsync<TSource, TCaptureKey, TKey, TEqualityComparer>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -1027,8 +1027,8 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TElement>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector,
-            Func<TSource, Promise<TElement>> elementSelector)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TElement>> elementSelector)
             => ToLookupAsync<TSource, TKey, TElement, IEqualityComparer<TKey>>(configuredSource, keySelector, elementSelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -1047,8 +1047,8 @@ namespace Proto.Promises.Linq
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TElement>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            Func<TSource, Promise<TElement>> elementSelector)
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TElement>> elementSelector)
             => ToLookupAsync<TSource, TCaptureKey, TKey, TElement, IEqualityComparer<TKey>>(configuredSource, keyCaptureValue, keySelector, elementSelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -1066,9 +1066,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TCaptureElement, TElement>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
-            Func<TCaptureElement, TSource, Promise<TElement>> elementSelector)
+            Func<TCaptureElement, TSource, CancelationToken, Promise<TElement>> elementSelector)
             => ToLookupAsync<TSource, TKey, TCaptureElement, TElement, IEqualityComparer<TKey>>(configuredSource, keySelector, elementCaptureValue, elementSelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -1089,9 +1089,9 @@ namespace Proto.Promises.Linq
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TCaptureElement, TElement>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
-            Func<TCaptureElement, TSource, Promise<TElement>> elementSelector)
+            Func<TCaptureElement, TSource, CancelationToken, Promise<TElement>> elementSelector)
             => ToLookupAsync<TSource, TCaptureKey, TKey, TCaptureElement, TElement, IEqualityComparer<TKey>>(configuredSource, keyCaptureValue, keySelector, elementCaptureValue, elementSelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -1109,8 +1109,8 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TElement, TEqualityComparer>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector,
-            Func<TSource, Promise<TElement>> elementSelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TElement>> elementSelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -1142,8 +1142,8 @@ namespace Proto.Promises.Linq
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TElement, TEqualityComparer>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            Func<TSource, Promise<TElement>> elementSelector,
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TElement>> elementSelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -1174,9 +1174,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TKey, TCaptureElement, TElement, TEqualityComparer>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
-            Func<TCaptureElement, TSource, Promise<TElement>> elementSelector,
+            Func<TCaptureElement, TSource, CancelationToken, Promise<TElement>> elementSelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -1210,9 +1210,9 @@ namespace Proto.Promises.Linq
         public static Promise<ILookup<TKey, TElement>> ToLookupAsync<TSource, TCaptureKey, TKey, TCaptureElement, TElement, TEqualityComparer>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
-            Func<TCaptureElement, TSource, Promise<TElement>> elementSelector,
+            Func<TCaptureElement, TSource, CancelationToken, Promise<TElement>> elementSelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {

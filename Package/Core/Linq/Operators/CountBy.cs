@@ -99,7 +99,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="AsyncEnumerable{T}"/> of unique keys and their number of occurrences in <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, int>> CountBy<TSource, TKey>(this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector)
             => CountBy(source, keySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -115,7 +115,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="AsyncEnumerable{T}"/> of unique keys and their number of occurrences in <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, int>> CountBy<TSource, TKey, TEqualityComparer>(this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
@@ -137,7 +137,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="AsyncEnumerable{T}"/> of unique keys and their number of occurrences in <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, int>> CountBy<TSource, TKey, TCapture>(this AsyncEnumerable<TSource> source,
-            TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector)
+            TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<TKey>> keySelector)
             => CountBy(source, captureValue, keySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -155,7 +155,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="AsyncEnumerable{T}"/> of unique keys and their number of occurrences in <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, int>> CountBy<TSource, TKey, TCapture, TEqualityComparer>(this AsyncEnumerable<TSource> source,
-            TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
+            TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
@@ -251,7 +251,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="AsyncEnumerable{T}"/> of unique keys and their number of occurrences in <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, int>> CountBy<TSource, TKey>(this in ConfiguredAsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector)
             => CountBy(source, keySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -267,7 +267,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="AsyncEnumerable{T}"/> of unique keys and their number of occurrences in <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, int>> CountBy<TSource, TKey, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
@@ -289,7 +289,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="AsyncEnumerable{T}"/> of unique keys and their number of occurrences in <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, int>> CountBy<TSource, TKey, TCapture>(this in ConfiguredAsyncEnumerable<TSource> source,
-            TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector)
+            TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<TKey>> keySelector)
             => CountBy(source, captureValue, keySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -307,7 +307,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="AsyncEnumerable{T}"/> of unique keys and their number of occurrences in <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, int>> CountBy<TSource, TKey, TCapture, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> source,
-            TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
+            TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);

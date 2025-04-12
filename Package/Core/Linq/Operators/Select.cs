@@ -54,7 +54,7 @@ namespace Proto.Promises.Linq
         /// <param name="selector">An asynchronous transform function to apply to each source element.</param>
         /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
-        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<TResult>> selector)
+        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this AsyncEnumerable<TSource> source, Func<TSource, CancelationToken, Promise<TResult>> selector)
         {
             ValidateArgument(selector, nameof(selector), 1);
 
@@ -72,7 +72,7 @@ namespace Proto.Promises.Linq
         /// <param name="selector">An asynchronous transform function to apply to each source element.</param>
         /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
-        public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<TResult>> selector)
+        public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<TResult>> selector)
         {
             ValidateArgument(selector, nameof(selector), 1);
 
@@ -122,7 +122,7 @@ namespace Proto.Promises.Linq
         /// <param name="selector">An asynchronous transform function to apply to each source element.</param>
         /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
-        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<TResult>> selector)
+        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, CancelationToken, Promise<TResult>> selector)
         {
             ValidateArgument(selector, nameof(selector), 1);
 
@@ -140,147 +140,11 @@ namespace Proto.Promises.Linq
         /// <param name="selector">An asynchronous transform function to apply to each source element.</param>
         /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
-        public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<TResult>> selector)
+        public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<TResult>> selector)
         {
             ValidateArgument(selector, nameof(selector), 1);
 
             return Internal.SelectHelper<TResult>.Select(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
-        }
-
-        /// <summary>
-        /// Projects each element of a sequence into a new form by incorporating the element's index.
-        /// </summary>
-        /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
-        /// <typeparam name="TResult">The type of the elements in the result sequence, obtained by running the selector function for each element in the source sequence.</typeparam>
-        /// <param name="source">A sequence of elements to invoke a transform function on.</param>
-        /// <param name="selector">A transform function to apply to each source element.</param>
-        /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
-        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this AsyncEnumerable<TSource> source, Func<TSource, int, TResult> selector)
-        {
-            ValidateArgument(selector, nameof(selector), 1);
-
-            return Internal.SelectHelper<TResult>.SelectWithIndex(source.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
-        }
-
-        /// <summary>
-        /// Projects each element of a sequence into a new form by incorporating the element's index.
-        /// </summary>
-        /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
-        /// <typeparam name="TResult">The type of the elements in the result sequence, obtained by running the selector function for each element in the source sequence.</typeparam>
-        /// <typeparam name="TCapture">The type of the captured value that will be passed to <paramref name="selector"/>.</typeparam>
-        /// <param name="source">A sequence of elements to invoke a transform function on.</param>
-        /// <param name="captureValue">The extra value that will be passed to <paramref name="selector"/>.</param>
-        /// <param name="selector">A transform function to apply to each source element.</param>
-        /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
-        public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, int, TResult> selector)
-        {
-            ValidateArgument(selector, nameof(selector), 1);
-
-            return Internal.SelectHelper<TResult>.SelectWithIndex(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
-        }
-
-        /// <summary>
-        /// Projects each element of a sequence into a new form by incorporating the element's index.
-        /// </summary>
-        /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
-        /// <typeparam name="TResult">The type of the elements in the result sequence, obtained by running the selector function for each element in the source sequence.</typeparam>
-        /// <param name="source">A sequence of elements to invoke a transform function on.</param>
-        /// <param name="selector">An asynchronous transform function to apply to each source element.</param>
-        /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
-        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this AsyncEnumerable<TSource> source, Func<TSource, int, Promise<TResult>> selector)
-        {
-            ValidateArgument(selector, nameof(selector), 1);
-
-            return Internal.SelectHelper<TResult>.SelectWithIndex(source.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
-        }
-
-        /// <summary>
-        /// Projects each element of a sequence into a new form by incorporating the element's index.
-        /// </summary>
-        /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
-        /// <typeparam name="TResult">The type of the elements in the result sequence, obtained by running the selector function for each element in the source sequence.</typeparam>
-        /// <typeparam name="TCapture">The type of the captured value that will be passed to <paramref name="selector"/>.</typeparam>
-        /// <param name="source">A sequence of elements to invoke a transform function on.</param>
-        /// <param name="captureValue">The extra value that will be passed to <paramref name="selector"/>.</param>
-        /// <param name="selector">An asynchronous transform function to apply to each source element.</param>
-        /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
-        public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, int, Promise<TResult>> selector)
-        {
-            ValidateArgument(selector, nameof(selector), 1);
-
-            return Internal.SelectHelper<TResult>.SelectWithIndex(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
-        }
-
-        /// <summary>
-        /// Projects each element of a configured async-enumerable sequence into a new form by incorporating the element's index.
-        /// </summary>
-        /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
-        /// <typeparam name="TResult">The type of the elements in the result sequence, obtained by running the selector function for each element in the source sequence.</typeparam>
-        /// <param name="configuredSource">A configured sequence of elements to invoke a transform function on.</param>
-        /// <param name="selector">A transform function to apply to each source element.</param>
-        /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
-        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, int, TResult> selector)
-        {
-            ValidateArgument(selector, nameof(selector), 1);
-
-            return Internal.SelectHelper<TResult>.SelectWithIndex(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
-        }
-
-        /// <summary>
-        /// Projects each element of a configured async-enumerable sequence into a new form by incorporating the element's index.
-        /// </summary>
-        /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
-        /// <typeparam name="TResult">The type of the elements in the result sequence, obtained by running the selector function for each element in the source sequence.</typeparam>
-        /// <typeparam name="TCapture">The type of the captured value that will be passed to <paramref name="selector"/>.</typeparam>
-        /// <param name="configuredSource">A configured sequence of elements to invoke a transform function on.</param>
-        /// <param name="captureValue">The extra value that will be passed to <paramref name="selector"/>.</param>
-        /// <param name="selector">A transform function to apply to each source element.</param>
-        /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
-        public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, int, TResult> selector)
-        {
-            ValidateArgument(selector, nameof(selector), 1);
-
-            return Internal.SelectHelper<TResult>.SelectWithIndex(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
-        }
-
-        /// <summary>
-        /// Projects each element of a configured async-enumerable sequence into a new form by incorporating the element's index.
-        /// </summary>
-        /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
-        /// <typeparam name="TResult">The type of the elements in the result sequence, obtained by running the selector function for each element in the source sequence.</typeparam>
-        /// <param name="configuredSource">A configured sequence of elements to invoke a transform function on.</param>
-        /// <param name="selector">An asynchronous transform function to apply to each source element.</param>
-        /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
-        public static AsyncEnumerable<TResult> Select<TSource, TResult>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, int, Promise<TResult>> selector)
-        {
-            ValidateArgument(selector, nameof(selector), 1);
-
-            return Internal.SelectHelper<TResult>.SelectWithIndex(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
-        }
-
-        /// <summary>
-        /// Projects each element of a configured async-enumerable sequence into a new form by incorporating the element's index.
-        /// </summary>
-        /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
-        /// <typeparam name="TResult">The type of the elements in the result sequence, obtained by running the selector function for each element in the source sequence.</typeparam>
-        /// <typeparam name="TCapture">The type of the captured value that will be passed to <paramref name="selector"/>.</typeparam>
-        /// <param name="configuredSource">A configured sequence of elements to invoke a transform function on.</param>
-        /// <param name="captureValue">The extra value that will be passed to <paramref name="selector"/>.</param>
-        /// <param name="selector">An asynchronous transform function to apply to each source element.</param>
-        /// <returns>An async-enumerable sequence whose elements are the result of invoking the transform function on each element of source.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
-        public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, int, Promise<TResult>> selector)
-        {
-            ValidateArgument(selector, nameof(selector), 1);
-
-            return Internal.SelectHelper<TResult>.SelectWithIndex(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
         }
     }
 }

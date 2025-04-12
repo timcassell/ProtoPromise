@@ -103,7 +103,8 @@ namespace Proto.Promises.Linq
         /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="accumulator"/> is null.</exception>
         /// <exception cref="InvalidOperationException"><paramref name="source"/> is empty.</exception>
-        public static Promise<TSource> AggregateAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, TSource, TSource> accumulator, CancelationToken cancelationToken = default)
+        public static Promise<TSource> AggregateAsync<TSource>(this AsyncEnumerable<TSource> source,
+            Func<TSource, TSource, TSource> accumulator, CancelationToken cancelationToken = default)
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
@@ -122,7 +123,8 @@ namespace Proto.Promises.Linq
         /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="accumulator"/> is null.</exception>
         /// <exception cref="InvalidOperationException"><paramref name="source"/> is empty.</exception>
-        public static Promise<TSource> AggregateAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, TSource, TSource> accumulator, CancelationToken cancelationToken = default)
+        public static Promise<TSource> AggregateAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue,
+            Func<TCapture, TSource, TSource, TSource> accumulator, CancelationToken cancelationToken = default)
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
@@ -138,7 +140,8 @@ namespace Proto.Promises.Linq
         /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="accumulator"/> is null.</exception>
         /// <exception cref="InvalidOperationException"><paramref name="configuredSource"/> is empty.</exception>
-        public static Promise<TSource> AggregateAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, TSource, TSource> accumulator)
+        public static Promise<TSource> AggregateAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
+            Func<TSource, TSource, TSource> accumulator)
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
@@ -156,7 +159,8 @@ namespace Proto.Promises.Linq
         /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="accumulator"/> is null.</exception>
         /// <exception cref="InvalidOperationException"><paramref name="configuredSource"/> is empty.</exception>
-        public static Promise<TSource> AggregateAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, TSource, TSource> accumulator)
+        public static Promise<TSource> AggregateAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue,
+            Func<TCapture, TSource, TSource, TSource> accumulator)
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
@@ -173,7 +177,8 @@ namespace Proto.Promises.Linq
         /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="asyncAccumulator"/> is null.</exception>
         /// <exception cref="InvalidOperationException"><paramref name="source"/> is empty.</exception>
-        public static Promise<TSource> AggregateAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, TSource, Promise<TSource>> asyncAccumulator, CancelationToken cancelationToken = default)
+        public static Promise<TSource> AggregateAsync<TSource>(this AsyncEnumerable<TSource> source,
+            Func<TSource, TSource, CancelationToken, Promise<TSource>> asyncAccumulator, CancelationToken cancelationToken = default)
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
@@ -192,7 +197,8 @@ namespace Proto.Promises.Linq
         /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="asyncAccumulator"/> is null.</exception>
         /// <exception cref="InvalidOperationException"><paramref name="source"/> is empty.</exception>
-        public static Promise<TSource> AggregateAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, TSource, Promise<TSource>> asyncAccumulator, CancelationToken cancelationToken = default)
+        public static Promise<TSource> AggregateAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue,
+            Func<TCapture, TSource, TSource, CancelationToken, Promise<TSource>> asyncAccumulator, CancelationToken cancelationToken = default)
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
@@ -208,7 +214,8 @@ namespace Proto.Promises.Linq
         /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="asyncAccumulator"/> is null.</exception>
         /// <exception cref="InvalidOperationException"><paramref name="configuredSource"/> is empty.</exception>
-        public static Promise<TSource> AggregateAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, TSource, Promise<TSource>> asyncAccumulator)
+        public static Promise<TSource> AggregateAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
+            Func<TSource, TSource, CancelationToken, Promise<TSource>> asyncAccumulator)
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
@@ -226,7 +233,8 @@ namespace Proto.Promises.Linq
         /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="asyncAccumulator"/> is null.</exception>
         /// <exception cref="InvalidOperationException"><paramref name="configuredSource"/> is empty.</exception>
-        public static Promise<TSource> AggregateAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, TSource, Promise<TSource>> asyncAccumulator)
+        public static Promise<TSource> AggregateAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue,
+            Func<TCapture, TSource, TSource, CancelationToken, Promise<TSource>> asyncAccumulator)
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
@@ -244,7 +252,8 @@ namespace Proto.Promises.Linq
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="accumulator"/> is null.</exception>
-        public static Promise<TAccumulate> AggregateAsync<TSource, TAccumulate>(this AsyncEnumerable<TSource> source, TAccumulate seed, Func<TAccumulate, TSource, TAccumulate> accumulator, CancelationToken cancelationToken = default)
+        public static Promise<TAccumulate> AggregateAsync<TSource, TAccumulate>(this AsyncEnumerable<TSource> source, TAccumulate seed,
+            Func<TAccumulate, TSource, TAccumulate> accumulator, CancelationToken cancelationToken = default)
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
@@ -264,7 +273,8 @@ namespace Proto.Promises.Linq
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="accumulator"/> is null.</exception>
-        public static Promise<TAccumulate> AggregateAsync<TSource, TAccumulate, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, TAccumulate seed, Func<TCapture, TAccumulate, TSource, TAccumulate> accumulator, CancelationToken cancelationToken = default)
+        public static Promise<TAccumulate> AggregateAsync<TSource, TAccumulate, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, TAccumulate seed,
+            Func<TCapture, TAccumulate, TSource, TAccumulate> accumulator, CancelationToken cancelationToken = default)
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
@@ -281,7 +291,8 @@ namespace Proto.Promises.Linq
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="accumulator"/> is null.</exception>
-        public static Promise<TAccumulate> AggregateAsync<TSource, TAccumulate>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TAccumulate seed, Func<TAccumulate, TSource, TAccumulate> accumulator)
+        public static Promise<TAccumulate> AggregateAsync<TSource, TAccumulate>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TAccumulate seed,
+            Func<TAccumulate, TSource, TAccumulate> accumulator)
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
@@ -301,7 +312,8 @@ namespace Proto.Promises.Linq
         /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="accumulator"/> is null.</exception>
         /// <exception cref="InvalidOperationException"><paramref name="configuredSource"/> is empty.</exception>
-        public static Promise<TAccumulate> AggregateAsync<TSource, TAccumulate, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, TAccumulate seed, Func<TCapture, TAccumulate, TSource, TAccumulate> accumulator)
+        public static Promise<TAccumulate> AggregateAsync<TSource, TAccumulate, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, TAccumulate seed,
+            Func<TCapture, TAccumulate, TSource, TAccumulate> accumulator)
         {
             ValidateArgument(accumulator, nameof(accumulator), 1);
 
@@ -320,7 +332,8 @@ namespace Proto.Promises.Linq
         /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="asyncAccumulator"/> is null.</exception>
         /// <exception cref="InvalidOperationException"><paramref name="source"/> is empty.</exception>
-        public static Promise<TAccumulate> AggregateAsync<TSource, TAccumulate>(this AsyncEnumerable<TSource> source, TAccumulate seed, Func<TAccumulate, TSource, Promise<TAccumulate>> asyncAccumulator, CancelationToken cancelationToken = default)
+        public static Promise<TAccumulate> AggregateAsync<TSource, TAccumulate>(this AsyncEnumerable<TSource> source, TAccumulate seed,
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> asyncAccumulator, CancelationToken cancelationToken = default)
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
@@ -341,7 +354,8 @@ namespace Proto.Promises.Linq
         /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="asyncAccumulator"/> is null.</exception>
         /// <exception cref="InvalidOperationException"><paramref name="source"/> is empty.</exception>
-        public static Promise<TAccumulate> AggregateAsync<TSource, TAccumulate, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, TAccumulate seed, Func<TCapture, TAccumulate, TSource, Promise<TAccumulate>> asyncAccumulator, CancelationToken cancelationToken = default)
+        public static Promise<TAccumulate> AggregateAsync<TSource, TAccumulate, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, TAccumulate seed,
+            Func<TCapture, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> asyncAccumulator, CancelationToken cancelationToken = default)
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
@@ -359,7 +373,8 @@ namespace Proto.Promises.Linq
         /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="asyncAccumulator"/> is null.</exception>
         /// <exception cref="InvalidOperationException"><paramref name="configuredSource"/> is empty.</exception>
-        public static Promise<TAccumulate> AggregateAsync<TSource, TAccumulate>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TAccumulate seed, Func<TAccumulate, TSource, Promise<TAccumulate>> asyncAccumulator)
+        public static Promise<TAccumulate> AggregateAsync<TSource, TAccumulate>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TAccumulate seed,
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> asyncAccumulator)
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 
@@ -379,7 +394,8 @@ namespace Proto.Promises.Linq
         /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="asyncAccumulator"/> is null.</exception>
         /// <exception cref="InvalidOperationException"><paramref name="configuredSource"/> is empty.</exception>
-        public static Promise<TAccumulate> AggregateAsync<TSource, TAccumulate, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, TAccumulate seed, Func<TCapture, TAccumulate, TSource, Promise<TAccumulate>> asyncAccumulator)
+        public static Promise<TAccumulate> AggregateAsync<TSource, TAccumulate, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, TAccumulate seed,
+            Func<TCapture, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> asyncAccumulator)
         {
             ValidateArgument(asyncAccumulator, nameof(asyncAccumulator), 1);
 

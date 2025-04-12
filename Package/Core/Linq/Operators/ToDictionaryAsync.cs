@@ -68,7 +68,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TSource>> ToDictionaryAsync<TSource, TKey>(this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
 
@@ -90,7 +90,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TSource>> ToDictionaryAsync<TSource, TKey, TCapture>(this AsyncEnumerable<TSource> source,
-            TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
+            TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<TKey>> keySelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
 
@@ -149,7 +149,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TSource>> ToDictionaryAsync<TSource, TKey>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector, IEqualityComparer<TKey> comparer = null)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector, IEqualityComparer<TKey> comparer = null)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
 
@@ -170,7 +170,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TSource>> ToDictionaryAsync<TSource, TKey, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector, IEqualityComparer<TKey> comparer = null)
+            TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<TKey>> keySelector, IEqualityComparer<TKey> comparer = null)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
 
@@ -293,7 +293,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement>(this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector, Func<TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector, Func<TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -322,7 +322,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture>(this AsyncEnumerable<TSource> source,
-            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, Promise<TKey>> keySelector, Func<TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
+            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, CancelationToken, Promise<TKey>> keySelector, Func<TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -402,7 +402,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector, Func<TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector, Func<TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -430,7 +430,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, Promise<TKey>> keySelector, Func<TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null)
+            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, CancelationToken, Promise<TKey>> keySelector, Func<TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -519,7 +519,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TElementCapture>(this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -550,7 +550,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture, TElementCapture>(this AsyncEnumerable<TSource> source,
-            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
+            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, CancelationToken, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -636,7 +636,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TElementCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -666,7 +666,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture, TElementCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null)
+            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, CancelationToken, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -693,7 +693,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement>(this AsyncEnumerable<TSource> source,
-            Func<TSource, TKey> keySelector, Func<TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
+            Func<TSource, TKey> keySelector, Func<TSource, CancelationToken, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -722,7 +722,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture>(this AsyncEnumerable<TSource> source,
-            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, TKey> keySelector, Func<TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
+            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, TKey> keySelector, Func<TSource, CancelationToken, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -749,7 +749,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement>(this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector, Func<TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector, Func<TSource, CancelationToken, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -778,7 +778,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture>(this AsyncEnumerable<TSource> source,
-            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, Promise<TKey>> keySelector, Func<TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
+            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, CancelationToken, Promise<TKey>> keySelector, Func<TSource, CancelationToken, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -804,7 +804,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, TKey> keySelector, Func<TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
+            Func<TSource, TKey> keySelector, Func<TSource, CancelationToken, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -832,7 +832,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, TKey> keySelector, Func<TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
+            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, TKey> keySelector, Func<TSource, CancelationToken, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -858,7 +858,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector, Func<TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector, Func<TSource, CancelationToken, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -886,7 +886,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, Promise<TKey>> keySelector, Func<TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
+            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, CancelationToken, Promise<TKey>> keySelector, Func<TSource, CancelationToken, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -915,7 +915,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TElementCapture>(this AsyncEnumerable<TSource> source,
-            Func<TSource, TKey> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
+            Func<TSource, TKey> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, CancelationToken, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -946,7 +946,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture, TElementCapture>(this AsyncEnumerable<TSource> source,
-            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, TKey> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
+            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, TKey> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, CancelationToken, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -975,7 +975,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TElementCapture>(this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, CancelationToken, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -1006,7 +1006,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture, TElementCapture>(this AsyncEnumerable<TSource> source,
-            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
+            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, CancelationToken, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, CancelationToken, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -1034,7 +1034,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TElementCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, TKey> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
+            Func<TSource, TKey> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, CancelationToken, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -1064,7 +1064,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture, TElementCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, TKey> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
+            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, TKey> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, CancelationToken, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -1092,7 +1092,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TElementCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, CancelationToken, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);
@@ -1122,7 +1122,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="keySelector"/> produces duplicate keys for two elements.</exception>
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture, TElementCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
+            TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, CancelationToken, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, CancelationToken, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(elementSelector, nameof(elementSelector), 1);

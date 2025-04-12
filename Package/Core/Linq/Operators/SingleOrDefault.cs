@@ -187,7 +187,7 @@ namespace Proto.Promises.Linq
         /// or a default value if <paramref name="source"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> SingleOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<bool>> predicate, CancelationToken cancelationToken = default)
+        public static Promise<TSource> SingleOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, CancelationToken, Promise<bool>> predicate, CancelationToken cancelationToken = default)
             => SingleOrDefaultAsync(source, predicate, default(TSource), cancelationToken);
 
         /// <summary>
@@ -205,7 +205,7 @@ namespace Proto.Promises.Linq
         /// or a default value if <paramref name="source"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> SingleOrDefaultAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate, CancelationToken cancelationToken = default)
+        public static Promise<TSource> SingleOrDefaultAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<bool>> predicate, CancelationToken cancelationToken = default)
             => SingleOrDefaultAsync(source, captureValue, predicate, default(TSource), cancelationToken);
 
         /// <summary>
@@ -252,7 +252,7 @@ namespace Proto.Promises.Linq
         /// or a default value if <paramref name="configuredSource"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> SingleOrDefaultAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<bool>> predicate)
+        public static Promise<TSource> SingleOrDefaultAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, CancelationToken, Promise<bool>> predicate)
             => SingleOrDefaultAsync(configuredSource, predicate, default(TSource));
 
         /// <summary>
@@ -269,7 +269,7 @@ namespace Proto.Promises.Linq
         /// or a default value if <paramref name="configuredSource"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> SingleOrDefaultAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate)
+        public static Promise<TSource> SingleOrDefaultAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<bool>> predicate)
             => SingleOrDefaultAsync(configuredSource, captureValue, predicate, default(TSource));
 
         /// <summary>
@@ -330,7 +330,7 @@ namespace Proto.Promises.Linq
         /// or the specified default value if <paramref name="source"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> SingleOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<bool>> predicate, TSource defaultValue, CancelationToken cancelationToken = default)
+        public static Promise<TSource> SingleOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, CancelationToken, Promise<bool>> predicate, TSource defaultValue, CancelationToken cancelationToken = default)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
@@ -353,7 +353,7 @@ namespace Proto.Promises.Linq
         /// or the specified default value if <paramref name="source"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> SingleOrDefaultAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate, TSource defaultValue, CancelationToken cancelationToken = default)
+        public static Promise<TSource> SingleOrDefaultAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<bool>> predicate, TSource defaultValue, CancelationToken cancelationToken = default)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
@@ -415,7 +415,7 @@ namespace Proto.Promises.Linq
         /// or the specified default value if <paramref name="configuredSource"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> SingleOrDefaultAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<bool>> predicate, TSource defaultValue)
+        public static Promise<TSource> SingleOrDefaultAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, CancelationToken, Promise<bool>> predicate, TSource defaultValue)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
@@ -437,7 +437,7 @@ namespace Proto.Promises.Linq
         /// or the specified default value if <paramref name="configuredSource"/> is empty or no element passes the test in the specified predicate function.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<TSource> SingleOrDefaultAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate, TSource defaultValue)
+        public static Promise<TSource> SingleOrDefaultAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<bool>> predicate, TSource defaultValue)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 

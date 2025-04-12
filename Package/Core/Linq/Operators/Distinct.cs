@@ -209,7 +209,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">An async function to extract the key for each element.</param>
         /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains distinct elements from the source sequence.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<TKey>> keySelector)
+        public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey>(this AsyncEnumerable<TSource> source, Func<TSource, CancelationToken, Promise<TKey>> keySelector)
             => DistinctBy(source, keySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -223,7 +223,7 @@ namespace Proto.Promises.Linq
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare values.</param>
         /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains distinct elements from the source sequence.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
-        public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey, TEqualityComparer>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
+        public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey, TEqualityComparer>(this AsyncEnumerable<TSource> source, Func<TSource, CancelationToken, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
@@ -243,7 +243,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">An async function to extract the key for each element.</param>
         /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains distinct elements from the source sequence.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector)
+        public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<TKey>> keySelector)
             => DistinctBy(source, captureValue, keySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -259,7 +259,7 @@ namespace Proto.Promises.Linq
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare values.</param>
         /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains distinct elements from the source sequence.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
-        public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey, TCapture, TEqualityComparer>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
+        public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey, TCapture, TEqualityComparer>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
@@ -277,7 +277,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">An async function to extract the key for each element.</param>
         /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains distinct elements from the source sequence.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<TKey>> keySelector)
+        public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, CancelationToken, Promise<TKey>> keySelector)
             => DistinctBy(configuredSource, keySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -291,7 +291,7 @@ namespace Proto.Promises.Linq
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare values.</param>
         /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains distinct elements from the source sequence.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
-        public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
+        public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, CancelationToken, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
@@ -311,7 +311,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">An async function to extract the key for each element.</param>
         /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains distinct elements from the source sequence.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
-        public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector)
+        public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<TKey>> keySelector)
             => DistinctBy(configuredSource, captureValue, keySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -327,7 +327,7 @@ namespace Proto.Promises.Linq
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare values.</param>
         /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains distinct elements from the source sequence.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
-        public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey, TCapture, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
+        public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey, TCapture, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);

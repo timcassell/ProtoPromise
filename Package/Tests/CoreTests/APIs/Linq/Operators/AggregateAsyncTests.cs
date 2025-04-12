@@ -37,13 +37,13 @@ namespace ProtoPromiseTests.APIs.Linq
             if (!captureValue)
             {
                 return async
-                    ? source.AggregateAsync(async (acc, x) => accumulator(acc, x), cancelationToken)
+                    ? source.AggregateAsync(async (acc, x, _) => accumulator(acc, x), cancelationToken)
                     : source.AggregateAsync(accumulator, cancelationToken);
             }
             else
             {
                 return async
-                    ? source.AggregateAsync(valueCapture, async (cv, acc, x) =>
+                    ? source.AggregateAsync(valueCapture, async (cv, acc, x, _) =>
                     {
                         Assert.AreEqual(valueCapture, cv);
                         return accumulator(acc, x);
@@ -66,13 +66,13 @@ namespace ProtoPromiseTests.APIs.Linq
             if (!captureValue)
             {
                 return async
-                    ? source.AggregateAsync(async (acc, x) => accumulator(acc, x))
+                    ? source.AggregateAsync(async (acc, x, _) => accumulator(acc, x))
                     : source.AggregateAsync(accumulator);
             }
             else
             {
                 return async
-                    ? source.AggregateAsync(valueCapture, async (cv, acc, x) =>
+                    ? source.AggregateAsync(valueCapture, async (cv, acc, x, _) =>
                     {
                         Assert.AreEqual(valueCapture, cv);
                         return accumulator(acc, x);
@@ -103,13 +103,13 @@ namespace ProtoPromiseTests.APIs.Linq
             if (!captureValue)
             {
                 return async
-                    ? source.AggregateAsync(seed, async (acc, x) => accumulator(acc, x), cancelationToken)
+                    ? source.AggregateAsync(seed, async (acc, x, _) => accumulator(acc, x), cancelationToken)
                     : source.AggregateAsync(seed, accumulator, cancelationToken);
             }
             else
             {
                 return async
-                    ? source.AggregateAsync(valueCapture, seed, async (cv, acc, x) =>
+                    ? source.AggregateAsync(valueCapture, seed, async (cv, acc, x, _) =>
                     {
                         Assert.AreEqual(valueCapture, cv);
                         return accumulator(acc, x);
@@ -133,13 +133,13 @@ namespace ProtoPromiseTests.APIs.Linq
             if (!captureValue)
             {
                 return async
-                    ? source.AggregateAsync(seed, async (acc, x) => accumulator(acc, x))
+                    ? source.AggregateAsync(seed, async (acc, x, _) => accumulator(acc, x))
                     : source.AggregateAsync(seed, accumulator);
             }
             else
             {
                 return async
-                    ? source.AggregateAsync(valueCapture, seed, async (cv, acc, x) =>
+                    ? source.AggregateAsync(valueCapture, seed, async (cv, acc, x, _) =>
                     {
                         Assert.AreEqual(valueCapture, cv);
                         return accumulator(acc, x);
@@ -179,11 +179,11 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).AggregateAsync(default(Func<int, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).AggregateAsync("captured", default(Func<string, int, int, int>)));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateAsync(default(Func<int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateAsync("captured", default(Func<string, int, int, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateAsync(default(Func<int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateAsync("captured", default(Func<string, int, int, CancelationToken, Promise<int>>)));
                                                              
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).AggregateAsync(default(Func<int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).AggregateAsync("captured", default(Func<string, int, int, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).AggregateAsync(default(Func<int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).AggregateAsync("captured", default(Func<string, int, int, CancelationToken, Promise<int>>)));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateAsync(42, default(Func<int, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateAsync("captured", 42, default(Func<string, int, int, int>)));
@@ -191,11 +191,11 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).AggregateAsync(42, default(Func<int, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).AggregateAsync("captured", 42, default(Func<string, int, int, int>)));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateAsync(42, default(Func<int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateAsync("captured", 42, default(Func<string, int, int, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateAsync(42, default(Func<int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateAsync("captured", 42, default(Func<string, int, int, CancelationToken, Promise<int>>)));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).AggregateAsync(42, default(Func<int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).AggregateAsync("captured", 42, default(Func<string, int, int, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).AggregateAsync(42, default(Func<int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).AggregateAsync("captured", 42, default(Func<string, int, int, CancelationToken, Promise<int>>)));
 
             enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
         }

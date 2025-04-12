@@ -188,7 +188,7 @@ namespace Proto.Promises
             private readonly struct AggregateByIterator<TSource, TEqualityComparer, TKeySelector, TSeedSelector, TAccumulator> : IAsyncIterator<KeyValuePair<TKey, TAccumulate>>
                 where TKeySelector : IFunc<TSource, CancelationToken, Promise<TKey>>
                 where TSeedSelector : IFunc<TKey, CancelationToken, Promise<TAccumulate>>
-                where TAccumulator : IFunc<TAccumulate, TSource, Promise<TAccumulate>>
+                where TAccumulator : IFunc<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
                 private readonly AsyncEnumerator<TSource> _asyncEnumerator;
@@ -227,7 +227,7 @@ namespace Proto.Promises
                                 var element = _asyncEnumerator.Current;
                                 var key = await _keySelector.Invoke(element, cancelationToken);
                                 var accNode = dict.GetOrCreateNode(key, out bool exists);
-                                accNode._value = await _accumulator.Invoke(exists ? accNode._value : await _seedSelector.Invoke(key, cancelationToken), element);
+                                accNode._value = await _accumulator.Invoke(exists ? accNode._value : await _seedSelector.Invoke(key, cancelationToken), element, cancelationToken);
                             } while (await _asyncEnumerator.MoveNextAsync());
 
                             // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
@@ -258,7 +258,7 @@ namespace Proto.Promises
                 TKeySelector keySelector, TSeedSelector seedSelector, TAccumulator accumulator, TEqualityComparer comparer)
                 where TKeySelector : IFunc<TSource, CancelationToken, Promise<TKey>>
                 where TSeedSelector : IFunc<TKey, CancelationToken, Promise<TAccumulate>>
-                where TAccumulator : IFunc<TAccumulate, TSource, Promise<TAccumulate>>
+                where TAccumulator : IFunc<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>>
                 where TEqualityComparer : IEqualityComparer<TKey>
                 => AsyncEnumerable<KeyValuePair<TKey, TAccumulate>>.Create(
                     new AggregateByIterator<TSource, TEqualityComparer, TKeySelector, TSeedSelector, TAccumulator>(asyncEnumerator, keySelector, seedSelector, accumulator, comparer));
@@ -269,7 +269,7 @@ namespace Proto.Promises
             private readonly struct ConfiguredAggregateByIterator<TSource, TEqualityComparer, TKeySelector, TSeedSelector, TAccumulator> : IAsyncIterator<KeyValuePair<TKey, TAccumulate>>
                 where TKeySelector : IFunc<TSource, CancelationToken, Promise<TKey>>
                 where TSeedSelector : IFunc<TKey, CancelationToken, Promise<TAccumulate>>
-                where TAccumulator : IFunc<TAccumulate, TSource, Promise<TAccumulate>>
+                where TAccumulator : IFunc<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
                 private readonly ConfiguredAsyncEnumerable<TSource>.Enumerator _configuredAsyncEnumerator;
@@ -318,7 +318,7 @@ namespace Proto.Promises
                                     // The seed selector function could have switched context, make sure we're on the configured context before invoking the accumulator.
                                     acc = await _seedSelector.Invoke(key, cancelationToken).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 }
-                                accNode._value = await _accumulator.Invoke(acc, element);
+                                accNode._value = await _accumulator.Invoke(acc, element, cancelationToken);
                             } while (await _configuredAsyncEnumerator.MoveNextAsync());
 
                             // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
@@ -350,7 +350,7 @@ namespace Proto.Promises
                 TKeySelector keySelector, TSeedSelector seedSelector, TAccumulator accumulator, TEqualityComparer comparer)
                 where TKeySelector : IFunc<TSource, CancelationToken, Promise<TKey>>
                 where TSeedSelector : IFunc<TKey, CancelationToken, Promise<TAccumulate>>
-                where TAccumulator : IFunc<TAccumulate, TSource, Promise<TAccumulate>>
+                where TAccumulator : IFunc<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>>
                 where TEqualityComparer : IEqualityComparer<TKey>
                 => AsyncEnumerable<KeyValuePair<TKey, TAccumulate>>.Create(
                     new ConfiguredAggregateByIterator<TSource, TEqualityComparer, TKeySelector, TSeedSelector, TAccumulator>(configuredAsyncEnumerator, keySelector, seedSelector, accumulator, comparer));

@@ -48,8 +48,8 @@ namespace ProtoPromiseTests.APIs.Linq
                 {
                     return async
                         ? equalityComparer != null
-                            ? outer.GroupJoin(inner, async x => outerKeySelector(x), async x => innerKeySelector(x), equalityComparer)
-                            : outer.GroupJoin(inner, async x => outerKeySelector(x), async x => innerKeySelector(x))
+                            ? outer.GroupJoin(inner, async (x, _) => outerKeySelector(x), async (x, _) => innerKeySelector(x), equalityComparer)
+                            : outer.GroupJoin(inner, async (x, _) => outerKeySelector(x), async (x, _) => innerKeySelector(x))
                         : equalityComparer != null
                             ? outer.GroupJoin(inner, outerKeySelector, innerKeySelector, equalityComparer)
                             : outer.GroupJoin(inner, outerKeySelector, innerKeySelector);
@@ -58,16 +58,16 @@ namespace ProtoPromiseTests.APIs.Linq
                 {
                     return async
                         ? equalityComparer != null
-                            ? outer.GroupJoin(inner, outerKeyCapture, async (cv, x) =>
+                            ? outer.GroupJoin(inner, outerKeyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(outerKeyCapture, cv);
                                 return outerKeySelector(x);
-                            }, async x => innerKeySelector(x), equalityComparer)
-                            : outer.GroupJoin(inner, outerKeyCapture, async (cv, x) =>
+                            }, async (x, _) => innerKeySelector(x), equalityComparer)
+                            : outer.GroupJoin(inner, outerKeyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(outerKeyCapture, cv);
                                 return outerKeySelector(x);
-                            }, async x => innerKeySelector(x))
+                            }, async (x, _) => innerKeySelector(x))
                         : equalityComparer != null
                             ? outer.GroupJoin(inner, outerKeyCapture, (cv, x) =>
                             {
@@ -87,12 +87,12 @@ namespace ProtoPromiseTests.APIs.Linq
                 {
                     return async
                         ? equalityComparer != null
-                            ? outer.GroupJoin(inner, async x => outerKeySelector(x), innerKeyCapture, async (cv, x) =>
+                            ? outer.GroupJoin(inner, async (x, _) => outerKeySelector(x), innerKeyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(innerKeyCapture, cv);
                                 return innerKeySelector(x);
                             }, equalityComparer)
-                            : outer.GroupJoin(inner, async x => outerKeySelector(x), innerKeyCapture, async (cv, x) =>
+                            : outer.GroupJoin(inner, async (x, _) => outerKeySelector(x), innerKeyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(innerKeyCapture, cv);
                                 return innerKeySelector(x);
@@ -113,20 +113,20 @@ namespace ProtoPromiseTests.APIs.Linq
                 {
                     return async
                         ? equalityComparer != null
-                            ? outer.GroupJoin(inner, outerKeyCapture, async (cv, x) =>
+                            ? outer.GroupJoin(inner, outerKeyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(outerKeyCapture, cv);
                                 return outerKeySelector(x);
-                            }, innerKeyCapture, async (cv, x) =>
+                            }, innerKeyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(innerKeyCapture, cv);
                                 return innerKeySelector(x);
                             }, equalityComparer)
-                            : outer.GroupJoin(inner, outerKeyCapture, async (cv, x) =>
+                            : outer.GroupJoin(inner, outerKeyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(outerKeyCapture, cv);
                                 return outerKeySelector(x);
-                            }, innerKeyCapture, async (cv, x) =>
+                            }, innerKeyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(innerKeyCapture, cv);
                                 return innerKeySelector(x);
@@ -170,8 +170,8 @@ namespace ProtoPromiseTests.APIs.Linq
                 {
                     return async
                         ? equalityComparer != null
-                            ? outer.GroupJoin(inner, async x => outerKeySelector(x), async x => innerKeySelector(x), equalityComparer)
-                            : outer.GroupJoin(inner, async x => outerKeySelector(x), async x => innerKeySelector(x))
+                            ? outer.GroupJoin(inner, async (x, _) => outerKeySelector(x), async (x, _) => innerKeySelector(x), equalityComparer)
+                            : outer.GroupJoin(inner, async (x, _) => outerKeySelector(x), async (x, _) => innerKeySelector(x))
                         : equalityComparer != null
                             ? outer.GroupJoin(inner, outerKeySelector, innerKeySelector, equalityComparer)
                             : outer.GroupJoin(inner, outerKeySelector, innerKeySelector);
@@ -180,16 +180,16 @@ namespace ProtoPromiseTests.APIs.Linq
                 {
                     return async
                         ? equalityComparer != null
-                            ? outer.GroupJoin(inner, outerKeyCapture, async (cv, x) =>
+                            ? outer.GroupJoin(inner, outerKeyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(outerKeyCapture, cv);
                                 return outerKeySelector(x);
-                            }, async x => innerKeySelector(x), equalityComparer)
-                            : outer.GroupJoin(inner, outerKeyCapture, async (cv, x) =>
+                            }, async (x, _) => innerKeySelector(x), equalityComparer)
+                            : outer.GroupJoin(inner, outerKeyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(outerKeyCapture, cv);
                                 return outerKeySelector(x);
-                            }, async x => innerKeySelector(x))
+                            }, async (x, _) => innerKeySelector(x))
                         : equalityComparer != null
                             ? outer.GroupJoin(inner, outerKeyCapture, (cv, x) =>
                             {
@@ -209,12 +209,12 @@ namespace ProtoPromiseTests.APIs.Linq
                 {
                     return async
                         ? equalityComparer != null
-                            ? outer.GroupJoin(inner, async x => outerKeySelector(x), innerKeyCapture, async (cv, x) =>
+                            ? outer.GroupJoin(inner, async (x, _) => outerKeySelector(x), innerKeyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(innerKeyCapture, cv);
                                 return innerKeySelector(x);
                             }, equalityComparer)
-                            : outer.GroupJoin(inner, async x => outerKeySelector(x), innerKeyCapture, async (cv, x) =>
+                            : outer.GroupJoin(inner, async (x, _) => outerKeySelector(x), innerKeyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(innerKeyCapture, cv);
                                 return innerKeySelector(x);
@@ -235,20 +235,20 @@ namespace ProtoPromiseTests.APIs.Linq
                 {
                     return async
                         ? equalityComparer != null
-                            ? outer.GroupJoin(inner, outerKeyCapture, async (cv, x) =>
+                            ? outer.GroupJoin(inner, outerKeyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(outerKeyCapture, cv);
                                 return outerKeySelector(x);
-                            }, innerKeyCapture, async (cv, x) =>
+                            }, innerKeyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(innerKeyCapture, cv);
                                 return innerKeySelector(x);
                             }, equalityComparer)
-                            : outer.GroupJoin(inner, outerKeyCapture, async (cv, x) =>
+                            : outer.GroupJoin(inner, outerKeyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(outerKeyCapture, cv);
                                 return outerKeySelector(x);
-                            }, innerKeyCapture, async (cv, x) =>
+                            }, innerKeyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(innerKeyCapture, cv);
                                 return innerKeySelector(x);
@@ -324,29 +324,29 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, captureValue, default(Func<string, int, int>), captureValue, (cv, x) => 0, EqualityComparer<int>.Default));
             Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, x => Promise.Resolved(0), default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, x => Promise.Resolved(0), default(Func<int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, default(Func<int, Promise<int>>), x => Promise.Resolved(0)));
-            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, default(Func<int, Promise<int>>), x => Promise.Resolved(0), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, x => Promise.Resolved(0), x => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, (x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, (x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, default(Func<int, CancelationToken, Promise<int>>), (x, _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, default(Func<int, CancelationToken, Promise<int>>), (x, _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, (x, _) => Promise.Resolved(0), (x, _) => Promise.Resolved(0), nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, captureValue, (cv, x) => Promise.Resolved(0), default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, captureValue, (cv, x) => Promise.Resolved(0), default(Func<int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, captureValue, default(Func<string, int, Promise<int>>), x => Promise.Resolved(0)));
-            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, captureValue, default(Func<string, int, Promise<int>>), x => Promise.Resolved(0), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, captureValue, (cv, x) => Promise.Resolved(0), x => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, captureValue, (cv, x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, captureValue, (cv, x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), (x, _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), (x, _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, captureValue, (cv, x, _) => Promise.Resolved(0), (x, _) => Promise.Resolved(0), nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, x => Promise.Resolved(0), captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, x => Promise.Resolved(0), captureValue, default(Func<string, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, default(Func<int, Promise<int>>), captureValue, (cv, x) => Promise.Resolved(0)));
-            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, default(Func<int, Promise<int>>), captureValue, (cv, x) => Promise.Resolved(0), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, x => Promise.Resolved(0), captureValue, (cv, x) => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, (x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, (x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, default(Func<int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, default(Func<int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, (x, _) => Promise.Resolved(0), captureValue, (cv, x, _) => Promise.Resolved(0), nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, captureValue, (cv, x) => Promise.Resolved(0), captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, captureValue, (cv, x) => Promise.Resolved(0), captureValue, default(Func<string, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, captureValue, default(Func<string, int, Promise<int>>), captureValue, (cv, x) => Promise.Resolved(0)));
-            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, captureValue, default(Func<string, int, Promise<int>>), captureValue, (cv, x) => Promise.Resolved(0), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, captureValue, (cv, x) => Promise.Resolved(0), captureValue, (cv, x) => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, captureValue, (cv, x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, captureValue, (cv, x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => outer.GroupJoin(inner, captureValue, (cv, x, _) => Promise.Resolved(0), captureValue, (cv, x, _) => Promise.Resolved(0), nullComparer));
 
 
             Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, x => 0, default(Func<int, int>)));
@@ -373,29 +373,29 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, captureValue, default(Func<string, int, int>), captureValue, (cv, x) => 0, EqualityComparer<int>.Default));
             Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, x => Promise.Resolved(0), default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, x => Promise.Resolved(0), default(Func<int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, default(Func<int, Promise<int>>), x => Promise.Resolved(0)));
-            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, default(Func<int, Promise<int>>), x => Promise.Resolved(0), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, x => Promise.Resolved(0), x => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, (x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, (x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, default(Func<int, CancelationToken, Promise<int>>), (x, _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, default(Func<int, CancelationToken, Promise<int>>), (x, _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, (x, _) => Promise.Resolved(0), (x, _) => Promise.Resolved(0), nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, captureValue, (cv, x) => Promise.Resolved(0), default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, captureValue, (cv, x) => Promise.Resolved(0), default(Func<int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, captureValue, default(Func<string, int, Promise<int>>), x => Promise.Resolved(0)));
-            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, captureValue, default(Func<string, int, Promise<int>>), x => Promise.Resolved(0), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, captureValue, (cv, x) => Promise.Resolved(0), x => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, captureValue, (cv, x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, captureValue, (cv, x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), (x, _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), (x, _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, captureValue, (cv, x, _) => Promise.Resolved(0), (x, _) => Promise.Resolved(0), nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, x => Promise.Resolved(0), captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, x => Promise.Resolved(0), captureValue, default(Func<string, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, default(Func<int, Promise<int>>), captureValue, (cv, x) => Promise.Resolved(0)));
-            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, default(Func<int, Promise<int>>), captureValue, (cv, x) => Promise.Resolved(0), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, x => Promise.Resolved(0), captureValue, (cv, x) => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, (x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, (x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, default(Func<int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, default(Func<int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, (x, _) => Promise.Resolved(0), captureValue, (cv, x, _) => Promise.Resolved(0), nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, captureValue, (cv, x) => Promise.Resolved(0), captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, captureValue, (cv, x) => Promise.Resolved(0), captureValue, default(Func<string, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, captureValue, default(Func<string, int, Promise<int>>), captureValue, (cv, x) => Promise.Resolved(0)));
-            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, captureValue, default(Func<string, int, Promise<int>>), captureValue, (cv, x) => Promise.Resolved(0), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, captureValue, (cv, x) => Promise.Resolved(0), captureValue, (cv, x) => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, captureValue, (cv, x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, captureValue, (cv, x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => outer.ConfigureAwait(SynchronizationOption.Synchronous).GroupJoin(inner, captureValue, (cv, x, _) => Promise.Resolved(0), captureValue, (cv, x, _) => Promise.Resolved(0), nullComparer));
 
             outer.GetAsyncEnumerator().DisposeAsync().Forget();
             inner.GetAsyncEnumerator().DisposeAsync().Forget();

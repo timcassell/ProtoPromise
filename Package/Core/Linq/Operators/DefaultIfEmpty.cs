@@ -37,7 +37,7 @@ namespace Proto.Promises.Linq
         /// <param name="source">The sequence to return a default value for if it is empty.</param>
         /// <param name="defaultValueRetriever">An async function to retrieve the default value to return if the sequence is empty.</param>
         /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains the elements of the <paramref name="source"/> sequence or the result of the <paramref name="defaultValueRetriever"/> if the <paramref name="source"/> sequence is empty.</returns>
-        public static AsyncEnumerable<TSource> DefaultIfEmpty<TSource>(this AsyncEnumerable<TSource> source, Func<Promise<TSource>> defaultValueRetriever)
+        public static AsyncEnumerable<TSource> DefaultIfEmpty<TSource>(this AsyncEnumerable<TSource> source, Func<CancelationToken, Promise<TSource>> defaultValueRetriever)
         {
             ValidateArgument(defaultValueRetriever, nameof(defaultValueRetriever), 1);
 
@@ -53,7 +53,7 @@ namespace Proto.Promises.Linq
         /// <param name="captureValue">The extra value that will be passed to <paramref name="defaultValueRetriever"/>.</param>
         /// <param name="defaultValueRetriever">An async function to retrieve the default value to return if the sequence is empty.</param>
         /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains the elements of the <paramref name="source"/> sequence or the result of the <paramref name="defaultValueRetriever"/> if the <paramref name="source"/> sequence is empty.</returns>
-        public static AsyncEnumerable<TSource> DefaultIfEmpty<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, Promise<TSource>> defaultValueRetriever)
+        public static AsyncEnumerable<TSource> DefaultIfEmpty<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, CancelationToken, Promise<TSource>> defaultValueRetriever)
         {
             ValidateArgument(defaultValueRetriever, nameof(defaultValueRetriever), 1);
 
@@ -112,7 +112,7 @@ namespace Proto.Promises.Linq
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
             private readonly struct DefaultIfEmptyIterator<TSource, TValueRetriever> : IAsyncIterator<TSource>
-                where TValueRetriever : IFunc<Promise<TSource>>
+                where TValueRetriever : IFunc<CancelationToken, Promise<TSource>>
             {
                 private readonly AsyncEnumerator<TSource> _asyncEnumerator;
                 private readonly TValueRetriever _defaultValueRetriever;
@@ -132,7 +132,7 @@ namespace Proto.Promises.Linq
                     {
                         if (!await _asyncEnumerator.MoveNextAsync())
                         {
-                            await writer.YieldAsync(await _defaultValueRetriever.Invoke());
+                            await writer.YieldAsync(await _defaultValueRetriever.Invoke(cancelationToken));
                             return;
                         }
                         do
@@ -151,7 +151,7 @@ namespace Proto.Promises.Linq
             }
 
             internal static AsyncEnumerable<TSource> DefaultIfEmpty<TSource, TValueRetriever>(AsyncEnumerator<TSource> asyncEnumerator, TValueRetriever defaultValueRetriever)
-                where TValueRetriever : IFunc<Promise<TSource>>
+                where TValueRetriever : IFunc<CancelationToken, Promise<TSource>>
             {
                 return AsyncEnumerable<TSource>.Create(new DefaultIfEmptyIterator<TSource, TValueRetriever>(asyncEnumerator, defaultValueRetriever));
             }

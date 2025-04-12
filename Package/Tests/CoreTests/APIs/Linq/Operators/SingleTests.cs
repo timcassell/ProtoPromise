@@ -39,9 +39,9 @@ namespace ProtoPromiseTests.APIs.Linq
             var enumerable = AsyncEnumerable.Range(0, 10);
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.SingleAsync(default(Func<int, bool>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.SingleAsync(default(Func<int, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.SingleAsync(default(Func<int, CancelationToken, Promise<bool>>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SingleAsync(default(Func<int, bool>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SingleAsync(default(Func<int, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SingleAsync(default(Func<int, CancelationToken, Promise<bool>>)));
 
             enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
         }
@@ -110,13 +110,13 @@ namespace ProtoPromiseTests.APIs.Linq
             if (!captureValue)
             {
                 return async
-                    ? source.SingleAsync(async x => predicate(x), cancelationToken)
+                    ? source.SingleAsync(async (x, _) => predicate(x), cancelationToken)
                     : source.SingleAsync(predicate, cancelationToken);
             }
             else
             {
                 return async
-                    ? source.SingleAsync(valueCapture, async (cv, x) =>
+                    ? source.SingleAsync(valueCapture, async (cv, x, _) =>
                     {
                         Assert.AreEqual(valueCapture, cv);
                         return predicate(x);
@@ -139,13 +139,13 @@ namespace ProtoPromiseTests.APIs.Linq
             if (!captureValue)
             {
                 return async
-                    ? source.SingleAsync(async x => predicate(x))
+                    ? source.SingleAsync(async (x, _) => predicate(x))
                     : source.SingleAsync(predicate);
             }
             else
             {
                 return async
-                    ? source.SingleAsync(valueCapture, async (cv, x) =>
+                    ? source.SingleAsync(valueCapture, async (cv, x, _) =>
                     {
                         Assert.AreEqual(valueCapture, cv);
                         return predicate(x);

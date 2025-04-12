@@ -76,37 +76,37 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, nullComparer));
 
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(default(Func<int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(x => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(default(Func<int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy((x, _) => Promise.Resolved(0), nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, default(Func<string, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, (cv, x) => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, (cv, x, _) => Promise.Resolved(0), nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(default(Func<int, Promise<int>>), x => Promise.Resolved(0)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(x => Promise.Resolved(0), default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(default(Func<int, Promise<int>>), x => Promise.Resolved(0), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(x => Promise.Resolved(0), default(Func<int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(x => Promise.Resolved(0), x => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(default(Func<int, CancelationToken, Promise<int>>), (int x, CancelationToken _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy((x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(default(Func<int, CancelationToken, Promise<int>>), (int x, CancelationToken _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy((x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy((x, _) => Promise.Resolved(0), (x, _) => Promise.Resolved(0), nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, default(Func<string, int, Promise<int>>), x => Promise.Resolved(0)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, (cv, x) => Promise.Resolved(0), default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, default(Func<string, int, Promise<int>>), x => Promise.Resolved(0), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, (cv, x) => Promise.Resolved(0), default(Func<int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, (cv, x) => Promise.Resolved(0), x => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), (x, _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, (cv, x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), (x, _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, (cv, x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, (cv, x, _) => Promise.Resolved(0), (x, _) => Promise.Resolved(0), nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(default(Func<int, Promise<int>>), captureValue, (cv, x) => Promise.Resolved(0)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(x => Promise.Resolved(0), captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(default(Func<int, Promise<int>>), captureValue, (cv, x) => Promise.Resolved(0), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(x => Promise.Resolved(0), captureValue, default(Func<string, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(x => Promise.Resolved(0), captureValue, (cv, x) => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(default(Func<int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy((x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(default(Func<int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy((x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy((x, _) => Promise.Resolved(0), captureValue, (cv, x, _) => Promise.Resolved(0), nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, default(Func<string, int, Promise<int>>), captureValue, (cv, x) => Promise.Resolved(0)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, (cv, x) => Promise.Resolved(0), captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, default(Func<string, int, Promise<int>>), captureValue, (cv, x) => Promise.Resolved(0), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, (cv, x) => Promise.Resolved(0), captureValue, default(Func<string, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, (cv, x) => Promise.Resolved(0), captureValue, (cv, x) => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, (cv, x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, (cv, x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.GroupBy(captureValue, (cv, x, _) => Promise.Resolved(0), captureValue, (cv, x, _) => Promise.Resolved(0), nullComparer));
 
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(default(Func<int, int>)));
@@ -142,37 +142,37 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, nullComparer));
 
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(default(Func<int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(x => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(default(Func<int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy((x, _) => Promise.Resolved(0), nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, default(Func<string, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, (cv, x) => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, (cv, x, _) => Promise.Resolved(0), nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(default(Func<int, Promise<int>>), x => Promise.Resolved(0)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(x => Promise.Resolved(0), default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(default(Func<int, Promise<int>>), x => Promise.Resolved(0), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(x => Promise.Resolved(0), default(Func<int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(x => Promise.Resolved(0), x => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(default(Func<int, CancelationToken, Promise<int>>), (int x, CancelationToken _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy((x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(default(Func<int, CancelationToken, Promise<int>>), (int x, CancelationToken _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy((x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy((x, _) => Promise.Resolved(0), (x, _) => Promise.Resolved(0), nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, default(Func<string, int, Promise<int>>), x => Promise.Resolved(0)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, (cv, x) => Promise.Resolved(0), default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, default(Func<string, int, Promise<int>>), x => Promise.Resolved(0), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, (cv, x) => Promise.Resolved(0), default(Func<int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, (cv, x) => Promise.Resolved(0), x => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), (x, _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, (cv, x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), (x, _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, (cv, x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, (cv, x, _) => Promise.Resolved(0), (x, _) => Promise.Resolved(0), nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(default(Func<int, Promise<int>>), captureValue, (cv, x) => Promise.Resolved(0)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(x => Promise.Resolved(0), captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(default(Func<int, Promise<int>>), captureValue, (cv, x) => Promise.Resolved(0), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(x => Promise.Resolved(0), captureValue, default(Func<string, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(x => Promise.Resolved(0), captureValue, (cv, x) => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(default(Func<int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy((x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(default(Func<int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy((x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy((x, _) => Promise.Resolved(0), captureValue, (cv, x, _) => Promise.Resolved(0), nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, default(Func<string, int, Promise<int>>), captureValue, (cv, x) => Promise.Resolved(0)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, (cv, x) => Promise.Resolved(0), captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, default(Func<string, int, Promise<int>>), captureValue, (cv, x) => Promise.Resolved(0), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, (cv, x) => Promise.Resolved(0), captureValue, default(Func<string, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, (cv, x) => Promise.Resolved(0), captureValue, (cv, x) => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, (cv, x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, (cv, x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).GroupBy(captureValue, (cv, x, _) => Promise.Resolved(0), captureValue, (cv, x, _) => Promise.Resolved(0), nullComparer));
 
             enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
         }
@@ -197,8 +197,8 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? asyncEnumerable.GroupBy(async x => keySelector(x), equalityComparer)
-                        : asyncEnumerable.GroupBy(async x => keySelector(x))
+                        ? asyncEnumerable.GroupBy(async (x, _) => keySelector(x), equalityComparer)
+                        : asyncEnumerable.GroupBy(async (x, _) => keySelector(x))
                     : equalityComparer != null
                         ? asyncEnumerable.GroupBy(keySelector, equalityComparer)
                         : asyncEnumerable.GroupBy(keySelector);
@@ -207,12 +207,12 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? asyncEnumerable.GroupBy(keyCapture, async (cv, x) =>
+                        ? asyncEnumerable.GroupBy(keyCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(keyCapture, cv);
                             return keySelector(x);
                         }, equalityComparer)
-                        : asyncEnumerable.GroupBy(keyCapture, async (cv, x) =>
+                        : asyncEnumerable.GroupBy(keyCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(keyCapture, cv);
                             return keySelector(x);
@@ -253,8 +253,8 @@ namespace ProtoPromiseTests.APIs.Linq
                 {
                     return async
                         ? equalityComparer != null
-                            ? asyncEnumerable.GroupBy(async x => keySelector(x), async x => elementSelector(x), equalityComparer)
-                            : asyncEnumerable.GroupBy(async x => keySelector(x), async x => elementSelector(x))
+                            ? asyncEnumerable.GroupBy(async (x, _) => keySelector(x), async (x, _) => elementSelector(x), equalityComparer)
+                            : asyncEnumerable.GroupBy(async (x, _) => keySelector(x), async (x, _) => elementSelector(x))
                         : equalityComparer != null
                             ? asyncEnumerable.GroupBy(keySelector, elementSelector, equalityComparer)
                             : asyncEnumerable.GroupBy(keySelector, elementSelector);
@@ -263,14 +263,14 @@ namespace ProtoPromiseTests.APIs.Linq
                 {
                     return async
                         ? equalityComparer != null
-                            ? asyncEnumerable.GroupBy(async x => keySelector(x),
-                            elementCapture, async (cv, x) =>
+                            ? asyncEnumerable.GroupBy(async (x, _) => keySelector(x),
+                            elementCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(elementCapture, cv);
                                 return elementSelector(x);
                             }, equalityComparer)
-                            : asyncEnumerable.GroupBy(async x => keySelector(x),
-                            elementCapture, async (cv, x) =>
+                            : asyncEnumerable.GroupBy(async (x, _) => keySelector(x),
+                            elementCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(elementCapture, cv);
                                 return elementSelector(x);
@@ -296,16 +296,16 @@ namespace ProtoPromiseTests.APIs.Linq
                 {
                     return async
                         ? equalityComparer != null
-                            ? asyncEnumerable.GroupBy(keyCapture, async (cv, x) =>
+                            ? asyncEnumerable.GroupBy(keyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(keyCapture, cv);
                                 return keySelector(x);
-                            }, async x => elementSelector(x), equalityComparer)
-                            : asyncEnumerable.GroupBy(keyCapture, async (cv, x) =>
+                            }, async (x, _) => elementSelector(x), equalityComparer)
+                            : asyncEnumerable.GroupBy(keyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(keyCapture, cv);
                                 return keySelector(x);
-                            }, async x => elementSelector(x))
+                            }, async (x, _) => elementSelector(x))
                         : equalityComparer != null
                             ? asyncEnumerable.GroupBy(keyCapture, (cv, x) =>
                             {
@@ -322,22 +322,22 @@ namespace ProtoPromiseTests.APIs.Linq
                 {
                     return async
                         ? equalityComparer != null
-                            ? asyncEnumerable.GroupBy(keyCapture, async (cv, x) =>
+                            ? asyncEnumerable.GroupBy(keyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(keyCapture, cv);
                                 return keySelector(x);
                             },
-                            elementCapture, async (cv, x) =>
+                            elementCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(elementCapture, cv);
                                 return elementSelector(x);
                             }, equalityComparer)
-                            : asyncEnumerable.GroupBy(keyCapture, async (cv, x) =>
+                            : asyncEnumerable.GroupBy(keyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(keyCapture, cv);
                                 return keySelector(x);
                             },
-                            elementCapture, async (cv, x) =>
+                            elementCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(elementCapture, cv);
                                 return elementSelector(x);
@@ -378,8 +378,8 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? asyncEnumerable.GroupBy(async x => keySelector(x), equalityComparer)
-                        : asyncEnumerable.GroupBy(async x => keySelector(x))
+                        ? asyncEnumerable.GroupBy(async (x, _) => keySelector(x), equalityComparer)
+                        : asyncEnumerable.GroupBy(async (x, _) => keySelector(x))
                     : equalityComparer != null
                         ? asyncEnumerable.GroupBy(keySelector, equalityComparer)
                         : asyncEnumerable.GroupBy(keySelector);
@@ -388,12 +388,12 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? asyncEnumerable.GroupBy(keyCapture, async (cv, x) =>
+                        ? asyncEnumerable.GroupBy(keyCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(keyCapture, cv);
                             return keySelector(x);
                         }, equalityComparer)
-                        : asyncEnumerable.GroupBy(keyCapture, async (cv, x) =>
+                        : asyncEnumerable.GroupBy(keyCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(keyCapture, cv);
                             return keySelector(x);
@@ -427,8 +427,8 @@ namespace ProtoPromiseTests.APIs.Linq
                 {
                     return async
                         ? equalityComparer != null
-                            ? asyncEnumerable.GroupBy(async x => keySelector(x), async x => elementSelector(x), equalityComparer)
-                            : asyncEnumerable.GroupBy(async x => keySelector(x), async x => elementSelector(x))
+                            ? asyncEnumerable.GroupBy(async (x, _) => keySelector(x), async (x, _) => elementSelector(x), equalityComparer)
+                            : asyncEnumerable.GroupBy(async (x, _) => keySelector(x), async (x, _) => elementSelector(x))
                         : equalityComparer != null
                             ? asyncEnumerable.GroupBy(keySelector, elementSelector, equalityComparer)
                             : asyncEnumerable.GroupBy(keySelector, elementSelector);
@@ -437,14 +437,14 @@ namespace ProtoPromiseTests.APIs.Linq
                 {
                     return async
                         ? equalityComparer != null
-                            ? asyncEnumerable.GroupBy(async x => keySelector(x),
-                            elementCapture, async (cv, x) =>
+                            ? asyncEnumerable.GroupBy(async (x, _) => keySelector(x),
+                            elementCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(elementCapture, cv);
                                 return elementSelector(x);
                             }, equalityComparer)
-                            : asyncEnumerable.GroupBy(async x => keySelector(x),
-                            elementCapture, async (cv, x) =>
+                            : asyncEnumerable.GroupBy(async (x, _) => keySelector(x),
+                            elementCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(elementCapture, cv);
                                 return elementSelector(x);
@@ -470,16 +470,16 @@ namespace ProtoPromiseTests.APIs.Linq
                 {
                     return async
                         ? equalityComparer != null
-                            ? asyncEnumerable.GroupBy(keyCapture, async (cv, x) =>
+                            ? asyncEnumerable.GroupBy(keyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(keyCapture, cv);
                                 return keySelector(x);
-                            }, async x => elementSelector(x), equalityComparer)
-                            : asyncEnumerable.GroupBy(keyCapture, async (cv, x) =>
+                            }, async (x, _) => elementSelector(x), equalityComparer)
+                            : asyncEnumerable.GroupBy(keyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(keyCapture, cv);
                                 return keySelector(x);
-                            }, async x => elementSelector(x))
+                            }, async (x, _) => elementSelector(x))
                         : equalityComparer != null
                             ? asyncEnumerable.GroupBy(keyCapture, (cv, x) =>
                             {
@@ -496,22 +496,22 @@ namespace ProtoPromiseTests.APIs.Linq
                 {
                     return async
                         ? equalityComparer != null
-                            ? asyncEnumerable.GroupBy(keyCapture, async (cv, x) =>
+                            ? asyncEnumerable.GroupBy(keyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(keyCapture, cv);
                                 return keySelector(x);
                             },
-                            elementCapture, async (cv, x) =>
+                            elementCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(elementCapture, cv);
                                 return elementSelector(x);
                             }, equalityComparer)
-                            : asyncEnumerable.GroupBy(keyCapture, async (cv, x) =>
+                            : asyncEnumerable.GroupBy(keyCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(keyCapture, cv);
                                 return keySelector(x);
                             },
-                            elementCapture, async (cv, x) =>
+                            elementCapture, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(elementCapture, cv);
                                 return elementSelector(x);

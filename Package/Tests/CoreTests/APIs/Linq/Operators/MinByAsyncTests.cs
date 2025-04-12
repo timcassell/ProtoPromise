@@ -41,23 +41,23 @@ namespace ProtoPromiseTests.APIs.Linq
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.MinByAsync(default(Func<int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.MinByAsync(x => x, default(IComparer<int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.MinByAsync(default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.MinByAsync(async x => x, default(IComparer<int>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.MinByAsync(default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.MinByAsync(async (x, _) => x, default(IComparer<int>)));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.MinByAsync(captureValue, default(Func<string, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.MinByAsync(captureValue, (cv, x) => x, default(IComparer<int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.MinByAsync(captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.MinByAsync(captureValue, async (cv, x) => x, default(IComparer<int>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.MinByAsync(captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.MinByAsync(captureValue, async (cv, x, _) => x, default(IComparer<int>)));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MinByAsync(default(Func<int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MinByAsync(x => x, default(IComparer<int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MinByAsync(default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MinByAsync(async x => x, default(IComparer<int>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MinByAsync(default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MinByAsync(async (x, _) => x, default(IComparer<int>)));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MinByAsync(captureValue, default(Func<string, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MinByAsync(captureValue, (cv, x) => x, default(IComparer<int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MinByAsync(captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MinByAsync(captureValue, async (cv, x) => x, default(IComparer<int>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MinByAsync(captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).MinByAsync(captureValue, async (cv, x, _) => x, default(IComparer<int>)));
 
             enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
         }
@@ -82,11 +82,11 @@ namespace ProtoPromiseTests.APIs.Linq
             return async
                 ? captureValue
                     ? comparer != null
-                        ? source.MinByAsync(capturedValue, async (cv, x) => keySelector(x), comparer, cancelationToken)
-                        : source.MinByAsync(capturedValue, async (cv, x) => keySelector(x), cancelationToken)
+                        ? source.MinByAsync(capturedValue, async (cv, x, _) => keySelector(x), comparer, cancelationToken)
+                        : source.MinByAsync(capturedValue, async (cv, x, _) => keySelector(x), cancelationToken)
                     : comparer != null
-                        ? source.MinByAsync(async x => keySelector(x), comparer, cancelationToken)
-                        : source.MinByAsync(async x => keySelector(x), cancelationToken)
+                        ? source.MinByAsync(async (x, _) => keySelector(x), comparer, cancelationToken)
+                        : source.MinByAsync(async (x, _) => keySelector(x), cancelationToken)
                 : captureValue
                     ? comparer != null
                         ? source.MinByAsync(capturedValue, (cv, x) => keySelector(x), comparer, cancelationToken)
@@ -107,11 +107,11 @@ namespace ProtoPromiseTests.APIs.Linq
             return async
                 ? captureValue
                     ? comparer != null
-                        ? source.MinByAsync(capturedValue, async (cv, x) => keySelector(x), comparer)
-                        : source.MinByAsync(capturedValue, async (cv, x) => keySelector(x))
+                        ? source.MinByAsync(capturedValue, async (cv, x, _) => keySelector(x), comparer)
+                        : source.MinByAsync(capturedValue, async (cv, x, _) => keySelector(x))
                     : comparer != null
-                        ? source.MinByAsync(async x => keySelector(x), comparer)
-                        : source.MinByAsync(async x => keySelector(x))
+                        ? source.MinByAsync(async (x, _) => keySelector(x), comparer)
+                        : source.MinByAsync(async (x, _) => keySelector(x))
                 : captureValue
                     ? comparer != null
                         ? source.MinByAsync(capturedValue, (cv, x) => keySelector(x), comparer)

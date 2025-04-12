@@ -37,38 +37,140 @@ namespace ProtoPromiseTests.APIs.Linq
         [Test]
         public void ToDictionaryAsync_NullArgument()
         {
-            var enumerable = AsyncEnumerable.Range(0, 10);
-            const string captureValue = "captureValue";
+            var enumerable = AsyncEnumerable.Return(42);
+            var captureValue = "captureValue";
+            var nullComparer = default(IEqualityComparer<int>);
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(default(Func<int, object>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(default(Func<int, Promise<object>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, default(Func<string, int, object>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, default(Func<string, int, Promise<object>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(default(Func<int, int>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(default(Func<int, int>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(x => 0, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(default(Func<int, object>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(default(Func<int, Promise<object>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, default(Func<string, int, object>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, default(Func<string, int, Promise<object>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, default(Func<string, int, int>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, default(Func<string, int, int>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, (cv, x) => 0, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(x => x, default(Func<int, object>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(x => x, default(Func<int, Promise<object>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(x => x, captureValue, default(Func<string, int, object>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(x => x, captureValue, default(Func<string, int, Promise<object>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(default(Func<int, int>), x => 0));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(x => 0, default(Func<int, int>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(default(Func<int, int>), x => 0, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(x => 0, default(Func<int, int>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(x => 0, x => 0, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, (cv, x) => x, default(Func<int, object>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, (cv, x) => x, default(Func<int, Promise<object>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, (cv, x) => x, captureValue, default(Func<string, int, object>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, (cv, x) => x, captureValue, default(Func<string, int, Promise<object>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, default(Func<string, int, int>), x => 0));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, (cv, x) => 0, default(Func<int, int>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, default(Func<string, int, int>), x => 0, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, (cv, x) => 0, default(Func<int, int>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, (cv, x) => 0, x => 0, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(x => x, default(Func<int, object>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(x => x, default(Func<int, Promise<object>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(x => x, captureValue, default(Func<string, int, object>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(x => x, captureValue, default(Func<string, int, Promise<object>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(default(Func<int, int>), captureValue, (cv, x) => 0));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(x => 0, captureValue, default(Func<string, int, int>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(default(Func<int, int>), captureValue, (cv, x) => 0, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(x => 0, captureValue, default(Func<string, int, int>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(x => 0, captureValue, (cv, x) => 0, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, (cv, x) => x, default(Func<int, object>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, (cv, x) => x, default(Func<int, Promise<object>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, (cv, x) => x, captureValue, default(Func<string, int, object>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, (cv, x) => x, captureValue, default(Func<string, int, Promise<object>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, default(Func<string, int, int>), captureValue, (cv, x) => 0));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, default(Func<string, int, int>), captureValue, (cv, x) => 0, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, nullComparer));
+
+
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(default(Func<int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync((x, _) => Promise.Resolved(0), nullComparer));
+
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, (cv, x, _) => Promise.Resolved(0), nullComparer));
+
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(default(Func<int, CancelationToken, Promise<int>>), (int x, CancelationToken _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync((x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(default(Func<int, CancelationToken, Promise<int>>), (x, _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync((x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync((x, _) => Promise.Resolved(0), (x, _) => Promise.Resolved(0), nullComparer));
+
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), (x, _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, (cv, x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), (x, _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, (cv, x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, (cv, x, _) => Promise.Resolved(0), (x, _) => Promise.Resolved(0), nullComparer));
+
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(default(Func<int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync((x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(default(Func<int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync((x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync((x, _) => Promise.Resolved(0), captureValue, (cv, x, _) => Promise.Resolved(0), nullComparer));
+
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, (cv, x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, (cv, x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ToDictionaryAsync(captureValue, (cv, x, _) => Promise.Resolved(0), captureValue, (cv, x, _) => Promise.Resolved(0), nullComparer));
+
+
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(default(Func<int, int>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(default(Func<int, int>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(x => 0, nullComparer));
+
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, default(Func<string, int, int>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, default(Func<string, int, int>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, (cv, x) => 0, nullComparer));
+
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(default(Func<int, int>), x => 0));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(x => 0, default(Func<int, int>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(default(Func<int, int>), x => 0, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(x => 0, default(Func<int, int>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(x => 0, x => 0, nullComparer));
+
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, default(Func<string, int, int>), x => 0));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, (cv, x) => 0, default(Func<int, int>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, default(Func<string, int, int>), x => 0, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, (cv, x) => 0, default(Func<int, int>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, (cv, x) => 0, x => 0, nullComparer));
+
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(default(Func<int, int>), captureValue, (cv, x) => 0));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(x => 0, captureValue, default(Func<string, int, int>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(default(Func<int, int>), captureValue, (cv, x) => 0, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(x => 0, captureValue, default(Func<string, int, int>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(x => 0, captureValue, (cv, x) => 0, nullComparer));
+
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, default(Func<string, int, int>), captureValue, (cv, x) => 0));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, default(Func<string, int, int>), captureValue, (cv, x) => 0, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, nullComparer));
+
+
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(default(Func<int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync((x, _) => Promise.Resolved(0), nullComparer));
+
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, (cv, x, _) => Promise.Resolved(0), nullComparer));
+
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(default(Func<int, CancelationToken, Promise<int>>), (int x, CancelationToken _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync((x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(default(Func<int, CancelationToken, Promise<int>>), (x, _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync((x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync((x, _) => Promise.Resolved(0), (x, _) => Promise.Resolved(0), nullComparer));
+
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), (x, _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, (cv, x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), (x, _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, (cv, x, _) => Promise.Resolved(0), default(Func<int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, (cv, x, _) => Promise.Resolved(0), (x, _) => Promise.Resolved(0), nullComparer));
+
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(default(Func<int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync((x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(default(Func<int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync((x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync((x, _) => Promise.Resolved(0), captureValue, (cv, x, _) => Promise.Resolved(0), nullComparer));
+
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, (cv, x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, (cv, x, _) => Promise.Resolved(0), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, (cv, x, _) => Promise.Resolved(0), captureValue, default(Func<string, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).ToDictionaryAsync(captureValue, (cv, x, _) => Promise.Resolved(0), captureValue, (cv, x, _) => Promise.Resolved(0), nullComparer));
 
             enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
         }
@@ -92,12 +194,12 @@ namespace ProtoPromiseTests.APIs.Linq
 
             return asyncKey
                 ? captureKey
-                    ? source.ToDictionaryAsync(captureKeyValue, async (cv, x) =>
+                    ? source.ToDictionaryAsync(captureKeyValue, async (cv, x, _) =>
                     {
                         Assert.AreEqual(captureKeyValue, cv);
                         return keySelector(x);
                     }, comparer, cancelationToken)
-                    : source.ToDictionaryAsync(async x => keySelector(x), comparer, cancelationToken)
+                    : source.ToDictionaryAsync(async (x, _) => keySelector(x), comparer, cancelationToken)
                 : captureKey
                     ? source.ToDictionaryAsync(captureKeyValue, (cv, x) =>
                     {
@@ -117,12 +219,12 @@ namespace ProtoPromiseTests.APIs.Linq
 
             return async
                 ? captureKey
-                    ? source.ToDictionaryAsync(captureKeyValue, async (cv, x) =>
+                    ? source.ToDictionaryAsync(captureKeyValue, async (cv, x, _) =>
                     {
                         Assert.AreEqual(captureKeyValue, cv);
                         return keySelector(x);
                     }, comparer)
-                    : source.ToDictionaryAsync(async x => keySelector(x), comparer)
+                    : source.ToDictionaryAsync(async (x, _) => keySelector(x), comparer)
                 : captureKey
                     ? source.ToDictionaryAsync(captureKeyValue, (cv, x) =>
                     {
@@ -156,64 +258,64 @@ namespace ProtoPromiseTests.APIs.Linq
                 ? captureKey
                     ? asyncElement
                         ? captureElement
-                            ? source.ToDictionaryAsync(captureKeyValue, async (cv, x) =>
+                            ? source.ToDictionaryAsync(captureKeyValue, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(captureKeyValue, cv);
                                     return keySelector(x);
                                 },
-                                captureElementValue, async (cv, x) =>
+                                captureElementValue, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(captureElementValue, cv);
                                     return elementSelector(x);
                                 }, comparer, cancelationToken)
-                            : source.ToDictionaryAsync(captureKeyValue, async (cv, x) =>
+                            : source.ToDictionaryAsync(captureKeyValue, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(captureKeyValue, cv);
                                     return keySelector(x);
                                 },
-                                captureElementValue, async (cv, x) =>
+                                captureElementValue, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(captureElementValue, cv);
                                     return elementSelector(x);
                                 }, comparer, cancelationToken)
                         : captureElement
-                            ? source.ToDictionaryAsync(captureKeyValue, async (cv, x) =>
+                            ? source.ToDictionaryAsync(captureKeyValue, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(captureKeyValue, cv);
                                     return keySelector(x);
                                 },
-                                captureElementValue, async (cv, x) =>
+                                captureElementValue, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(captureElementValue, cv);
                                     return elementSelector(x);
                                 }, comparer, cancelationToken)
-                            : source.ToDictionaryAsync(captureKeyValue, async (cv, x) =>
+                            : source.ToDictionaryAsync(captureKeyValue, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(captureKeyValue, cv);
                                     return keySelector(x);
-                                }, async x => elementSelector(x), comparer, cancelationToken)
+                                }, async (x, _) => elementSelector(x), comparer, cancelationToken)
                     : asyncElement
                         ? captureElement
-                            ? source.ToDictionaryAsync(async x => keySelector(x),
-                                captureElementValue, async (cv, x) =>
+                            ? source.ToDictionaryAsync(async (x, _) => keySelector(x),
+                                captureElementValue, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(captureElementValue, cv);
                                     return elementSelector(x);
                                 }, comparer, cancelationToken)
-                            : source.ToDictionaryAsync(async x => keySelector(x),
-                                captureElementValue, async (cv, x) =>
+                            : source.ToDictionaryAsync(async (x, _) => keySelector(x),
+                                captureElementValue, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(captureElementValue, cv);
                                     return elementSelector(x);
                                 }, comparer, cancelationToken)
                         : captureElement
-                            ? source.ToDictionaryAsync(async x => keySelector(x),
-                                captureElementValue, async (cv, x) =>
+                            ? source.ToDictionaryAsync(async (x, _) => keySelector(x),
+                                captureElementValue, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(captureElementValue, cv);
                                     return elementSelector(x);
                                 }, comparer, cancelationToken)
-                            : source.ToDictionaryAsync(async x => keySelector(x), async x => elementSelector(x), comparer, cancelationToken)
+                            : source.ToDictionaryAsync(async (x, _) => keySelector(x), async (x, _) => elementSelector(x), comparer, cancelationToken)
                 : captureKey
                     ? asyncElement
                         ? captureElement
@@ -269,12 +371,12 @@ namespace ProtoPromiseTests.APIs.Linq
                                 }, comparer, cancelationToken)
                         : captureElement
                             ? source.ToDictionaryAsync(keySelector,
-                                captureElementValue, async (cv, x) =>
+                                captureElementValue, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(captureElementValue, cv);
                                     return elementSelector(x);
                                 }, comparer, cancelationToken)
-                            : source.ToDictionaryAsync(keySelector, async x => elementSelector(x), comparer, cancelationToken);
+                            : source.ToDictionaryAsync(keySelector, async (x, _) => elementSelector(x), comparer, cancelationToken);
         }
 
         private static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement>(ConfiguredAsyncEnumerable<TSource> source,
@@ -293,64 +395,64 @@ namespace ProtoPromiseTests.APIs.Linq
                 ? captureKey
                     ? asyncElement
                         ? captureElement
-                            ? source.ToDictionaryAsync(captureKeyValue, async (cv, x) =>
+                            ? source.ToDictionaryAsync(captureKeyValue, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(captureKeyValue, cv);
                                     return keySelector(x);
                                 },
-                                captureElementValue, async (cv, x) =>
+                                captureElementValue, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(captureElementValue, cv);
                                     return elementSelector(x);
                                 }, comparer)
-                            : source.ToDictionaryAsync(captureKeyValue, async (cv, x) =>
+                            : source.ToDictionaryAsync(captureKeyValue, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(captureKeyValue, cv);
                                     return keySelector(x);
                                 },
-                                captureElementValue, async (cv, x) =>
+                                captureElementValue, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(captureElementValue, cv);
                                     return elementSelector(x);
                                 }, comparer)
                         : captureElement
-                            ? source.ToDictionaryAsync(captureKeyValue, async (cv, x) =>
+                            ? source.ToDictionaryAsync(captureKeyValue, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(captureKeyValue, cv);
                                     return keySelector(x);
                                 },
-                                captureElementValue, async (cv, x) =>
+                                captureElementValue, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(captureElementValue, cv);
                                     return elementSelector(x);
                                 }, comparer)
-                            : source.ToDictionaryAsync(captureKeyValue, async (cv, x) =>
+                            : source.ToDictionaryAsync(captureKeyValue, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(captureKeyValue, cv);
                                     return keySelector(x);
-                                }, async x => elementSelector(x), comparer)
+                                }, async (x, _) => elementSelector(x), comparer)
                     : asyncElement
                         ? captureElement
-                            ? source.ToDictionaryAsync(async x => keySelector(x),
-                                captureElementValue, async (cv, x) =>
+                            ? source.ToDictionaryAsync(async (x, _) => keySelector(x),
+                                captureElementValue, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(captureElementValue, cv);
                                     return elementSelector(x);
                                 }, comparer)
-                            : source.ToDictionaryAsync(async x => keySelector(x),
-                                captureElementValue, async (cv, x) =>
+                            : source.ToDictionaryAsync(async (x, _) => keySelector(x),
+                                captureElementValue, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(captureElementValue, cv);
                                     return elementSelector(x);
                                 }, comparer)
                         : captureElement
-                            ? source.ToDictionaryAsync(async x => keySelector(x),
-                                captureElementValue, async (cv, x) =>
+                            ? source.ToDictionaryAsync(async (x, _) => keySelector(x),
+                                captureElementValue, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(captureElementValue, cv);
                                     return elementSelector(x);
                                 }, comparer)
-                            : source.ToDictionaryAsync(async x => keySelector(x), async x => elementSelector(x), comparer)
+                            : source.ToDictionaryAsync(async (x, _) => keySelector(x), async (x, _) => elementSelector(x), comparer)
                 : captureKey
                     ? asyncElement
                         ? captureElement
@@ -406,12 +508,12 @@ namespace ProtoPromiseTests.APIs.Linq
                                 }, comparer)
                         : captureElement
                             ? source.ToDictionaryAsync(keySelector,
-                                captureElementValue, async (cv, x) =>
+                                captureElementValue, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(captureElementValue, cv);
                                     return elementSelector(x);
                                 }, comparer)
-                            : source.ToDictionaryAsync(keySelector, async x => elementSelector(x), comparer);
+                            : source.ToDictionaryAsync(keySelector, async (x, _) => elementSelector(x), comparer);
         }
 
         [Test]

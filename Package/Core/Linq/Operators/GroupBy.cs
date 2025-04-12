@@ -174,7 +174,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TSource>> GroupBy<TSource, TKey>(
             this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector)
             => GroupBy<TSource, TKey, IEqualityComparer<TKey>>(source, keySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -191,7 +191,7 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<Grouping<TKey, TSource>> GroupBy<TSource, TCaptureKey, TKey>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector)
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector)
             => GroupBy<TSource, TCaptureKey, TKey, IEqualityComparer<TKey>>(source, keyCaptureValue, keySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -207,7 +207,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TSource>> GroupBy<TSource, TKey, TEqualityComparer>(
             this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -233,7 +233,7 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<Grouping<TKey, TSource>> GroupBy<TSource, TCaptureKey, TKey, TEqualityComparer>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -468,8 +468,8 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TKey, TElement>(
             this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
-            Func<TSource, Promise<TElement>> elementSelector)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TElement>> elementSelector)
             => GroupBy<TSource, TKey, TElement, IEqualityComparer<TKey>>(source, keySelector, elementSelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -488,8 +488,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TCaptureKey, TKey, TElement>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            Func<TSource, Promise<TElement>> elementSelector)
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TElement>> elementSelector)
             => GroupBy<TSource, TCaptureKey, TKey, TElement, IEqualityComparer<TKey>>(source, keyCaptureValue, keySelector, elementSelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -507,9 +507,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TKey, TCaptureElement, TElement>(
             this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
-            Func<TCaptureElement, TSource, Promise<TElement>> elementSelector)
+            Func<TCaptureElement, TSource, CancelationToken, Promise<TElement>> elementSelector)
             => GroupBy<TSource, TKey, TCaptureElement, TElement, IEqualityComparer<TKey>>(source, keySelector, elementCaptureValue, elementSelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -530,9 +530,9 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TCaptureKey, TKey, TCaptureElement, TElement>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
-            Func<TCaptureElement, TSource, Promise<TElement>> elementSelector)
+            Func<TCaptureElement, TSource, CancelationToken, Promise<TElement>> elementSelector)
             => GroupBy<TSource, TCaptureKey, TKey, TCaptureElement, TElement, IEqualityComparer<TKey>>(source, keyCaptureValue, keySelector, elementCaptureValue, elementSelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -550,8 +550,8 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TKey, TElement, TEqualityComparer>(
             this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
-            Func<TSource, Promise<TElement>> elementSelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TElement>> elementSelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -583,8 +583,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TCaptureKey, TKey, TElement, TEqualityComparer>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            Func<TSource, Promise<TElement>> elementSelector,
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TElement>> elementSelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -615,9 +615,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TKey, TCaptureElement, TElement, TEqualityComparer>(
             this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
-            Func<TCaptureElement, TSource, Promise<TElement>> elementSelector,
+            Func<TCaptureElement, TSource, CancelationToken, Promise<TElement>> elementSelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -651,9 +651,9 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TCaptureKey, TKey, TCaptureElement, TElement, TEqualityComparer>(
             this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
-            Func<TCaptureElement, TSource, Promise<TElement>> elementSelector,
+            Func<TCaptureElement, TSource, CancelationToken, Promise<TElement>> elementSelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -760,7 +760,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TSource>> GroupBy<TSource, TKey>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector)
             => GroupBy<TSource, TKey, IEqualityComparer<TKey>>(configuredSource, keySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -777,7 +777,7 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<Grouping<TKey, TSource>> GroupBy<TSource, TCaptureKey, TKey>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector)
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector)
             => GroupBy<TSource, TCaptureKey, TKey, IEqualityComparer<TKey>>(configuredSource, keyCaptureValue, keySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -793,7 +793,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TSource>> GroupBy<TSource, TKey, TEqualityComparer>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -819,7 +819,7 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<Grouping<TKey, TSource>> GroupBy<TSource, TCaptureKey, TKey, TEqualityComparer>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -1054,8 +1054,8 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TKey, TElement>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector,
-            Func<TSource, Promise<TElement>> elementSelector)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TElement>> elementSelector)
             => GroupBy<TSource, TKey, TElement, IEqualityComparer<TKey>>(configuredSource, keySelector, elementSelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -1074,8 +1074,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TCaptureKey, TKey, TElement>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            Func<TSource, Promise<TElement>> elementSelector)
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TElement>> elementSelector)
             => GroupBy<TSource, TCaptureKey, TKey, TElement, IEqualityComparer<TKey>>(configuredSource, keyCaptureValue, keySelector, elementSelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -1093,9 +1093,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TKey, TCaptureElement, TElement>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
-            Func<TCaptureElement, TSource, Promise<TElement>> elementSelector)
+            Func<TCaptureElement, TSource, CancelationToken, Promise<TElement>> elementSelector)
             => GroupBy<TSource, TKey, TCaptureElement, TElement, IEqualityComparer<TKey>>(configuredSource, keySelector, elementCaptureValue, elementSelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -1116,9 +1116,9 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TCaptureKey, TKey, TCaptureElement, TElement>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
-            Func<TCaptureElement, TSource, Promise<TElement>> elementSelector)
+            Func<TCaptureElement, TSource, CancelationToken, Promise<TElement>> elementSelector)
             => GroupBy<TSource, TCaptureKey, TKey, TCaptureElement, TElement, IEqualityComparer<TKey>>(configuredSource, keyCaptureValue, keySelector, elementCaptureValue, elementSelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -1136,8 +1136,8 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TKey, TElement, TEqualityComparer>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector,
-            Func<TSource, Promise<TElement>> elementSelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TElement>> elementSelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -1169,8 +1169,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TCaptureKey, TKey, TElement, TEqualityComparer>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            Func<TSource, Promise<TElement>> elementSelector,
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TElement>> elementSelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -1201,9 +1201,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="elementSelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TKey, TCaptureElement, TElement, TEqualityComparer>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
-            Func<TCaptureElement, TSource, Promise<TElement>> elementSelector,
+            Func<TCaptureElement, TSource, CancelationToken, Promise<TElement>> elementSelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -1237,9 +1237,9 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<Grouping<TKey, TElement>> GroupBy<TSource, TCaptureKey, TKey, TCaptureElement, TElement, TEqualityComparer>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCaptureKey keyCaptureValue,
-            Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
+            Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
             TCaptureElement elementCaptureValue,
-            Func<TCaptureElement, TSource, Promise<TElement>> elementSelector,
+            Func<TCaptureElement, TSource, CancelationToken, Promise<TElement>> elementSelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {

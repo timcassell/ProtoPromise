@@ -39,9 +39,9 @@ namespace ProtoPromiseTests.APIs.Linq
             var enumerable = AsyncEnumerable.Range(0, 10);
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.FirstAsync(default(Func<int, bool>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.FirstAsync(default(Func<int, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.FirstAsync(default(Func<int, CancelationToken, Promise<bool>>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).FirstAsync(default(Func<int, bool>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).FirstAsync(default(Func<int, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).FirstAsync(default(Func<int, CancelationToken, Promise<bool>>)));
 
             enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
         }
@@ -110,13 +110,13 @@ namespace ProtoPromiseTests.APIs.Linq
             if (!captureValue)
             {
                 return async
-                    ? source.FirstAsync(async x => predicate(x), cancelationToken)
+                    ? source.FirstAsync(async (x, _) => predicate(x), cancelationToken)
                     : source.FirstAsync(predicate, cancelationToken);
             }
             else
             {
                 return async
-                    ? source.FirstAsync(valueCapture, async (cv, x) =>
+                    ? source.FirstAsync(valueCapture, async (cv, x, _) =>
                     {
                         Assert.AreEqual(valueCapture, cv);
                         return predicate(x);
@@ -139,13 +139,13 @@ namespace ProtoPromiseTests.APIs.Linq
             if (!captureValue)
             {
                 return async
-                    ? source.FirstAsync(async x => predicate(x))
+                    ? source.FirstAsync(async (x, _) => predicate(x))
                     : source.FirstAsync(predicate);
             }
             else
             {
                 return async
-                    ? source.FirstAsync(valueCapture, async (cv, x) =>
+                    ? source.FirstAsync(valueCapture, async (cv, x, _) =>
                     {
                         Assert.AreEqual(valueCapture, cv);
                         return predicate(x);

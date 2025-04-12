@@ -140,7 +140,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> resulting in how many elements in the sequence satisfy the condition in the predicate function.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
         /// <exception cref="OverflowException">The number of elements in the source sequence is larger than <see cref="long.MaxValue"/>.</exception>
-        public static Promise<long> LongCountAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<bool>> predicate, CancelationToken cancelationToken = default)
+        public static Promise<long> LongCountAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, CancelationToken, Promise<bool>> predicate, CancelationToken cancelationToken = default)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
@@ -159,7 +159,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> resulting in how many elements in the sequence satisfy the condition in the predicate function.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
         /// <exception cref="OverflowException">The number of elements in the source sequence is larger than <see cref="long.MaxValue"/>.</exception>
-        public static Promise<long> LongCountAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate, CancelationToken cancelationToken = default)
+        public static Promise<long> LongCountAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<bool>> predicate, CancelationToken cancelationToken = default)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
@@ -209,7 +209,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> resulting in how many elements in the sequence satisfy the condition in the predicate function.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="configuredSource"/> is null.</exception>
         /// <exception cref="OverflowException">The number of elements in the source sequence is larger than <see cref="long.MaxValue"/>.</exception>
-        public static Promise<long> LongCountAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<bool>> predicate)
+        public static Promise<long> LongCountAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, CancelationToken, Promise<bool>> predicate)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
@@ -227,7 +227,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> resulting in how many elements in the sequence satisfy the condition in the predicate function.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="configuredSource"/> is null.</exception>
         /// <exception cref="OverflowException">The number of elements in the source sequence is larger than <see cref="long.MaxValue"/>.</exception>
-        public static Promise<long> LongCountAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate)
+        public static Promise<long> LongCountAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<bool>> predicate)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 

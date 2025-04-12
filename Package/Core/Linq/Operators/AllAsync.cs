@@ -94,7 +94,7 @@ namespace Proto.Promises.Linq
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns><see cref="Promise{T}"/> containing the result of whether the source sequence is empty or all elements in the source sequence passed the test in the specified <paramref name="predicate"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<bool> AllAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<bool>> predicate, CancelationToken cancelationToken = default)
+        public static Promise<bool> AllAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, CancelationToken, Promise<bool>> predicate, CancelationToken cancelationToken = default)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
@@ -112,7 +112,7 @@ namespace Proto.Promises.Linq
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns><see cref="Promise{T}"/> containing the result of whether the source sequence is empty or all elements in the source sequence passed the test in the specified <paramref name="predicate"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<bool> AllAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate, CancelationToken cancelationToken = default)
+        public static Promise<bool> AllAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<bool>> predicate, CancelationToken cancelationToken = default)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
@@ -159,7 +159,7 @@ namespace Proto.Promises.Linq
         /// <param name="predicate">An async function to test each element for a condition.</param>
         /// <returns><see cref="Promise{T}"/> containing the result of whether the source sequence is empty or all elements in the source sequence passed the test in the specified <paramref name="predicate"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<bool> AllAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<bool>> predicate)
+        public static Promise<bool> AllAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, CancelationToken, Promise<bool>> predicate)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
@@ -176,7 +176,7 @@ namespace Proto.Promises.Linq
         /// <param name="predicate">An async function to test each element for a condition.</param>
         /// <returns><see cref="Promise{T}"/> containing the result of whether the source sequence is empty or all elements in the source sequence passed the test in the specified <paramref name="predicate"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
-        public static Promise<bool> AllAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate)
+        public static Promise<bool> AllAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<bool>> predicate)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 

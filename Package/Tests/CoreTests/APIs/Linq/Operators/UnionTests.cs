@@ -56,8 +56,8 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? firstAsyncEnumerable.UnionBy(secondAsyncEnumerable, async x => keySelector(x), equalityComparer)
-                        : firstAsyncEnumerable.UnionBy(secondAsyncEnumerable, async x => keySelector(x))
+                        ? firstAsyncEnumerable.UnionBy(secondAsyncEnumerable, async (x, _) => keySelector(x), equalityComparer)
+                        : firstAsyncEnumerable.UnionBy(secondAsyncEnumerable, async (x, _) => keySelector(x))
                     : equalityComparer != null
                         ? firstAsyncEnumerable.UnionBy(secondAsyncEnumerable, keySelector, equalityComparer)
                         : firstAsyncEnumerable.UnionBy(secondAsyncEnumerable, keySelector);
@@ -66,12 +66,12 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? firstAsyncEnumerable.UnionBy(secondAsyncEnumerable, valueCapture, async (cv, x) =>
+                        ? firstAsyncEnumerable.UnionBy(secondAsyncEnumerable, valueCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return keySelector(x);
                         }, equalityComparer)
-                        : firstAsyncEnumerable.UnionBy(secondAsyncEnumerable, valueCapture, async (cv, x) =>
+                        : firstAsyncEnumerable.UnionBy(secondAsyncEnumerable, valueCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return keySelector(x);
@@ -103,8 +103,8 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? firstAsyncEnumerable.UnionBy(secondAsyncEnumerable, async x => keySelector(x), equalityComparer)
-                        : firstAsyncEnumerable.UnionBy(secondAsyncEnumerable, async x => keySelector(x))
+                        ? firstAsyncEnumerable.UnionBy(secondAsyncEnumerable, async (x, _) => keySelector(x), equalityComparer)
+                        : firstAsyncEnumerable.UnionBy(secondAsyncEnumerable, async (x, _) => keySelector(x))
                     : equalityComparer != null
                         ? firstAsyncEnumerable.UnionBy(secondAsyncEnumerable, keySelector, equalityComparer)
                         : firstAsyncEnumerable.UnionBy(secondAsyncEnumerable, keySelector);
@@ -113,12 +113,12 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? firstAsyncEnumerable.UnionBy(secondAsyncEnumerable, valueCapture, async (cv, x) =>
+                        ? firstAsyncEnumerable.UnionBy(secondAsyncEnumerable, valueCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return keySelector(x);
                         }, equalityComparer)
-                        : firstAsyncEnumerable.UnionBy(secondAsyncEnumerable, valueCapture, async (cv, x) =>
+                        : firstAsyncEnumerable.UnionBy(secondAsyncEnumerable, valueCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return keySelector(x);
@@ -177,23 +177,23 @@ namespace ProtoPromiseTests.APIs.Linq
 
             Assert.Catch<System.ArgumentNullException>(() => first.UnionBy(second, default(Func<int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => first.UnionBy(second, x => x, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => first.UnionBy(second, default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => first.UnionBy(second, async x => x, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => first.UnionBy(second, default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => first.UnionBy(second, async (x, _) => x, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => first.UnionBy(second, captureValue, default(Func<string, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => first.UnionBy(second, captureValue, (cv, x) => x, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => first.UnionBy(second, captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => first.UnionBy(second, captureValue, async (cv, x) => x, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => first.UnionBy(second, captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => first.UnionBy(second, captureValue, async (cv, x, _) => x, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).UnionBy(second, default(Func<int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).UnionBy(second, x => x, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).UnionBy(second, default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).UnionBy(second, async x => x, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).UnionBy(second, default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).UnionBy(second, async (x, _) => x, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).UnionBy(second, captureValue, default(Func<string, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).UnionBy(second, captureValue, (cv, x) => x, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).UnionBy(second, captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).UnionBy(second, captureValue, async (cv, x) => x, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).UnionBy(second, captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).UnionBy(second, captureValue, async (cv, x, _) => x, nullComparer));
 
             first.GetAsyncEnumerator().DisposeAsync().Forget();
             second.GetAsyncEnumerator().DisposeAsync().Forget();

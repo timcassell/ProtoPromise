@@ -50,12 +50,12 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, default(Func<string, int, int>), x => 0, (acc, x) => acc, EqualityComparer<int>.Default));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => 0, x => 0, (acc, x) => acc, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(default(Func<int, Promise<int>>), async x => 0, async (acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(default(Func<int, Promise<int>>), async x => 0, async (acc, x) => acc, EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(x => Promise.Resolved(0), async x => 0, async (acc, x) => acc, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, default(Func<string, int, Promise<int>>), async x => 0, async (acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, default(Func<string, int, Promise<int>>), async x => 0, async (acc, x) => acc, EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => Promise.Resolved(0), async x => 0, async (acc, x) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(default(Func<int, CancelationToken, Promise<int>>), async (x, _) => 0, async (acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(default(Func<int, CancelationToken, Promise<int>>), async (x, _) => 0, async (acc, x, _) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy((x, _) => Promise.Resolved(0), async (x, _) => 0, async (acc, x, _) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), async (x, _) => 0, async (acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), async (x, _) => 0, async (acc, x, _) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x, _) => Promise.Resolved(0), async (x, _) => 0, async (acc, x, _) => acc, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(x => 0, x => 0, default(Func<int, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(x => 0, x => 0, default(Func<int, int, int>), EqualityComparer<int>.Default));
@@ -64,12 +64,12 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => 0, x => 0, default(Func<int, int, int>), EqualityComparer<int>.Default));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => 0, x => 0, (acc, x) => acc, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async x => 0, async x => 0, default(Func<int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async x => 0, async x => 0, default(Func<int, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async x => 0, async x => 0, async (acc, x) => acc, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x) => 0, async x => 0, default(Func<int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x) => 0, async x => 0, default(Func<int, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x) => 0, async x => 0, async (acc, x) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async (x, _) => 0, async (x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async (x, _) => 0, async (x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async (x, _) => 0, async (x, _) => 0, async (acc, x, _) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x, _) => 0, async (x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x, _) => 0, async (x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x, _) => 0, async (x, _) => 0, async (acc, x, _) => acc, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(default(Func<int, int>), x => 0, captureValue, (cv, acc, x) => acc));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(default(Func<int, int>), x => 0, captureValue, (cv, acc, x) => acc, EqualityComparer<int>.Default));
@@ -78,12 +78,12 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, default(Func<string, int, int>), x => 0, captureValue, (cv, acc, x) => acc, EqualityComparer<int>.Default));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => 0, x => 0, captureValue, (cv, acc, x) => acc, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(default(Func<int, Promise<int>>), async x => 0, captureValue, async (cv, acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(default(Func<int, Promise<int>>), async x => 0, captureValue, async (cv, acc, x) => acc, EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(x => Promise.Resolved(0), async x => 0, captureValue, async (cv, acc, x) => acc, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, default(Func<string, int, Promise<int>>), async x => 0, captureValue, async (cv, acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, default(Func<string, int, Promise<int>>), async x => 0, captureValue, async (cv, acc, x) => acc, EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => Promise.Resolved(0), async x => 0, captureValue, async (cv, acc, x) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(default(Func<int, CancelationToken, Promise<int>>), async (x, _) => 0, captureValue, async (cv, acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(default(Func<int, CancelationToken, Promise<int>>), async (x, _) => 0, captureValue, async (cv, acc, x, _) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy((x, _) => Promise.Resolved(0), async (x, _) => 0, captureValue, async (cv, acc, x, _) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), async (x, _) => 0, captureValue, async (cv, acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), async (x, _) => 0, captureValue, async (cv, acc, x, _) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x, _) => Promise.Resolved(0), async (x, _) => 0, captureValue, async (cv, acc, x, _) => acc, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(x => 0, x => 0, captureValue, default(Func<string, int, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(x => 0, x => 0, captureValue, default(Func<string, int, int, int>), EqualityComparer<int>.Default));
@@ -92,12 +92,12 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => 0, x => 0, captureValue, default(Func<string, int, int, int>), EqualityComparer<int>.Default));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => 0, x => 0, captureValue, (cv, acc, x) => acc, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async x => 0, async x => 0, captureValue, default(Func<string, int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async x => 0, async x => 0, captureValue, default(Func<string, int, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async x => 0, async x => 0, captureValue, async (cv, acc, x) => acc, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x) => 0, async x => 0, captureValue, default(Func<string, int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x) => 0, async x => 0, captureValue, default(Func<string, int, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x) => 0, async x => 0, captureValue, async (cv, acc, x) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async (x, _) => 0, async (x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async (x, _) => 0, async (x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async (x, _) => 0, async (x, _) => 0, captureValue, async (cv, acc, x, _) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x, _) => 0, async (x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x, _) => 0, async (x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x, _) => 0, async (x, _) => 0, captureValue, async (cv, acc, x, _) => acc, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(default(Func<int, int>), captureValue, (cv, x) => 0, (acc, x) => acc));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(default(Func<int, int>), captureValue, (cv, x) => 0, (acc, x) => acc, EqualityComparer<int>.Default));
@@ -106,12 +106,12 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, default(Func<string, int, int>), captureValue, (cv, x) => 0, (acc, x) => acc, EqualityComparer<int>.Default));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, (acc, x) => acc, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(default(Func<int, Promise<int>>), captureValue, async (cv, x) => 0, async (acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(default(Func<int, Promise<int>>), captureValue, async (cv, x) => 0, async (acc, x) => acc, EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(x => Promise.Resolved(0), captureValue, async (cv, x) => 0, async (acc, x) => acc, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, default(Func<string, int, Promise<int>>), captureValue, async (cv, x) => 0, async (acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, default(Func<string, int, Promise<int>>), captureValue, async (cv, x) => 0, async (acc, x) => acc, EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => Promise.Resolved(0), captureValue, async (cv, x) => 0, async (acc, x) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(default(Func<int, CancelationToken, Promise<int>>), captureValue, async (cv, x, _) => 0, async (acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(default(Func<int, CancelationToken, Promise<int>>), captureValue, async (cv, x, _) => 0, async (acc, x, _) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy((x, _) => Promise.Resolved(0), captureValue, async (cv, x, _) => 0, async (acc, x, _) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, async (cv, x, _) => 0, async (acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, async (cv, x, _) => 0, async (acc, x, _) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x, _) => Promise.Resolved(0), captureValue, async (cv, x, _) => 0, async (acc, x, _) => acc, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(x => 0, captureValue, (cv, x) => 0, default(Func<int, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(x => 0, captureValue, (cv, x) => 0, default(Func<int, int, int>), EqualityComparer<int>.Default));
@@ -120,12 +120,12 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, default(Func<int, int, int>), EqualityComparer<int>.Default));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, (acc, x) => acc, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async x => 0, captureValue, async (cv, x) => 0, default(Func<int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async x => 0, captureValue, async (cv, x) => 0, default(Func<int, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async x => 0, captureValue, async (cv, x) => 0, async (acc, x) => acc, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x) => 0, captureValue, async (cv, x) => 0, default(Func<int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x) => 0, captureValue, async (cv, x) => 0, default(Func<int, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x) => 0, captureValue, async (cv, x) => 0, async (acc, x) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async (x, _) => 0, captureValue, async (cv, x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async (x, _) => 0, captureValue, async (cv, x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async (x, _) => 0, captureValue, async (cv, x, _) => 0, async (acc, x, _) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, async (cv, x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, async (cv, x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, async (cv, x, _) => 0, async (acc, x, _) => acc, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(default(Func<int, int>), captureValue, (cv, x) => 0, captureValue, (cv, acc, x) => acc));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(default(Func<int, int>), captureValue, (cv, x) => 0, captureValue, (cv, acc, x) => acc, EqualityComparer<int>.Default));
@@ -134,12 +134,12 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, default(Func<string, int, int>), captureValue, (cv, x) => 0, captureValue, (cv, acc, x) => acc, EqualityComparer<int>.Default));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, captureValue, (cv, acc, x) => acc, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(default(Func<int, Promise<int>>), captureValue, async (cv, x) => 0, captureValue, async (cv, acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(default(Func<int, Promise<int>>), captureValue, async (cv, x) => 0, captureValue, async (cv, acc, x) => acc, EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(x => Promise.Resolved(0), captureValue, async (cv, x) => 0, captureValue, async (cv, acc, x) => acc, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, default(Func<string, int, Promise<int>>), captureValue, async (cv, x) => 0, captureValue, async (cv, acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, default(Func<string, int, Promise<int>>), captureValue, async (cv, x) => 0, captureValue, async (cv, acc, x) => acc, EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => Promise.Resolved(0), captureValue, async (cv, x) => 0, captureValue, async (cv, acc, x) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(default(Func<int, CancelationToken, Promise<int>>), captureValue, async (cv, x, _) => 0, captureValue, async (cv, acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(default(Func<int, CancelationToken, Promise<int>>), captureValue, async (cv, x, _) => 0, captureValue, async (cv, acc, x, _) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy((x, _) => Promise.Resolved(0), captureValue, async (cv, x, _) => 0, captureValue, async (cv, acc, x, _) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, async (cv, x, _) => 0, captureValue, async (cv, acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, async (cv, x, _) => 0, captureValue, async (cv, acc, x, _) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x, _) => Promise.Resolved(0), captureValue, async (cv, x, _) => 0, captureValue, async (cv, acc, x, _) => acc, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(x => 0, captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(x => 0, captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int, int>), EqualityComparer<int>.Default));
@@ -148,61 +148,61 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int, int>), EqualityComparer<int>.Default));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, captureValue, (cv, acc, x) => acc, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async x => 0, captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async x => 0, captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async x => 0, captureValue, async (cv, x) => 0, captureValue, async (cv, acc, x) => acc, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x) => 0, captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x) => 0, captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x) => 0, captureValue, async (cv, x) => 0, captureValue, async (cv, acc, x) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async (x, _) => 0, captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async (x, _) => 0, captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async (x, _) => 0, captureValue, async (cv, x, _) => 0, captureValue, async (cv, acc, x, _) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, async (cv, x, _) => 0, captureValue, async (cv, acc, x, _) => acc, nullComparer));
 
             // Passing in null seedSelector makes it ambiguous, so we can't actually test it without capture value.
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(x => 0, captureValue, default(Func<string, int, int>), (acc, x) => acc));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(x => 0, captureValue, default(Func<string, int, int>), (acc, x) => acc, EqualityComparer<int>.Default));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async x => 0, captureValue, default(Func<string, int, Promise<int>>), async (acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async x => 0, captureValue, default(Func<string, int, Promise<int>>), async (acc, x) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async (x, _) => 0, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), async (acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async (x, _) => 0, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), async (acc, x, _) => acc, EqualityComparer<int>.Default));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(x => 0, captureValue, (cv, x) => 0, default(Func<int, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(x => 0, captureValue, (cv, x) => 0, default(Func<int, int, int>), EqualityComparer<int>.Default));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async x => 0, captureValue, async (cv, x) => 0, default(Func<int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async x => 0, captureValue, async (cv, x) => 0, default(Func<int, int, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async (x, _) => 0, captureValue, async (cv, x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async (x, _) => 0, captureValue, async (cv, x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(x => 0, captureValue, default(Func<string, int, int>), captureValue, (cv, acc, x) => acc));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(x => 0, captureValue, default(Func<string, int, int>), captureValue, (cv, acc, x) => acc, EqualityComparer<int>.Default));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async x => 0, captureValue, default(Func<string, int, Promise<int>>), captureValue, async (cv, acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async x => 0, captureValue, default(Func<string, int, Promise<int>>), captureValue, async (cv, acc, x) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async (x, _) => 0, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, async (cv, acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async (x, _) => 0, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, async (cv, acc, x, _) => acc, EqualityComparer<int>.Default));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(x => 0, captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(x => 0, captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int, int>), EqualityComparer<int>.Default));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async x => 0, captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async x => 0, captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, int, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async (x, _) => 0, captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(async (x, _) => 0, captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int>), (acc, x) => acc));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int>), (acc, x) => acc, EqualityComparer<int>.Default));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, Promise<int>>), async (acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, Promise<int>>), async (acc, x) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), async (acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), async (acc, x, _) => acc, EqualityComparer<int>.Default));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, default(Func<int, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, default(Func<int, int, int>), EqualityComparer<int>.Default));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x) => 0, captureValue, async (cv, x) => 0, default(Func<int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x) => 0, captureValue, async (cv, x) => 0, default(Func<int, int, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, async (cv, x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, async (cv, x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int>), captureValue, (cv, acc, x) => acc));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int>), captureValue, (cv, acc, x) => acc, EqualityComparer<int>.Default));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, Promise<int>>), captureValue, async (cv, acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, Promise<int>>), captureValue, async (cv, acc, x) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, async (cv, acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, async (cv, acc, x, _) => acc, EqualityComparer<int>.Default));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int, int>), EqualityComparer<int>.Default));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x) => 0, captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x) => 0, captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, int, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
 
 
 
@@ -213,12 +213,12 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, default(Func<string, int, int>), x => 0, (acc, x) => acc, EqualityComparer<int>.Default));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => 0, x => 0, (acc, x) => acc, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(default(Func<int, Promise<int>>), async x => 0, async (acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(default(Func<int, Promise<int>>), async x => 0, async (acc, x) => acc, EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(x => Promise.Resolved(0), async x => 0, async (acc, x) => acc, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, default(Func<string, int, Promise<int>>), async x => 0, async (acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, default(Func<string, int, Promise<int>>), async x => 0, async (acc, x) => acc, EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => Promise.Resolved(0), async x => 0, async (acc, x) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(default(Func<int, CancelationToken, Promise<int>>), async (x, _) => 0, async (acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(default(Func<int, CancelationToken, Promise<int>>), async (x, _) => 0, async (acc, x, _) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy((x, _) => Promise.Resolved(0), async (x, _) => 0, async (acc, x, _) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), async (x, _) => 0, async (acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), async (x, _) => 0, async (acc, x, _) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x, _) => Promise.Resolved(0), async (x, _) => 0, async (acc, x, _) => acc, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(x => 0, x => 0, default(Func<int, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(x => 0, x => 0, default(Func<int, int, int>), EqualityComparer<int>.Default));
@@ -227,12 +227,12 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => 0, x => 0, default(Func<int, int, int>), EqualityComparer<int>.Default));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => 0, x => 0, (acc, x) => acc, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async x => 0, async x => 0, default(Func<int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async x => 0, async x => 0, default(Func<int, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async x => 0, async x => 0, async (acc, x) => acc, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x) => 0, async x => 0, default(Func<int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x) => 0, async x => 0, default(Func<int, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x) => 0, async x => 0, async (acc, x) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async (x, _) => 0, async (x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async (x, _) => 0, async (x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async (x, _) => 0, async (x, _) => 0, async (acc, x, _) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x, _) => 0, async (x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x, _) => 0, async (x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x, _) => 0, async (x, _) => 0, async (acc, x, _) => acc, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(default(Func<int, int>), x => 0, captureValue, (cv, acc, x) => acc));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(default(Func<int, int>), x => 0, captureValue, (cv, acc, x) => acc, EqualityComparer<int>.Default));
@@ -241,12 +241,12 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, default(Func<string, int, int>), x => 0, captureValue, (cv, acc, x) => acc, EqualityComparer<int>.Default));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => 0, x => 0, captureValue, (cv, acc, x) => acc, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(default(Func<int, Promise<int>>), async x => 0, captureValue, async (cv, acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(default(Func<int, Promise<int>>), async x => 0, captureValue, async (cv, acc, x) => acc, EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(x => Promise.Resolved(0), async x => 0, captureValue, async (cv, acc, x) => acc, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, default(Func<string, int, Promise<int>>), async x => 0, captureValue, async (cv, acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, default(Func<string, int, Promise<int>>), async x => 0, captureValue, async (cv, acc, x) => acc, EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => Promise.Resolved(0), async x => 0, captureValue, async (cv, acc, x) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(default(Func<int, CancelationToken, Promise<int>>), async (x, _) => 0, captureValue, async (cv, acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(default(Func<int, CancelationToken, Promise<int>>), async (x, _) => 0, captureValue, async (cv, acc, x, _) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy((x, _) => Promise.Resolved(0), async (x, _) => 0, captureValue, async (cv, acc, x, _) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), async (x, _) => 0, captureValue, async (cv, acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), async (x, _) => 0, captureValue, async (cv, acc, x, _) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x, _) => Promise.Resolved(0), async (x, _) => 0, captureValue, async (cv, acc, x, _) => acc, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(x => 0, x => 0, captureValue, default(Func<string, int, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(x => 0, x => 0, captureValue, default(Func<string, int, int, int>), EqualityComparer<int>.Default));
@@ -255,12 +255,12 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => 0, x => 0, captureValue, default(Func<string, int, int, int>), EqualityComparer<int>.Default));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => 0, x => 0, captureValue, (cv, acc, x) => acc, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async x => 0, async x => 0, captureValue, default(Func<string, int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async x => 0, async x => 0, captureValue, default(Func<string, int, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async x => 0, async x => 0, captureValue, async (cv, acc, x) => acc, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x) => 0, async x => 0, captureValue, default(Func<string, int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x) => 0, async x => 0, captureValue, default(Func<string, int, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x) => 0, async x => 0, captureValue, async (cv, acc, x) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async (x, _) => 0, async (x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async (x, _) => 0, async (x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async (x, _) => 0, async (x, _) => 0, captureValue, async (cv, acc, x, _) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x, _) => 0, async (x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x, _) => 0, async (x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x, _) => 0, async (x, _) => 0, captureValue, async (cv, acc, x, _) => acc, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(default(Func<int, int>), captureValue, (cv, x) => 0, (acc, x) => acc));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(default(Func<int, int>), captureValue, (cv, x) => 0, (acc, x) => acc, EqualityComparer<int>.Default));
@@ -269,12 +269,12 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, default(Func<string, int, int>), captureValue, (cv, x) => 0, (acc, x) => acc, EqualityComparer<int>.Default));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, (acc, x) => acc, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(default(Func<int, Promise<int>>), captureValue, async (cv, x) => 0, async (acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(default(Func<int, Promise<int>>), captureValue, async (cv, x) => 0, async (acc, x) => acc, EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(x => Promise.Resolved(0), captureValue, async (cv, x) => 0, async (acc, x) => acc, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, default(Func<string, int, Promise<int>>), captureValue, async (cv, x) => 0, async (acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, default(Func<string, int, Promise<int>>), captureValue, async (cv, x) => 0, async (acc, x) => acc, EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => Promise.Resolved(0), captureValue, async (cv, x) => 0, async (acc, x) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(default(Func<int, CancelationToken, Promise<int>>), captureValue, async (cv, x, _) => 0, async (acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(default(Func<int, CancelationToken, Promise<int>>), captureValue, async (cv, x, _) => 0, async (acc, x, _) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy((x, _) => Promise.Resolved(0), captureValue, async (cv, x, _) => 0, async (acc, x, _) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, async (cv, x, _) => 0, async (acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, async (cv, x, _) => 0, async (acc, x, _) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x, _) => Promise.Resolved(0), captureValue, async (cv, x, _) => 0, async (acc, x, _) => acc, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(x => 0, captureValue, (cv, x) => 0, default(Func<int, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(x => 0, captureValue, (cv, x) => 0, default(Func<int, int, int>), EqualityComparer<int>.Default));
@@ -283,12 +283,12 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, default(Func<int, int, int>), EqualityComparer<int>.Default));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, (acc, x) => acc, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async x => 0, captureValue, async (cv, x) => 0, default(Func<int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async x => 0, captureValue, async (cv, x) => 0, default(Func<int, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async x => 0, captureValue, async (cv, x) => 0, async (acc, x) => acc, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x) => 0, captureValue, async (cv, x) => 0, default(Func<int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x) => 0, captureValue, async (cv, x) => 0, default(Func<int, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x) => 0, captureValue, async (cv, x) => 0, async (acc, x) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async (x, _) => 0, captureValue, async (cv, x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async (x, _) => 0, captureValue, async (cv, x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async (x, _) => 0, captureValue, async (cv, x, _) => 0, async (acc, x, _) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, async (cv, x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, async (cv, x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, async (cv, x, _) => 0, async (acc, x, _) => acc, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(default(Func<int, int>), captureValue, (cv, x) => 0, captureValue, (cv, acc, x) => acc));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(default(Func<int, int>), captureValue, (cv, x) => 0, captureValue, (cv, acc, x) => acc, EqualityComparer<int>.Default));
@@ -297,12 +297,12 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, default(Func<string, int, int>), captureValue, (cv, x) => 0, captureValue, (cv, acc, x) => acc, EqualityComparer<int>.Default));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, captureValue, (cv, acc, x) => acc, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(default(Func<int, Promise<int>>), captureValue, async (cv, x) => 0, captureValue, async (cv, acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(default(Func<int, Promise<int>>), captureValue, async (cv, x) => 0, captureValue, async (cv, acc, x) => acc, EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(x => Promise.Resolved(0), captureValue, async (cv, x) => 0, captureValue, async (cv, acc, x) => acc, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, default(Func<string, int, Promise<int>>), captureValue, async (cv, x) => 0, captureValue, async (cv, acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, default(Func<string, int, Promise<int>>), captureValue, async (cv, x) => 0, captureValue, async (cv, acc, x) => acc, EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => Promise.Resolved(0), captureValue, async (cv, x) => 0, captureValue, async (cv, acc, x) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(default(Func<int, CancelationToken, Promise<int>>), captureValue, async (cv, x, _) => 0, captureValue, async (cv, acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(default(Func<int, CancelationToken, Promise<int>>), captureValue, async (cv, x, _) => 0, captureValue, async (cv, acc, x, _) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy((x, _) => Promise.Resolved(0), captureValue, async (cv, x, _) => 0, captureValue, async (cv, acc, x, _) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, async (cv, x, _) => 0, captureValue, async (cv, acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, async (cv, x, _) => 0, captureValue, async (cv, acc, x, _) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x, _) => Promise.Resolved(0), captureValue, async (cv, x, _) => 0, captureValue, async (cv, acc, x, _) => acc, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(x => 0, captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(x => 0, captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int, int>), EqualityComparer<int>.Default));
@@ -311,61 +311,61 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int, int>), EqualityComparer<int>.Default));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, captureValue, (cv, acc, x) => acc, nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async x => 0, captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async x => 0, captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async x => 0, captureValue, async (cv, x) => 0, captureValue, async (cv, acc, x) => acc, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x) => 0, captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x) => 0, captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x) => 0, captureValue, async (cv, x) => 0, captureValue, async (cv, acc, x) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async (x, _) => 0, captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async (x, _) => 0, captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async (x, _) => 0, captureValue, async (cv, x, _) => 0, captureValue, async (cv, acc, x, _) => acc, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, async (cv, x, _) => 0, captureValue, async (cv, acc, x, _) => acc, nullComparer));
 
             // Passing in null seedSelector makes it ambiguous, so we can't actually test it without capture value.
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(x => 0, captureValue, default(Func<string, int, int>), (acc, x) => acc));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(x => 0, captureValue, default(Func<string, int, int>), (acc, x) => acc, EqualityComparer<int>.Default));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async x => 0, captureValue, default(Func<string, int, Promise<int>>), async (acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async x => 0, captureValue, default(Func<string, int, Promise<int>>), async (acc, x) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async (x, _) => 0, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), async (acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async (x, _) => 0, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), async (acc, x, _) => acc, EqualityComparer<int>.Default));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(x => 0, captureValue, (cv, x) => 0, default(Func<int, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(x => 0, captureValue, (cv, x) => 0, default(Func<int, int, int>), EqualityComparer<int>.Default));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async x => 0, captureValue, async (cv, x) => 0, default(Func<int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async x => 0, captureValue, async (cv, x) => 0, default(Func<int, int, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async (x, _) => 0, captureValue, async (cv, x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async (x, _) => 0, captureValue, async (cv, x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(x => 0, captureValue, default(Func<string, int, int>), captureValue, (cv, acc, x) => acc));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(x => 0, captureValue, default(Func<string, int, int>), captureValue, (cv, acc, x) => acc, EqualityComparer<int>.Default));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async x => 0, captureValue, default(Func<string, int, Promise<int>>), captureValue, async (cv, acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async x => 0, captureValue, default(Func<string, int, Promise<int>>), captureValue, async (cv, acc, x) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async (x, _) => 0, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, async (cv, acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async (x, _) => 0, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, async (cv, acc, x, _) => acc, EqualityComparer<int>.Default));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(x => 0, captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(x => 0, captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int, int>), EqualityComparer<int>.Default));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async x => 0, captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async x => 0, captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, int, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async (x, _) => 0, captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(async (x, _) => 0, captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int>), (acc, x) => acc));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int>), (acc, x) => acc, EqualityComparer<int>.Default));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, Promise<int>>), async (acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, Promise<int>>), async (acc, x) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), async (acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), async (acc, x, _) => acc, EqualityComparer<int>.Default));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, default(Func<int, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, default(Func<int, int, int>), EqualityComparer<int>.Default));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x) => 0, captureValue, async (cv, x) => 0, default(Func<int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x) => 0, captureValue, async (cv, x) => 0, default(Func<int, int, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, async (cv, x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, async (cv, x, _) => 0, default(Func<int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int>), captureValue, (cv, acc, x) => acc));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int>), captureValue, (cv, acc, x) => acc, EqualityComparer<int>.Default));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, Promise<int>>), captureValue, async (cv, acc, x) => acc));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, Promise<int>>), captureValue, async (cv, acc, x) => acc, EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, async (cv, acc, x, _) => acc));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, CancelationToken, Promise<int>>), captureValue, async (cv, acc, x, _) => acc, EqualityComparer<int>.Default));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, (cv, x) => 0, captureValue, (cv, x) => 0, captureValue, default(Func<string, int, int, int>), EqualityComparer<int>.Default));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x) => 0, captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x) => 0, captureValue, async (cv, x) => 0, captureValue, default(Func<string, int, int, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).AggregateBy(captureValue, async (cv, x, _) => 0, captureValue, async (cv, x, _) => 0, captureValue, default(Func<string, int, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
 
             enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
         }
@@ -402,8 +402,8 @@ namespace ProtoPromiseTests.APIs.Linq
                     {
                         return async
                             ? equalityComparer != null
-                                ? asyncEnumerable.AggregateBy(async x => keySelector(x), async k => seedSelector(k), async (acc, x) => accumulator(acc, x), equalityComparer)
-                                : asyncEnumerable.AggregateBy(async x => keySelector(x), async k => seedSelector(k), async (acc, x) => accumulator(acc, x))
+                                ? asyncEnumerable.AggregateBy(async (x, _) => keySelector(x), async (k, _) => seedSelector(k), async (acc, x, _) => accumulator(acc, x), equalityComparer)
+                                : asyncEnumerable.AggregateBy(async (x, _) => keySelector(x), async (k, _) => seedSelector(k), async (acc, x, _) => accumulator(acc, x))
                             : equalityComparer != null
                                 ? asyncEnumerable.AggregateBy(keySelector, seedSelector, accumulator, equalityComparer)
                                 : asyncEnumerable.AggregateBy(keySelector, seedSelector, accumulator);
@@ -412,16 +412,16 @@ namespace ProtoPromiseTests.APIs.Linq
                     {
                         return async
                             ? equalityComparer != null
-                                ? asyncEnumerable.AggregateBy(async x => keySelector(x), seedCapture, async (cv, k) =>
+                                ? asyncEnumerable.AggregateBy(async (x, _) => keySelector(x), seedCapture, async (cv, k, _) =>
                                 {
                                     Assert.AreEqual(seedCapture, cv);
                                     return seedSelector(k);
-                                }, async (acc, x) => accumulator(acc, x), equalityComparer)
-                                : asyncEnumerable.AggregateBy(async x => keySelector(x), seedCapture, async (cv, k) =>
+                                }, async (acc, x, _) => accumulator(acc, x), equalityComparer)
+                                : asyncEnumerable.AggregateBy(async (x, _) => keySelector(x), seedCapture, async (cv, k, _) =>
                                 {
                                     Assert.AreEqual(seedCapture, cv);
                                     return seedSelector(k);
-                                }, async (acc, x) => accumulator(acc, x))
+                                }, async (acc, x, _) => accumulator(acc, x))
                             : equalityComparer != null
                                 ? asyncEnumerable.AggregateBy(keySelector, seedCapture, (cv, k) =>
                                 {
@@ -441,12 +441,12 @@ namespace ProtoPromiseTests.APIs.Linq
                     {
                         return async
                             ? equalityComparer != null
-                                ? asyncEnumerable.AggregateBy(async x => keySelector(x), async k => seedSelector(k), accumulateCapture, async (cv, acc, x) =>
+                                ? asyncEnumerable.AggregateBy(async (x, _) => keySelector(x), async (k, _) => seedSelector(k), accumulateCapture, async (cv, acc, x, _) =>
                                 {
                                     Assert.AreEqual(accumulateCapture, cv);
                                     return accumulator(acc, x);
                                 }, equalityComparer)
-                                : asyncEnumerable.AggregateBy(async x => keySelector(x), async k => seedSelector(k), accumulateCapture, async (cv, acc, x) =>
+                                : asyncEnumerable.AggregateBy(async (x, _) => keySelector(x), async (k, _) => seedSelector(k), accumulateCapture, async (cv, acc, x, _) =>
                                 {
                                     Assert.AreEqual(accumulateCapture, cv);
                                     return accumulator(acc, x);
@@ -467,20 +467,20 @@ namespace ProtoPromiseTests.APIs.Linq
                     {
                         return async
                             ? equalityComparer != null
-                                ? asyncEnumerable.AggregateBy(async x => keySelector(x), seedCapture, async (cv, k) =>
+                                ? asyncEnumerable.AggregateBy(async (x, _) => keySelector(x), seedCapture, async (cv, k, _) =>
                                 {
                                     Assert.AreEqual(seedCapture, cv);
                                     return seedSelector(k);
-                                }, accumulateCapture, async (cv, acc, x) =>
+                                }, accumulateCapture, async (cv, acc, x, _) =>
                                 {
                                     Assert.AreEqual(accumulateCapture, cv);
                                     return accumulator(acc, x);
                                 }, equalityComparer)
-                                : asyncEnumerable.AggregateBy(async x => keySelector(x), seedCapture, async (cv, k) =>
+                                : asyncEnumerable.AggregateBy(async (x, _) => keySelector(x), seedCapture, async (cv, k, _) =>
                                 {
                                     Assert.AreEqual(seedCapture, cv);
                                     return seedSelector(k);
-                                }, accumulateCapture, async (cv, acc, x) =>
+                                }, accumulateCapture, async (cv, acc, x, _) =>
                                 {
                                     Assert.AreEqual(accumulateCapture, cv);
                                     return accumulator(acc, x);
@@ -515,16 +515,16 @@ namespace ProtoPromiseTests.APIs.Linq
                     {
                         return async
                             ? equalityComparer != null
-                                ? asyncEnumerable.AggregateBy(keyCapture, async (cv, x) =>
+                                ? asyncEnumerable.AggregateBy(keyCapture, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(keyCapture, cv);
                                     return keySelector(x);
-                                }, async k => seedSelector(k), async (acc, x) => accumulator(acc, x), equalityComparer)
-                                : asyncEnumerable.AggregateBy(keyCapture, async (cv, x) =>
+                                }, async (k, _) => seedSelector(k), async (acc, x, _) => accumulator(acc, x), equalityComparer)
+                                : asyncEnumerable.AggregateBy(keyCapture, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(keyCapture, cv);
                                     return keySelector(x);
-                                }, async k => seedSelector(k), async (acc, x) => accumulator(acc, x))
+                                }, async (k, _) => seedSelector(k), async (acc, x, _) => accumulator(acc, x))
                             : equalityComparer != null
                                 ? asyncEnumerable.AggregateBy(keyCapture, (cv, x) =>
                                 {
@@ -541,24 +541,24 @@ namespace ProtoPromiseTests.APIs.Linq
                     {
                         return async
                             ? equalityComparer != null
-                                ? asyncEnumerable.AggregateBy(keyCapture, async (cv, x) =>
+                                ? asyncEnumerable.AggregateBy(keyCapture, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(keyCapture, cv);
                                     return keySelector(x);
-                                }, seedCapture, async (cv, k) =>
+                                }, seedCapture, async (cv, k, _) =>
                                 {
                                     Assert.AreEqual(seedCapture, cv);
                                     return seedSelector(k);
-                                }, async (acc, x) => accumulator(acc, x), equalityComparer)
-                                : asyncEnumerable.AggregateBy(keyCapture, async (cv, x) =>
+                                }, async (acc, x, _) => accumulator(acc, x), equalityComparer)
+                                : asyncEnumerable.AggregateBy(keyCapture, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(keyCapture, cv);
                                     return keySelector(x);
-                                }, seedCapture, async (cv, k) =>
+                                }, seedCapture, async (cv, k, _) =>
                                 {
                                     Assert.AreEqual(seedCapture, cv);
                                     return seedSelector(k);
-                                }, async (acc, x) => accumulator(acc, x))
+                                }, async (acc, x, _) => accumulator(acc, x))
                             : equalityComparer != null
                                 ? asyncEnumerable.AggregateBy(keyCapture, (cv, x) =>
                                 {
@@ -586,20 +586,20 @@ namespace ProtoPromiseTests.APIs.Linq
                     {
                         return async
                             ? equalityComparer != null
-                                ? asyncEnumerable.AggregateBy(keyCapture, async (cv, x) =>
+                                ? asyncEnumerable.AggregateBy(keyCapture, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(keyCapture, cv);
                                     return keySelector(x);
-                                }, async k => seedSelector(k), accumulateCapture, async (cv, acc, x) =>
+                                }, async (k, _) => seedSelector(k), accumulateCapture, async (cv, acc, x, _) =>
                                 {
                                     Assert.AreEqual(accumulateCapture, cv);
                                     return accumulator(acc, x);
                                 }, equalityComparer)
-                                : asyncEnumerable.AggregateBy(keyCapture, async (cv, x) =>
+                                : asyncEnumerable.AggregateBy(keyCapture, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(keyCapture, cv);
                                     return keySelector(x);
-                                }, async k => seedSelector(k), accumulateCapture, async (cv, acc, x) =>
+                                }, async (k, _) => seedSelector(k), accumulateCapture, async (cv, acc, x, _) =>
                                 {
                                     Assert.AreEqual(accumulateCapture, cv);
                                     return accumulator(acc, x);
@@ -628,28 +628,28 @@ namespace ProtoPromiseTests.APIs.Linq
                     {
                         return async
                             ? equalityComparer != null
-                                ? asyncEnumerable.AggregateBy(keyCapture, async (cv, x) =>
+                                ? asyncEnumerable.AggregateBy(keyCapture, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(keyCapture, cv);
                                     return keySelector(x);
-                                }, seedCapture, async (cv, k) =>
+                                }, seedCapture, async (cv, k, _) =>
                                 {
                                     Assert.AreEqual(seedCapture, cv);
                                     return seedSelector(k);
-                                }, accumulateCapture, async (cv, acc, x) =>
+                                }, accumulateCapture, async (cv, acc, x, _) =>
                                 {
                                     Assert.AreEqual(accumulateCapture, cv);
                                     return accumulator(acc, x);
                                 }, equalityComparer)
-                                : asyncEnumerable.AggregateBy(keyCapture, async (cv, x) =>
+                                : asyncEnumerable.AggregateBy(keyCapture, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(keyCapture, cv);
                                     return keySelector(x);
-                                }, seedCapture, async (cv, k) =>
+                                }, seedCapture, async (cv, k, _) =>
                                 {
                                     Assert.AreEqual(seedCapture, cv);
                                     return seedSelector(k);
-                                }, accumulateCapture, async (cv, acc, x) =>
+                                }, accumulateCapture, async (cv, acc, x, _) =>
                                 {
                                     Assert.AreEqual(accumulateCapture, cv);
                                     return accumulator(acc, x);
@@ -708,8 +708,8 @@ namespace ProtoPromiseTests.APIs.Linq
                     {
                         return async
                             ? equalityComparer != null
-                                ? asyncEnumerable.AggregateBy(async x => keySelector(x), async k => seedSelector(k), async (acc, x) => accumulator(acc, x), equalityComparer)
-                                : asyncEnumerable.AggregateBy(async x => keySelector(x), async k => seedSelector(k), async (acc, x) => accumulator(acc, x))
+                                ? asyncEnumerable.AggregateBy(async (x, _) => keySelector(x), async (k, _) => seedSelector(k), async (acc, x, _) => accumulator(acc, x), equalityComparer)
+                                : asyncEnumerable.AggregateBy(async (x, _) => keySelector(x), async (k, _) => seedSelector(k), async (acc, x, _) => accumulator(acc, x))
                             : equalityComparer != null
                                 ? asyncEnumerable.AggregateBy(keySelector, seedSelector, accumulator, equalityComparer)
                                 : asyncEnumerable.AggregateBy(keySelector, seedSelector, accumulator);
@@ -718,16 +718,16 @@ namespace ProtoPromiseTests.APIs.Linq
                     {
                         return async
                             ? equalityComparer != null
-                                ? asyncEnumerable.AggregateBy(async x => keySelector(x), seedCapture, async (cv, k) =>
+                                ? asyncEnumerable.AggregateBy(async (x, _) => keySelector(x), seedCapture, async (cv, k, _) =>
                                 {
                                     Assert.AreEqual(seedCapture, cv);
                                     return seedSelector(k);
-                                }, async (acc, x) => accumulator(acc, x), equalityComparer)
-                                : asyncEnumerable.AggregateBy(async x => keySelector(x), seedCapture, async (cv, k) =>
+                                }, async (acc, x, _) => accumulator(acc, x), equalityComparer)
+                                : asyncEnumerable.AggregateBy(async (x, _) => keySelector(x), seedCapture, async (cv, k, _) =>
                                 {
                                     Assert.AreEqual(seedCapture, cv);
                                     return seedSelector(k);
-                                }, async (acc, x) => accumulator(acc, x))
+                                }, async (acc, x, _) => accumulator(acc, x))
                             : equalityComparer != null
                                 ? asyncEnumerable.AggregateBy(keySelector, seedCapture, (cv, k) =>
                                 {
@@ -747,12 +747,12 @@ namespace ProtoPromiseTests.APIs.Linq
                     {
                         return async
                             ? equalityComparer != null
-                                ? asyncEnumerable.AggregateBy(async x => keySelector(x), async k => seedSelector(k), accumulateCapture, async (cv, acc, x) =>
+                                ? asyncEnumerable.AggregateBy(async (x, _) => keySelector(x), async (k, _) => seedSelector(k), accumulateCapture, async (cv, acc, x, _) =>
                                 {
                                     Assert.AreEqual(accumulateCapture, cv);
                                     return accumulator(acc, x);
                                 }, equalityComparer)
-                                : asyncEnumerable.AggregateBy(async x => keySelector(x), async k => seedSelector(k), accumulateCapture, async (cv, acc, x) =>
+                                : asyncEnumerable.AggregateBy(async (x, _) => keySelector(x), async (k, _) => seedSelector(k), accumulateCapture, async (cv, acc, x, _) =>
                                 {
                                     Assert.AreEqual(accumulateCapture, cv);
                                     return accumulator(acc, x);
@@ -773,20 +773,20 @@ namespace ProtoPromiseTests.APIs.Linq
                     {
                         return async
                             ? equalityComparer != null
-                                ? asyncEnumerable.AggregateBy(async x => keySelector(x), seedCapture, async (cv, k) =>
+                                ? asyncEnumerable.AggregateBy(async (x, _) => keySelector(x), seedCapture, async (cv, k, _) =>
                                 {
                                     Assert.AreEqual(seedCapture, cv);
                                     return seedSelector(k);
-                                }, accumulateCapture, async (cv, acc, x) =>
+                                }, accumulateCapture, async (cv, acc, x, _) =>
                                 {
                                     Assert.AreEqual(accumulateCapture, cv);
                                     return accumulator(acc, x);
                                 }, equalityComparer)
-                                : asyncEnumerable.AggregateBy(async x => keySelector(x), seedCapture, async (cv, k) =>
+                                : asyncEnumerable.AggregateBy(async (x, _) => keySelector(x), seedCapture, async (cv, k, _) =>
                                 {
                                     Assert.AreEqual(seedCapture, cv);
                                     return seedSelector(k);
-                                }, accumulateCapture, async (cv, acc, x) =>
+                                }, accumulateCapture, async (cv, acc, x, _) =>
                                 {
                                     Assert.AreEqual(accumulateCapture, cv);
                                     return accumulator(acc, x);
@@ -821,16 +821,16 @@ namespace ProtoPromiseTests.APIs.Linq
                     {
                         return async
                             ? equalityComparer != null
-                                ? asyncEnumerable.AggregateBy(keyCapture, async (cv, x) =>
+                                ? asyncEnumerable.AggregateBy(keyCapture, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(keyCapture, cv);
                                     return keySelector(x);
-                                }, async k => seedSelector(k), async (acc, x) => accumulator(acc, x), equalityComparer)
-                                : asyncEnumerable.AggregateBy(keyCapture, async (cv, x) =>
+                                }, async (k, _) => seedSelector(k), async (acc, x, _) => accumulator(acc, x), equalityComparer)
+                                : asyncEnumerable.AggregateBy(keyCapture, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(keyCapture, cv);
                                     return keySelector(x);
-                                }, async k => seedSelector(k), async (acc, x) => accumulator(acc, x))
+                                }, async (k, _) => seedSelector(k), async (acc, x, _) => accumulator(acc, x))
                             : equalityComparer != null
                                 ? asyncEnumerable.AggregateBy(keyCapture, (cv, x) =>
                                 {
@@ -847,24 +847,24 @@ namespace ProtoPromiseTests.APIs.Linq
                     {
                         return async
                             ? equalityComparer != null
-                                ? asyncEnumerable.AggregateBy(keyCapture, async (cv, x) =>
+                                ? asyncEnumerable.AggregateBy(keyCapture, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(keyCapture, cv);
                                     return keySelector(x);
-                                }, seedCapture, async (cv, k) =>
+                                }, seedCapture, async (cv, k, _) =>
                                 {
                                     Assert.AreEqual(seedCapture, cv);
                                     return seedSelector(k);
-                                }, async (acc, x) => accumulator(acc, x), equalityComparer)
-                                : asyncEnumerable.AggregateBy(keyCapture, async (cv, x) =>
+                                }, async (acc, x, _) => accumulator(acc, x), equalityComparer)
+                                : asyncEnumerable.AggregateBy(keyCapture, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(keyCapture, cv);
                                     return keySelector(x);
-                                }, seedCapture, async (cv, k) =>
+                                }, seedCapture, async (cv, k, _) =>
                                 {
                                     Assert.AreEqual(seedCapture, cv);
                                     return seedSelector(k);
-                                }, async (acc, x) => accumulator(acc, x))
+                                }, async (acc, x, _) => accumulator(acc, x))
                             : equalityComparer != null
                                 ? asyncEnumerable.AggregateBy(keyCapture, (cv, x) =>
                                 {
@@ -892,20 +892,20 @@ namespace ProtoPromiseTests.APIs.Linq
                     {
                         return async
                             ? equalityComparer != null
-                                ? asyncEnumerable.AggregateBy(keyCapture, async (cv, x) =>
+                                ? asyncEnumerable.AggregateBy(keyCapture, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(keyCapture, cv);
                                     return keySelector(x);
-                                }, async k => seedSelector(k), accumulateCapture, async (cv, acc, x) =>
+                                }, async (k, _) => seedSelector(k), accumulateCapture, async (cv, acc, x, _) =>
                                 {
                                     Assert.AreEqual(accumulateCapture, cv);
                                     return accumulator(acc, x);
                                 }, equalityComparer)
-                                : asyncEnumerable.AggregateBy(keyCapture, async (cv, x) =>
+                                : asyncEnumerable.AggregateBy(keyCapture, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(keyCapture, cv);
                                     return keySelector(x);
-                                }, async k => seedSelector(k), accumulateCapture, async (cv, acc, x) =>
+                                }, async (k, _) => seedSelector(k), accumulateCapture, async (cv, acc, x, _) =>
                                 {
                                     Assert.AreEqual(accumulateCapture, cv);
                                     return accumulator(acc, x);
@@ -934,28 +934,28 @@ namespace ProtoPromiseTests.APIs.Linq
                     {
                         return async
                             ? equalityComparer != null
-                                ? asyncEnumerable.AggregateBy(keyCapture, async (cv, x) =>
+                                ? asyncEnumerable.AggregateBy(keyCapture, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(keyCapture, cv);
                                     return keySelector(x);
-                                }, seedCapture, async (cv, k) =>
+                                }, seedCapture, async (cv, k, _) =>
                                 {
                                     Assert.AreEqual(seedCapture, cv);
                                     return seedSelector(k);
-                                }, accumulateCapture, async (cv, acc, x) =>
+                                }, accumulateCapture, async (cv, acc, x, _) =>
                                 {
                                     Assert.AreEqual(accumulateCapture, cv);
                                     return accumulator(acc, x);
                                 }, equalityComparer)
-                                : asyncEnumerable.AggregateBy(keyCapture, async (cv, x) =>
+                                : asyncEnumerable.AggregateBy(keyCapture, async (cv, x, _) =>
                                 {
                                     Assert.AreEqual(keyCapture, cv);
                                     return keySelector(x);
-                                }, seedCapture, async (cv, k) =>
+                                }, seedCapture, async (cv, k, _) =>
                                 {
                                     Assert.AreEqual(seedCapture, cv);
                                     return seedSelector(k);
-                                }, accumulateCapture, async (cv, acc, x) =>
+                                }, accumulateCapture, async (cv, acc, x, _) =>
                                 {
                                     Assert.AreEqual(accumulateCapture, cv);
                                     return accumulator(acc, x);

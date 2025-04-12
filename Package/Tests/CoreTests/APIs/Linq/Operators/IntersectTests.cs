@@ -60,23 +60,23 @@ namespace ProtoPromiseTests.APIs.Linq
 
             Assert.Catch<System.ArgumentNullException>(() => first.IntersectBy(second, default(Func<int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => first.IntersectBy(second, x => x, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => first.IntersectBy(second, default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => first.IntersectBy(second, async x => x, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => first.IntersectBy(second, default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => first.IntersectBy(second, async (x, _) => x, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => first.IntersectBy(second, captureValue, default(Func<string, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => first.IntersectBy(second, captureValue, (cv, x) => x, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => first.IntersectBy(second, captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => first.IntersectBy(second, captureValue, async (cv, x) => x, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => first.IntersectBy(second, captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => first.IntersectBy(second, captureValue, async (cv, x, _) => x, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).IntersectBy(second, default(Func<int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).IntersectBy(second, x => x, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).IntersectBy(second, default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).IntersectBy(second, async x => x, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).IntersectBy(second, default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).IntersectBy(second, async (x, _) => x, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).IntersectBy(second, captureValue, default(Func<string, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).IntersectBy(second, captureValue, (cv, x) => x, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).IntersectBy(second, captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).IntersectBy(second, captureValue, async (cv, x) => x, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).IntersectBy(second, captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).IntersectBy(second, captureValue, async (cv, x, _) => x, nullComparer));
 
             first.GetAsyncEnumerator().DisposeAsync().Forget();
             second.GetAsyncEnumerator().DisposeAsync().Forget();
@@ -119,8 +119,8 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? firstAsyncEnumerable.IntersectBy(secondAsyncEnumerable, async x => keySelector(x), equalityComparer)
-                        : firstAsyncEnumerable.IntersectBy(secondAsyncEnumerable, async x => keySelector(x))
+                        ? firstAsyncEnumerable.IntersectBy(secondAsyncEnumerable, async (x, _) => keySelector(x), equalityComparer)
+                        : firstAsyncEnumerable.IntersectBy(secondAsyncEnumerable, async (x, _) => keySelector(x))
                     : equalityComparer != null
                         ? firstAsyncEnumerable.IntersectBy(secondAsyncEnumerable, keySelector, equalityComparer)
                         : firstAsyncEnumerable.IntersectBy(secondAsyncEnumerable, keySelector);
@@ -129,12 +129,12 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? firstAsyncEnumerable.IntersectBy(secondAsyncEnumerable, valueCapture, async (cv, x) =>
+                        ? firstAsyncEnumerable.IntersectBy(secondAsyncEnumerable, valueCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return keySelector(x);
                         }, equalityComparer)
-                        : firstAsyncEnumerable.IntersectBy(secondAsyncEnumerable, valueCapture, async (cv, x) =>
+                        : firstAsyncEnumerable.IntersectBy(secondAsyncEnumerable, valueCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return keySelector(x);
@@ -166,8 +166,8 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? firstAsyncEnumerable.IntersectBy(secondAsyncEnumerable, async x => keySelector(x), equalityComparer)
-                        : firstAsyncEnumerable.IntersectBy(secondAsyncEnumerable, async x => keySelector(x))
+                        ? firstAsyncEnumerable.IntersectBy(secondAsyncEnumerable, async (x, _) => keySelector(x), equalityComparer)
+                        : firstAsyncEnumerable.IntersectBy(secondAsyncEnumerable, async (x, _) => keySelector(x))
                     : equalityComparer != null
                         ? firstAsyncEnumerable.IntersectBy(secondAsyncEnumerable, keySelector, equalityComparer)
                         : firstAsyncEnumerable.IntersectBy(secondAsyncEnumerable, keySelector);
@@ -176,12 +176,12 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? firstAsyncEnumerable.IntersectBy(secondAsyncEnumerable, valueCapture, async (cv, x) =>
+                        ? firstAsyncEnumerable.IntersectBy(secondAsyncEnumerable, valueCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return keySelector(x);
                         }, equalityComparer)
-                        : firstAsyncEnumerable.IntersectBy(secondAsyncEnumerable, valueCapture, async (cv, x) =>
+                        : firstAsyncEnumerable.IntersectBy(secondAsyncEnumerable, valueCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return keySelector(x);

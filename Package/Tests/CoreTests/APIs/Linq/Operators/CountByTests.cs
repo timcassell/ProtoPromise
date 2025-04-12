@@ -52,13 +52,13 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.CountBy(captureValue, (cv, x) => 0, nullComparer));
 
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.CountBy(default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.CountBy(default(Func<int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.CountBy(x => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.CountBy(default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.CountBy(default(Func<int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.CountBy((x, _) => Promise.Resolved(0), nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.CountBy(captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.CountBy(captureValue, default(Func<string, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.CountBy(captureValue, (cv, x) => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.CountBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.CountBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.CountBy(captureValue, (cv, x, _) => Promise.Resolved(0), nullComparer));
 
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).CountBy(default(Func<int, int>)));
@@ -70,13 +70,13 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).CountBy(captureValue, (cv, x) => 0, nullComparer));
 
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).CountBy(default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).CountBy(default(Func<int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).CountBy(x => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).CountBy(default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).CountBy(default(Func<int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).CountBy((x, _) => Promise.Resolved(0), nullComparer));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).CountBy(captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).CountBy(captureValue, default(Func<string, int, Promise<int>>), EqualityComparer<int>.Default));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).CountBy(captureValue, (cv, x) => Promise.Resolved(0), nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).CountBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).CountBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>), EqualityComparer<int>.Default));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).CountBy(captureValue, (cv, x, _) => Promise.Resolved(0), nullComparer));
 
             enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
         }
@@ -102,8 +102,8 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? asyncEnumerable.CountBy(async x => keySelector(x), equalityComparer)
-                        : asyncEnumerable.CountBy(async x => keySelector(x))
+                        ? asyncEnumerable.CountBy(async (x, _) => keySelector(x), equalityComparer)
+                        : asyncEnumerable.CountBy(async (x, _) => keySelector(x))
                     : equalityComparer != null
                         ? asyncEnumerable.CountBy(keySelector, equalityComparer)
                         : asyncEnumerable.CountBy(keySelector);
@@ -112,12 +112,12 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? asyncEnumerable.CountBy(keyCapture, async (cv, x) =>
+                        ? asyncEnumerable.CountBy(keyCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(keyCapture, cv);
                             return keySelector(x);
                         }, equalityComparer)
-                        : asyncEnumerable.CountBy(keyCapture, async (cv, x) =>
+                        : asyncEnumerable.CountBy(keyCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(keyCapture, cv);
                             return keySelector(x);
@@ -148,8 +148,8 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? asyncEnumerable.CountBy(async x => keySelector(x), equalityComparer)
-                        : asyncEnumerable.CountBy(async x => keySelector(x))
+                        ? asyncEnumerable.CountBy(async (x, _) => keySelector(x), equalityComparer)
+                        : asyncEnumerable.CountBy(async (x, _) => keySelector(x))
                     : equalityComparer != null
                         ? asyncEnumerable.CountBy(keySelector, equalityComparer)
                         : asyncEnumerable.CountBy(keySelector);
@@ -158,12 +158,12 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? asyncEnumerable.CountBy(keyCapture, async (cv, x) =>
+                        ? asyncEnumerable.CountBy(keyCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(keyCapture, cv);
                             return keySelector(x);
                         }, equalityComparer)
-                        : asyncEnumerable.CountBy(keyCapture, async (cv, x) =>
+                        : asyncEnumerable.CountBy(keyCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(keyCapture, cv);
                             return keySelector(x);

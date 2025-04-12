@@ -151,7 +151,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> resulting in the single element in the sequence that passes the test in the specified predicate function.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         /// <exception cref="InvalidOperationException"><paramref name="source"/> is empty, or no element satisfies the condition in <paramref name="predicate"/>.</exception>
-        public static Promise<TSource> SingleAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<bool>> predicate, CancelationToken cancelationToken = default)
+        public static Promise<TSource> SingleAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, CancelationToken, Promise<bool>> predicate, CancelationToken cancelationToken = default)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
@@ -170,7 +170,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> resulting in the single element in the sequence that passes the test in the specified predicate function.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         /// <exception cref="InvalidOperationException"><paramref name="source"/> is empty, or no element satisfies the condition in <paramref name="predicate"/>.</exception>
-        public static Promise<TSource> SingleAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate, CancelationToken cancelationToken = default)
+        public static Promise<TSource> SingleAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<bool>> predicate, CancelationToken cancelationToken = default)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
@@ -220,7 +220,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> resulting in the single element in the sequence that passes the test in the specified predicate function.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         /// <exception cref="InvalidOperationException"><paramref name="configuredSource"/> is empty, or no element satisfies the condition in <paramref name="predicate"/>.</exception>
-        public static Promise<TSource> SingleAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<bool>> predicate)
+        public static Promise<TSource> SingleAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, CancelationToken, Promise<bool>> predicate)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 
@@ -238,7 +238,7 @@ namespace Proto.Promises.Linq
         /// <returns>A <see cref="Promise{T}"/> resulting in the single element in the sequence that passes the test in the specified predicate function.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         /// <exception cref="InvalidOperationException"><paramref name="configuredSource"/> is empty, or no element satisfies the condition in <paramref name="predicate"/>.</exception>
-        public static Promise<TSource> SingleAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate)
+        public static Promise<TSource> SingleAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<bool>> predicate)
         {
             ValidateArgument(predicate, nameof(predicate), 1);
 

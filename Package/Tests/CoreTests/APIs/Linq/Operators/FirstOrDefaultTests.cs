@@ -40,24 +40,24 @@ namespace ProtoPromiseTests.APIs.Linq
             string captureValue = "captureValue";
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.FirstOrDefaultAsync(default(Func<int, bool>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.FirstOrDefaultAsync(default(Func<int, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.FirstOrDefaultAsync(default(Func<int, CancelationToken, Promise<bool>>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.FirstOrDefaultAsync(captureValue, default(Func<string, int, bool>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.FirstOrDefaultAsync(captureValue, default(Func<string, int, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.FirstOrDefaultAsync(captureValue, default(Func<string, int, CancelationToken, Promise<bool>>)));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.FirstOrDefaultAsync(default(Func<int, bool>), 42));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.FirstOrDefaultAsync(default(Func<int, Promise<bool>>), 42));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.FirstOrDefaultAsync(default(Func<int, CancelationToken, Promise<bool>>), 42));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.FirstOrDefaultAsync(captureValue, default(Func<string, int, bool>), 42));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.FirstOrDefaultAsync(captureValue, default(Func<string, int, Promise<bool>>), 42));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.FirstOrDefaultAsync(captureValue, default(Func<string, int, CancelationToken, Promise<bool>>), 42));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).FirstOrDefaultAsync(default(Func<int, bool>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).FirstOrDefaultAsync(default(Func<int, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).FirstOrDefaultAsync(default(Func<int, CancelationToken, Promise<bool>>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).FirstOrDefaultAsync(captureValue, default(Func<string, int, bool>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).FirstOrDefaultAsync(captureValue, default(Func<string, int, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).FirstOrDefaultAsync(captureValue, default(Func<string, int, CancelationToken, Promise<bool>>)));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).FirstOrDefaultAsync(default(Func<int, bool>), 42));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).FirstOrDefaultAsync(default(Func<int, Promise<bool>>), 42));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).FirstOrDefaultAsync(default(Func<int, CancelationToken, Promise<bool>>), 42));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).FirstOrDefaultAsync(captureValue, default(Func<string, int, bool>), 42));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).FirstOrDefaultAsync(captureValue, default(Func<string, int, Promise<bool>>), 42));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).FirstOrDefaultAsync(captureValue, default(Func<string, int, CancelationToken, Promise<bool>>), 42));
 
             enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
         }
@@ -174,8 +174,8 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? withDefaultParam
-                        ? source.FirstOrDefaultAsync(async x => predicate(x), defaultParam, cancelationToken)
-                        : source.FirstOrDefaultAsync(async x => predicate(x), cancelationToken)
+                        ? source.FirstOrDefaultAsync(async (x, _) => predicate(x), defaultParam, cancelationToken)
+                        : source.FirstOrDefaultAsync(async (x, _) => predicate(x), cancelationToken)
                     : withDefaultParam
                         ? source.FirstOrDefaultAsync(predicate, defaultParam, cancelationToken)
                         : source.FirstOrDefaultAsync(predicate, cancelationToken);
@@ -184,12 +184,12 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? withDefaultParam
-                        ? source.FirstOrDefaultAsync(valueCapture, async (cv, x) =>
+                        ? source.FirstOrDefaultAsync(valueCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return predicate(x);
                         }, defaultParam, cancelationToken)
-                        : source.FirstOrDefaultAsync(valueCapture, async (cv, x) =>
+                        : source.FirstOrDefaultAsync(valueCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return predicate(x);
@@ -221,8 +221,8 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? withDefaultParam
-                        ? source.FirstOrDefaultAsync(async x => predicate(x), defaultParam)
-                        : source.FirstOrDefaultAsync(async x => predicate(x))
+                        ? source.FirstOrDefaultAsync(async (x, _) => predicate(x), defaultParam)
+                        : source.FirstOrDefaultAsync(async (x, _) => predicate(x))
                     : withDefaultParam
                         ? source.FirstOrDefaultAsync(predicate, defaultParam)
                         : source.FirstOrDefaultAsync(predicate);
@@ -231,12 +231,12 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? withDefaultParam
-                        ? source.FirstOrDefaultAsync(valueCapture, async (cv, x) =>
+                        ? source.FirstOrDefaultAsync(valueCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return predicate(x);
                         }, defaultParam)
-                        : source.FirstOrDefaultAsync(valueCapture, async (cv, x) =>
+                        : source.FirstOrDefaultAsync(valueCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return predicate(x);

@@ -252,8 +252,8 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
         public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey>(this AsyncEnumerable<TOuter> outer,
             AsyncEnumerable<TInner> inner,
-            Func<TOuter, Promise<TKey>> outerKeySelector,
-            Func<TInner, Promise<TKey>> innerKeySelector)
+            Func<TOuter, CancelationToken, Promise<TKey>> outerKeySelector,
+            Func<TInner, CancelationToken, Promise<TKey>> innerKeySelector)
             => GroupJoin(outer, inner, outerKeySelector, innerKeySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -273,8 +273,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture>(this AsyncEnumerable<TOuter> outer,
             AsyncEnumerable<TInner> inner,
             TOuterCapture outerCaptureValue,
-            Func<TOuterCapture, TOuter, Promise<TKey>> outerKeySelector,
-            Func<TInner, Promise<TKey>> innerKeySelector)
+            Func<TOuterCapture, TOuter, CancelationToken, Promise<TKey>> outerKeySelector,
+            Func<TInner, CancelationToken, Promise<TKey>> innerKeySelector)
             => GroupJoin(outer, inner, outerCaptureValue, outerKeySelector, innerKeySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -293,9 +293,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
         public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TInnerCapture>(this AsyncEnumerable<TOuter> outer,
             AsyncEnumerable<TInner> inner,
-            Func<TOuter, Promise<TKey>> outerKeySelector,
+            Func<TOuter, CancelationToken, Promise<TKey>> outerKeySelector,
             TInnerCapture innerCaptureValue,
-            Func<TInnerCapture, TInner, Promise<TKey>> innerKeySelector)
+            Func<TInnerCapture, TInner, CancelationToken, Promise<TKey>> innerKeySelector)
             => GroupJoin(outer, inner, outerKeySelector, innerCaptureValue, innerKeySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -317,9 +317,9 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture, TInnerCapture>(this AsyncEnumerable<TOuter> outer,
             AsyncEnumerable<TInner> inner,
             TOuterCapture outerCaptureValue,
-            Func<TOuterCapture, TOuter, Promise<TKey>> outerKeySelector,
+            Func<TOuterCapture, TOuter, CancelationToken, Promise<TKey>> outerKeySelector,
             TInnerCapture innerCaptureValue,
-            Func<TInnerCapture, TInner, Promise<TKey>> innerKeySelector)
+            Func<TInnerCapture, TInner, CancelationToken, Promise<TKey>> innerKeySelector)
             => GroupJoin(outer, inner, outerCaptureValue, outerKeySelector, innerCaptureValue, innerKeySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -338,8 +338,8 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TEqualityComparer>(this AsyncEnumerable<TOuter> outer,
             AsyncEnumerable<TInner> inner,
-            Func<TOuter, Promise<TKey>> outerKeySelector,
-            Func<TInner, Promise<TKey>> innerKeySelector,
+            Func<TOuter, CancelationToken, Promise<TKey>> outerKeySelector,
+            Func<TInner, CancelationToken, Promise<TKey>> innerKeySelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -373,8 +373,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture, TEqualityComparer>(this AsyncEnumerable<TOuter> outer,
             AsyncEnumerable<TInner> inner,
             TOuterCapture outerCaptureValue,
-            Func<TOuterCapture, TOuter, Promise<TKey>> outerKeySelector,
-            Func<TInner, Promise<TKey>> innerKeySelector,
+            Func<TOuterCapture, TOuter, CancelationToken, Promise<TKey>> outerKeySelector,
+            Func<TInner, CancelationToken, Promise<TKey>> innerKeySelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -407,9 +407,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
         public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TInnerCapture, TEqualityComparer>(this AsyncEnumerable<TOuter> outer,
             AsyncEnumerable<TInner> inner,
-            Func<TOuter, Promise<TKey>> outerKeySelector,
+            Func<TOuter, CancelationToken, Promise<TKey>> outerKeySelector,
             TInnerCapture innerCaptureValue,
-            Func<TInnerCapture, TInner, Promise<TKey>> innerKeySelector,
+            Func<TInnerCapture, TInner, CancelationToken, Promise<TKey>> innerKeySelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -445,9 +445,9 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture, TInnerCapture, TEqualityComparer>(this AsyncEnumerable<TOuter> outer,
             AsyncEnumerable<TInner> inner,
             TOuterCapture outerCaptureValue,
-            Func<TOuterCapture, TOuter, Promise<TKey>> outerKeySelector,
+            Func<TOuterCapture, TOuter, CancelationToken, Promise<TKey>> outerKeySelector,
             TInnerCapture innerCaptureValue,
-            Func<TInnerCapture, TInner, Promise<TKey>> innerKeySelector,
+            Func<TInnerCapture, TInner, CancelationToken, Promise<TKey>> innerKeySelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -702,8 +702,8 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
         public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
-            Func<TOuter, Promise<TKey>> outerKeySelector,
-            Func<TInner, Promise<TKey>> innerKeySelector)
+            Func<TOuter, CancelationToken, Promise<TKey>> outerKeySelector,
+            Func<TInner, CancelationToken, Promise<TKey>> innerKeySelector)
             => GroupJoin(configuredOuter, inner, outerKeySelector, innerKeySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -723,8 +723,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
             TOuterCapture outerCaptureValue,
-            Func<TOuterCapture, TOuter, Promise<TKey>> outerKeySelector,
-            Func<TInner, Promise<TKey>> innerKeySelector)
+            Func<TOuterCapture, TOuter, CancelationToken, Promise<TKey>> outerKeySelector,
+            Func<TInner, CancelationToken, Promise<TKey>> innerKeySelector)
             => GroupJoin(configuredOuter, inner, outerCaptureValue, outerKeySelector, innerKeySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -743,9 +743,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
         public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TInnerCapture>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
-            Func<TOuter, Promise<TKey>> outerKeySelector,
+            Func<TOuter, CancelationToken, Promise<TKey>> outerKeySelector,
             TInnerCapture innerCaptureValue,
-            Func<TInnerCapture, TInner, Promise<TKey>> innerKeySelector)
+            Func<TInnerCapture, TInner, CancelationToken, Promise<TKey>> innerKeySelector)
             => GroupJoin(configuredOuter, inner, outerKeySelector, innerCaptureValue, innerKeySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -767,9 +767,9 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture, TInnerCapture>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
             TOuterCapture outerCaptureValue,
-            Func<TOuterCapture, TOuter, Promise<TKey>> outerKeySelector,
+            Func<TOuterCapture, TOuter, CancelationToken, Promise<TKey>> outerKeySelector,
             TInnerCapture innerCaptureValue,
-            Func<TInnerCapture, TInner, Promise<TKey>> innerKeySelector)
+            Func<TInnerCapture, TInner, CancelationToken, Promise<TKey>> innerKeySelector)
             => GroupJoin(configuredOuter, inner, outerCaptureValue, outerKeySelector, innerCaptureValue, innerKeySelector, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -788,8 +788,8 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
-            Func<TOuter, Promise<TKey>> outerKeySelector,
-            Func<TInner, Promise<TKey>> innerKeySelector,
+            Func<TOuter, CancelationToken, Promise<TKey>> outerKeySelector,
+            Func<TInner, CancelationToken, Promise<TKey>> innerKeySelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -823,8 +823,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
             TOuterCapture outerCaptureValue,
-            Func<TOuterCapture, TOuter, Promise<TKey>> outerKeySelector,
-            Func<TInner, Promise<TKey>> innerKeySelector,
+            Func<TOuterCapture, TOuter, CancelationToken, Promise<TKey>> outerKeySelector,
+            Func<TInner, CancelationToken, Promise<TKey>> innerKeySelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -857,9 +857,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="outerKeySelector"/> or <paramref name="innerKeySelector"/> is null.</exception>
         public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TInnerCapture, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
-            Func<TOuter, Promise<TKey>> outerKeySelector,
+            Func<TOuter, CancelationToken, Promise<TKey>> outerKeySelector,
             TInnerCapture innerCaptureValue,
-            Func<TInnerCapture, TInner, Promise<TKey>> innerKeySelector,
+            Func<TInnerCapture, TInner, CancelationToken, Promise<TKey>> innerKeySelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -895,9 +895,9 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<(TOuter Outer, TempCollection<TInner> InnerElements)> GroupJoin<TOuter, TInner, TKey, TOuterCapture, TInnerCapture, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TOuter> configuredOuter,
             AsyncEnumerable<TInner> inner,
             TOuterCapture outerCaptureValue,
-            Func<TOuterCapture, TOuter, Promise<TKey>> outerKeySelector,
+            Func<TOuterCapture, TOuter, CancelationToken, Promise<TKey>> outerKeySelector,
             TInnerCapture innerCaptureValue,
-            Func<TInnerCapture, TInner, Promise<TKey>> innerKeySelector,
+            Func<TInnerCapture, TInner, CancelationToken, Promise<TKey>> innerKeySelector,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {

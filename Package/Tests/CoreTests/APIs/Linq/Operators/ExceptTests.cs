@@ -60,23 +60,23 @@ namespace ProtoPromiseTests.APIs.Linq
 
             Assert.Catch<System.ArgumentNullException>(() => first.ExceptBy(second, default(Func<int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => first.ExceptBy(second, x => x, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => first.ExceptBy(second, default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => first.ExceptBy(second, async x => x, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => first.ExceptBy(second, default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => first.ExceptBy(second, async (x, _) => x, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => first.ExceptBy(second, captureValue, default(Func<string, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => first.ExceptBy(second, captureValue, (cv, x) => x, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => first.ExceptBy(second, captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => first.ExceptBy(second, captureValue, async (cv, x) => x, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => first.ExceptBy(second, captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => first.ExceptBy(second, captureValue, async (cv, x, _) => x, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).ExceptBy(second, default(Func<int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).ExceptBy(second, x => x, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).ExceptBy(second, default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).ExceptBy(second, async x => x, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).ExceptBy(second, default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).ExceptBy(second, async (x, _) => x, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).ExceptBy(second, captureValue, default(Func<string, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).ExceptBy(second, captureValue, (cv, x) => x, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).ExceptBy(second, captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).ExceptBy(second, captureValue, async (cv, x) => x, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).ExceptBy(second, captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => first.ConfigureAwait(SynchronizationOption.Synchronous).ExceptBy(second, captureValue, async (cv, x, _) => x, nullComparer));
 
             first.GetAsyncEnumerator().DisposeAsync().Forget();
             second.GetAsyncEnumerator().DisposeAsync().Forget();
@@ -119,8 +119,8 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? firstAsyncEnumerable.ExceptBy(secondAsyncEnumerable, async x => keySelector(x), equalityComparer)
-                        : firstAsyncEnumerable.ExceptBy(secondAsyncEnumerable, async x => keySelector(x))
+                        ? firstAsyncEnumerable.ExceptBy(secondAsyncEnumerable, async (x, _) => keySelector(x), equalityComparer)
+                        : firstAsyncEnumerable.ExceptBy(secondAsyncEnumerable, async (x, _) => keySelector(x))
                     : equalityComparer != null
                         ? firstAsyncEnumerable.ExceptBy(secondAsyncEnumerable, keySelector, equalityComparer)
                         : firstAsyncEnumerable.ExceptBy(secondAsyncEnumerable, keySelector);
@@ -129,12 +129,12 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? firstAsyncEnumerable.ExceptBy(secondAsyncEnumerable, valueCapture, async (cv, x) =>
+                        ? firstAsyncEnumerable.ExceptBy(secondAsyncEnumerable, valueCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return keySelector(x);
                         }, equalityComparer)
-                        : firstAsyncEnumerable.ExceptBy(secondAsyncEnumerable, valueCapture, async (cv, x) =>
+                        : firstAsyncEnumerable.ExceptBy(secondAsyncEnumerable, valueCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return keySelector(x);
@@ -166,8 +166,8 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? firstAsyncEnumerable.ExceptBy(secondAsyncEnumerable, async x => keySelector(x), equalityComparer)
-                        : firstAsyncEnumerable.ExceptBy(secondAsyncEnumerable, async x => keySelector(x))
+                        ? firstAsyncEnumerable.ExceptBy(secondAsyncEnumerable, async (x, _) => keySelector(x), equalityComparer)
+                        : firstAsyncEnumerable.ExceptBy(secondAsyncEnumerable, async (x, _) => keySelector(x))
                     : equalityComparer != null
                         ? firstAsyncEnumerable.ExceptBy(secondAsyncEnumerable, keySelector, equalityComparer)
                         : firstAsyncEnumerable.ExceptBy(secondAsyncEnumerable, keySelector);
@@ -176,12 +176,12 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? firstAsyncEnumerable.ExceptBy(secondAsyncEnumerable, valueCapture, async (cv, x) =>
+                        ? firstAsyncEnumerable.ExceptBy(secondAsyncEnumerable, valueCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return keySelector(x);
                         }, equalityComparer)
-                        : firstAsyncEnumerable.ExceptBy(secondAsyncEnumerable, valueCapture, async (cv, x) =>
+                        : firstAsyncEnumerable.ExceptBy(secondAsyncEnumerable, valueCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return keySelector(x);

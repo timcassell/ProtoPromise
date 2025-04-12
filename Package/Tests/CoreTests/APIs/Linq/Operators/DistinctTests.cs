@@ -57,23 +57,23 @@ namespace ProtoPromiseTests.APIs.Linq
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.DistinctBy(default(Func<int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.DistinctBy(x => x, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.DistinctBy(default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.DistinctBy(async x => x, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.DistinctBy(default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.DistinctBy(async (x, _) => x, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.DistinctBy(captureValue, default(Func<string, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.DistinctBy(captureValue, (cv, x) => x, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.DistinctBy(captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.DistinctBy(captureValue, async (cv, x) => x, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.DistinctBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.DistinctBy(captureValue, async (cv, x, _) => x, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).DistinctBy(default(Func<int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).DistinctBy(x => x, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).DistinctBy(default(Func<int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).DistinctBy(async x => x, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).DistinctBy(default(Func<int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).DistinctBy(async (x, _) => x, nullComparer));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).DistinctBy(captureValue, default(Func<string, int, int>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).DistinctBy(captureValue, (cv, x) => x, nullComparer));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).DistinctBy(captureValue, default(Func<string, int, Promise<int>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).DistinctBy(captureValue, async (cv, x) => x, nullComparer));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).DistinctBy(captureValue, default(Func<string, int, CancelationToken, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).DistinctBy(captureValue, async (cv, x, _) => x, nullComparer));
 
             enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
         }
@@ -113,8 +113,8 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? asyncEnumerable.DistinctBy(async x => keySelector(x), equalityComparer)
-                        : asyncEnumerable.DistinctBy(async x => keySelector(x))
+                        ? asyncEnumerable.DistinctBy(async (x, _) => keySelector(x), equalityComparer)
+                        : asyncEnumerable.DistinctBy(async (x, _) => keySelector(x))
                     : equalityComparer != null
                         ? asyncEnumerable.DistinctBy(keySelector, equalityComparer)
                         : asyncEnumerable.DistinctBy(keySelector);
@@ -123,12 +123,12 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? asyncEnumerable.DistinctBy(valueCapture, async (cv, x) =>
+                        ? asyncEnumerable.DistinctBy(valueCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return keySelector(x);
                         }, equalityComparer)
-                        : asyncEnumerable.DistinctBy(valueCapture, async (cv, x) =>
+                        : asyncEnumerable.DistinctBy(valueCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return keySelector(x);
@@ -159,8 +159,8 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? asyncEnumerable.DistinctBy(async x => keySelector(x), equalityComparer)
-                        : asyncEnumerable.DistinctBy(async x => keySelector(x))
+                        ? asyncEnumerable.DistinctBy(async (x, _) => keySelector(x), equalityComparer)
+                        : asyncEnumerable.DistinctBy(async (x, _) => keySelector(x))
                     : equalityComparer != null
                         ? asyncEnumerable.DistinctBy(keySelector, equalityComparer)
                         : asyncEnumerable.DistinctBy(keySelector);
@@ -169,12 +169,12 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 return async
                     ? equalityComparer != null
-                        ? asyncEnumerable.DistinctBy(valueCapture, async (cv, x) =>
+                        ? asyncEnumerable.DistinctBy(valueCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return keySelector(x);
                         }, equalityComparer)
-                        : asyncEnumerable.DistinctBy(valueCapture, async (cv, x) =>
+                        : asyncEnumerable.DistinctBy(valueCapture, async (cv, x, _) =>
                         {
                             Assert.AreEqual(valueCapture, cv);
                             return keySelector(x);

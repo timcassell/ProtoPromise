@@ -242,9 +242,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate>(this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
             TAccumulate seed,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(source, keySelector, seed, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -262,9 +262,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer>(this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
             TAccumulate seed,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -294,9 +294,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey>(this AsyncEnumerable<TSource> source,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
             TAccumulate seed,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(source, keyCaptureValue, keySelector, seed, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -316,9 +316,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey>(this AsyncEnumerable<TSource> source,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
             TAccumulate seed,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -348,9 +348,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
             TAccumulate seed,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(source, keySelector, seed, accumulateCaptureValue, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -370,9 +370,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
             TAccumulate seed,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -404,9 +404,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
             TAccumulate seed,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(source, keyCaptureValue, keySelector, seed, accumulateCaptureValue, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -428,9 +428,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
             TAccumulate seed,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -683,9 +683,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
             TAccumulate seed,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(configuredSource, keySelector, seed, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -704,9 +704,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
             TAccumulate seed,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -737,9 +737,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
             TAccumulate seed,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(configuredSource, keyCaptureValue, keySelector, seed, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -760,9 +760,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
             TAccumulate seed,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -793,9 +793,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
             TAccumulate seed,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(configuredSource, keySelector, seed, accumulateCaptureValue, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -816,9 +816,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
             TAccumulate seed,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -851,9 +851,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
             TAccumulate seed,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(configuredSource, keyCaptureValue, keySelector, seed, accumulateCaptureValue, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -876,9 +876,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
             TAccumulate seed,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -1128,9 +1128,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate>(this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
-            Func<TKey, Promise<TAccumulate>> seedSelector,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(source, keySelector, seedSelector, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -1148,9 +1148,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer>(this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
-            Func<TKey, Promise<TAccumulate>> seedSelector,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -1181,9 +1181,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey>(this AsyncEnumerable<TSource> source,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            Func<TKey, Promise<TAccumulate>> seedSelector,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(source, keyCaptureValue, keySelector, seedSelector, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -1203,9 +1203,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey>(this AsyncEnumerable<TSource> source,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            Func<TKey, Promise<TAccumulate>> seedSelector,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -1236,9 +1236,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
-            Func<TKey, Promise<TAccumulate>> seedSelector,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(source, keySelector, seedSelector, accumulateCaptureValue, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -1258,9 +1258,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
-            Func<TKey, Promise<TAccumulate>> seedSelector,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -1293,9 +1293,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            Func<TKey, Promise<TAccumulate>> seedSelector,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(source, keyCaptureValue, keySelector, seedSelector, accumulateCaptureValue, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -1317,9 +1317,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            Func<TKey, Promise<TAccumulate>> seedSelector,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -1577,9 +1577,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector,
-            Func<TKey, Promise<TAccumulate>> seedSelector,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(configuredSource, keySelector, seedSelector, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -1598,9 +1598,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector,
-            Func<TKey, Promise<TAccumulate>> seedSelector,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -1632,9 +1632,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            Func<TKey, Promise<TAccumulate>> seedSelector,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(configuredSource, keyCaptureValue, keySelector, seedSelector, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -1655,9 +1655,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            Func<TKey, Promise<TAccumulate>> seedSelector,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -1689,9 +1689,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector,
-            Func<TKey, Promise<TAccumulate>> seedSelector,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(configuredSource, keySelector, seedSelector, accumulateCaptureValue, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -1712,9 +1712,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector,
-            Func<TKey, Promise<TAccumulate>> seedSelector,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -1748,9 +1748,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            Func<TKey, Promise<TAccumulate>> seedSelector,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(configuredSource, keyCaptureValue, keySelector, seedSelector, accumulateCaptureValue, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -1773,9 +1773,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            Func<TKey, Promise<TAccumulate>> seedSelector,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            Func<TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -2042,9 +2042,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureSeed>(this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
-            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, Promise<TAccumulate>> seedSelector,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(source, keySelector, seedCaptureValue, seedSelector, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -2064,9 +2064,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureSeed>(this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
-            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, Promise<TAccumulate>> seedSelector,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -2099,9 +2099,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureSeed>(this AsyncEnumerable<TSource> source,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, Promise<TAccumulate>> seedSelector,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(source, keyCaptureValue, keySelector, seedCaptureValue, seedSelector, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -2123,9 +2123,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureSeed>(this AsyncEnumerable<TSource> source,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, Promise<TAccumulate>> seedSelector,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -2158,9 +2158,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureSeed, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
-            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, Promise<TAccumulate>> seedSelector,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(source, keySelector, seedCaptureValue, seedSelector, accumulateCaptureValue, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -2182,9 +2182,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureSeed, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
-            Func<TSource, Promise<TKey>> keySelector,
-            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, Promise<TAccumulate>> seedSelector,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -2219,9 +2219,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureSeed, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, Promise<TAccumulate>> seedSelector,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(source, keyCaptureValue, keySelector, seedCaptureValue, seedSelector, accumulateCaptureValue, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -2245,9 +2245,9 @@ namespace Proto.Promises.Linq
         /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureSeed, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, Promise<TAccumulate>> seedSelector,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -2523,9 +2523,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureSeed>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector,
-            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, Promise<TAccumulate>> seedSelector,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(configuredSource, keySelector, seedCaptureValue, seedSelector, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -2546,9 +2546,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureSeed>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector,
-            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, Promise<TAccumulate>> seedSelector,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -2582,9 +2582,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureSeed>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, Promise<TAccumulate>> seedSelector,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(configuredSource, keyCaptureValue, keySelector, seedCaptureValue, seedSelector, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -2607,9 +2607,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureSeed>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, Promise<TAccumulate>> seedSelector,
-            Func<TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            Func<TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -2643,9 +2643,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureSeed, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector,
-            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, Promise<TAccumulate>> seedSelector,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(configuredSource, keySelector, seedCaptureValue, seedSelector, accumulateCaptureValue, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -2668,9 +2668,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureSeed, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            Func<TSource, Promise<TKey>> keySelector,
-            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, Promise<TAccumulate>> seedSelector,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            Func<TSource, CancelationToken, Promise<TKey>> keySelector,
+            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
@@ -2706,9 +2706,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureSeed, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, Promise<TAccumulate>> seedSelector,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator)
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator)
             => AggregateBy(configuredSource, keyCaptureValue, keySelector, seedCaptureValue, seedSelector, accumulateCaptureValue, accumulator, EqualityComparer<TKey>.Default);
 
         /// <summary>
@@ -2733,9 +2733,9 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureSeed, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
-            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
-            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, Promise<TAccumulate>> seedSelector,
-            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, Promise<TAccumulate>> accumulator,
+            TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, CancelationToken, Promise<TKey>> keySelector,
+            TCaptureSeed seedCaptureValue, Func<TCaptureSeed, TKey, CancelationToken, Promise<TAccumulate>> seedSelector,
+            TCaptureAccumulate accumulateCaptureValue, Func<TCaptureAccumulate, TAccumulate, TSource, CancelationToken, Promise<TAccumulate>> accumulator,
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {

@@ -37,13 +37,13 @@ namespace ProtoPromiseTests.APIs.Linq
             if (!captureValue)
             {
                 return async
-                    ? source.AllAsync(async x => predicate(x), cancelationToken)
+                    ? source.AllAsync(async (x, _) => predicate(x), cancelationToken)
                     : source.AllAsync(predicate, cancelationToken);
             }
             else
             {
                 return async
-                    ? source.AllAsync(valueCapture, async (cv, x) =>
+                    ? source.AllAsync(valueCapture, async (cv, x, _) =>
                     {
                         Assert.AreEqual(valueCapture, cv);
                         return predicate(x);
@@ -66,13 +66,13 @@ namespace ProtoPromiseTests.APIs.Linq
             if (!captureValue)
             {
                 return async
-                    ? source.AllAsync(async x => predicate(x))
+                    ? source.AllAsync(async (x, _) => predicate(x))
                     : source.AllAsync(predicate);
             }
             else
             {
                 return async
-                    ? source.AllAsync(valueCapture, async (cv, x) =>
+                    ? source.AllAsync(valueCapture, async (cv, x, _) =>
                     {
                         Assert.AreEqual(valueCapture, cv);
                         return predicate(x);
@@ -112,11 +112,11 @@ namespace ProtoPromiseTests.APIs.Linq
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).AllAsync(default(Func<int, bool>)));
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).AllAsync("captured", default(Func<string, int, bool>)));
 
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AllAsync(default(Func<int, Promise<bool>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.AllAsync("captured", default(Func<string, int, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AllAsync(default(Func<int, CancelationToken, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.AllAsync("captured", default(Func<string, int, CancelationToken, Promise<bool>>)));
                                                              
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).AllAsync(default(Func<int, Promise<bool>>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).AllAsync("captured", default(Func<string, int, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).AllAsync(default(Func<int, CancelationToken, Promise<bool>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Foreground).AllAsync("captured", default(Func<string, int, CancelationToken, Promise<bool>>)));
 
             enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
         }

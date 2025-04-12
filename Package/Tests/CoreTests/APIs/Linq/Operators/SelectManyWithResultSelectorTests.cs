@@ -46,14 +46,14 @@ namespace ProtoPromiseTests.APIs.Linq
                 if (!captureResult)
                 {
                     return async
-                        ? source.SelectMany(async x => collectionSelector(x), async (x, y) => resultSelector(x, y))
+                        ? source.SelectMany(async (x, _) => collectionSelector(x), async (x, y, _) => resultSelector(x, y))
                         : source.SelectMany(collectionSelector, resultSelector);
                 }
                 else
                 {
                     return async
-                        ? source.SelectMany(async x => collectionSelector(x),
-                            capturedResult, async (cv, x, y) =>
+                        ? source.SelectMany(async (x, _) => collectionSelector(x),
+                            capturedResult, async (cv, x, y, _) =>
                             {
                                 Assert.AreEqual(capturedResult, cv);
                                 return resultSelector(x, y);
@@ -71,11 +71,11 @@ namespace ProtoPromiseTests.APIs.Linq
                 if (!captureResult)
                 {
                     return async
-                        ? source.SelectMany(capturedCollection, async (cv, x) =>
+                        ? source.SelectMany(capturedCollection, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(capturedCollection, cv);
                                 return collectionSelector(x);
-                            }, async (x, y) => resultSelector(x, y))
+                            }, async (x, y, _) => resultSelector(x, y))
                         : source.SelectMany(capturedCollection, (cv, x) =>
                             {
                                 Assert.AreEqual(capturedCollection, cv);
@@ -85,11 +85,11 @@ namespace ProtoPromiseTests.APIs.Linq
                 else
                 {
                     return async
-                        ? source.SelectMany(capturedCollection, async (cv, x) =>
+                        ? source.SelectMany(capturedCollection, async (cv, x, _) =>
                             {
                                 Assert.AreEqual(capturedCollection, cv);
                                 return collectionSelector(x);
-                            }, capturedResult, async (cv, x, y) =>
+                            }, capturedResult, async (cv, x, y, _) =>
                             {
                                 Assert.AreEqual(capturedResult, cv);
                                 return resultSelector(x, y);
@@ -123,14 +123,14 @@ namespace ProtoPromiseTests.APIs.Linq
                 if (!captureResult)
                 {
                     return async
-                        ? source.SelectMany(async x => collectionSelector(x), async (x, y) => resultSelector(x, y))
+                        ? source.SelectMany(async (x, _) => collectionSelector(x), async (x, y, _) => resultSelector(x, y))
                         : source.SelectMany(collectionSelector, resultSelector);
                 }
                 else
                 {
                     return async
-                        ? source.SelectMany(async x => collectionSelector(x),
-                            capturedResult, async (cv, x, y) =>
+                        ? source.SelectMany(async (x, _) => collectionSelector(x),
+                            capturedResult, async (cv, x, y, _) =>
                             {
                                 Assert.AreEqual(capturedResult, cv);
                                 return resultSelector(x, y);
@@ -148,11 +148,11 @@ namespace ProtoPromiseTests.APIs.Linq
                 if (!captureResult)
                 {
                     return async
-                        ? source.SelectMany(capturedCollection, async (cv, x) =>
+                        ? source.SelectMany(capturedCollection, async (cv, x, _) =>
                         {
                             Assert.AreEqual(capturedCollection, cv);
                             return collectionSelector(x);
-                        }, async (x, y) => resultSelector(x, y))
+                        }, async (x, y, _) => resultSelector(x, y))
                         : source.SelectMany(capturedCollection, (cv, x) =>
                         {
                             Assert.AreEqual(capturedCollection, cv);
@@ -162,11 +162,11 @@ namespace ProtoPromiseTests.APIs.Linq
                 else
                 {
                     return async
-                        ? source.SelectMany(capturedCollection, async (cv, x) =>
+                        ? source.SelectMany(capturedCollection, async (cv, x, _) =>
                         {
                             Assert.AreEqual(capturedCollection, cv);
                             return collectionSelector(x);
-                        }, capturedResult, async (cv, x, y) =>
+                        }, capturedResult, async (cv, x, y, _) =>
                         {
                             Assert.AreEqual(capturedResult, cv);
                             return resultSelector(x, y);
@@ -175,167 +175,6 @@ namespace ProtoPromiseTests.APIs.Linq
                         {
                             Assert.AreEqual(capturedCollection, cv);
                             return collectionSelector(x);
-                        }, capturedResult, (cv, x, y) =>
-                        {
-                            Assert.AreEqual(capturedResult, cv);
-                            return resultSelector(x, y);
-                        });
-                }
-            }
-        }
-
-        // We test all the different overloads.
-        public static AsyncEnumerable<TResult> SelectMany<TSource, TCollection, TResult>(this AsyncEnumerable<TSource> source,
-            bool configured,
-            bool async,
-            bool captureCollection,
-            Func<TSource, int, AsyncEnumerable<TCollection>> collectionSelector,
-            bool captureResult,
-            Func<TSource, TCollection, TResult> resultSelector,
-            CancelationToken configuredCancelationToken = default)
-        {
-            if (configured)
-            {
-                return SelectMany(source.ConfigureAwait(SynchronizationOption.Foreground).WithCancelation(configuredCancelationToken), async, captureCollection, collectionSelector, captureResult, resultSelector);
-            }
-
-            const string capturedCollection = "capturedCollection";
-            const string capturedResult = "capturedResult";
-
-            if (!captureCollection)
-            {
-                if (!captureResult)
-                {
-                    return async
-                        ? source.SelectMany(async (x, i) => collectionSelector(x, i), async (x, y) => resultSelector(x, y))
-                        : source.SelectMany(collectionSelector, resultSelector);
-                }
-                else
-                {
-                    return async
-                        ? source.SelectMany(async (x, i) => collectionSelector(x, i),
-                            capturedResult, async (cv, x, y) =>
-                            {
-                                Assert.AreEqual(capturedResult, cv);
-                                return resultSelector(x, y);
-                            })
-                        : source.SelectMany(collectionSelector,
-                            capturedResult, (cv, x, y) =>
-                            {
-                                Assert.AreEqual(capturedResult, cv);
-                                return resultSelector(x, y);
-                            });
-                }
-            }
-            else
-            {
-                if (!captureResult)
-                {
-                    return async
-                        ? source.SelectMany(capturedCollection, async (cv, x, i) =>
-                        {
-                            Assert.AreEqual(capturedCollection, cv);
-                            return collectionSelector(x, i);
-                        }, async (x, y) => resultSelector(x, y))
-                        : source.SelectMany(capturedCollection, (cv, x, i) =>
-                        {
-                            Assert.AreEqual(capturedCollection, cv);
-                            return collectionSelector(x, i);
-                        }, resultSelector);
-                }
-                else
-                {
-                    return async
-                        ? source.SelectMany(capturedCollection, async (cv, x, i) =>
-                        {
-                            Assert.AreEqual(capturedCollection, cv);
-                            return collectionSelector(x, i);
-                        }, capturedResult, async (cv, x, y) =>
-                        {
-                            Assert.AreEqual(capturedResult, cv);
-                            return resultSelector(x, y);
-                        })
-                        : source.SelectMany(capturedCollection, (cv, x, i) =>
-                        {
-                            Assert.AreEqual(capturedCollection, cv);
-                            return collectionSelector(x, i);
-                        }, capturedResult, (cv, x, y) =>
-                        {
-                            Assert.AreEqual(capturedResult, cv);
-                            return resultSelector(x, y);
-                        });
-                }
-            }
-        }
-
-        public static AsyncEnumerable<TResult> SelectMany<TSource, TCollection, TResult>(this in ConfiguredAsyncEnumerable<TSource> source,
-            bool async,
-            bool captureCollection,
-            Func<TSource, int, AsyncEnumerable<TCollection>> collectionSelector,
-            bool captureResult,
-            Func<TSource, TCollection, TResult> resultSelector)
-        {
-
-            const string capturedCollection = "capturedCollection";
-            const string capturedResult = "capturedResult";
-
-            if (!captureCollection)
-            {
-                if (!captureResult)
-                {
-                    return async
-                        ? source.SelectMany(async (x, i) => collectionSelector(x, i), async (x, y) => resultSelector(x, y))
-                        : source.SelectMany(collectionSelector, resultSelector);
-                }
-                else
-                {
-                    return async
-                        ? source.SelectMany(async (x, i) => collectionSelector(x, i),
-                            capturedResult, async (cv, x, y) =>
-                            {
-                                Assert.AreEqual(capturedResult, cv);
-                                return resultSelector(x, y);
-                            })
-                        : source.SelectMany(collectionSelector,
-                            capturedResult, (cv, x, y) =>
-                            {
-                                Assert.AreEqual(capturedResult, cv);
-                                return resultSelector(x, y);
-                            });
-                }
-            }
-            else
-            {
-                if (!captureResult)
-                {
-                    return async
-                        ? source.SelectMany(capturedCollection, async (cv, x, i) =>
-                        {
-                            Assert.AreEqual(capturedCollection, cv);
-                            return collectionSelector(x, i);
-                        }, async (x, y) => resultSelector(x, y))
-                        : source.SelectMany(capturedCollection, (cv, x, i) =>
-                        {
-                            Assert.AreEqual(capturedCollection, cv);
-                            return collectionSelector(x, i);
-                        }, resultSelector);
-                }
-                else
-                {
-                    return async
-                        ? source.SelectMany(capturedCollection, async (cv, x, i) =>
-                        {
-                            Assert.AreEqual(capturedCollection, cv);
-                            return collectionSelector(x, i);
-                        }, capturedResult, async (cv, x, y) =>
-                        {
-                            Assert.AreEqual(capturedResult, cv);
-                            return resultSelector(x, y);
-                        })
-                        : source.SelectMany(capturedCollection, (cv, x, i) =>
-                        {
-                            Assert.AreEqual(capturedCollection, cv);
-                            return collectionSelector(x, i);
                         }, capturedResult, (cv, x, y) =>
                         {
                             Assert.AreEqual(capturedResult, cv);
@@ -368,53 +207,29 @@ namespace ProtoPromiseTests.APIs.Linq
             var captureValue = "captureValue";
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.SelectMany(default(Func<int, AsyncEnumerable<int>>), (x, y) => x * y));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.SelectMany(default(Func<int, Promise<AsyncEnumerable<int>>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.SelectMany(default(Func<int, CancelationToken, Promise<AsyncEnumerable<int>>>)));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.SelectMany(captureValue, default(Func<string, int, AsyncEnumerable<int>>), (x, y) => x * y));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.SelectMany(captureValue, default(Func<string, int, Promise<AsyncEnumerable<int>>>), async (x, y) => x * y));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.SelectMany(captureValue, default(Func<string, int, CancelationToken, Promise<AsyncEnumerable<int>>>), async (x, y, _) => x * y));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SelectMany(default(Func<int, AsyncEnumerable<int>>), (x, y) => x * y));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SelectMany(default(Func<int, Promise<AsyncEnumerable<int>>>), async (x, y) => x * y));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SelectMany(default(Func<int, CancelationToken, Promise<AsyncEnumerable<int>>>), async (x, y, _) => x * y));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SelectMany(captureValue, default(Func<string, int, AsyncEnumerable<int>>), (x, y) => x * y));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SelectMany(captureValue, default(Func<string, int, Promise<AsyncEnumerable<int>>>), async (x, y) => x * y));
-
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.SelectMany(default(Func<int, int, AsyncEnumerable<int>>), (x, y) => x * y));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.SelectMany(default(Func<int, int, Promise<AsyncEnumerable<int>>>), async (x, y) => x * y));
-
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.SelectMany(captureValue, default(Func<string, int, int, AsyncEnumerable<int>>), (x, y) => x * y));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.SelectMany(captureValue, default(Func<string, int, int, Promise<AsyncEnumerable<int>>>), async (x, y) => x * y));
-
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SelectMany(default(Func<int, int, AsyncEnumerable<int>>), (x, y) => x * y));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SelectMany(default(Func<int, int, Promise<AsyncEnumerable<int>>>), async (x, y) => x * y));
-
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SelectMany(captureValue, default(Func<string, int, int, AsyncEnumerable<int>>), (x, y) => x * y));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SelectMany(captureValue, default(Func<string, int, int, Promise<AsyncEnumerable<int>>>), async (x, y) => x * y));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SelectMany(captureValue, default(Func<string, int, CancelationToken, Promise<AsyncEnumerable<int>>>), async (x, y, _) => x * y));
 
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.SelectMany(x => AsyncEnumerable.Return(42), default(Func<int, int, int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.SelectMany(async x => AsyncEnumerable.Return(42), default(Func<int, int, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.SelectMany(async (x, _) => AsyncEnumerable.Return(42), default(Func<int, int, CancelationToken, Promise<int>>)));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.SelectMany(captureValue, (cv, x) => AsyncEnumerable.Return(42), default(Func<int, int, int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.SelectMany(captureValue, async (cv, x) => AsyncEnumerable.Return(42), default(Func<int, int, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.SelectMany(captureValue, async (cv, x, _) => AsyncEnumerable.Return(42), default(Func<int, int, CancelationToken, Promise<int>>)));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SelectMany(x => AsyncEnumerable.Return(42), default(Func<int, int, int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SelectMany(async x => AsyncEnumerable.Return(42), default(Func<int, int, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SelectMany(async (x, _) => AsyncEnumerable.Return(42), default(Func<int, int, CancelationToken, Promise<int>>)));
 
             Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SelectMany(captureValue, (cv, x) => AsyncEnumerable.Return(42), default(Func<int, int, int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SelectMany(captureValue, async (cv, x) => AsyncEnumerable.Return(42), default(Func<int, int, Promise<int>>)));
-
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.SelectMany((x, i) => AsyncEnumerable.Return(42), default(Func<int, int, int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.SelectMany(async (x, i) => AsyncEnumerable.Return(42), default(Func<int, int, Promise<int>>)));
-
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.SelectMany(captureValue, (cv, x, i) => AsyncEnumerable.Return(42), default(Func<int, int, int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.SelectMany(captureValue, async (cv, x, i) => AsyncEnumerable.Return(42), default(Func<int, int, Promise<int>>)));
-
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SelectMany((x, i) => AsyncEnumerable.Return(42), default(Func<int, int, int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SelectMany(async (x, i) => AsyncEnumerable.Return(42), default(Func<int, int, Promise<int>>)));
-
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SelectMany(captureValue, (cv, x, i) => AsyncEnumerable.Return(42), default(Func<int, int, int>)));
-            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SelectMany(captureValue, async (cv, x, i) => AsyncEnumerable.Return(42), default(Func<int, int, Promise<int>>)));
+            Assert.Catch<System.ArgumentNullException>(() => enumerable.ConfigureAwait(SynchronizationOption.Synchronous).SelectMany(captureValue, async (cv, x, _) => AsyncEnumerable.Return(42), default(Func<int, int, CancelationToken, Promise<int>>)));
 
             enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
         }
@@ -469,36 +284,6 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void SelectMany_Indexed(
-            [Values] bool configured,
-            [Values] bool async,
-            [Values] bool captureCollection,
-            [Values] bool captureResult)
-        {
-            Promise.Run(async () =>
-            {
-                var asyncEnumerator = new[] { 8, 5, 7 }.ToAsyncEnumerable()
-                    .SelectMany(configured, async, captureCollection, (x, i) => AsyncEnumerable.Range(0, i + 1), captureResult, (x, y) => x * y)
-                    .GetAsyncEnumerator();
-                Assert.True(await asyncEnumerator.MoveNextAsync());
-                Assert.AreEqual(0, asyncEnumerator.Current);
-                Assert.True(await asyncEnumerator.MoveNextAsync());
-                Assert.AreEqual(0, asyncEnumerator.Current);
-                Assert.True(await asyncEnumerator.MoveNextAsync());
-                Assert.AreEqual(5, asyncEnumerator.Current);
-                Assert.True(await asyncEnumerator.MoveNextAsync());
-                Assert.AreEqual(0, asyncEnumerator.Current);
-                Assert.True(await asyncEnumerator.MoveNextAsync());
-                Assert.AreEqual(7, asyncEnumerator.Current);
-                Assert.True(await asyncEnumerator.MoveNextAsync());
-                Assert.AreEqual(14, asyncEnumerator.Current);
-                Assert.False(await asyncEnumerator.MoveNextAsync());
-                await asyncEnumerator.DisposeAsync();
-            }, SynchronizationOption.Synchronous)
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-        }
-
-        [Test]
         public void SelectMany_Throws_CollectionSelector(
             [Values] bool configured,
             [Values] bool async,
@@ -509,24 +294,6 @@ namespace ProtoPromiseTests.APIs.Linq
             {
                 var asyncEnumerator = new[] { -1, 0, 1 }.ToAsyncEnumerable()
                     .SelectMany(configured, async, captureCollection, x => AsyncEnumerable.Range(0, x), captureResult, (x, y) => x * y)
-                    .GetAsyncEnumerator();
-                await TestHelper.AssertThrowsAsync<System.ArgumentOutOfRangeException>(() => asyncEnumerator.MoveNextAsync());
-                await asyncEnumerator.DisposeAsync();
-            }, SynchronizationOption.Synchronous)
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-        }
-
-        [Test]
-        public void SelectMany_Indexed_Throws_CollectionSelector(
-            [Values] bool configured,
-            [Values] bool async,
-            [Values] bool captureCollection,
-            [Values] bool captureResult)
-        {
-            Promise.Run(async () =>
-            {
-                var asyncEnumerator = new[] { 8, 5, 7 }.ToAsyncEnumerable()
-                    .SelectMany(configured, async, captureCollection, (x, i) => AsyncEnumerable.Range(0, i - 1), captureResult, (x, y) => x * y)
                     .GetAsyncEnumerator();
                 await TestHelper.AssertThrowsAsync<System.ArgumentOutOfRangeException>(() => asyncEnumerator.MoveNextAsync());
                 await asyncEnumerator.DisposeAsync();
@@ -554,25 +321,6 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void SelectMany_Indexed_Throws_ResultSelector(
-            [Values] bool configured,
-            [Values] bool async,
-            [Values] bool captureCollection,
-            [Values] bool captureResult)
-        {
-            Promise.Run(async () =>
-            {
-                var ex = new Exception("Bang!");
-                var asyncEnumerator = new[] { 8, 5, 7 }.ToAsyncEnumerable()
-                    .SelectMany(configured, async, captureCollection, (x, i) => AsyncEnumerable.Return(42), captureResult, (x, y) => { throw ex; return x * y; })
-                    .GetAsyncEnumerator();
-                await TestHelper.AssertThrowsAsync(() => asyncEnumerator.MoveNextAsync(), ex);
-                await asyncEnumerator.DisposeAsync();
-            }, SynchronizationOption.Synchronous)
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-        }
-
-        [Test]
         public void SelectMany_Throws_Source(
             [Values] bool configured,
             [Values] bool async,
@@ -584,25 +332,6 @@ namespace ProtoPromiseTests.APIs.Linq
                 var ex = new Exception("Bang!");
                 var asyncEnumerator = AsyncEnumerable<int>.Rejected(ex)
                     .SelectMany(configured, async, captureCollection, x => AsyncEnumerable.Range(0, x + 1), captureResult, (x, y) => x * y)
-                    .GetAsyncEnumerator();
-                await TestHelper.AssertThrowsAsync(() => asyncEnumerator.MoveNextAsync(), ex);
-                await asyncEnumerator.DisposeAsync();
-            }, SynchronizationOption.Synchronous)
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-        }
-
-        [Test]
-        public void SelectMany_Indexed_Throws_Source(
-            [Values] bool configured,
-            [Values] bool async,
-            [Values] bool captureCollection,
-            [Values] bool captureResult)
-        {
-            Promise.Run(async () =>
-            {
-                var ex = new Exception("Bang!");
-                var asyncEnumerator = AsyncEnumerable<int>.Rejected(ex)
-                    .SelectMany(configured, async, captureCollection, (x, i) => AsyncEnumerable.Range(0, i + 1), captureResult, (x, y) => x * y)
                     .GetAsyncEnumerator();
                 await TestHelper.AssertThrowsAsync(() => asyncEnumerator.MoveNextAsync(), ex);
                 await asyncEnumerator.DisposeAsync();
@@ -664,52 +393,6 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
-        public void SelectMany_Indexed_Cancel(
-            [Values] ConfiguredType configuredType,
-            [Values] bool async,
-            [Values] bool captureCollection,
-            [Values] bool captureResult,
-            [Values] bool enumeratorToken)
-        {
-            Promise.Run(async () =>
-            {
-                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
-                {
-                    cancelationToken.ThrowIfCancelationRequested();
-                    await writer.YieldAsync(1);
-                    cancelationToken.ThrowIfCancelationRequested();
-                    await writer.YieldAsync(2);
-                    cancelationToken.ThrowIfCancelationRequested();
-                    await writer.YieldAsync(3);
-                });
-                using (var configuredCancelationSource = CancelationSource.New())
-                {
-                    using (var enumeratorCancelationSource = CancelationSource.New())
-                    {
-                        var asyncEnumerator = xs
-                            .SelectMany(configuredType != ConfiguredType.NotConfigured, async, captureCollection, (x, i) => AsyncEnumerable.Range(0, i + 1), captureResult, (x, y) => x * y,
-                                configuredType == ConfiguredType.ConfiguredWithCancelation ? configuredCancelationSource.Token : CancelationToken.None)
-                            .GetAsyncEnumerator(enumeratorCancelationSource.Token);
-                        Assert.True(await asyncEnumerator.MoveNextAsync());
-                        Assert.AreEqual(0, asyncEnumerator.Current);
-                        Assert.True(await asyncEnumerator.MoveNextAsync());
-                        Assert.AreEqual(0, asyncEnumerator.Current);
-                        Assert.True(await asyncEnumerator.MoveNextAsync());
-                        Assert.AreEqual(2, asyncEnumerator.Current);
-                        configuredCancelationSource.Cancel();
-                        enumeratorCancelationSource.Cancel();
-                        if (configuredType == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
-                        {
-                            await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
-                        }
-                        await asyncEnumerator.DisposeAsync();
-                    }
-                }
-            }, SynchronizationOption.Synchronous)
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-        }
-
-        [Test]
         public void SelectMany_CancelDeep(
             [Values] ConfiguredType configuredType,
             [Values] bool async,
@@ -739,55 +422,6 @@ namespace ProtoPromiseTests.APIs.Linq
                     {
                         var asyncEnumerator = xs
                             .SelectMany(configuredType != ConfiguredType.NotConfigured, async, captureCollection, x => CreateInner(x), captureResult, (x, y) => x * y,
-                                configuredType == ConfiguredType.ConfiguredWithCancelation ? configuredCancelationSource.Token : CancelationToken.None)
-                            .GetAsyncEnumerator(enumeratorCancelationSource.Token);
-                        Assert.True(await asyncEnumerator.MoveNextAsync());
-                        Assert.AreEqual(0, asyncEnumerator.Current);
-                        Assert.True(await asyncEnumerator.MoveNextAsync());
-                        Assert.AreEqual(1, asyncEnumerator.Current);
-                        configuredCancelationSource.Cancel();
-                        enumeratorCancelationSource.Cancel();
-                        if (configuredType == ConfiguredType.ConfiguredWithCancelation || enumeratorToken)
-                        {
-                            await TestHelper.AssertCanceledAsync(() => asyncEnumerator.MoveNextAsync());
-                        }
-                        await asyncEnumerator.DisposeAsync();
-                    }
-                }
-            }, SynchronizationOption.Synchronous)
-                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
-        }
-
-        [Test]
-        public void SelectMany_Indexed_CancelDeep(
-            [Values] ConfiguredType configuredType,
-            [Values] bool async,
-            [Values] bool captureCollection,
-            [Values] bool captureResult,
-            [Values] bool enumeratorToken)
-        {
-            Promise.Run(async () =>
-            {
-                var xs = AsyncEnumerable.Create<int>(async (writer, cancelationToken) =>
-                {
-                    await writer.YieldAsync(1);
-                    await writer.YieldAsync(2);
-                });
-                AsyncEnumerable<int> CreateInner(int count) => AsyncEnumerable<int>.Create(count, async (c, writer, cancelationToken) =>
-                {
-                    for (int i = 0; i <= c; ++i)
-                    {
-                        cancelationToken.ThrowIfCancelationRequested();
-                        await writer.YieldAsync(i);
-                    }
-                });
-
-                using (var configuredCancelationSource = CancelationSource.New())
-                {
-                    using (var enumeratorCancelationSource = CancelationSource.New())
-                    {
-                        var asyncEnumerator = xs
-                            .SelectMany(configuredType != ConfiguredType.NotConfigured, async, captureCollection, (x, i) => CreateInner(i + 1), captureResult, (x, y) => x * y,
                                 configuredType == ConfiguredType.ConfiguredWithCancelation ? configuredCancelationSource.Token : CancelationToken.None)
                             .GetAsyncEnumerator(enumeratorCancelationSource.Token);
                         Assert.True(await asyncEnumerator.MoveNextAsync());

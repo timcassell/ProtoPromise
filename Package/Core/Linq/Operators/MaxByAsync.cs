@@ -278,7 +278,7 @@ namespace Proto.Promises.Linq
         /// If <typeparamref name="TSource"/> is a nullable type and the source sequence is empty, this method yields <see langword="null"/>.
         /// <para/> If <paramref name="keySelector"/> results in <see langword="null"/> for all elements, the first element will be returned.
         /// </remarks>
-        public static Promise<TSource> MaxByAsync<TSource, TKey>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<TKey>> keySelector, CancelationToken cancelationToken = default)
+        public static Promise<TSource> MaxByAsync<TSource, TKey>(this AsyncEnumerable<TSource> source, Func<TSource, CancelationToken, Promise<TKey>> keySelector, CancelationToken cancelationToken = default)
             => MaxByAsync(source, keySelector, Comparer<TKey>.Default, cancelationToken);
 
         /// <summary>
@@ -298,7 +298,7 @@ namespace Proto.Promises.Linq
         /// If <typeparamref name="TSource"/> is a nullable type and the source sequence is empty, this method yields <see langword="null"/>.
         /// <para/> If <paramref name="keySelector"/> results in <see langword="null"/> for all elements, the first element will be returned.
         /// </remarks>
-        public static Promise<TSource> MaxByAsync<TSource, TKey, TComparer>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<TKey>> keySelector, TComparer comparer, CancelationToken cancelationToken = default)
+        public static Promise<TSource> MaxByAsync<TSource, TKey, TComparer>(this AsyncEnumerable<TSource> source, Func<TSource, CancelationToken, Promise<TKey>> keySelector, TComparer comparer, CancelationToken cancelationToken = default)
             where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
@@ -324,7 +324,7 @@ namespace Proto.Promises.Linq
         /// If <typeparamref name="TSource"/> is a nullable type and the source sequence is empty, this method yields <see langword="null"/>.
         /// <para/> If <paramref name="keySelector"/> results in <see langword="null"/> for all elements, the first element will be returned.
         /// </remarks>
-        public static Promise<TSource> MaxByAsync<TSource, TKey, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector, CancelationToken cancelationToken = default)
+        public static Promise<TSource> MaxByAsync<TSource, TKey, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<TKey>> keySelector, CancelationToken cancelationToken = default)
             => MaxByAsync(source, captureValue, keySelector, Comparer<TKey>.Default, cancelationToken);
 
         /// <summary>
@@ -346,7 +346,7 @@ namespace Proto.Promises.Linq
         /// If <typeparamref name="TSource"/> is a nullable type and the source sequence is empty, this method yields <see langword="null"/>.
         /// <para/> If <paramref name="keySelector"/> results in <see langword="null"/> for all elements, the first element will be returned.
         /// </remarks>
-        public static Promise<TSource> MaxByAsync<TSource, TKey, TCapture, TComparer>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector, TComparer comparer, CancelationToken cancelationToken = default)
+        public static Promise<TSource> MaxByAsync<TSource, TKey, TCapture, TComparer>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<TKey>> keySelector, TComparer comparer, CancelationToken cancelationToken = default)
             where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
@@ -457,7 +457,7 @@ namespace Proto.Promises.Linq
         /// If <typeparamref name="TSource"/> is a nullable type and the source sequence is empty, this method yields <see langword="null"/>.
         /// <para/> If <paramref name="keySelector"/> results in <see langword="null"/> for all elements, the first element will be returned.
         /// </remarks>
-        public static Promise<TSource> MaxByAsync<TSource, TKey>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<TKey>> keySelector)
+        public static Promise<TSource> MaxByAsync<TSource, TKey>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, CancelationToken, Promise<TKey>> keySelector)
             => MaxByAsync(configuredSource, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
@@ -476,7 +476,7 @@ namespace Proto.Promises.Linq
         /// If <typeparamref name="TSource"/> is a nullable type and the source sequence is empty, this method yields <see langword="null"/>.
         /// <para/> If <paramref name="keySelector"/> results in <see langword="null"/> for all elements, the first element will be returned.
         /// </remarks>
-        public static Promise<TSource> MaxByAsync<TSource, TKey, TComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<TKey>> keySelector, TComparer comparer)
+        public static Promise<TSource> MaxByAsync<TSource, TKey, TComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, CancelationToken, Promise<TKey>> keySelector, TComparer comparer)
             where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
@@ -501,7 +501,7 @@ namespace Proto.Promises.Linq
         /// If <typeparamref name="TSource"/> is a nullable type and the source sequence is empty, this method yields <see langword="null"/>.
         /// <para/> If <paramref name="keySelector"/> results in <see langword="null"/> for all elements, the first element will be returned.
         /// </remarks>
-        public static Promise<TSource> MaxByAsync<TSource, TKey, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector)
+        public static Promise<TSource> MaxByAsync<TSource, TKey, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<TKey>> keySelector)
             => MaxByAsync(configuredSource, captureValue, keySelector, Comparer<TKey>.Default);
 
         /// <summary>
@@ -522,7 +522,7 @@ namespace Proto.Promises.Linq
         /// If <typeparamref name="TSource"/> is a nullable type and the source sequence is empty, this method yields <see langword="null"/>.
         /// <para/> If <paramref name="keySelector"/> results in <see langword="null"/> for all elements, the first element will be returned.
         /// </remarks>
-        public static Promise<TSource> MaxByAsync<TSource, TKey, TCapture, TComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector, TComparer comparer)
+        public static Promise<TSource> MaxByAsync<TSource, TKey, TCapture, TComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise<TKey>> keySelector, TComparer comparer)
             where TComparer : IComparer<TKey>
         {
             ValidateArgument(keySelector, nameof(keySelector), 1);
