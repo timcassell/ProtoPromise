@@ -52,8 +52,8 @@ namespace Proto.Promises
             // One fast up-front check for cancelation before we start the whole operation.
             if (cancelationToken.IsCancelationRequested)
             {
-                enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
-                return Promise.Canceled();
+                return enumerable.GetAsyncEnumerator().DisposeAsync()
+                    .Then(() => Promise.Canceled());
             }
 
             var promise = PromiseRefBase.PromiseParallelForEachAsync<TParallelBody, TSource>.GetOrCreate(
