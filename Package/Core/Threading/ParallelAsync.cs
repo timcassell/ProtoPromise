@@ -45,7 +45,7 @@ namespace Proto.Promises.Threading
         /// <param name="captureValue">The captured value that will be passed to the <paramref name="body"/>.</param>
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
         /// <returns>A promise that represents the entire for each operation.</returns>
-        public static Promise For<TCapture>(int fromIndex, int toIndex, TCapture captureValue, Func<int, TCapture, CancelationToken, Promise> body)
+        public static Promise For<TCapture>(int fromIndex, int toIndex, TCapture captureValue, Func<TCapture, int, CancelationToken, Promise> body)
             => For(fromIndex, toIndex, default, captureValue, body);
 
         /// <summary>Executes a for loop in which iterations may run in parallel.</summary>
@@ -55,7 +55,7 @@ namespace Proto.Promises.Threading
         /// <param name="captureValue">The captured value that will be passed to the <paramref name="body"/>.</param>
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
         /// <returns>A promise that represents the entire for each operation.</returns>
-        public static Promise For<TCapture>(int fromIndex, int toIndex, ParallelAsyncOptions parallelAsyncOptions, TCapture captureValue, Func<int, TCapture, CancelationToken, Promise> body)
+        public static Promise For<TCapture>(int fromIndex, int toIndex, ParallelAsyncOptions parallelAsyncOptions, TCapture captureValue, Func<TCapture, int, CancelationToken, Promise> body)
         {
             ValidateArgument(body, nameof(body), 1);
             return ParallelAsyncHelper.For(fromIndex, toIndex, DelegateWrapper.Create(captureValue, body), parallelAsyncOptions);
@@ -91,7 +91,7 @@ namespace Proto.Promises.Threading
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
-        public static Promise ForEach<TSource, TCapture>(IEnumerable<TSource> source, TCapture captureValue, Func<TSource, TCapture, CancelationToken, Promise> body)
+        public static Promise ForEach<TSource, TCapture>(IEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise> body)
             => ForEach(source, default, captureValue, body);
 
         /// <summary>Executes a for each operation on an <see cref="IEnumerable{TSource}"/> in which iterations may run in parallel.</summary>
@@ -103,7 +103,7 @@ namespace Proto.Promises.Threading
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
-        public static Promise ForEach<TSource, TCapture>(IEnumerable<TSource> source, ParallelAsyncOptions parallelAsyncOptions, TCapture captureValue, Func<TSource, TCapture, CancelationToken, Promise> body)
+        public static Promise ForEach<TSource, TCapture>(IEnumerable<TSource> source, ParallelAsyncOptions parallelAsyncOptions, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise> body)
         {
             ValidateArgument(body, nameof(body), 1);
             return ParallelAsync<TSource>.ForEach(source.GetEnumerator(), parallelAsyncOptions, captureValue, body);
@@ -139,7 +139,7 @@ namespace Proto.Promises.Threading
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
-        public static Promise ForEach<TSource, TCapture>(AsyncEnumerable<TSource> source, TCapture captureValue, Func<TSource, TCapture, CancelationToken, Promise> body)
+        public static Promise ForEach<TSource, TCapture>(AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise> body)
             => ForEach(source, default, captureValue, body);
 
         /// <summary>Executes a for each operation on an <see cref="AsyncEnumerable{T}"/> in which iterations may run in parallel.</summary>
@@ -151,7 +151,7 @@ namespace Proto.Promises.Threading
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
-        public static Promise ForEach<TSource, TCapture>(AsyncEnumerable<TSource> source, ParallelAsyncOptions parallelAsyncOptions, TCapture captureValue, Func<TSource, TCapture, CancelationToken, Promise> body)
+        public static Promise ForEach<TSource, TCapture>(AsyncEnumerable<TSource> source, ParallelAsyncOptions parallelAsyncOptions, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise> body)
         {
             ValidateArgument(body, nameof(body), 1);
             return ParallelAsyncHelper<TSource>.ForEach(source, DelegateWrapper.Create(captureValue, body), parallelAsyncOptions);
@@ -200,7 +200,7 @@ namespace Proto.Promises.Threading
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
-        public static Promise ForEach<TEnumerator, TCapture>(TEnumerator source, TCapture captureValue, Func<TSource, TCapture, CancelationToken, Promise> body)
+        public static Promise ForEach<TEnumerator, TCapture>(TEnumerator source, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise> body)
             where TEnumerator : IEnumerator<TSource>
             => ForEach(source, default, captureValue, body);
 
@@ -213,7 +213,7 @@ namespace Proto.Promises.Threading
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
-        public static Promise ForEach<TEnumerator, TCapture>(TEnumerator source, ParallelAsyncOptions parallelAsyncOptions, TCapture captureValue, Func<TSource, TCapture, CancelationToken, Promise> body)
+        public static Promise ForEach<TEnumerator, TCapture>(TEnumerator source, ParallelAsyncOptions parallelAsyncOptions, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise> body)
             where TEnumerator : IEnumerator<TSource>
         {
             ValidateArgument(source, nameof(source), 1);

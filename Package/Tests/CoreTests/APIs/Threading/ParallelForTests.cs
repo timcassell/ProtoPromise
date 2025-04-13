@@ -197,7 +197,7 @@ namespace ProtoPromiseTests.APIs.Threading
 
             var set = new HashSet<int>();
 
-            ParallelAsync.ForEach(Enumerable.Range(Start, Count), expectedCaptureValue, (item, cv, cancelationToken) =>
+            ParallelAsync.ForEach(Enumerable.Range(Start, Count), expectedCaptureValue, (cv, item, cancelationToken) =>
             {
                 Assert.AreEqual(expectedCaptureValue, cv);
                 lock (set)
@@ -518,7 +518,7 @@ namespace ProtoPromiseTests.APIs.Threading
 
             var set = new HashSet<int>();
 
-            ParallelAsync.For(Start, Start + Count, expectedCaptureValue, (item, cv, cancelationToken) =>
+            ParallelAsync.For(Start, Start + Count, expectedCaptureValue, (cv, item, cancelationToken) =>
             {
                 Assert.AreEqual(expectedCaptureValue, cv);
                 lock (set)
