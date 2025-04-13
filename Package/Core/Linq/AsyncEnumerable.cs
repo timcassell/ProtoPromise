@@ -32,6 +32,7 @@ namespace Proto.Promises.Linq
         /// <summary>
         /// Gets whether this instance is valid for enumeration. Once enumeration has begun, this will return false.
         /// </summary>
+        [Obsolete("Due to object pooling, this property is inherently unsafe. This will be removed in a future version.", false), EditorBrowsable(EditorBrowsableState.Never)]
         public bool CanBeEnumerated
             => _target?.GetCanBeEnumerated(_id) == true;
 
@@ -48,16 +49,11 @@ namespace Proto.Promises.Linq
         /// <summary>
         /// Returns an enumerator that iterates asynchronously through the async-enumerable sequence.
         /// </summary>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
+        /// <exception cref="InvalidOperationException">This is not valid for enumeration.</exception>
         [MethodImpl(Internal.InlineOption)]
         public AsyncEnumerator<T> GetAsyncEnumerator(CancelationToken cancelationToken)
-        {
-            var target = _target;
-            if (target == null)
-            {
-                Internal.ThrowInvalidAsyncEnumerable(1);
-            }
-            return target.GetAsyncEnumerator(_id, cancelationToken);
-        }
+            => _target.GetAsyncEnumerator(_id, cancelationToken);
 
         /// <summary>
         /// Returns an enumerator that iterates asynchronously through the async-enumerable sequence.
@@ -140,6 +136,8 @@ namespace Proto.Promises.Linq
         /// <summary>
         /// Gets the element in the async-enumerable sequence at the current position of the enumerator.
         /// </summary>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
+        /// <exception cref="InvalidOperationException">This is not valid for enumeration.</exception>
         public T Current
         {
             [MethodImpl(Internal.InlineOption)]
@@ -149,12 +147,15 @@ namespace Proto.Promises.Linq
         /// <summary>
         /// Advances the enumerator asynchronously to the next element of the async-enumerable sequence.
         /// </summary>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
+        /// <exception cref="InvalidOperationException">This is not valid for enumeration.</exception>
         public Promise<bool> MoveNextAsync()
             => _target.MoveNextAsync(_id);
 
         /// <summary>
         /// Asynchronously releases resources used by this enumerator.
         /// </summary>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
         public Promise DisposeAsync()
             => _target.DisposeAsync(_id);
     }
