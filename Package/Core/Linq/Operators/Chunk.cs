@@ -5,6 +5,7 @@
 #endif
 
 using Proto.Promises.Collections;
+using Proto.Promises.Linq.Sources;
 using System.Diagnostics;
 
 #pragma warning disable IDE0063 // Use simple 'using' statement
@@ -115,8 +116,7 @@ namespace Proto.Promises.Linq
                         }
                     End:
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -213,8 +213,7 @@ namespace Proto.Promises.Linq
 #endif // PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     End:
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {

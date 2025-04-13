@@ -6,6 +6,7 @@
 
 using Proto.Promises.CompilerServices;
 using Proto.Promises.Linq;
+using Proto.Promises.Linq.Sources;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -55,8 +56,7 @@ namespace Proto.Promises
                             await writer.YieldAsync(element);
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -105,8 +105,7 @@ namespace Proto.Promises
                             await writer.YieldAsync(element);
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -156,8 +155,7 @@ namespace Proto.Promises
                             await writer.YieldAsync(element);
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -207,8 +205,7 @@ namespace Proto.Promises
                             await writer.YieldAsync(element);
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -257,8 +254,7 @@ namespace Proto.Promises
                             await writer.YieldAsync(element);
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -308,8 +304,7 @@ namespace Proto.Promises
                             await writer.YieldAsync(element);
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -360,8 +355,7 @@ namespace Proto.Promises
                             await writer.YieldAsync(element);
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -412,8 +406,7 @@ namespace Proto.Promises
                             await writer.YieldAsync(element);
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {

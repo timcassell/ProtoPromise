@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Promises.Linq.Sources;
 using System.Diagnostics;
 
 namespace Proto.Promises.Linq
@@ -56,8 +57,7 @@ namespace Proto.Promises.Linq
                         await writer.YieldAsync((_first.Current, _second.Current));
                     }
 
-                    // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                    await writer.YieldAsync(default).ForLinqExtension();
+                    await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                 }
                 finally
                 {
@@ -125,8 +125,7 @@ namespace Proto.Promises.Linq
                         await writer.YieldAsync((_first.Current, _second.Current, _third.Current));
                     }
 
-                    // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                    await writer.YieldAsync(default).ForLinqExtension();
+                    await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                 }
                 finally
                 {

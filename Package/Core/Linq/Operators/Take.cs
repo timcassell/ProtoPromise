@@ -4,6 +4,8 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Promises.Linq.Sources;
+
 namespace Proto.Promises.Linq
 {
     partial class AsyncEnumerable
@@ -21,7 +23,7 @@ namespace Proto.Promises.Linq
             {
                 // No elements will be yielded, so we can simply return an empty AsyncEnumerable.
                 // But we have to dispose the source, so we need to do it with a special empty, instead of AsyncEnumerable<TSource>.Empty().
-                return Internal.EmptyHelper.EmptyWithDispose(source);
+                return AsyncEnumerableSourceHelpers.EmptyWithDispose(source);
             }
 
             if (source._target is Internal.AsyncEnumerablePartition<TSource> partition)
@@ -46,7 +48,7 @@ namespace Proto.Promises.Linq
             {
                 // No elements will be yielded, so we can simply return an empty AsyncEnumerable.
                 // But we have to dispose the source, so we need to do it with a special empty, instead of AsyncEnumerable<TSource>.Empty().
-                return Internal.EmptyHelper.EmptyWithDispose(source);
+                return AsyncEnumerableSourceHelpers.EmptyWithDispose(source);
             }
 
             if (source._target is Internal.AsyncEnumerablePartitionFromLast<TSource> partition)
@@ -79,7 +81,7 @@ namespace Proto.Promises.Linq
             {
                 if (startIndex == 0 | (isEndIndexFromEnd & endIndex >= startIndex))
                 {
-                    return Internal.EmptyHelper.EmptyWithDispose(source);
+                    return AsyncEnumerableSourceHelpers.EmptyWithDispose(source);
                 }
 
                 if (isEndIndexFromEnd)
@@ -94,7 +96,7 @@ namespace Proto.Promises.Linq
 
             if (!isEndIndexFromEnd & startIndex >= endIndex)
             {
-                return Internal.EmptyHelper.EmptyWithDispose(source);
+                return AsyncEnumerableSourceHelpers.EmptyWithDispose(source);
             }
 
             source = source.Skip(startIndex);
