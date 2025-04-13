@@ -14,10 +14,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ProtoPromiseTests.APIs
+namespace ProtoPromiseTests.APIs.Threading
 {
 #if !UNITY_WEBGL
-    public sealed class ParallelForEachAsyncTests
+    public sealed class ParallelForEachTests
     {
         [SetUp]
         public void Setup()
@@ -45,22 +45,10 @@ namespace ProtoPromiseTests.APIs
         [Test]
         public void InvalidArguments_ThrowsException()
         {
-            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(default(AsyncEnumerable<int>), null); });
-            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(default(AsyncEnumerable<int>), null, SynchronizationContext.Current); });
-            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(default(AsyncEnumerable<int>), 1, null); });
-            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(default(AsyncEnumerable<int>), 1, null, SynchronizationContext.Current); });
-
-#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
-            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync((IAsyncEnumerable<int>) null, (item, cancelationToken) => Promise.Resolved()); });
-            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync((IAsyncEnumerable<int>) null, (item, cancelationToken) => Promise.Resolved(), SynchronizationContext.Current); });
-            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync((IAsyncEnumerable<int>) null, 1, (item, num, cancelationToken) => Promise.Resolved()); });
-            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync((IAsyncEnumerable<int>) null, 1, (item, num, cancelationToken) => Promise.Resolved(), SynchronizationContext.Current); });
-
-            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(EnumerableRangeIAsync(1, 10), null); });
-            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(EnumerableRangeIAsync(1, 10), null, SynchronizationContext.Current); });
-            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(EnumerableRangeIAsync(1, 10), 1, null); });
-            Assert.Catch<System.ArgumentNullException>(() => { Promise.ParallelForEachAsync(EnumerableRangeIAsync(1, 10), 1, null, SynchronizationContext.Current); });
-#endif // UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
+            Assert.Catch<System.ArgumentNullException>(() => { ParallelAsync.ForEach(default(AsyncEnumerable<int>), null); });
+            Assert.Catch<System.ArgumentNullException>(() => { ParallelAsync.ForEach(default(AsyncEnumerable<int>), default, null); });
+            Assert.Catch<System.ArgumentNullException>(() => { ParallelAsync.ForEach(default(AsyncEnumerable<int>), 1, null); });
+            Assert.Catch<System.ArgumentNullException>(() => { ParallelAsync.ForEach(default(AsyncEnumerable<int>), default, 1, null); });
         }
 #endif
 
@@ -72,11 +60,12 @@ namespace ProtoPromiseTests.APIs
             cts.Cancel();
 
             bool canceled = false;
-            Promise.ParallelForEachAsync(MarkStartAsync(box), (item, cancelationToken) =>
-            {
-                Assert.Fail("Should not have been invoked");
-                return Promise.Resolved();
-            }, cts.Token)
+            ParallelAsync.ForEach(MarkStartAsync(box), new ParallelAsyncOptions() { CancelationToken = cts.Token },
+                (item, cancelationToken) =>
+                {
+                    Assert.Fail("Should not have been invoked");
+                    return Promise.Resolved();
+                })
                 .CatchCancelation(() => canceled = true)
                 .Forget();
             Assert.True(canceled);
@@ -107,7 +96,8 @@ namespace ProtoPromiseTests.APIs
 
             bool completed = false;
             bool canceled = false;
-            var promise = Promise.ParallelForEachAsync(asyncEnumerable, (item, cancelationToken) => Promise.Resolved(), cts.Token)
+            var promise = ParallelAsync.ForEach(asyncEnumerable, new ParallelAsyncOptions() { CancelationToken = cts.Token },
+                (item, cancelationToken) => Promise.Resolved())
                 .Finally(() => completed = true)
                 .CatchCancelation(() => canceled = true);
             Assert.False(completed);
@@ -123,7 +113,7 @@ namespace ProtoPromiseTests.APIs
 
         [Test]
         public void Dop_WorkersCreatedRespectingLimit_Async(
-            [Values(-1, 1, 2, 4, 128)] int dop)
+            [Values(0, 1, 2, 4, 128)] int dop)
         {
             var box = new StrongBox<bool>(false);
             var iterateUntilSetAsync = AsyncEnumerable<int>.Create(box, async (sBox, writer, cancelationToken) =>
@@ -139,17 +129,18 @@ namespace ProtoPromiseTests.APIs
             var block = Promise.NewDeferred();
             using (var blockPromiseRetainer = block.Promise.GetRetainer())
             {
-                Promise t = Promise.ParallelForEachAsync(iterateUntilSetAsync, (item, cancelationToken) =>
-                {
-                    Interlocked.Increment(ref activeWorkers);
-                    return blockPromiseRetainer.WaitAsync();
-                }, maxDegreeOfParallelism: dop);
+                Promise t = ParallelAsync.ForEach(iterateUntilSetAsync, new ParallelAsyncOptions() { MaxDegreeOfParallelism = dop },
+                    (item, cancelationToken) =>
+                    {
+                        Interlocked.Increment(ref activeWorkers);
+                        return blockPromiseRetainer.WaitAsync();
+                    });
 
                 Thread.Sleep(20); // give the loop some time to run
 
                 box.Value = true;
                 block.Resolve();
-                int maxWorkers = dop == -1 ? Environment.ProcessorCount : dop;
+                int maxWorkers = dop == 0 ? Environment.ProcessorCount : dop;
                 t.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(maxWorkers));
 
                 Assert.LessOrEqual(activeWorkers, maxWorkers);
@@ -160,7 +151,7 @@ namespace ProtoPromiseTests.APIs
         public void EmptySource_Async()
         {
             int counter = 0;
-            Promise.ParallelForEachAsync(EnumerableRangeAsync(0, 0), (item, cancelationToken) =>
+            ParallelAsync.ForEach(EnumerableRangeAsync(0, 0), (item, cancelationToken) =>
             {
                 Interlocked.Increment(ref counter);
                 return Promise.Resolved();
@@ -178,7 +169,7 @@ namespace ProtoPromiseTests.APIs
 
             var set = new HashSet<int>();
 
-            Promise.ParallelForEachAsync(EnumerableRangeAsync(Start, Count), (item, cancelationToken) =>
+            ParallelAsync.ForEach(EnumerableRangeAsync(Start, Count), (item, cancelationToken) =>
             {
                 lock (set)
                 {
@@ -209,7 +200,7 @@ namespace ProtoPromiseTests.APIs
 
             var set = new HashSet<int>();
 
-            Promise.ParallelForEachAsync(EnumerableRangeAsync(Start, Count), expectedCaptureValue, (item, cv, cancelationToken) =>
+            ParallelAsync.ForEach(EnumerableRangeAsync(Start, Count), expectedCaptureValue, (item, cv, cancelationToken) =>
             {
                 Assert.AreEqual(expectedCaptureValue, cv);
                 lock (set)
@@ -261,23 +252,24 @@ namespace ProtoPromiseTests.APIs
             var cq = new Queue<int>();
             bool isComplete = false;
 
-            Promise.ParallelForEachAsync(IterateAndAssertContext(syncContext, mainThread, otherContext), (item, cancelationToken) =>
-            {
-                TestHelper.AssertCallbackContext(syncContext, syncContext, mainThread);
-                return Promise.SwitchToContext(context)
-                    .Then(() =>
-                    {
-                        lock (cq)
+            ParallelAsync.ForEach(IterateAndAssertContext(syncContext, mainThread, otherContext), new ParallelAsyncOptions() { SynchronizationContext = context },
+                (item, cancelationToken) =>
+                {
+                    TestHelper.AssertCallbackContext(syncContext, syncContext, mainThread);
+                    return Promise.SwitchToContext(context)
+                        .Then(() =>
                         {
-                            cq.Enqueue(item);
-                        }
-                        if (item % 10 == 0)
-                        {
-                            return Promise.SwitchToContext(otherContext, forceAsync: true);
-                        }
-                        return Promise.Resolved();
-                    });
-            }, synchronizationContext: context)
+                            lock (cq)
+                            {
+                                cq.Enqueue(item);
+                            }
+                            if (item % 10 == 0)
+                            {
+                                return Promise.SwitchToContext(otherContext, forceAsync: true);
+                            }
+                            return Promise.Resolved();
+                        });
+                })
                 .Finally(() => isComplete = true)
                 .Forget();
 
@@ -303,10 +295,11 @@ namespace ProtoPromiseTests.APIs
         {
             var cts = CancelationSource.New();
             Promise.State state = Promise.State.Pending;
-            Promise t = Promise.ParallelForEachAsync(Infinite(), (item, cancelationToken) =>
-            {
-                return Promise.SwitchToContext(TestHelper._backgroundContext, forceAsync: true);
-            }, cts.Token)
+            Promise t = ParallelAsync.ForEach(Infinite(), new ParallelAsyncOptions() { CancelationToken = cts.Token },
+                (item, cancelationToken) =>
+                {
+                    return Promise.SwitchToContext(TestHelper._backgroundContext, forceAsync: true);
+                })
                 .ContinueWith(resultContainer => state = resultContainer.State);
 
             Thread.Sleep(20); // give the loop some time to run
@@ -327,7 +320,7 @@ namespace ProtoPromiseTests.APIs
                 await writer.YieldAsync(cancelationToken);
             });
 
-            Promise.ParallelForEachAsync(yieldTokenAsync, (item, cancelationToken) =>
+            ParallelAsync.ForEach(yieldTokenAsync, (item, cancelationToken) =>
             {
                 Assert.AreEqual(cancelationToken, item);
                 return Promise.Resolved();
@@ -340,7 +333,7 @@ namespace ProtoPromiseTests.APIs
         {
             var cq = new Queue<CancelationToken>();
 
-            Promise.ParallelForEachAsync(EnumerableRangeAsync(1, 100), (item, cancelationToken) =>
+            ParallelAsync.ForEach(EnumerableRangeAsync(1, 100), (item, cancelationToken) =>
             {
                 lock (cq)
                 {
@@ -365,23 +358,24 @@ namespace ProtoPromiseTests.APIs
                 Exception expected = new Exception();
                 Exception actual = null;
 
-                Promise.ParallelForEachAsync(Infinite(), (item, cancelationToken) =>
-                {
-                    if (item == 0)
+                ParallelAsync.ForEach(Infinite(), new ParallelAsyncOptions() { CancelationToken = cts.Token, MaxDegreeOfParallelism = 2 }, 
+                    (item, cancelationToken) =>
                     {
-                        return promiseRetainer.WaitAsync()
-                            .Then(() =>
-                            {
-                                cts.Cancel();
-                                throw expected;
-                            });
-                    }
-                    else if (item == 10)
-                    {
-                        deferred.Resolve();
-                    }
-                    return Promise.Resolved();
-                }, cts.Token, maxDegreeOfParallelism: 2)
+                        if (item == 0)
+                        {
+                            return promiseRetainer.WaitAsync()
+                                .Then(() =>
+                                {
+                                    cts.Cancel();
+                                    throw expected;
+                                });
+                        }
+                        else if (item == 10)
+                        {
+                            deferred.Resolve();
+                        }
+                        return Promise.Resolved();
+                    })
                     .Catch((Exception e) => actual = e)
                     .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(2));
                 cts.Dispose();
@@ -399,10 +393,11 @@ namespace ProtoPromiseTests.APIs
             var cts = CancelationSource.New();
             Promise.State state = Promise.State.Pending;
 
-            Promise.ParallelForEachAsync(Infinite(), (item, cancelationToken) =>
-            {
-                throw new OperationCanceledException();
-            }, cts.Token)
+            ParallelAsync.ForEach(Infinite(), new ParallelAsyncOptions() { CancelationToken = cts.Token }, 
+                (item, cancelationToken) =>
+                {
+                    throw new OperationCanceledException();
+                })
                 .ContinueWith(resultContainer => { state = resultContainer.State; })
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
 
@@ -432,7 +427,7 @@ namespace ProtoPromiseTests.APIs
             Exception expected = new Exception();
             Exception actual = null;
 
-            Promise.ParallelForEachAsync(Iterate4ThenThrow(expected), (item, cancelationToken) => Promise.Resolved())
+            ParallelAsync.ForEach(Iterate4ThenThrow(expected), (item, cancelationToken) => Promise.Resolved())
                 .Catch((Exception e) => actual = e)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
 
@@ -458,16 +453,17 @@ namespace ProtoPromiseTests.APIs
             Exception actual = null;
 
             var barrier = new Barrier(2);
-            Promise.ParallelForEachAsync(Iterate2(), (item, cancelationToken) =>
-            {
-                barrier.SignalAndWait();
-                switch (item)
+            ParallelAsync.ForEach(Iterate2(), new ParallelAsyncOptions() { MaxDegreeOfParallelism = barrier.ParticipantCount },
+                (item, cancelationToken) =>
                 {
-                    case 1: throw new FormatException();
-                    case 2: throw new InvalidTimeZoneException();
-                    default: throw new Exception();
-                }
-            }, maxDegreeOfParallelism: barrier.ParticipantCount)
+                    barrier.SignalAndWait();
+                    switch (item)
+                    {
+                        case 1: throw new FormatException();
+                        case 2: throw new InvalidTimeZoneException();
+                        default: throw new Exception();
+                    }
+                })
                 .Catch((Exception e) => actual = e)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(barrier.ParticipantCount));
 
@@ -484,7 +480,7 @@ namespace ProtoPromiseTests.APIs
         {
             AggregateException aggregateException = null;
 
-            Promise.ParallelForEachAsync(Infinite(), (item, cancelationToken) =>
+            ParallelAsync.ForEach(Infinite(), (item, cancelationToken) =>
             {
                 if (item == 1000)
                 {
@@ -498,17 +494,18 @@ namespace ProtoPromiseTests.APIs
             Assert.IsNotNull(aggregateException);
             aggregateException = null;
 
-            Promise.ParallelForEachAsync(Infinite(), (item, cancelationToken) =>
-            {
-                if (item == 0)
+            ParallelAsync.ForEach(Infinite(), new ParallelAsyncOptions() { MaxDegreeOfParallelism = 2 },
+                (item, cancelationToken) =>
                 {
-                    throw new FormatException();
-                }
-                Assert.AreEqual(1, item);
-                var deferred = Promise.NewDeferred();
-                cancelationToken.Register(() => deferred.Resolve());
-                return deferred.Promise;
-            }, maxDegreeOfParallelism: 2)
+                    if (item == 0)
+                    {
+                        throw new FormatException();
+                    }
+                    Assert.AreEqual(1, item);
+                    var deferred = Promise.NewDeferred();
+                    cancelationToken.Register(() => deferred.Resolve());
+                    return deferred.Promise;
+                })
                 .Catch((AggregateException e) => aggregateException = e)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(2));
 
@@ -517,7 +514,7 @@ namespace ProtoPromiseTests.APIs
         }
 
         [Test]
-        public void ParallelForEachAsync_ExecutionContextFlowsToWorkerBodies(
+        public void ParallelForEach_ExecutionContextFlowsToWorkerBodies(
             [Values] bool foregroundContext)
         {
             Promise.Config.AsyncFlowExecutionContextEnabled = true;
@@ -537,18 +534,19 @@ namespace ProtoPromiseTests.APIs
                 }
             });
 
-            Promise.ParallelForEachAsync(asyncEnumerable, async (item, cancelationToken) =>
-            {
-                await Promise.SwitchToForegroundAwait(forceAsync: true);
-                Assert.AreEqual(42, al.Value);
-                al.Value = 43;
-            }, context)
+            ParallelAsync.ForEach(asyncEnumerable, new ParallelAsyncOptions() { SynchronizationContext = context }, 
+                async (item, cancelationToken) =>
+                {
+                    await Promise.SwitchToForegroundAwait(forceAsync: true);
+                    Assert.AreEqual(42, al.Value);
+                    al.Value = 43;
+                })
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
             Assert.AreEqual(42, al.Value);
         }
 
         [Test]
-        public void ParallelForEachAsync_NotCanceledTooEarly(
+        public void ParallelForEach_NotCanceledTooEarly(
             [Values] bool foregroundContext,
             [Values] bool yieldEnumerable)
         {
@@ -556,19 +554,20 @@ namespace ProtoPromiseTests.APIs
                 ? (SynchronizationContext) TestHelper._foregroundContext
                 : TestHelper._backgroundContext;
 
-            Promise.ParallelForEachAsync(EnumerableRangeAsync(0, Environment.ProcessorCount, yieldEnumerable), async (index, cancelationToken) =>
-            {
-                if (index % 2 == 0)
+            ParallelAsync.ForEach(EnumerableRangeAsync(0, Environment.ProcessorCount, yieldEnumerable), new ParallelAsyncOptions() { SynchronizationContext = context },
+                async (index, cancelationToken) =>
                 {
-                    await System.Threading.Tasks.Task.Delay(100);
-                }
-                Assert.False(cancelationToken.IsCancelationRequested);
-            }, context)
+                    if (index % 2 == 0)
+                    {
+                        await System.Threading.Tasks.Task.Delay(100);
+                    }
+                    Assert.False(cancelationToken.IsCancelationRequested);
+                })
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(Environment.ProcessorCount));
         }
 
         [Test]
-        public void ParallelForEachAsync_CancelationCallbackExceptionsArePropagated(
+        public void ParallelForEach_CancelationCallbackExceptionsArePropagated(
             [Values] bool foregroundContext)
         {
             var context = foregroundContext
@@ -580,18 +579,19 @@ namespace ProtoPromiseTests.APIs
             {
                 int readyCount = 0;
 
-                var parallelPromise = Promise.ParallelForEachAsync(AsyncEnumerable.Range(0, 3), (index, cancelationToken) =>
-                {
-                    cancelationToken.Register(() => throw new Exception("Error in cancelation!"));
-                    Interlocked.Increment(ref readyCount);
-                    if (index == 2)
+                var parallelPromise = ParallelAsync.ForEach(AsyncEnumerable.Range(0, 3), new ParallelAsyncOptions() { SynchronizationContext = context },
+                    (index, cancelationToken) =>
                     {
-                        // Wait until all iterations are ready, otherwise the token could be canceled before a worker registered, causing it to throw synchronously.
-                        TestHelper.SpinUntil(() => readyCount == 3, TimeSpan.FromSeconds(2));
-                        throw new System.InvalidOperationException("Error in loop body!");
-                    }
-                    return blockPromiseRetainer.WaitAsync();
-                }, context);
+                        cancelationToken.Register(() => throw new Exception("Error in cancelation!"));
+                        Interlocked.Increment(ref readyCount);
+                        if (index == 2)
+                        {
+                            // Wait until all iterations are ready, otherwise the token could be canceled before a worker registered, causing it to throw synchronously.
+                            TestHelper.SpinUntil(() => readyCount == 3, TimeSpan.FromSeconds(2));
+                            throw new System.InvalidOperationException("Error in loop body!");
+                        }
+                        return blockPromiseRetainer.WaitAsync();
+                    });
 
                 TestHelper.SpinUntilWhileExecutingForegroundContext(() => readyCount == 3, TimeSpan.FromSeconds(3));
 
@@ -613,21 +613,6 @@ namespace ProtoPromiseTests.APIs
                 Assert.True(didThrow);
             }
         }
-
-#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
-        private static async IAsyncEnumerable<int> EnumerableRangeIAsync(int start, int count, bool yield = true)
-        {
-            for (int i = start; i < start + count; i++)
-            {
-                if (yield)
-                {
-                    await Task.Yield();
-                }
-
-                yield return i;
-            }
-        }
-#endif // UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
 
         private static AsyncEnumerable<int> EnumerableRangeAsync(int start, int count, bool yield = true)
         {
