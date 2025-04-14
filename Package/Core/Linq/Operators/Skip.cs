@@ -4,6 +4,8 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Promises.Linq.Sources;
+
 namespace Proto.Promises.Linq
 {
     partial class AsyncEnumerable
@@ -19,13 +21,8 @@ namespace Proto.Promises.Linq
         {
             if (count <= 0)
             {
-                // No elements will be skipped, so we can simply return the source. But we need to invalidate it, so increment the id.
-                var target = source._target;
-                if (target == null)
-                {
-                    Internal.ThrowInvalidAsyncEnumerable(1);
-                }
-                return target.GetSelfWithIncrementedId(source._id);
+                // No elements will be skipped, so we can simply move and return the source.
+                return AsyncEnumerableSourceHelpers.Move(source);
             }
 
             if (source._target is Internal.AsyncEnumerablePartition<TSource> partition)
@@ -48,13 +45,8 @@ namespace Proto.Promises.Linq
         {
             if (count <= 0)
             {
-                // No elements will be skipped, so we can simply return the source. But we need to invalidate it, so increment the id.
-                var target = source._target;
-                if (target == null)
-                {
-                    Internal.ThrowInvalidAsyncEnumerable(1);
-                }
-                return target.GetSelfWithIncrementedId(source._id);
+                // No elements will be skipped, so we can simply move and return the source.
+                return AsyncEnumerableSourceHelpers.Move(source);
             }
 
             if (source._target is Internal.AsyncEnumerablePartitionFromLast<TSource> partition)

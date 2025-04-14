@@ -6,6 +6,7 @@
 
 using Proto.Promises.CompilerServices;
 using Proto.Promises.Linq;
+using Proto.Promises.Linq.Sources;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -66,8 +67,6 @@ namespace Proto.Promises
                                 var element = _elementSelector.Invoke(item);
                                 group.Add(element);
                             } while (await _asyncEnumerator.MoveNextAsync());
-                            // We don't dispose the source enumerator until the owner is disposed.
-                            // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
                             // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
                             var g = lookup._lastGrouping;
@@ -78,8 +77,7 @@ namespace Proto.Promises
                             } while (g != lookup._lastGrouping);
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -146,8 +144,6 @@ namespace Proto.Promises
                                 var key = _keySelector.Invoke(item);
                                 lookup.GetOrCreateGrouping(key, true).Add(item);
                             } while (await _asyncEnumerator.MoveNextAsync());
-                            // We don't dispose the source enumerator until the owner is disposed.
-                            // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
                             // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
                             var g = lookup._lastGrouping;
@@ -158,8 +154,7 @@ namespace Proto.Promises
                             } while (g != lookup._lastGrouping);
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -230,8 +225,6 @@ namespace Proto.Promises
                                 var element = await _elementSelector.Invoke(item);
                                 group.Add(element);
                             } while (await _asyncEnumerator.MoveNextAsync());
-                            // We don't dispose the source enumerator until the owner is disposed.
-                            // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
                             // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
                             var g = lookup._lastGrouping;
@@ -242,8 +235,7 @@ namespace Proto.Promises
                             } while (g != lookup._lastGrouping);
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -310,8 +302,6 @@ namespace Proto.Promises
                                 var key = await _keySelector.Invoke(item);
                                 lookup.GetOrCreateGrouping(key, true).Add(item);
                             } while (await _asyncEnumerator.MoveNextAsync());
-                            // We don't dispose the source enumerator until the owner is disposed.
-                            // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
                             // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
                             var g = lookup._lastGrouping;
@@ -322,8 +312,7 @@ namespace Proto.Promises
                             } while (g != lookup._lastGrouping);
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -394,8 +383,6 @@ namespace Proto.Promises
                                 var element = _elementSelector.Invoke(item);
                                 group.Add(element);
                             } while (await _configuredAsyncEnumerator.MoveNextAsync());
-                            // We don't dispose the source enumerator until the owner is disposed.
-                            // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
                             // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
                             var g = lookup._lastGrouping;
@@ -406,8 +393,7 @@ namespace Proto.Promises
                             } while (g != lookup._lastGrouping);
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -475,8 +461,6 @@ namespace Proto.Promises
                                 var key = _keySelector.Invoke(item);
                                 lookup.GetOrCreateGrouping(key, true).Add(item);
                             } while (await _configuredAsyncEnumerator.MoveNextAsync());
-                            // We don't dispose the source enumerator until the owner is disposed.
-                            // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
                             // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
                             var g = lookup._lastGrouping;
@@ -487,8 +471,7 @@ namespace Proto.Promises
                             } while (g != lookup._lastGrouping);
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -561,8 +544,6 @@ namespace Proto.Promises
                                 var element = await _elementSelector.Invoke(item);
                                 group.Add(element);
                             } while (await _configuredAsyncEnumerator.MoveNextAsync());
-                            // We don't dispose the source enumerator until the owner is disposed.
-                            // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
                             // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
                             var g = lookup._lastGrouping;
@@ -573,8 +554,7 @@ namespace Proto.Promises
                             } while (g != lookup._lastGrouping);
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -643,8 +623,6 @@ namespace Proto.Promises
                                 var key = await _keySelector.Invoke(item).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 lookup.GetOrCreateGrouping(key, true).Add(item);
                             } while (await _configuredAsyncEnumerator.MoveNextAsync());
-                            // We don't dispose the source enumerator until the owner is disposed.
-                            // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
                             // We don't need to check if g is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
                             var g = lookup._lastGrouping;
@@ -655,8 +633,7 @@ namespace Proto.Promises
                             } while (g != lookup._lastGrouping);
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {

@@ -315,10 +315,11 @@ namespace Proto.Promises
                         enumeratorIndex = -1;
                     }
 
-                    // We yield and wait for the enumerator to be disposed, but only if there were no exceptions, and cancelation was not requested.
+                    // We're not using _cancelationToken.ThrowIfCancelationRequested() in the loop, so we check if it's canceled before waiting for dispose.
                     if (!_cancelationToken.IsCancelationRequested)
                     {
-                        await YieldAsync(default, streamWriterId).ForLinqExtension();
+                        // await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
+                        await YieldAsync(default, streamWriterId, false);
                     }
                 }
                 finally
@@ -572,10 +573,11 @@ namespace Proto.Promises
                         enumeratorIndex = -1;
                     }
 
-                    // We yield and wait for the enumerator to be disposed, but only if there were no exceptions, and cancelation was not requested.
+                    // We're not using _cancelationToken.ThrowIfCancelationRequested() in the loop, so we check if it's canceled before waiting for dispose.
                     if (!_cancelationToken.IsCancelationRequested)
                     {
-                        await YieldAsync(default, streamWriterId).ForLinqExtension();
+                        // await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
+                        await YieldAsync(default, streamWriterId, false);
                     }
                 }
                 finally
