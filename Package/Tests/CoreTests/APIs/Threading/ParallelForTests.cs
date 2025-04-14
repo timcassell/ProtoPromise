@@ -45,14 +45,20 @@ namespace ProtoPromiseTests.APIs.Threading
         public void InvalidArguments_ThrowsException()
         {
             Assert.Throws<Proto.Promises.ArgumentNullException>(() => { ParallelAsync.For(0, 1, null); });
-            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => { ParallelAsync.For(0, 1, default, null); });
+            Assert.Throws<Proto.Promises.ArgumentNullException>(() => { ParallelAsync.For(0, 1, default, null); });
 
             Assert.Throws<Proto.Promises.ArgumentNullException>(() => { ParallelAsync.ForEach((IEnumerable<int>) null, (item, cancelationToken) => Promise.Resolved()); });
-            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => { ParallelAsync.ForEach(Enumerable.Range(1, 10), default, (item, cancelationToken) => Promise.Resolved()); });
+            Assert.Throws<Proto.Promises.ArgumentNullException>(() => { ParallelAsync.ForEach((IEnumerable<int>) null, default, (item, cancelationToken) => Promise.Resolved()); });
             Assert.Throws<Proto.Promises.ArgumentNullException>(() => { ParallelAsync.ForEach(Enumerable.Range(1, 10), null); });
             Assert.Throws<Proto.Promises.ArgumentNullException>(() => { ParallelAsync.ForEach(Enumerable.Range(1, 10), default, null); });
         }
 #endif
+
+        [Test]
+        public void ParallelAsyncOptions_Invalid()
+        {
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => { new ParallelAsyncOptions() { MaxDegreeOfParallelism = -2 }; });
+        }
 
         private static IEnumerable<int> MarkStart(StrongBox<bool> box)
         {
