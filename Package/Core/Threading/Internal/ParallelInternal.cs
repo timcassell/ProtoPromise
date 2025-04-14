@@ -6,6 +6,7 @@
 
 #pragma warning disable IDE0251 // Make member 'readonly'
 
+using Proto.Promises.Threading;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -14,6 +15,58 @@ using System.Threading;
 
 namespace Proto.Promises
 {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode, StackTraceHidden]
+#endif
+    internal static partial class ParallelAsyncHelper
+    {
+        internal static Promise For<TParallelBody>(int fromIndex, int toIndex, TParallelBody body, ParallelAsyncOptions parallelAsyncOptions)
+            where TParallelBody : IFunc<int, CancelationToken, Promise>
+        {
+            // Just return immediately if from >= to.
+            if (fromIndex >= toIndex)
+            {
+                return Promise.Resolved();
+            }
+
+            var cancelationToken = parallelAsyncOptions.CancelationToken;
+            // One fast up-front check for cancelation before we start the whole operation.
+            if (cancelationToken.IsCancelationRequested)
+            {
+                return Promise.Canceled();
+            }
+
+            var promise = Internal.PromiseRefBase.PromiseParallelForEach<Internal.ParallelForEnumerator, TParallelBody, int>.GetOrCreate(
+                new Internal.ParallelForEnumerator(fromIndex, toIndex), body, cancelationToken, parallelAsyncOptions.EffectiveSynchronizationContext, parallelAsyncOptions.EffectiveMaxDegreeOfParallelism);
+            promise.MaybeLaunchWorker(true);
+            return new Promise(promise);
+        }
+    }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode, StackTraceHidden]
+#endif
+    internal static partial class ParallelAsyncHelper<TSource>
+    {
+        internal static Promise ForEach<TEnumerator, TParallelBody>(TEnumerator enumerator, TParallelBody body, ParallelAsyncOptions parallelAsyncOptions)
+            where TEnumerator : IEnumerator<TSource>
+            where TParallelBody : IFunc<TSource, CancelationToken, Promise>
+        {
+            var cancelationToken = parallelAsyncOptions.CancelationToken;
+            // One fast up-front check for cancelation before we start the whole operation.
+            if (cancelationToken.IsCancelationRequested)
+            {
+                enumerator.Dispose();
+                return Promise.Canceled();
+            }
+
+            var promise = Internal.PromiseRefBase.PromiseParallelForEach<Internal.ParallelForEachEnumerator<TEnumerator, TSource>, TParallelBody, TSource>.GetOrCreate(
+                new Internal.ParallelForEachEnumerator<TEnumerator, TSource>(enumerator), body, cancelationToken, parallelAsyncOptions.EffectiveSynchronizationContext, parallelAsyncOptions.EffectiveMaxDegreeOfParallelism);
+            promise.MaybeLaunchWorker(true);
+            return new Promise(promise);
+        }
+    }
+
     partial class Internal
     {
         internal interface IParallelEnumerator<T> : IDisposable

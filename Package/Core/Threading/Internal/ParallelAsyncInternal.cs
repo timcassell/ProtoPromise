@@ -4,6 +4,8 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Promises.Linq;
+using Proto.Promises.Threading;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -12,9 +14,29 @@ using System.Threading;
 
 namespace Proto.Promises
 {
+    internal static partial class ParallelAsyncHelper<TSource>
+    {
+        internal static Promise ForEach<TParallelBody>(AsyncEnumerable<TSource> source, TParallelBody body, ParallelAsyncOptions parallelAsyncOptions)
+            where TParallelBody : IFunc<TSource, CancelationToken, Promise>
+        {
+            var cancelationToken = parallelAsyncOptions.CancelationToken;
+            // One fast up-front check for cancelation before we start the whole operation.
+            if (cancelationToken.IsCancelationRequested)
+            {
+                return source.GetAsyncEnumerator().DisposeAsync()
+                    .Then(() => Promise.Canceled());
+            }
+
+            var promise = Internal.PromiseRefBase.PromiseParallelForEachAsync<TParallelBody, TSource>.GetOrCreate(
+                source, body, cancelationToken, parallelAsyncOptions.EffectiveSynchronizationContext, parallelAsyncOptions.EffectiveMaxDegreeOfParallelism);
+            promise.MaybeLaunchWorker(true);
+            return new Promise(promise);
+        }
+    }
+
     partial class Internal
     {
-        internal static Promise ParallelForEachAsync<TParallelBody, TSource>(Linq.AsyncEnumerable<TSource> enumerable, TParallelBody body, CancelationToken cancelationToken, SynchronizationContext synchronizationContext, int maxDegreeOfParallelism)
+        internal static Promise ParallelForEachAsync<TParallelBody, TSource>(AsyncEnumerable<TSource> enumerable, TParallelBody body, CancelationToken cancelationToken, SynchronizationContext synchronizationContext, int maxDegreeOfParallelism)
             where TParallelBody : IFunc<TSource, CancelationToken, Promise>
         {
             if (maxDegreeOfParallelism == -1)
@@ -30,8 +52,8 @@ namespace Proto.Promises
             // One fast up-front check for cancelation before we start the whole operation.
             if (cancelationToken.IsCancelationRequested)
             {
-                enumerable.GetAsyncEnumerator().DisposeAsync().Forget();
-                return Promise.Canceled();
+                return enumerable.GetAsyncEnumerator().DisposeAsync()
+                    .Then(() => Promise.Canceled());
             }
 
             var promise = PromiseRefBase.PromiseParallelForEachAsync<TParallelBody, TSource>.GetOrCreate(
@@ -50,7 +72,7 @@ namespace Proto.Promises
                 where TParallelBody : IFunc<TSource, CancelationToken, Promise>
             {
                 private TParallelBody _body;
-                private Linq.AsyncEnumerator<TSource> _asyncEnumerator;
+                private AsyncEnumerator<TSource> _asyncEnumerator;
                 private CancelationRegistration _externalCancelationRegistration;
                 // Use the CancelationRef directly instead of CancelationSource struct to save memory.
                 private CancelationRef _cancelationRef;
@@ -79,7 +101,7 @@ namespace Proto.Promises
                 }
 
                 internal static PromiseParallelForEachAsync<TParallelBody, TSource> GetOrCreate(
-                    Linq.AsyncEnumerable<TSource> enumerable, TParallelBody body, CancelationToken cancelationToken, SynchronizationContext synchronizationContext, int maxDegreeOfParallelism)
+                    AsyncEnumerable<TSource> enumerable, TParallelBody body, CancelationToken cancelationToken, SynchronizationContext synchronizationContext, int maxDegreeOfParallelism)
                 {
                     var promise = GetOrCreate();
                     promise.Reset();
