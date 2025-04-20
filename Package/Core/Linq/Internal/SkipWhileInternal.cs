@@ -56,7 +56,7 @@ namespace Proto.Promises
                                 {
                                     await writer.YieldAsync(_source.Current);
                                 }
-                                return;
+                                break;
                             }
                         }
 
@@ -109,7 +109,7 @@ namespace Proto.Promises
                                 {
                                     await writer.YieldAsync(_source.Current);
                                 }
-                                return;
+                                break;
                             }
                         }
 
@@ -163,7 +163,7 @@ namespace Proto.Promises
                                 {
                                     await writer.YieldAsync(_source.Current);
                                 }
-                                return;
+                                break;
                             }
                         }
 
@@ -217,7 +217,7 @@ namespace Proto.Promises
                                 {
                                     await writer.YieldAsync(_source.Current);
                                 }
-                                return;
+                                break;
                             }
                         }
 
@@ -270,7 +270,7 @@ namespace Proto.Promises
                                 {
                                     await writer.YieldAsync(_configuredSource.Current);
                                 }
-                                return;
+                                break;
                             }
                         }
 
@@ -317,14 +317,14 @@ namespace Proto.Promises
                         while (await _configuredSource.MoveNextAsync())
                         {
                             var element = _configuredSource.Current;
-                            if (!await _predicate.Invoke(element))
+                            if (!await _predicate.Invoke(element).ConfigureAwait(_configuredSource.ContinuationOptions))
                             {
                                 await writer.YieldAsync(element);
                                 while (await _configuredSource.MoveNextAsync())
                                 {
                                     await writer.YieldAsync(_configuredSource.Current);
                                 }
-                                return;
+                                break;
                             }
                         }
 
@@ -379,7 +379,7 @@ namespace Proto.Promises
                                 {
                                     await writer.YieldAsync(_configuredSource.Current);
                                 }
-                                return;
+                                break;
                             }
                         }
 
@@ -427,14 +427,14 @@ namespace Proto.Promises
                         while (await _configuredSource.MoveNextAsync())
                         {
                             var element = _configuredSource.Current;
-                            if (!await _predicate.Invoke(element, checked(++index)))
+                            if (!await _predicate.Invoke(element, checked(++index)).ConfigureAwait(_configuredSource.ContinuationOptions))
                             {
                                 await writer.YieldAsync(element);
                                 while (await _configuredSource.MoveNextAsync())
                                 {
                                     await writer.YieldAsync(_configuredSource.Current);
                                 }
-                                return;
+                                break;
                             }
                         }
 

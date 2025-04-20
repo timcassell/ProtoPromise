@@ -142,7 +142,7 @@ namespace Proto.Promises
                         maybeJoinedCancelationSource.Dispose();
                         try
                         {
-                            await _secondAsyncEnumerator.DisposeAsync();
+                            await _secondAsyncEnumerator.DisposeAsync().ConfigureAwait(_firstAsyncEnumerator.ContinuationOptions);
                         }
                         finally
                         {
@@ -151,11 +151,16 @@ namespace Proto.Promises
                     }
                 }
 
-                public Promise DisposeAsyncWithoutStart()
+                public async Promise DisposeAsyncWithoutStart()
                 {
-                    // We consume less memory by using .Finally instead of async/await.
-                    return _secondAsyncEnumerator.DisposeAsync()
-                        .Finally(_firstAsyncEnumerator, e => e.DisposeAsync());
+                    try
+                    {
+                        await _secondAsyncEnumerator.DisposeAsync().ConfigureAwait(_firstAsyncEnumerator.ContinuationOptions);
+                    }
+                    finally
+                    {
+                        await _firstAsyncEnumerator.DisposeAsync();
+                    }
                 }
             }
 
@@ -379,7 +384,7 @@ namespace Proto.Promises
                         maybeJoinedCancelationSource.Dispose();
                         try
                         {
-                            await _secondAsyncEnumerator.DisposeAsync();
+                            await _secondAsyncEnumerator.DisposeAsync().ConfigureAwait(_firstAsyncEnumerator.ContinuationOptions);
                         }
                         finally
                         {
@@ -388,11 +393,16 @@ namespace Proto.Promises
                     }
                 }
 
-                public Promise DisposeAsyncWithoutStart()
+                public async Promise DisposeAsyncWithoutStart()
                 {
-                    // We consume less memory by using .Finally instead of async/await.
-                    return _secondAsyncEnumerator.DisposeAsync()
-                        .Finally(_firstAsyncEnumerator, e => e.DisposeAsync());
+                    try
+                    {
+                        await _secondAsyncEnumerator.DisposeAsync().ConfigureAwait(_firstAsyncEnumerator.ContinuationOptions);
+                    }
+                    finally
+                    {
+                        await _firstAsyncEnumerator.DisposeAsync();
+                    }
                 }
             }
 
@@ -464,7 +474,7 @@ namespace Proto.Promises
                         maybeJoinedCancelationSource.Dispose();
                         try
                         {
-                            await _secondAsyncEnumerator.DisposeAsync();
+                            await _secondAsyncEnumerator.DisposeAsync().ConfigureAwait(_firstAsyncEnumerator.ContinuationOptions);
                         }
                         finally
                         {
@@ -473,11 +483,16 @@ namespace Proto.Promises
                     }
                 }
 
-                public Promise DisposeAsyncWithoutStart()
+                public async Promise DisposeAsyncWithoutStart()
                 {
-                    // We consume less memory by using .Finally instead of async/await.
-                    return _secondAsyncEnumerator.DisposeAsync()
-                        .Finally(_firstAsyncEnumerator, e => e.DisposeAsync());
+                    try
+                    {
+                        await _secondAsyncEnumerator.DisposeAsync().ConfigureAwait(_firstAsyncEnumerator.ContinuationOptions);
+                    }
+                    finally
+                    {
+                        await _firstAsyncEnumerator.DisposeAsync();
+                    }
                 }
             }
 

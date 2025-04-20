@@ -295,7 +295,7 @@ namespace Proto.Promises
                                 // The key selector function could have switched context, make sure we're on the configured context before invoking the comparer and accumulator.
                                 var key = await _keySelector.Invoke(element).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 var accNode = dict.GetOrCreateNode(key, out bool exists);
-                                accNode._value = await _accumulator.Invoke(exists ? accNode._value : _seed, element);
+                                accNode._value = await _accumulator.Invoke(exists ? accNode._value : _seed, element).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                             } while (await _configuredAsyncEnumerator.MoveNextAsync());
 
                             // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.
@@ -633,7 +633,7 @@ namespace Proto.Promises
                                     // The seed selector function could have switched context, make sure we're on the configured context before invoking the accumulator.
                                     acc = await _seedSelector.Invoke(key).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 }
-                                accNode._value = await _accumulator.Invoke(acc, element);
+                                accNode._value = await _accumulator.Invoke(acc, element).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                             } while (await _configuredAsyncEnumerator.MoveNextAsync());
 
                             // We don't need to check if node is null, it's guaranteed to be not null since we checked that the source enumerable had at least 1 element.

@@ -233,7 +233,7 @@ namespace Proto.Promises.Linq
                 var acc = asyncEnumerator.Current;
                 while (await asyncEnumerator.MoveNextAsync())
                 {
-                    acc = await asyncAccumulator.Invoke(acc, asyncEnumerator.Current);
+                    acc = await asyncAccumulator.Invoke(acc, asyncEnumerator.Current).ConfigureAwait(asyncEnumerator.ContinuationOptions);
                 }
                 return acc;
             }
@@ -458,7 +458,7 @@ namespace Proto.Promises.Linq
                 var acc = seed;
                 while (await asyncEnumerator.MoveNextAsync())
                 {
-                    acc = await asyncAccumulator.Invoke(acc, asyncEnumerator.Current);
+                    acc = await asyncAccumulator.Invoke(acc, asyncEnumerator.Current).ConfigureAwait(asyncEnumerator.ContinuationOptions);
                 }
                 return acc;
             }

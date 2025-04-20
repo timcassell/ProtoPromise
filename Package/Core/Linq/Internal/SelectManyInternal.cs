@@ -212,7 +212,7 @@ namespace Proto.Promises
                         {
                             var innerEnumerator = _selector.Invoke(_configuredAsyncEnumerator.Current).GetAsyncEnumerator(_configuredAsyncEnumerator._enumerator._target._cancelationToken);
                             enumerators.Add(innerEnumerator);
-                            while (await innerEnumerator.MoveNextAsync())
+                            while (await innerEnumerator.MoveNextAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions))
                             {
                                 await writer.YieldAsync(innerEnumerator.Current);
                             }
@@ -236,7 +236,7 @@ namespace Proto.Promises
                             {
                                 try
                                 {
-                                    await enumerators[i].DisposeAsync();
+                                    await enumerators[i].DisposeAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 }
                                 catch (Exception e)
                                 {
@@ -291,9 +291,9 @@ namespace Proto.Promises
                     {
                         while (await _configuredAsyncEnumerator.MoveNextAsync())
                         {
-                            var innerEnumerator = (await _selector.Invoke(_configuredAsyncEnumerator.Current)).GetAsyncEnumerator(_configuredAsyncEnumerator._enumerator._target._cancelationToken);
+                            var innerEnumerator = (await _selector.Invoke(_configuredAsyncEnumerator.Current).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions)).GetAsyncEnumerator(_configuredAsyncEnumerator._enumerator._target._cancelationToken);
                             enumerators.Add(innerEnumerator);
-                            while (await innerEnumerator.MoveNextAsync())
+                            while (await innerEnumerator.MoveNextAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions))
                             {
                                 await writer.YieldAsync(innerEnumerator.Current);
                             }
@@ -317,7 +317,7 @@ namespace Proto.Promises
                             {
                                 try
                                 {
-                                    await enumerators[i].DisposeAsync();
+                                    await enumerators[i].DisposeAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 }
                                 catch (Exception e)
                                 {
@@ -537,7 +537,7 @@ namespace Proto.Promises
                         {
                             var innerEnumerator = _selector.Invoke(_configuredAsyncEnumerator.Current, checked(i++)).GetAsyncEnumerator(cancelationToken);
                             enumerators.Add(innerEnumerator);
-                            while (await innerEnumerator.MoveNextAsync())
+                            while (await innerEnumerator.MoveNextAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions))
                             {
                                 await writer.YieldAsync(innerEnumerator.Current);
                             }
@@ -561,7 +561,7 @@ namespace Proto.Promises
                             {
                                 try
                                 {
-                                    await enumerators[i].DisposeAsync();
+                                    await enumerators[i].DisposeAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 }
                                 catch (Exception e)
                                 {
@@ -617,9 +617,9 @@ namespace Proto.Promises
                         int i = 0;
                         while (await _configuredAsyncEnumerator.MoveNextAsync())
                         {
-                            var innerEnumerator = (await _selector.Invoke(_configuredAsyncEnumerator.Current, checked(i++))).GetAsyncEnumerator(cancelationToken);
+                            var innerEnumerator = (await _selector.Invoke(_configuredAsyncEnumerator.Current, checked(i++)).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions)).GetAsyncEnumerator(cancelationToken);
                             enumerators.Add(innerEnumerator);
-                            while (await innerEnumerator.MoveNextAsync())
+                            while (await innerEnumerator.MoveNextAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions))
                             {
                                 await writer.YieldAsync(innerEnumerator.Current);
                             }
@@ -643,7 +643,7 @@ namespace Proto.Promises
                             {
                                 try
                                 {
-                                    await enumerators[i].DisposeAsync();
+                                    await enumerators[i].DisposeAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 }
                                 catch (Exception e)
                                 {
@@ -880,7 +880,7 @@ namespace Proto.Promises
                             var outerResult = _configuredAsyncEnumerator.Current;
                             var innerEnumerator = _collectionSelector.Invoke(_configuredAsyncEnumerator.Current).GetAsyncEnumerator(_configuredAsyncEnumerator._enumerator._target._cancelationToken);
                             enumerators.Add(innerEnumerator);
-                            while (await innerEnumerator.MoveNextAsync())
+                            while (await innerEnumerator.MoveNextAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions))
                             {
                                 await writer.YieldAsync(_resultSelector.Invoke(outerResult, innerEnumerator.Current));
                             }
@@ -904,7 +904,7 @@ namespace Proto.Promises
                             {
                                 try
                                 {
-                                    await enumerators[i].DisposeAsync();
+                                    await enumerators[i].DisposeAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 }
                                 catch (Exception e)
                                 {
@@ -964,11 +964,11 @@ namespace Proto.Promises
                         while (await _configuredAsyncEnumerator.MoveNextAsync())
                         {
                             var outerResult = _configuredAsyncEnumerator.Current;
-                            var innerEnumerator = (await _collectionSelector.Invoke(outerResult)).GetAsyncEnumerator(_configuredAsyncEnumerator._enumerator._target._cancelationToken);
+                            var innerEnumerator = (await _collectionSelector.Invoke(outerResult).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions)).GetAsyncEnumerator(_configuredAsyncEnumerator._enumerator._target._cancelationToken);
                             enumerators.Add(innerEnumerator);
-                            while (await innerEnumerator.MoveNextAsync())
+                            while (await innerEnumerator.MoveNextAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions))
                             {
-                                await writer.YieldAsync(await _resultSelector.Invoke(outerResult, innerEnumerator.Current));
+                                await writer.YieldAsync(await _resultSelector.Invoke(outerResult, innerEnumerator.Current).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions));
                             }
                         }
 
@@ -990,7 +990,7 @@ namespace Proto.Promises
                             {
                                 try
                                 {
-                                    await enumerators[i].DisposeAsync();
+                                    await enumerators[i].DisposeAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 }
                                 catch (Exception e)
                                 {
@@ -1225,7 +1225,7 @@ namespace Proto.Promises
                             var outerResult = _configuredAsyncEnumerator.Current;
                             var innerEnumerator = _collectionSelector.Invoke(outerResult, checked(i++)).GetAsyncEnumerator(cancelationToken);
                             enumerators.Add(innerEnumerator);
-                            while (await innerEnumerator.MoveNextAsync())
+                            while (await innerEnumerator.MoveNextAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions))
                             {
                                 await writer.YieldAsync(_resultSelector.Invoke(outerResult, innerEnumerator.Current));
                             }
@@ -1249,7 +1249,7 @@ namespace Proto.Promises
                             {
                                 try
                                 {
-                                    await enumerators[i].DisposeAsync();
+                                    await enumerators[i].DisposeAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 }
                                 catch (Exception e)
                                 {
@@ -1310,11 +1310,11 @@ namespace Proto.Promises
                         while (await _configuredAsyncEnumerator.MoveNextAsync())
                         {
                             var outerResult = _configuredAsyncEnumerator.Current;
-                            var innerEnumerator = (await _collectionSelector.Invoke(outerResult, checked(i++))).GetAsyncEnumerator(cancelationToken);
+                            var innerEnumerator = (await _collectionSelector.Invoke(outerResult, checked(i++)).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions)).GetAsyncEnumerator(cancelationToken);
                             enumerators.Add(innerEnumerator);
                             while (await innerEnumerator.MoveNextAsync())
                             {
-                                await writer.YieldAsync(await _resultSelector.Invoke(outerResult, innerEnumerator.Current));
+                                await writer.YieldAsync(await _resultSelector.Invoke(outerResult, innerEnumerator.Current).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions));
                             }
                         }
 
@@ -1336,7 +1336,7 @@ namespace Proto.Promises
                             {
                                 try
                                 {
-                                    await enumerators[i].DisposeAsync();
+                                    await enumerators[i].DisposeAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 }
                                 catch (Exception e)
                                 {

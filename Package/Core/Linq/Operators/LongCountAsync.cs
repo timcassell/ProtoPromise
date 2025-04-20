@@ -266,7 +266,7 @@ namespace Proto.Promises.Linq
                 long count = 0;
                 while (await asyncEnumerator.MoveNextAsync())
                 {
-                    if (await predicate.Invoke(asyncEnumerator.Current))
+                    if (await predicate.Invoke(asyncEnumerator.Current).ConfigureAwait(asyncEnumerator.ContinuationOptions))
                     {
                         checked
                         {

@@ -184,7 +184,7 @@ namespace Proto.Promises
                     {
                         while (await _configuredAsyncEnumerator.MoveNextAsync())
                         {
-                            await writer.YieldAsync(await _selector.Invoke(_configuredAsyncEnumerator.Current));
+                            await writer.YieldAsync(await _selector.Invoke(_configuredAsyncEnumerator.Current).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions));
                         }
 
                         await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
@@ -376,7 +376,7 @@ namespace Proto.Promises
                         int i = 0;
                         while (await _configuredAsyncEnumerator.MoveNextAsync())
                         {
-                            await writer.YieldAsync(await _selector.Invoke(_configuredAsyncEnumerator.Current, checked(i++)));
+                            await writer.YieldAsync(await _selector.Invoke(_configuredAsyncEnumerator.Current, checked(i++)).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions));
                         }
 
                         await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);

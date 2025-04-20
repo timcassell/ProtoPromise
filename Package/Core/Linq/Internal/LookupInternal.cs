@@ -382,7 +382,7 @@ namespace Proto.Promises
                         // In case the key selector changed context, we need to make sure we're on the configured context before invoking the comparer and elementSelector.
                         var key = await keySelector.Invoke(item).ConfigureAwait(configuredAsyncEnumerator.ContinuationOptions);
                         var group = lookup.GetOrCreateGrouping(key, false);
-                        var element = await elementSelector.Invoke(item);
+                        var element = await elementSelector.Invoke(item).ConfigureAwait(configuredAsyncEnumerator.ContinuationOptions);
                         group.Add(element);
                     }
                 }
