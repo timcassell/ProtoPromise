@@ -309,7 +309,7 @@ namespace Proto.Promises
                         lookup.Dispose();
                         try
                         {
-                            await _innerAsyncEnumerator.DisposeAsync();
+                            await _innerAsyncEnumerator.DisposeAsync().ConfigureAwait(_configuredOuterAsyncEnumerator.ContinuationOptions);
                         }
                         finally
                         {
@@ -318,11 +318,16 @@ namespace Proto.Promises
                     }
                 }
 
-                public Promise DisposeAsyncWithoutStart()
+                public async Promise DisposeAsyncWithoutStart()
                 {
-                    // We consume less memory by using .Finally instead of async/await.
-                    return _innerAsyncEnumerator.DisposeAsync()
-                        .Finally(_configuredOuterAsyncEnumerator, e => e.DisposeAsync());
+                    try
+                    {
+                        await _innerAsyncEnumerator.DisposeAsync().ConfigureAwait(_configuredOuterAsyncEnumerator.ContinuationOptions);
+                    }
+                    finally
+                    {
+                        await _configuredOuterAsyncEnumerator.DisposeAsync();
+                    }
                 }
             }
 
@@ -420,7 +425,7 @@ namespace Proto.Promises
                         lookup.Dispose();
                         try
                         {
-                            await _innerAsyncEnumerator.DisposeAsync();
+                            await _innerAsyncEnumerator.DisposeAsync().ConfigureAwait(_configuredOuterAsyncEnumerator.ContinuationOptions);
                         }
                         finally
                         {
@@ -429,11 +434,16 @@ namespace Proto.Promises
                     }
                 }
 
-                public Promise DisposeAsyncWithoutStart()
+                public async Promise DisposeAsyncWithoutStart()
                 {
-                    // We consume less memory by using .Finally instead of async/await.
-                    return _innerAsyncEnumerator.DisposeAsync()
-                        .Finally(_configuredOuterAsyncEnumerator, e => e.DisposeAsync());
+                    try
+                    {
+                        await _innerAsyncEnumerator.DisposeAsync().ConfigureAwait(_configuredOuterAsyncEnumerator.ContinuationOptions);
+                    }
+                    finally
+                    {
+                        await _configuredOuterAsyncEnumerator.DisposeAsync();
+                    }
                 }
             }
 

@@ -541,7 +541,7 @@ namespace Proto.Promises
                                 var key = await _keySelector.Invoke(item).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 var group = lookup.GetOrCreateGrouping(key, true);
 
-                                var element = await _elementSelector.Invoke(item);
+                                var element = await _elementSelector.Invoke(item).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 group.Add(element);
                             } while (await _configuredAsyncEnumerator.MoveNextAsync());
 

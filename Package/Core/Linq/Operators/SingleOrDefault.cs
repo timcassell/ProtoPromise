@@ -629,11 +629,11 @@ namespace Proto.Promises.Linq
                 while (await asyncEnumerator.MoveNextAsync())
                 {
                     var result = asyncEnumerator.Current;
-                    if (await predicate.Invoke(result))
+                    if (await predicate.Invoke(result).ConfigureAwait(asyncEnumerator.ContinuationOptions))
                     {
                         while (await asyncEnumerator.MoveNextAsync())
                         {
-                            if (await predicate.Invoke(asyncEnumerator.Current))
+                            if (await predicate.Invoke(asyncEnumerator.Current).ConfigureAwait(asyncEnumerator.ContinuationOptions))
                             {
                                 throw new InvalidOperationException("source contains more than 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
                             }

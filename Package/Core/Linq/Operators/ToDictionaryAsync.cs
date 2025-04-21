@@ -281,7 +281,7 @@ namespace Proto.Promises.Linq
                     while (await asyncEnumerator.MoveNextAsync())
                     {
                         var element = asyncEnumerator.Current;
-                        dictionary.Add(await keySelector.Invoke(element), element);
+                        dictionary.Add(await keySelector.Invoke(element).ConfigureAwait(asyncEnumerator.ContinuationOptions), element);
                     }
                     return dictionary;
                 }
@@ -1294,7 +1294,7 @@ namespace Proto.Promises.Linq
                     while (await asyncEnumerator.MoveNextAsync())
                     {
                         var element = asyncEnumerator.Current;
-                        dictionary.Add(await keySelector.Invoke(element), elementSelector.Invoke(element));
+                        dictionary.Add(await keySelector.Invoke(element).ConfigureAwait(asyncEnumerator.ContinuationOptions), elementSelector.Invoke(element));
                     }
                     return dictionary;
                 }
@@ -1366,7 +1366,7 @@ namespace Proto.Promises.Linq
                     while (await asyncEnumerator.MoveNextAsync())
                     {
                         var element = asyncEnumerator.Current;
-                        dictionary.Add(keySelector.Invoke(element), await elementSelector.Invoke(element));
+                        dictionary.Add(keySelector.Invoke(element), await elementSelector.Invoke(element).ConfigureAwait(asyncEnumerator.ContinuationOptions));
                     }
                     return dictionary;
                 }
@@ -1390,7 +1390,7 @@ namespace Proto.Promises.Linq
                     while (await asyncEnumerator.MoveNextAsync())
                     {
                         var element = asyncEnumerator.Current;
-                        dictionary.Add(await keySelector.Invoke(element), await elementSelector.Invoke(element));
+                        dictionary.Add(await keySelector.Invoke(element).ConfigureAwait(asyncEnumerator.ContinuationOptions), await elementSelector.Invoke(element).ConfigureAwait(asyncEnumerator.ContinuationOptions));
                     }
                     return dictionary;
                 }

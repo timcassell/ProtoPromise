@@ -589,7 +589,7 @@ namespace Proto.Promises.Linq
                 while (await asyncEnumerator.MoveNextAsync())
                 {
                     var item = asyncEnumerator.Current;
-                    if (await predicate.Invoke(item))
+                    if (await predicate.Invoke(item).ConfigureAwait(asyncEnumerator.ContinuationOptions))
                     {
                         hasLast = true;
                         last = item;

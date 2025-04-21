@@ -122,7 +122,7 @@ namespace Proto.Promises.Linq
                 }
                 finally
                 {
-                    await second.DisposeAsync();
+                    await second.DisposeAsync().ConfigureAwait(first.ContinuationOptions);
                 }
             }
         }

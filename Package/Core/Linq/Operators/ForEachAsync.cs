@@ -317,7 +317,7 @@ namespace Proto.Promises.Linq
             {
                 while (await asyncEnumerator.MoveNextAsync())
                 {
-                    await action.Invoke(asyncEnumerator.Current);
+                    await action.Invoke(asyncEnumerator.Current).ConfigureAwait(asyncEnumerator.ContinuationOptions);
                 }
             }
             finally
@@ -425,7 +425,7 @@ namespace Proto.Promises.Linq
                 int index = 0;
                 while (await asyncEnumerator.MoveNextAsync())
                 {
-                    await action.Invoke(asyncEnumerator.Current, checked(index++));
+                    await action.Invoke(asyncEnumerator.Current, checked(index++)).ConfigureAwait(asyncEnumerator.ContinuationOptions);
                 }
             }
             finally

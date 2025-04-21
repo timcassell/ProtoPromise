@@ -622,7 +622,7 @@ namespace Proto.Promises.Linq
                     }
 
                     TSource value = asyncEnumerator.Current;
-                    TKey key = await keySelector.Invoke(value);
+                    TKey key = await keySelector.Invoke(value).ConfigureAwait(asyncEnumerator.ContinuationOptions);
 
                     // Check if nullable type. This check is eliminated by the JIT.
                     if (default(TKey) == null)
@@ -640,7 +640,7 @@ namespace Proto.Promises.Linq
                                 }
 
                                 value = asyncEnumerator.Current;
-                                key = await keySelector.Invoke(value);
+                                key = await keySelector.Invoke(value).ConfigureAwait(asyncEnumerator.ContinuationOptions);
                             }
                             while (key == null);
                         }
@@ -648,7 +648,7 @@ namespace Proto.Promises.Linq
                         while (await asyncEnumerator.MoveNextAsync())
                         {
                             TSource nextValue = asyncEnumerator.Current;
-                            TKey nextKey = await keySelector.Invoke(nextValue);
+                            TKey nextKey = await keySelector.Invoke(nextValue).ConfigureAwait(asyncEnumerator.ContinuationOptions);
                             if (nextKey != null && comparer.Compare(nextKey, key) > 0)
                             {
                                 key = nextKey;
@@ -661,7 +661,7 @@ namespace Proto.Promises.Linq
                         while (await asyncEnumerator.MoveNextAsync())
                         {
                             TSource nextValue = asyncEnumerator.Current;
-                            TKey nextKey = await keySelector.Invoke(nextValue);
+                            TKey nextKey = await keySelector.Invoke(nextValue).ConfigureAwait(asyncEnumerator.ContinuationOptions);
                             if (comparer.Compare(nextKey, key) > 0)
                             {
                                 key = nextKey;
