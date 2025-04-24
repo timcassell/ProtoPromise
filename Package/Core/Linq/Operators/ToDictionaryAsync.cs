@@ -17,7 +17,7 @@ namespace Proto.Promises.Linq
         /// </summary>
         /// <typeparam name="TKey">The type of the keys from elements of <paramref name="source"/>.</typeparam>
         /// <typeparam name="TValue">The type of the values from elements of <paramref name="source"/>.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare keys.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A <see cref="Promise{T}"/> whose result will be a <see cref="Dictionary{TKey, TValue}"/> that contains keys and values from the <paramref name="source"/>.</returns>
@@ -50,7 +50,7 @@ namespace Proto.Promises.Linq
         /// </summary>
         /// <typeparam name="TKey">The type of the keys from elements of <paramref name="source"/>.</typeparam>
         /// <typeparam name="TValue">The type of the values from elements of <paramref name="source"/>.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare keys.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A <see cref="Promise{T}"/> whose result will be a <see cref="Dictionary{TKey, TValue}"/> that contains keys and values from the <paramref name="source"/>.</returns>
@@ -84,7 +84,7 @@ namespace Proto.Promises.Linq
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare keys.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
@@ -108,7 +108,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TCapture">The type of the captured value that will be passed to <paramref name="keySelector"/>.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="captureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare keys.</param>
@@ -132,7 +132,7 @@ namespace Proto.Promises.Linq
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="keySelector">An async function  to extract a key from each element.</param>
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare keys.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
@@ -156,7 +156,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TCapture">The type of the captured value that will be passed to <paramref name="keySelector"/>.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="captureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">An async function  to extract a key from each element.</param>
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare keys.</param>
@@ -180,7 +180,7 @@ namespace Proto.Promises.Linq
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
-        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare keys.</param>
         /// <returns>A <see cref="Promise{T}"/> whose result will be a <see cref="Dictionary{TKey, TValue}"/> that contains values of type <typeparamref name="TSource"/> selected from the source sequence.</returns>
@@ -203,7 +203,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TCapture">The type of the captured value that will be passed to <paramref name="keySelector"/>.</typeparam>
-        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="captureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare keys.</param>
@@ -226,7 +226,7 @@ namespace Proto.Promises.Linq
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
-        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="keySelector">An async function  to extract a key from each element.</param>
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare keys.</param>
         /// <returns>A <see cref="Promise{T}"/> whose result will be a <see cref="Dictionary{TKey, TValue}"/> that contains values of type <typeparamref name="TSource"/> selected from the source sequence.</returns>
@@ -249,7 +249,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TCapture">The type of the captured value that will be passed to <paramref name="keySelector"/>.</typeparam>
-        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="captureValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">An async function  to extract a key from each element.</param>
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare keys.</param>
@@ -366,7 +366,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="elementSelector">A transform function to produce a result element value from each element.</param>
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare keys.</param>
@@ -394,7 +394,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TKeyCapture">The type of the captured value that will be passed to <paramref name="keySelector"/> that will be passed to <paramref name="keySelector"/>.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="captureKeyValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="elementSelector">A transform function to produce a result element value from each element.</param>
@@ -422,7 +422,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="keySelector">An async function  to extract a key from each element.</param>
         /// <param name="elementSelector">A transform function to produce a result element value from each element.</param>
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare keys.</param>
@@ -450,7 +450,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TKeyCapture">The type of the captured value that will be passed to <paramref name="keySelector"/>.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="captureKeyValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">An async function  to extract a key from each element.</param>
         /// <param name="elementSelector">A transform function to produce a result element value from each element.</param>
@@ -478,7 +478,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="elementSelector">A transform function to produce a result element value from each element.</param>
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare keys.</param>
@@ -505,7 +505,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TKeyCapture">The type of the captured value that will be passed to <paramref name="keySelector"/>.</typeparam>
-        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="captureKeyValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="elementSelector">A transform function to produce a result element value from each element.</param>
@@ -532,7 +532,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="keySelector">An async function  to extract a key from each element.</param>
         /// <param name="elementSelector">A transform function to produce a result element value from each element.</param>
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare keys.</param>
@@ -559,7 +559,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TKeyCapture">The type of the captured value that will be passed to <paramref name="keySelector"/>.</typeparam>
-        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="captureKeyValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">An async function  to extract a key from each element.</param>
         /// <param name="elementSelector">A transform function to produce a result element value from each element.</param>
@@ -587,7 +587,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TElementCapture">The type of the captured value that will be passed to <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="captureElementValue">The extra value that will be passed to <paramref name="elementSelector"/>.</param>
         /// <param name="elementSelector">A transform function to produce a result element value from each element.</param>
@@ -617,7 +617,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TKeyCapture">The type of the captured value that will be passed to <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElementCapture">The type of the captured value that will be passed to <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="captureKeyValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="captureElementValue">The extra value that will be passed to <paramref name="elementSelector"/>.</param>
@@ -647,7 +647,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TElementCapture">The type of the captured value that will be passed to <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="keySelector">An async function  to extract a key from each element.</param>
         /// <param name="captureElementValue">The extra value that will be passed to <paramref name="elementSelector"/>.</param>
         /// <param name="elementSelector">A transform function to produce a result element value from each element.</param>
@@ -677,7 +677,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TKeyCapture">The type of the captured value that will be passed to <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElementCapture">The type of the captured value that will be passed to <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="captureKeyValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">An async function  to extract a key from each element.</param>
         /// <param name="captureElementValue">The extra value that will be passed to <paramref name="elementSelector"/>.</param>
@@ -707,7 +707,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TElementCapture">The type of the captured value that will be passed to <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="captureElementValue">The extra value that will be passed to <paramref name="elementSelector"/>.</param>
         /// <param name="elementSelector">A transform function to produce a result element value from each element.</param>
@@ -736,7 +736,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TKeyCapture">The type of the captured value that will be passed to <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElementCapture">The type of the captured value that will be passed to <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="captureKeyValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="captureElementValue">The extra value that will be passed to <paramref name="elementSelector"/>.</param>
@@ -765,7 +765,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TElementCapture">The type of the captured value that will be passed to <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="keySelector">An async function  to extract a key from each element.</param>
         /// <param name="captureElementValue">The extra value that will be passed to <paramref name="elementSelector"/>.</param>
         /// <param name="elementSelector">A transform function to produce a result element value from each element.</param>
@@ -794,7 +794,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TKeyCapture">The type of the captured value that will be passed to <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElementCapture">The type of the captured value that will be passed to <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="captureKeyValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">An async function  to extract a key from each element.</param>
         /// <param name="captureElementValue">The extra value that will be passed to <paramref name="elementSelector"/>.</param>
@@ -822,7 +822,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="elementSelector">An async transform function to produce a result element value from each element.</param>
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare keys.</param>
@@ -850,7 +850,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TKeyCapture">The type of the captured value that will be passed to <paramref name="keySelector"/>.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="captureKeyValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="elementSelector">An async transform function to produce a result element value from each element.</param>
@@ -878,7 +878,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="keySelector">An async function  to extract a key from each element.</param>
         /// <param name="elementSelector">An async transform function to produce a result element value from each element.</param>
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare keys.</param>
@@ -906,7 +906,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TKeyCapture">The type of the captured value that will be passed to <paramref name="keySelector"/>.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="captureKeyValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">An async function  to extract a key from each element.</param>
         /// <param name="elementSelector">An async transform function to produce a result element value from each element.</param>
@@ -934,7 +934,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="elementSelector">An async transform function to produce a result element value from each element.</param>
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare keys.</param>
@@ -961,7 +961,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TKeyCapture">The type of the captured value that will be passed to <paramref name="keySelector"/>.</typeparam>
-        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="captureKeyValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="elementSelector">An async transform function to produce a result element value from each element.</param>
@@ -988,7 +988,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="keySelector">An async function  to extract a key from each element.</param>
         /// <param name="elementSelector">An async transform function to produce a result element value from each element.</param>
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare keys.</param>
@@ -1015,7 +1015,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TKeyCapture">The type of the captured value that will be passed to <paramref name="keySelector"/>.</typeparam>
-        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="captureKeyValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">An async function  to extract a key from each element.</param>
         /// <param name="elementSelector">An async transform function to produce a result element value from each element.</param>
@@ -1043,7 +1043,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TElementCapture">The type of the captured value that will be passed to <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="captureElementValue">The extra value that will be passed to <paramref name="elementSelector"/>.</param>
         /// <param name="elementSelector">An async transform function to produce a result element value from each element.</param>
@@ -1073,7 +1073,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TKeyCapture">The type of the captured value that will be passed to <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElementCapture">The type of the captured value that will be passed to <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="captureKeyValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="captureElementValue">The extra value that will be passed to <paramref name="elementSelector"/>.</param>
@@ -1103,7 +1103,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TElementCapture">The type of the captured value that will be passed to <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="keySelector">An async function  to extract a key from each element.</param>
         /// <param name="captureElementValue">The extra value that will be passed to <paramref name="elementSelector"/>.</param>
         /// <param name="elementSelector">An async transform function to produce a result element value from each element.</param>
@@ -1133,7 +1133,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TKeyCapture">The type of the captured value that will be passed to <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElementCapture">The type of the captured value that will be passed to <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="captureKeyValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">An async function  to extract a key from each element.</param>
         /// <param name="captureElementValue">The extra value that will be passed to <paramref name="elementSelector"/>.</param>
@@ -1163,7 +1163,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TElementCapture">The type of the captured value that will be passed to <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="captureElementValue">The extra value that will be passed to <paramref name="elementSelector"/>.</param>
         /// <param name="elementSelector">An async transform function to produce a result element value from each element.</param>
@@ -1192,7 +1192,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TKeyCapture">The type of the captured value that will be passed to <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElementCapture">The type of the captured value that will be passed to <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="captureKeyValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="captureElementValue">The extra value that will be passed to <paramref name="elementSelector"/>.</param>
@@ -1221,7 +1221,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TElementCapture">The type of the captured value that will be passed to <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="keySelector">An async function  to extract a key from each element.</param>
         /// <param name="captureElementValue">The extra value that will be passed to <paramref name="elementSelector"/>.</param>
         /// <param name="elementSelector">An async transform function to produce a result element value from each element.</param>
@@ -1250,7 +1250,7 @@ namespace Proto.Promises.Linq
         /// <typeparam name="TElement">The type of the key returned by <paramref name="elementSelector"/>.</typeparam>
         /// <typeparam name="TKeyCapture">The type of the captured value that will be passed to <paramref name="keySelector"/>.</typeparam>
         /// <typeparam name="TElementCapture">The type of the captured value that will be passed to <paramref name="elementSelector"/>.</typeparam>
-        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="configuredSource">A configured async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> from.</param>
         /// <param name="captureKeyValue">The extra value that will be passed to <paramref name="keySelector"/>.</param>
         /// <param name="keySelector">An async function  to extract a key from each element.</param>
         /// <param name="captureElementValue">The extra value that will be passed to <paramref name="elementSelector"/>.</param>
