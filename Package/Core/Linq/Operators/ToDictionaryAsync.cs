@@ -12,6 +12,72 @@ namespace Proto.Promises.Linq
 {
     partial class AsyncEnumerable
     {
+        /// <summary>
+        /// Creates a <see cref="Dictionary{TKey, TValue}"/> from an async-enumerable sequence using the specified <paramref name="comparer"/> to compare keys.
+        /// </summary>
+        /// <typeparam name="TKey">The type of the keys from elements of <paramref name="source"/>.</typeparam>
+        /// <typeparam name="TValue">The type of the values from elements of <paramref name="source"/>.</typeparam>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare keys.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
+        /// <returns>A <see cref="Promise{T}"/> whose result will be a <see cref="Dictionary{TKey, TValue}"/> that contains keys and values from the <paramref name="source"/>.</returns>
+        /// <exception cref="ArgumentException"><paramref name="source"/> contains one or more duplicate keys.</exception>
+        public static Promise<Dictionary<TKey, TValue>> ToDictionaryAsync<TKey, TValue>(this AsyncEnumerable<(TKey Key, TValue Value)> source, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
+        {
+            return Impl(source.GetAsyncEnumerator(cancelationToken));
+
+            async Promise<Dictionary<TKey, TValue>> Impl(AsyncEnumerator<(TKey, TValue)> asyncEnumerator)
+            {
+                try
+                {
+                    var dictionary = new Dictionary<TKey, TValue>(comparer);
+                    while (await asyncEnumerator.MoveNextAsync())
+                    {
+                        var (key, value) = asyncEnumerator.Current;
+                        dictionary.Add(key, value);
+                    }
+                    return dictionary;
+                }
+                finally
+                {
+                    await asyncEnumerator.DisposeAsync();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Creates a <see cref="Dictionary{TKey, TValue}"/> from an async-enumerable sequence using the specified <paramref name="comparer"/> to compare keys.
+        /// </summary>
+        /// <typeparam name="TKey">The type of the keys from elements of <paramref name="source"/>.</typeparam>
+        /// <typeparam name="TValue">The type of the values from elements of <paramref name="source"/>.</typeparam>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="Dictionary{TKey, TValue}"/> for.</param>
+        /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare keys.</param>
+        /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
+        /// <returns>A <see cref="Promise{T}"/> whose result will be a <see cref="Dictionary{TKey, TValue}"/> that contains keys and values from the <paramref name="source"/>.</returns>
+        /// <exception cref="ArgumentException"><paramref name="source"/> contains one or more duplicate keys.</exception>
+        public static Promise<Dictionary<TKey, TValue>> ToDictionaryAsync<TKey, TValue>(this AsyncEnumerable<KeyValuePair<TKey, TValue>> source, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
+        {
+            return Impl(source.GetAsyncEnumerator(cancelationToken));
+
+            async Promise<Dictionary<TKey, TValue>> Impl(AsyncEnumerator<KeyValuePair<TKey, TValue>> asyncEnumerator)
+            {
+                try
+                {
+                    var dictionary = new Dictionary<TKey, TValue>(comparer);
+                    while (await asyncEnumerator.MoveNextAsync())
+                    {
+                        var kvp = asyncEnumerator.Current;
+                        dictionary.Add(kvp.Key, kvp.Value);
+                    }
+                    return dictionary;
+                }
+                finally
+                {
+                    await asyncEnumerator.DisposeAsync();
+                }
+            }
+        }
+
         #region KeySelector
         /// <summary>
         /// Creates a <see cref="Dictionary{TKey, TValue}"/> from an async-enumerable sequence using the specified <paramref name="comparer"/> to compare keys.
