@@ -429,6 +429,54 @@ namespace ProtoPromiseTests.APIs.Linq
         }
 
         [Test]
+        public void ToDictionary_Tuple()
+        {
+            Promise.Run(async () =>
+            {
+                var xs = new[] { 42, 25, 39 };
+                var res = xs.Select(x => (x, x)).ToAsyncEnumerable().ToDictionaryAsync();
+                CollectionAssert.AreEqual(xs.ToDictionary(x => x), await res);
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void ToDictionary_Tuple_DuplicateKeyThrows()
+        {
+            Promise.Run(async () =>
+            {
+                var xs = new[] { 42, 25, 39, 25 };
+                var res = xs.Select(x => (x, x)).ToAsyncEnumerable().ToDictionaryAsync();
+                await TestHelper.AssertThrowsAsync<ArgumentException>(() => res);
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void ToDictionary_KVP()
+        {
+            Promise.Run(async () =>
+            {
+                var xs = new[] { 42, 25, 39 };
+                var res = xs.Select(x => new KeyValuePair<int, int>(x, x)).ToAsyncEnumerable().ToDictionaryAsync();
+                CollectionAssert.AreEqual(xs.ToDictionary(x => x), await res);
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
+        public void ToDictionary_KVP_DuplicateKeyThrows()
+        {
+            Promise.Run(async () =>
+            {
+                var xs = new[] { 42, 25, 39, 25 };
+                var res = xs.Select(x => new KeyValuePair<int, int>(x, x)).ToAsyncEnumerable().ToDictionaryAsync();
+                await TestHelper.AssertThrowsAsync<ArgumentException>(() => res);
+            }, SynchronizationOption.Synchronous)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+        }
+
+        [Test]
         public void ToDictionary_FromArray_KeySelector(
             [Values] bool configured,
             [Values] bool asyncKey,
