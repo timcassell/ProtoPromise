@@ -16,7 +16,7 @@ namespace Proto.Promises.Linq
         /// Creates a list from an async-enumerable sequence.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a list for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="List{T}"/> from.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A <see cref="Promise{T}"/> whose result will be a list that contains the elements from the source sequence.</returns>
         public static Promise<List<TSource>> ToListAsync<TSource>(this AsyncEnumerable<TSource> source, CancelationToken cancelationToken = default)
