@@ -31,13 +31,16 @@ namespace ProtoPromiseTests.APIs.Linq
             TestHelper.Cleanup();
         }
 
-        [Test]
-        public void VariousValues_ContainsAllInputValues(
-            [Values(
-            new int[0],
-            new int[] { 1 },
-            new int[] { 2, 4, 8 },
-            new int[] { -1, 2, 5, 6, 7, 8 })] int[] values)
+        public static IEnumerable<object[]> VariousInputs()
+        {
+            yield return new object[] { new int[0] };
+            yield return new object[] { new int[] { 1 } };
+            yield return new object[] { new int[] { 2, 4, 8 } };
+            yield return new object[] { new int[] { -1, 2, 5, 6, 7, 8 } };
+        }
+
+        [Test, TestCaseSource(nameof(VariousInputs))]
+        public void VariousValues_ContainsAllInputValues(int[] values)
         {
             Promise.Run(async () =>
             {
