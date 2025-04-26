@@ -43,8 +43,6 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TResult>>(0);
                     try
                     {
@@ -123,8 +121,6 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TResult>>(0);
                     try
                     {
@@ -203,8 +199,6 @@ namespace Proto.Promises
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
                     var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TResult>>(0);
                     try
                     {
@@ -284,8 +278,6 @@ namespace Proto.Promises
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
                     var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TResult>>(0);
                     try
                     {
@@ -365,8 +357,6 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TResult>>(0);
                     try
                     {
@@ -446,8 +436,6 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TResult>>(0);
                     try
                     {
@@ -527,8 +515,6 @@ namespace Proto.Promises
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
                     var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TResult>>(0);
                     try
                     {
@@ -609,8 +595,6 @@ namespace Proto.Promises
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
                     var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TResult>>(0);
                     try
                     {
@@ -700,8 +684,6 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TCollection>>(0);
                     try
                     {
@@ -785,8 +767,6 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TCollection>>(0);
                     try
                     {
@@ -870,8 +850,6 @@ namespace Proto.Promises
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
                     var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TCollection>>(0);
                     try
                     {
@@ -956,8 +934,6 @@ namespace Proto.Promises
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
                     var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TCollection>>(0);
                     try
                     {
@@ -1042,8 +1018,6 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TCollection>>(0);
                     try
                     {
@@ -1128,8 +1102,6 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TCollection>>(0);
                     try
                     {
@@ -1214,8 +1186,6 @@ namespace Proto.Promises
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
                     var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TCollection>>(0);
                     try
                     {
@@ -1301,8 +1271,6 @@ namespace Proto.Promises
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
                     var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TCollection>>(0);
                     try
                     {
