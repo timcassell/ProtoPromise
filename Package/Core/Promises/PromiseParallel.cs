@@ -18,9 +18,9 @@ namespace Proto.Promises
         /// <param name="fromIndex">The start index, inclusive.</param>
         /// <param name="toIndex">The end index, exclusive.</param>
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
-        /// <param name="cancelationToken">A cancelation token that may be used to cancel the for each operation.</param>
+        /// <param name="cancelationToken">A cancelation token that may be used to cancel the for operation.</param>
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
-        /// <returns>A promise that represents the entire for each operation.</returns>
+        /// <returns>A promise that represents the entire for operation.</returns>
         [Obsolete("Prefer ParallelAsync.For"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelFor(int fromIndex, int toIndex, Func<int, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
@@ -35,9 +35,9 @@ namespace Proto.Promises
         /// <param name="toIndex">The end index, exclusive.</param>
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
         /// <param name="synchronizationContext">The synchronization context on which the iterations will be ran. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
-        /// <param name="cancelationToken">A cancelation token that may be used to cancel the for each operation.</param>
+        /// <param name="cancelationToken">A cancelation token that may be used to cancel the for operation.</param>
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
-        /// <returns>A promise that represents the entire for each operation.</returns>
+        /// <returns>A promise that represents the entire for operation.</returns>
         [Obsolete("Prefer ParallelAsync.For"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelFor(int fromIndex, int toIndex, Func<int, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
@@ -52,9 +52,9 @@ namespace Proto.Promises
         /// <param name="toIndex">The end index, exclusive.</param>
         /// <param name="captureValue">The captured value that will be passed to the <paramref name="body"/>.</param>
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
-        /// <param name="cancelationToken">A cancelation token that may be used to cancel the for each operation.</param>
+        /// <param name="cancelationToken">A cancelation token that may be used to cancel the for operation.</param>
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
-        /// <returns>A promise that represents the entire for each operation.</returns>
+        /// <returns>A promise that represents the entire for operation.</returns>
         [Obsolete("Prefer ParallelAsync.For"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelFor<TCapture>(int fromIndex, int toIndex, TCapture captureValue, Func<int, TCapture, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
@@ -70,9 +70,9 @@ namespace Proto.Promises
         /// <param name="captureValue">The captured value that will be passed to the <paramref name="body"/>.</param>
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
         /// <param name="synchronizationContext">The synchronization context on which the iterations will be ran. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
-        /// <param name="cancelationToken">A cancelation token that may be used to cancel the for each operation.</param>
+        /// <param name="cancelationToken">A cancelation token that may be used to cancel the for operation.</param>
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
-        /// <returns>A promise that represents the entire for each operation.</returns>
+        /// <returns>A promise that represents the entire for operation.</returns>
         [Obsolete("Prefer ParallelAsync.For"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelFor<TCapture>(int fromIndex, int toIndex, TCapture captureValue, Func<int, TCapture, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)

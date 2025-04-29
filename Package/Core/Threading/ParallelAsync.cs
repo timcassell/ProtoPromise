@@ -32,7 +32,7 @@ namespace Proto.Promises.Threading
         /// <param name="toIndex">The end index, exclusive.</param>
         /// <param name="parallelAsyncOptions">An object that configures the behavior of this operation.</param>
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
-        /// <returns>A promise that represents the entire for each operation.</returns>
+        /// <returns>A promise that represents the entire for operation.</returns>
         public static Promise For(int fromIndex, int toIndex, ParallelAsyncOptions parallelAsyncOptions, Func<int, CancelationToken, Promise> body)
         {
             ValidateArgument(body, nameof(body), 1);
@@ -44,7 +44,7 @@ namespace Proto.Promises.Threading
         /// <param name="toIndex">The end index, exclusive.</param>
         /// <param name="captureValue">The captured value that will be passed to the <paramref name="body"/>.</param>
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
-        /// <returns>A promise that represents the entire for each operation.</returns>
+        /// <returns>A promise that represents the entire for operation.</returns>
         public static Promise For<TCapture>(int fromIndex, int toIndex, TCapture captureValue, Func<TCapture, int, CancelationToken, Promise> body)
             => For(fromIndex, toIndex, default, captureValue, body);
 
@@ -54,7 +54,7 @@ namespace Proto.Promises.Threading
         /// <param name="parallelAsyncOptions">An object that configures the behavior of this operation.</param>
         /// <param name="captureValue">The captured value that will be passed to the <paramref name="body"/>.</param>
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
-        /// <returns>A promise that represents the entire for each operation.</returns>
+        /// <returns>A promise that represents the entire for operation.</returns>
         public static Promise For<TCapture>(int fromIndex, int toIndex, ParallelAsyncOptions parallelAsyncOptions, TCapture captureValue, Func<TCapture, int, CancelationToken, Promise> body)
         {
             ValidateArgument(body, nameof(body), 1);
