@@ -243,7 +243,7 @@ namespace Proto.Promises
                 var spinner = new SpinWait();
                 while (State == Promise.State.Pending)
                 {
-                    spinner.SpinOnce();
+                    spinner.SpinOnce(sleep1Threshold: -1);
                 }
             }
 
