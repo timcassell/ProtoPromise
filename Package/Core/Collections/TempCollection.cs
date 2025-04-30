@@ -212,20 +212,20 @@ namespace Proto.Promises.Collections
         Internal.CausalityTrace Internal.ITraceable.Trace { get; set; }
 #endif
 
-        internal bool _isDisposed;
+        internal bool IsDisposed { get; private set; }
 
         internal TempCollectionDisposedChecker()
         {
+#if PROTO_PROMISE_DEVELOPER_MODE
             Internal.SetCreatedStacktraceInternal(this, 2);
+#endif
             Internal.MarkNotInPool(this);
         }
 
-        ~TempCollectionDisposedChecker()
+        internal void Dispose()
         {
-            if (!_isDisposed)
-            {
-                Internal.ReportRejection(new UnreleasedObjectException("A TempCollectionDisposedChecker was garbage collected without being disposed."), this);
-            }
+            IsDisposed = true;
+            Internal.Discard(this);
         }
     }
 #endif // PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -235,7 +235,7 @@ namespace Proto.Promises.Collections
         internal T[] _items;
         internal int _count;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-        internal readonly TempCollectionDisposedChecker _disposedChecker;
+        internal TempCollectionDisposedChecker _disposedChecker;
 
         internal void ValidateIndex(int index)
         {
@@ -248,7 +248,7 @@ namespace Proto.Promises.Collections
 
         internal void ValidateAccess()
         {
-            if (_disposedChecker == null || _disposedChecker._isDisposed)
+            if (_disposedChecker == null || _disposedChecker.IsDisposed)
             {
                 throw new InvalidOperationException("TempCollection is invalid.", Internal.GetFormattedStacktrace(2));
             }
@@ -309,8 +309,7 @@ namespace Proto.Promises.Collections
         {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             ValidateAccess();
-            _disposedChecker._isDisposed = true;
-            Internal.Discard(_disposedChecker);
+            _disposedChecker.Dispose();
 #endif
             Internal.ClearReferences(_items, 0, _count);
             ArrayPool<T>.Shared.Return(_items, false);
