@@ -56,7 +56,7 @@ namespace Proto.Promises
                             return;
                         }
 
-                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true))
+                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer))
                         {
                             do
                             {
@@ -136,7 +136,7 @@ namespace Proto.Promises
                             return;
                         }
 
-                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true))
+                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer))
                         {
                             do
                             {
@@ -214,7 +214,7 @@ namespace Proto.Promises
                             return;
                         }
 
-                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true))
+                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer))
                         {
                             do
                             {
@@ -294,7 +294,7 @@ namespace Proto.Promises
                             return;
                         }
 
-                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true))
+                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer))
                         {
                             do
                             {
@@ -372,7 +372,7 @@ namespace Proto.Promises
                             return;
                         }
 
-                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true))
+                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer))
                         {
                             do
                             {
@@ -453,7 +453,7 @@ namespace Proto.Promises
                             return;
                         }
 
-                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true))
+                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer))
                         {
                             do
                             {
@@ -532,7 +532,7 @@ namespace Proto.Promises
                             return;
                         }
 
-                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true))
+                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer))
                         {
                             do
                             {
@@ -614,7 +614,7 @@ namespace Proto.Promises
                             return;
                         }
 
-                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer, true))
+                        using (var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(_comparer))
                         {
                             do
                             {

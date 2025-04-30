@@ -57,7 +57,7 @@ namespace Proto.Promises
                     _innerAsyncEnumerator._target._cancelationToken = cancelationToken;
 
                     // We could do await Lookup<TKey, TInner>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
-                    LookupImpl<TKey, TInner, TEqualityComparer> lookup = new LookupImpl<TKey, TInner, TEqualityComparer>(_comparer, true);
+                    LookupImpl<TKey, TInner, TEqualityComparer> lookup = new LookupImpl<TKey, TInner, TEqualityComparer>(_comparer);
                     var emptyInnerElements = new TempCollectionBuilder<TInner>(0);
                     try
                     {
@@ -71,9 +71,6 @@ namespace Proto.Promises
                                 lookup.GetOrCreateGrouping(key, true).Add(item);
                             }
                         }
-                        // We don't dispose the enumerators until the owner is disposed.
-                        // This is in case either enumerator contains TempCollection that they will still be valid until the owner is disposed.
-
                         while (await _outerAsyncEnumerator.MoveNextAsync())
                         {
                             var outer = _outerAsyncEnumerator.Current;
@@ -162,7 +159,7 @@ namespace Proto.Promises
                     _innerAsyncEnumerator._target._cancelationToken = cancelationToken;
 
                     // We could do await Lookup<TKey, TInner>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
-                    LookupImpl<TKey, TInner, TEqualityComparer> lookup = new LookupImpl<TKey, TInner, TEqualityComparer>(_comparer, true);
+                    LookupImpl<TKey, TInner, TEqualityComparer> lookup = new LookupImpl<TKey, TInner, TEqualityComparer>(_comparer);
                     var emptyInnerElements = new TempCollectionBuilder<TInner>(0);
                     try
                     {
@@ -176,9 +173,6 @@ namespace Proto.Promises
                                 lookup.GetOrCreateGrouping(key, true).Add(item);
                             }
                         }
-                        // We don't dispose the enumerators until the owner is disposed.
-                        // This is in case either enumerator contains TempCollection that they will still be valid until the owner is disposed.
-
                         while (await _outerAsyncEnumerator.MoveNextAsync())
                         {
                             var outer = _outerAsyncEnumerator.Current;
@@ -268,7 +262,7 @@ namespace Proto.Promises
                     _innerAsyncEnumerator._target._cancelationToken = enumerableRef._cancelationToken;
 
                     // We could do await Lookup<TKey, TInner>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
-                    LookupImpl<TKey, TInner, TEqualityComparer> lookup = new LookupImpl<TKey, TInner, TEqualityComparer>(_comparer, true);
+                    LookupImpl<TKey, TInner, TEqualityComparer> lookup = new LookupImpl<TKey, TInner, TEqualityComparer>(_comparer);
                     var emptyInnerElements = new TempCollectionBuilder<TInner>(0);
                     try
                     {
@@ -283,9 +277,6 @@ namespace Proto.Promises
                                 lookup.GetOrCreateGrouping(key, true).Add(item);
                             }
                         }
-                        // We don't dispose the enumerators until the owner is disposed.
-                        // This is in case either enumerator contains TempCollection that they will still be valid until the owner is disposed.
-
                         while (await _configuredOuterAsyncEnumerator.MoveNextAsync())
                         {
                             var outer = _configuredOuterAsyncEnumerator.Current;
@@ -381,7 +372,7 @@ namespace Proto.Promises
                     _innerAsyncEnumerator._target._cancelationToken = enumerableRef._cancelationToken;
 
                     // We could do await Lookup<TKey, TInner>.GetOrCreateAsync(...), but it's more efficient to do it manually so we won't allocate the Lookup class and a separate async state machine.
-                    LookupImpl<TKey, TInner, TEqualityComparer> lookup = new LookupImpl<TKey, TInner, TEqualityComparer>(_comparer, true);
+                    LookupImpl<TKey, TInner, TEqualityComparer> lookup = new LookupImpl<TKey, TInner, TEqualityComparer>(_comparer);
                     var emptyInnerElements = new TempCollectionBuilder<TInner>(0);
                     try
                     {
@@ -397,9 +388,6 @@ namespace Proto.Promises
                                 lookup.GetOrCreateGrouping(key, true).Add(item);
                             }
                         }
-                        // We don't dispose the enumerators until the owner is disposed.
-                        // This is in case either enumerator contains TempCollection that they will still be valid until the owner is disposed.
-
                         while (await _configuredOuterAsyncEnumerator.MoveNextAsync())
                         {
                             var outer = _configuredOuterAsyncEnumerator.Current;

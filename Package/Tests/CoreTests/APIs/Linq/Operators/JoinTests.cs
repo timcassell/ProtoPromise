@@ -21,7 +21,7 @@ using System.Threading;
 
 namespace ProtoPromiseTests.APIs.Linq
 {
-    public static class JoinHelper
+    public static partial class JoinHelper
     {
         // We test all the different overloads.
         public static AsyncEnumerable<(TOuter Outer, TInner Inner)> Join<TOuter, TInner, TKey>(this AsyncEnumerable<TOuter> outer,
