@@ -13,7 +13,7 @@ namespace Proto.Promises.CompilerServices
     /// <typeparam name="T">The type of values to enumerate.</typeparam>
     public readonly struct ConfiguredAsyncEnumerable<T>
     {
-        private readonly AsyncEnumerable<T> _enumerable;
+        internal readonly AsyncEnumerable<T> _enumerable;
         private readonly CancelationToken _cancelationToken;
         private readonly ContinuationOptions _continuationOptions;
 
@@ -35,9 +35,7 @@ namespace Proto.Promises.CompilerServices
             get => _cancelationToken;
         }
 
-        internal ConfiguredAsyncEnumerable(AsyncEnumerable<T> enumerable,
-            CancelationToken cancelationToken,
-            ContinuationOptions continuationOptions)
+        internal ConfiguredAsyncEnumerable(AsyncEnumerable<T> enumerable, CancelationToken cancelationToken, ContinuationOptions continuationOptions)
         {
             _enumerable = enumerable;
             _cancelationToken = cancelationToken;
@@ -86,6 +84,9 @@ namespace Proto.Promises.CompilerServices
         /// <returns>An enumerator for the <see cref="ConfiguredAsyncEnumerable{T}"/>.</returns>
         public Enumerator GetAsyncEnumerator()
             => new Enumerator(_enumerable.GetAsyncEnumerator(_cancelationToken), _continuationOptions);
+
+        internal ConfiguredAsyncEnumerable<T> WithMoved(AsyncEnumerable<T> enumerable)
+            => new ConfiguredAsyncEnumerable<T>(enumerable, _cancelationToken, _continuationOptions);
 
         /// <summary>
         /// Provides an awaitable async enumerator that enables cancelable iteration and configured awaits.

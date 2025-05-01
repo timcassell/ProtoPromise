@@ -64,6 +64,17 @@ namespace Proto.Promises.Linq.Sources
         }
 
         /// <summary>
+        /// Moves the <paramref name="source"/>, such that the previous object is no longer valid for enumeration.
+        /// </summary>
+        /// <typeparam name="T">The type of the elements in the async-enumerable sequence.</typeparam>
+        /// <param name="source">The <see cref="ConfiguredAsyncEnumerable{T}"/> to move.</param>
+        /// <returns>The moved <paramref name="source"/>.</returns>
+        /// <exception cref="ArgumentException"><paramref name="source"/> is a default value.</exception>
+        /// <exception cref="InvalidOperationException">The <paramref name="source"/> is not valid for enumeration.</exception>
+        public static ConfiguredAsyncEnumerable<T> Move<T>(ConfiguredAsyncEnumerable<T> source)
+            => source.WithMoved(Move(source._enumerable));
+
+        /// <summary>
         /// Returns an empty async-enumerable sequence that wraps the <paramref name="source"/> for disposal.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the async-enumerable sequence.</typeparam>
@@ -71,7 +82,7 @@ namespace Proto.Promises.Linq.Sources
         /// <returns>An async-enumerable sequence with no elements that wraps <paramref name="source"/> for disposal.</returns>
         /// <exception cref="ArgumentException"><paramref name="source"/> is a default value.</exception>
         /// <exception cref="InvalidOperationException">The <paramref name="source"/> is not valid for enumeration.</exception>
-        public static AsyncEnumerable<TSource> EmptyWithDispose<TSource>(AsyncEnumerable<TSource> source)
+        internal static AsyncEnumerable<TSource> EmptyWithDispose<TSource>(AsyncEnumerable<TSource> source)
         {
             var target = source._target;
             if (target is null)
