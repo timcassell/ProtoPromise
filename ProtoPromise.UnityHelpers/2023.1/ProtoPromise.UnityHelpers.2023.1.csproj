@@ -2,35 +2,22 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.1</TargetFrameworks>
-    <Version>3.3.0</Version>
     <!-- The language version Unity supports in 2023.1. -->
     <LangVersion>9</LangVersion>
     <!--In case any IL2CPP issues need to be resolved like in the core library.-->
     <DefineConstants>$(DefineConstants);ENABLE_IL2CPP;UNITY_2023_1_OR_NEWER</DefineConstants>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
-  </PropertyGroup>
-
-  <PropertyGroup>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\..\Package\UnityHelpers\2023.1\**/*.cs" />
-    <Compile Remove="nuget\**" />
-    <EmbeddedResource Remove="nuget\**" />
-    <None Remove="nuget\**" />
+    <Compile Include="..\..\Package\UnityHelpers\2023.1\**\*.cs" />
     <None Remove="UnityEngine.dll" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\ProtoPromise\ProtoPromise.csproj">
-      <Private>false</Private>
-    </ProjectReference>
-  </ItemGroup>
-
-  <ItemGroup>
+    <ProjectReference Include="..\..\ProtoPromise\ProtoPromise.csproj" />
     <Reference Include="UnityEngine">
       <HintPath>UnityEngine.dll</HintPath>
       <Private>false</Private>

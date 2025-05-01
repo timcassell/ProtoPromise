@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\ProtoPromise\ProtoPromise.csproj" />
     <ProjectReference Include="..\ProtoPromise.Analyzer\ProtoPromise.Analyzer.csproj" />
+    <None Remove="readme.md" />
   </ItemGroup>
 
 </Project>

@@ -1,14 +1,14 @@
 name: Publish nuget package
+
 on:
   push:
     tags:
     - "v[0-9]+.[0-9]+.[0-9]+"
 
 jobs:
-  build:
-    # Setup-nuget fails on latest. https://github.com/NuGet/setup-nuget/issues/168
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
+  verify-version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -18,25 +18,11 @@ jobs:
           git fetch --no-tags --prune --depth=1 origin +refs/heads/*:refs/remotes/origin/*
           git branch --remote --contains | grep origin/master
 
-      - name: Set VERSION variable from tag
-        id: set_tag
+      - name: Verify version
         run: |
           VERSION=${GITHUB_REF/refs\/tags\/v/}
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Verify version in csproj and package.json
-        run: |
-          if ! grep -q "<Version>${VERSION}</Version>" ProtoPromise/ProtoPromise.csproj; then
-            echo "version ${VERSION} not found in ProtoPromise.csproj"
-            exit 1
-          fi
-          if ! grep -q "<Version>${VERSION}</Version>" ProtoPromise.UnityHelpers/2018.3/ProtoPromise.UnityHelpers.2018.3.csproj; then
-            echo "version ${VERSION} not found in ProtoPromise.UnityHelpers.2018.3.csproj"
-            exit 1
-          fi
-          if ! grep -q "<Version>${VERSION}</Version>" ProtoPromise.UnityHelpers/2023.1/ProtoPromise.UnityHelpers.2023.1.csproj; then
-            echo "version ${VERSION} not found in ProtoPromise.UnityHelpers.2023.1.csproj"
+          if ! grep -q "<Version>${VERSION}</Version>" Directory.Build.props; then
+            echo "version ${VERSION} not found in Directory.Build.props"
             exit 1
           fi
           if ! grep -q "\"version\": \"${VERSION}\"" Package/package.json; then
@@ -44,72 +30,26 @@ jobs:
             exit 1
           fi
 
-      - name: Get release notes
-        uses: cardinalby/git-get-release-action@v1
-        id: get_release
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          tag: v${{ steps.set_tag.outputs.version }}
+  build-packages:
+    needs: [validate-version]
+    uses: ./.github/workflows/build-packages.yml
 
-      - name: Overwrite ProtoPromise nuspec version
-        run: sed -i "{s/{VERSION}/${{ steps.set_tag.outputs.version }}/g}" ProtoPromise/nuget/ProtoPromise.nuspec
-
-      - name: Overwrite ProtoPromise.UnityHelpers.2018.3 nuspec version
-        run: sed -i "{s/{VERSION}/${{ steps.set_tag.outputs.version }}/g}" ProtoPromise.UnityHelpers/2018.3/nuget/ProtoPromise.UnityHelpers.2018.3.nuspec
-
-      - name: Overwrite ProtoPromise.UnityHelpers.2023.1 nuspec version
-        run: sed -i "{s/{VERSION}/${{ steps.set_tag.outputs.version }}/g}" ProtoPromise.UnityHelpers/2023.1/nuget/ProtoPromise.UnityHelpers.2023.1.nuspec
-
-      - name: Overwrite ProtoPromise nuspec release notes
-        env:
-          RELEASE_NOTES: ${{ steps.get_release.outputs.body }}
-        run: |
-          export REPLACE_RELEASE_NOTES=$(echo "${RELEASE_NOTES}" | sed -e ':a' -e 'N' -e '$!ba' -e 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g; s/'"'"'/\&#39;/g')
-          perl -l -p -i -e 's/{RELEASE_NOTES}/$ENV{REPLACE_RELEASE_NOTES}/g' ProtoPromise/nuget/ProtoPromise.nuspec
-
-      - name: Print nuspecs
-        run: |
-          cat ProtoPromise/nuget/ProtoPromise.nuspec
-          cat ProtoPromise.UnityHelpers/2018.3/nuget/ProtoPromise.UnityHelpers.2018.3.nuspec
-          cat ProtoPromise.UnityHelpers/2023.1/nuget/ProtoPromise.UnityHelpers.2023.1.nuspec
-
+  build:
+    needs: [build-packages]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.X
 
-      - name: Setup nuget
-        uses: nuget/setup-nuget@v2
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
         with:
-          nuget-api-key: ${{ secrets.NUGET_API_KEY }}
+          name: packages
 
-      - name: Build Debug
-        run: dotnet build -c Debug /p:IsNugetBuild=true
-
-      - name: Build Release
-        run: dotnet build -c Release /p:IsNugetBuild=true
-
-      - name: Pack ProtoPromise
-        run: nuget pack ProtoPromise/nuget/ProtoPromise.nuspec
-
-      - name: Pack Unity Helpers 2018.3
-        run: nuget pack ProtoPromise.UnityHelpers/2018.3/nuget/ProtoPromise.UnityHelpers.2018.3.nuspec
-
-      - name: Pack Unity Helpers 2023.1
-        run: nuget pack ProtoPromise.UnityHelpers/2023.1/nuget/ProtoPromise.UnityHelpers.2023.1.nuspec
-
-      - name: Push ProtoPromise
-        run: dotnet nuget push ProtoPromise.${VERSION}.nupkg --api-key ${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json
-        env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-
-      - name: Push Unity Helpers 2018.3
-        run: dotnet nuget push ProtoPromise.UnityHelpers.2018.3.${VERSION}.nupkg --api-key ${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json
-        env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-
-      - name: Push Unity Helpers 2023.1
-        run: dotnet nuget push ProtoPromise.UnityHelpers.2023.1.${VERSION}.nupkg --api-key ${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json
+      - name: Push Packages
+        run: dotnet nuget push "*.nupkg" --api-key ${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
