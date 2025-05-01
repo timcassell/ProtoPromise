@@ -1,0 +1,35 @@
+<Project>
+  <PropertyGroup>
+    <Version>3.4.0</Version>
+
+    <!--Set true to help debug internal promise code (allows the debugger to step into the code and includes internal stacktraces).-->
+    <!--This is set from command line during CI tests.-->
+    <DeveloperMode>false</DeveloperMode>
+
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Remove unnecessary suppression -->
+    <NoWarn>$(NoWarn);IDE0079</NoWarn>
+
+    <PackageVersion>$(Version)</PackageVersion>
+    <Authors>Tim Cassell</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/timcassell/ProtoPromise</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/timcassell/ProtoPromise</RepositoryUrl>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <Copyright>Copyright ©2025 Tim Cassell</Copyright>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="readme.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(DeveloperMode)'=='true'">
+    <DefineConstants>$(DefineConstants);TRACE;PROTO_PROMISE_DEVELOPER_MODE</DefineConstants>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>portable</DebugType>
+    <Optimize>false</Optimize>
+  </PropertyGroup>
+</Project>

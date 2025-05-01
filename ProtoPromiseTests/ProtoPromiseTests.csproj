@@ -4,23 +4,10 @@
     <TargetFrameworks>net8.0;net48</TargetFrameworks>
     <IsPackable>false</IsPackable>
     <LangVersion>9</LangVersion>
-    <!-- Set from command line -->
-    <DeveloperMode>false</DeveloperMode>
     <!-- GC and finalizers are non-deterministic, even if we call GC.WaitForPendingFinalizers(),
     so we cannot rely on them for unit testing in CI. This will only be enabled for local testing. -->
     <TestGC>false</TestGC>
-  </PropertyGroup>
-
-  <PropertyGroup>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <RunAnalyzers>false</RunAnalyzers>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(DeveloperMode)'=='true'">
-    <DefineConstants>$(DefineConstants);TRACE;PROTO_PROMISE_DEVELOPER_MODE</DefineConstants>
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>portable</DebugType>
-    <Optimize>false</Optimize>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TestGC)'=='true'">

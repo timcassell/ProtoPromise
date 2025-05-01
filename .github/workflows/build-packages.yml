@@ -1,0 +1,41 @@
+name: Build Packages
+
+on: [pull_request, workflow_call]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.X
+
+      - name: Build Debug
+        run: dotnet build -c Debug
+
+      - name: Build Release
+        run: dotnet build -c Release
+
+      - name: Pack ProtoPromise
+        run: dotnet pack ProtoPromise/ProtoPromise.csproj --no-build --output ./
+
+      - name: Pack Unity Helpers 2018.3
+        run: dotnet pack ProtoPromise.UnityHelpers/2018.3/ProtoPromise.UnityHelpers.2018.3.csproj --no-build --output ./
+
+      - name: Pack Unity Helpers 2023.1
+        run: dotnet pack ProtoPromise.UnityHelpers/2023.1/ProtoPromise.UnityHelpers.2023.1.csproj --no-build --output ./
+        
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: ./*.nupkg
