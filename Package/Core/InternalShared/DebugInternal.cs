@@ -168,7 +168,7 @@ namespace Proto.Promises
             {
                 throw new InvalidArgumentException(argName,
                     "Promise is invalid. Call `GetRetainer()` if you intend to await multiple times.",
-                    Internal.GetFormattedStacktrace(skipFrames + 1));
+                    GetFormattedStacktrace(skipFrames + 1));
             }
         }
 
@@ -176,6 +176,12 @@ namespace Proto.Promises
         {
             const string CausalitySplitMessage = "--- End of stack trace from the previous location where the exception was thrown ---";
 
+            // .Net 6 has built-in [StackTraceHidden], so we don't need to manually filter the stack frames.
+            // And StackFrame.GetMethod produces IL2026 AOT trimmer warning which is not an issue on older runtimes.
+#if NET6_0_OR_GREATER
+            var causalityTrace = stackTraces
+                .Select(stackTrace => stackTrace.ToString());
+#else
             var causalityTrace = stackTraces
                 .Select(stackTrace => stackTrace.GetFrames()
                     .Where(frame =>
@@ -189,25 +195,20 @@ namespace Proto.Promises
                     // Create a new StackTrace to get proper formatting.
                     .Select(frame => new StackTrace(frame).ToString())
                 )
-                .Select(filteredStackTrace => string.Join(
-                    Environment.NewLine,
-                    filteredStackTrace
-                    )
-                );
-
-            return string.Join(
-                Environment.NewLine + CausalitySplitMessage + Environment.NewLine,
-                causalityTrace);
-        }
-
-        private static bool IsNonUserCode(System.Reflection.MemberInfo memberInfo)
-        {
-            if (memberInfo == null)
+                .Select(stackTrace => string.Join(Environment.NewLine, stackTrace));
+            
+            bool IsNonUserCode(System.Reflection.MemberInfo memberInfo)
             {
-                return false;
+                if (memberInfo == null)
+                {
+                    return false;
+                }
+                return memberInfo.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
+                    || IsNonUserCode(memberInfo.DeclaringType);
             }
-            return memberInfo.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
-                || IsNonUserCode(memberInfo.DeclaringType);
+#endif
+
+            return string.Join($"{Environment.NewLine}{CausalitySplitMessage}{Environment.NewLine}", causalityTrace);
         }
 
         partial interface ITraceable
