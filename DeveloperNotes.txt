@@ -38,4 +38,4 @@ For the ProtoPromise.Analyzer package, if changes were made:
 
 For debugging internal library code:
 
-By default, ProtoPromise types are marked with the `[DebuggerNonUserCode]` and `[StackTraceHidden]`, making the debugger skip over the library code instead of stepping into it. To disable this behavior and to get more detailed stack traces, define the compiler symbol `PROTO_PROMISE_DEVELOPER_MODE` in Unity, or change `<DeveloperMode>` to `true` in the non-unity csproj.
+By default, ProtoPromise types are marked with the `[DebuggerNonUserCode]` and `[StackTraceHidden]`, making the debugger skip over the library code instead of stepping into it. To disable this behavior and to get more detailed stack traces, define the compiler symbol `PROTO_PROMISE_DEVELOPER_MODE` in Unity, or change `<DeveloperMode>` to `true` in Directory.Build.props.

@@ -31,6 +31,9 @@ This library was built to work in all C#/.Net ecosystems, including Unity, Mono,
 - ProtoPromise v2 supports .Net 3.5 or newer (Unity 5.5 or newer).
 
 See [Guides](https://github.com/timcassell/ProtoPromise/tree/master/Docs/Guides) for information on how to install and use this library.
+See [ChangeLog](https://github.com/timcassell/ProtoPromise/tree/master/Docs/Changelog) for the history of changes.
+
+## Benchmarks
 
 Compare performance to other async libraries:
 
@@ -49,19 +52,6 @@ Compare performance to other async libraries:
 | ValueTask    | True    | 498.24 ns |     968 B |     40 B |
 
 See the [C# Asynchronous Benchmarks Repo](https://github.com/timcassell/CSharpAsynchronousBenchmarks) for a full performance comparison.
-
-## Latest Updates
-
-## v3.3.0 - January 27, 2025
-
-- Added `Proto.Timers` and time-based APIs.
-- Added `CancelationToken(bool)` constructor and `CancelationToken.RegisterWithoutImmediateInvoke` APIs.
-- Added `PromiseYielder.Initialize()` API to help with early code running before Unity can auto initialize.
-- Fixed Unity initialization not being fully initialized before user `Awake` methods run.
-- Reduced memory and increased speed.
-- Deprecated several APIs.
-
-See [ChangeLog](https://github.com/timcassell/ProtoPromise/tree/master/Docs/Changelog) for the full changelog.
 
 ## Acknowledgements
 
