@@ -31,7 +31,7 @@ jobs:
           fi
 
   build-packages:
-    needs: [validate-version]
+    needs: [verify-version]
     uses: ./.github/workflows/build-packages.yml
 
   build:
