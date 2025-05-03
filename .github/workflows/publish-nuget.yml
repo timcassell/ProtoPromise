@@ -34,7 +34,7 @@ jobs:
     needs: [verify-version]
     uses: ./.github/workflows/build-packages.yml
 
-  build:
+  push-packages:
     needs: [build-packages]
     runs-on: ubuntu-latest
     timeout-minutes: 10
