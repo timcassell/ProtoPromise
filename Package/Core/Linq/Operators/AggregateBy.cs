@@ -23,7 +23,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate>(this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector,
@@ -43,7 +43,7 @@ namespace Proto.Promises.Linq
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer>(this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector,
@@ -57,9 +57,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -75,7 +75,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, TKey> keySelector,
@@ -97,7 +97,7 @@ namespace Proto.Promises.Linq
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, TKey> keySelector,
@@ -111,9 +111,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -129,7 +129,7 @@ namespace Proto.Promises.Linq
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector,
@@ -151,7 +151,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector,
@@ -165,9 +165,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -185,7 +185,7 @@ namespace Proto.Promises.Linq
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, TKey> keySelector,
@@ -209,7 +209,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, TKey> keySelector,
@@ -223,9 +223,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -239,7 +239,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">An asynchronous function to extract a key from each element.</param>
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate>(this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector,
@@ -259,7 +259,7 @@ namespace Proto.Promises.Linq
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer>(this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector,
@@ -273,9 +273,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -291,7 +291,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">An asynchronous function to extract a key from each element.</param>
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
@@ -313,7 +313,7 @@ namespace Proto.Promises.Linq
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
@@ -327,9 +327,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -345,7 +345,7 @@ namespace Proto.Promises.Linq
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector,
@@ -367,7 +367,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector,
@@ -381,9 +381,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -401,7 +401,7 @@ namespace Proto.Promises.Linq
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
@@ -425,7 +425,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
@@ -439,9 +439,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -455,7 +455,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -476,7 +476,7 @@ namespace Proto.Promises.Linq
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -491,9 +491,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -509,7 +509,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -532,7 +532,7 @@ namespace Proto.Promises.Linq
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -547,9 +547,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -565,7 +565,7 @@ namespace Proto.Promises.Linq
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -588,7 +588,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -603,9 +603,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -623,7 +623,7 @@ namespace Proto.Promises.Linq
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -648,7 +648,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -663,9 +663,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -679,7 +679,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">An asynchronous function to extract a key from each element.</param>
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -700,7 +700,7 @@ namespace Proto.Promises.Linq
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -715,9 +715,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -733,7 +733,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">An asynchronous function to extract a key from each element.</param>
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -756,7 +756,7 @@ namespace Proto.Promises.Linq
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -771,9 +771,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -789,7 +789,7 @@ namespace Proto.Promises.Linq
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -812,7 +812,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -827,9 +827,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -847,7 +847,7 @@ namespace Proto.Promises.Linq
         /// <param name="seed">The initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -872,7 +872,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -887,9 +887,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
                 seed,
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
         #endregion SingleSeed
@@ -905,7 +905,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate>(this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector,
@@ -925,7 +925,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer>(this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector,
@@ -940,9 +940,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -958,7 +958,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, TKey> keySelector,
@@ -980,7 +980,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, TKey> keySelector,
@@ -995,9 +995,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -1013,7 +1013,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector,
@@ -1035,7 +1035,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector,
@@ -1050,9 +1050,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -1070,7 +1070,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, TKey> keySelector,
@@ -1094,7 +1094,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, TKey> keySelector,
@@ -1109,9 +1109,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -1125,7 +1125,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">An asynchronous function to extract a key from each element.</param>
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate>(this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector,
@@ -1145,7 +1145,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer>(this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector,
@@ -1160,9 +1160,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -1178,7 +1178,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">An asynchronous function to extract a key from each element.</param>
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
@@ -1200,7 +1200,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
@@ -1215,9 +1215,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -1233,7 +1233,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector,
@@ -1255,7 +1255,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector,
@@ -1270,9 +1270,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -1290,7 +1290,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
@@ -1314,7 +1314,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
@@ -1329,9 +1329,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -1345,7 +1345,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -1366,7 +1366,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -1382,9 +1382,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -1400,7 +1400,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">A function to extract a key from each element.</param>
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -1423,7 +1423,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -1439,9 +1439,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -1457,7 +1457,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -1480,7 +1480,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -1496,9 +1496,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -1516,7 +1516,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -1541,7 +1541,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -1557,9 +1557,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -1573,7 +1573,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">An asynchronous function to extract a key from each element.</param>
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -1594,7 +1594,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -1610,9 +1610,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -1628,7 +1628,7 @@ namespace Proto.Promises.Linq
         /// <param name="keySelector">An asynchronous function to extract a key from each element.</param>
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -1651,7 +1651,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -1667,9 +1667,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -1685,7 +1685,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -1708,7 +1708,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -1724,9 +1724,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -1744,7 +1744,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -1769,7 +1769,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -1785,9 +1785,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -1803,7 +1803,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedCaptureValue">The extra value that will be passed to <paramref name="seedSelector"/>.</param>
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureSeed>(this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector,
@@ -1825,7 +1825,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureSeed>(this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector,
@@ -1840,9 +1840,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -1860,7 +1860,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedCaptureValue">The extra value that will be passed to <paramref name="seedSelector"/>.</param>
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureSeed>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, TKey> keySelector,
@@ -1884,7 +1884,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureSeed>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, TKey> keySelector,
@@ -1899,9 +1899,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -1919,7 +1919,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureSeed, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector,
@@ -1943,7 +1943,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureSeed, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector,
@@ -1958,9 +1958,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -1980,7 +1980,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureSeed, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, TKey> keySelector,
@@ -2006,7 +2006,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureSeed, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, TKey> keySelector,
@@ -2021,9 +2021,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -2039,7 +2039,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedCaptureValue">The extra value that will be passed to <paramref name="seedSelector"/>.</param>
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureSeed>(this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector,
@@ -2061,7 +2061,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureSeed>(this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector,
@@ -2076,9 +2076,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -2096,7 +2096,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedCaptureValue">The extra value that will be passed to <paramref name="seedSelector"/>.</param>
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureSeed>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
@@ -2120,7 +2120,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureSeed>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
@@ -2135,9 +2135,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -2155,7 +2155,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureSeed, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector,
@@ -2179,7 +2179,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureSeed, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector,
@@ -2194,9 +2194,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -2216,7 +2216,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureSeed, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
@@ -2242,7 +2242,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="source"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureSeed, TCaptureAccumulate>(this AsyncEnumerable<TSource> source,
             TCaptureKey keyCaptureValue, Func<TCaptureKey, TSource, Promise<TKey>> keySelector,
@@ -2257,9 +2257,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -2275,7 +2275,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedCaptureValue">The extra value that will be passed to <paramref name="seedSelector"/>.</param>
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureSeed>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -2298,7 +2298,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureSeed>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -2314,9 +2314,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -2334,7 +2334,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedCaptureValue">The extra value that will be passed to <paramref name="seedSelector"/>.</param>
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureSeed>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -2359,7 +2359,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureSeed>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -2375,9 +2375,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -2395,7 +2395,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureSeed, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -2420,7 +2420,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureSeed, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -2436,9 +2436,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -2458,7 +2458,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">A function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureSeed, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -2485,7 +2485,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureSeed, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -2501,9 +2501,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -2519,7 +2519,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedCaptureValue">The extra value that will be passed to <paramref name="seedSelector"/>.</param>
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureSeed>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -2542,7 +2542,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureSeed>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -2558,9 +2558,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -2578,7 +2578,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedCaptureValue">The extra value that will be passed to <paramref name="seedSelector"/>.</param>
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureSeed>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -2603,7 +2603,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureSeed>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -2619,9 +2619,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulator),
                 comparer);
         }
 
@@ -2639,7 +2639,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureSeed, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -2664,7 +2664,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureSeed, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -2680,9 +2680,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
 
@@ -2702,7 +2702,7 @@ namespace Proto.Promises.Linq
         /// <param name="seedSelector">An asynchronous function to retrieve the initial accumulator value for each group.</param>
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TCaptureKey, TCaptureSeed, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -2729,7 +2729,7 @@ namespace Proto.Promises.Linq
         /// <param name="accumulateCaptureValue">The extra value that will be passed to <paramref name="accumulator"/>.</param>
         /// <param name="accumulator">An asynchronous accumulator function to be invoked on each element.</param>
         /// <param name="comparer">An equality comparer used to compare keys for equality.</param>
-        /// <returns><see cref="Promise{T}"/> containing the final accumulator value.</returns>
+        /// <returns>An async-enumerable sequence containing the aggregates corresponding to each key deriving from <paramref name="configuredSource"/>.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="keySelector"/> or <paramref name="seedSelector"/> or <paramref name="accumulator"/> or <paramref name="comparer"/> is null.</exception>
         public static AsyncEnumerable<KeyValuePair<TKey, TAccumulate>> AggregateBy<TSource, TKey, TAccumulate, TEqualityComparer, TCaptureKey, TCaptureSeed, TCaptureAccumulate>(
             this in ConfiguredAsyncEnumerable<TSource> configuredSource,
@@ -2745,9 +2745,9 @@ namespace Proto.Promises.Linq
             ValidateArgument(comparer, nameof(comparer), 1);
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
-                Internal.PromiseRefBase.DelegateWrapper.Create(keyCaptureValue, keySelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(seedCaptureValue, seedSelector),
-                Internal.PromiseRefBase.DelegateWrapper.Create(accumulateCaptureValue, accumulator),
+                DelegateWrapper.Create(keyCaptureValue, keySelector),
+                DelegateWrapper.Create(seedCaptureValue, seedSelector),
+                DelegateWrapper.Create(accumulateCaptureValue, accumulator),
                 comparer);
         }
         #endregion SeedSelector

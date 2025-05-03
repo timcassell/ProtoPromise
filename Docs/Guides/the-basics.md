@@ -276,6 +276,8 @@ These are useful if the operation actually completed synchronously and you need 
 
 ### Understanding Then
 
+Note: It is usually simpler and cleaner to just use async/await. `Then` API is mostly legacy from before async/await was introduced to C#, and remains to adhere to the Promises/A+ spec.
+
 There are 144 overloads for the `Then` method (72 for `Promise` and another 72 for `Promise<T>`). Rather than trying to remember all 144 overloads, it's easier to remember these rules:
 
 - `Then` must always be given at least 1 delegate.
@@ -301,9 +303,4 @@ There are 144 overloads for the `Then` method (72 for `Promise` and another 72 f
 - If either `onResolved` or `onRejected` return a promise, the promise returned from `Then` will adopt the state of that promise (waits until it completes).
 - If either `onResolved` or `onRejected` throws an `Exception`, the returned promise will be rejected with that exception, unless that exception is one of the [Special Exceptions](special-exceptions.md).
 
-- You may optionally provide a `CancelationToken` as the last parameter.
-    - If the token is canceled while the promise is pending, the callback(s) will not be invoked, and the returned promise will be canceled.
-
 You may realize that `Catch(onRejected)` also works just like `onRejected` in `Then`. There is, however, one key difference: with `Then(onResolved, onRejected)`, only one of the callbacks will ever be invoked. With `Then(onResolved).Catch(onRejected)`, both callbacks can be invoked if `onResolved` throws an exception.
-
-Note: It is usually simpler and cleaner to just use async/await. `Then` API is mostly legacy from before async/await was introduced to C#, and remains to adhere to the Promises/A+ spec.

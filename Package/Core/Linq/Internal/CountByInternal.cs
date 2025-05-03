@@ -6,6 +6,7 @@
 
 using Proto.Promises.CompilerServices;
 using Proto.Promises.Linq;
+using Proto.Promises.Linq.Sources;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -228,8 +229,7 @@ namespace Proto.Promises
                             } while (node != dict._lastNode);
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -296,8 +296,7 @@ namespace Proto.Promises
                             } while (node != dict._lastNode);
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -364,8 +363,7 @@ namespace Proto.Promises
                             } while (node != dict._lastNode);
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -435,8 +433,7 @@ namespace Proto.Promises
                             } while (node != dict._lastNode);
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {

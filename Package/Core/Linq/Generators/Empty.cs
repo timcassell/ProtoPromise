@@ -79,43 +79,5 @@ namespace Proto.Promises
             internal override void MaybeDispose() { throw new System.InvalidOperationException(); }
         }
 #endif // !PROMISE_DEBUG
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal static class EmptyHelper
-        {
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private readonly struct EmptyIterator<TSource> : IAsyncIterator<TSource>
-            {
-                private readonly AsyncEnumerator<TSource> _source;
-
-                internal EmptyIterator(AsyncEnumerator<TSource> source)
-                    => _source = source;
-
-                public Promise DisposeAsyncWithoutStart()
-                    => _source.DisposeAsync();
-
-                // We're only using this to dispose the source. No elements will be yielded, so we don't need an async state machine.
-                public AsyncIteratorMethod Start(AsyncStreamWriter<TSource> streamWriter, CancelationToken cancelationToken)
-                    => new AsyncIteratorMethod(_source.DisposeAsync());
-            }
-
-            // TODO: optimize the empty enumerable with its own class.
-            // Add IEmptyAsyncEnumerable interface to check against, implement it on AsyncEnumerableEmptySentinel<T> and AsyncEnumerableCanceledSentinel<T> and the new class.
-            // Expose this method on AsyncEnumerableHelpers (see #476).
-            internal static AsyncEnumerable<TSource> EmptyWithDispose<TSource>(AsyncEnumerable<TSource> source)
-            {
-                if (source._target is AsyncEnumerableCreate<TSource, EmptyIterator<TSource>> emptyEnumerable)
-                {
-                    return emptyEnumerable.GetSelfWithIncrementedId(source._id);
-                }
-
-                var enumerable = AsyncEnumerableCreate<TSource, EmptyIterator<TSource>>.GetOrCreate(new EmptyIterator<TSource>(source.GetAsyncEnumerator()));
-                return new AsyncEnumerable<TSource>(enumerable);
-            }
-        }
     }
 }

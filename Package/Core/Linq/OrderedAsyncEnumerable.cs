@@ -5,6 +5,7 @@
 #endif
 
 using Proto.Promises.CompilerServices;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -34,6 +35,7 @@ namespace Proto.Promises.Linq
         /// <summary>
         /// Gets whether this instance is valid for enumeration. Once enumeration has begun, this will return false.
         /// </summary>
+        [Obsolete("Due to object pooling, this property is inherently unsafe. This will be removed in a future version.", false), EditorBrowsable(EditorBrowsableState.Never)]
         public bool CanBeEnumerated
             => _target?.GetCanBeEnumerated(_id) == true;
 

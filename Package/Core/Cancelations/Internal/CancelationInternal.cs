@@ -20,44 +20,6 @@ namespace Proto.Promises
 {
     partial class Internal
     {
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal readonly struct CancelDelegateTokenVoid : ICancelable
-        {
-            private readonly Action _callback;
-
-            [MethodImpl(InlineOption)]
-            internal CancelDelegateTokenVoid(Action callback)
-            {
-                _callback = callback;
-            }
-
-            [MethodImpl(InlineOption)]
-            public void Cancel()
-                => _callback.Invoke();
-        }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal readonly struct CancelDelegateToken<TCapture> : ICancelable
-        {
-            private readonly TCapture _capturedValue;
-            private readonly Action<TCapture> _callback;
-
-            [MethodImpl(InlineOption)]
-            internal CancelDelegateToken(in TCapture capturedValue, Action<TCapture> callback)
-            {
-                _capturedValue = capturedValue;
-                _callback = callback;
-            }
-
-            [MethodImpl(InlineOption)]
-            public void Cancel()
-                => _callback.Invoke(_capturedValue);
-        }
-
         internal abstract class CancelationLinkedListNode : HandleablePromiseBase
         {
             // _next and _previous are unsafe cast to CancelationLinkedListNode or CancelationCallbackNodeBase
@@ -1476,8 +1438,8 @@ namespace Proto.Promises
                     {
                         _bclSource = new CancellationTokenSource();
                         CancelationConverter.AttachCancelationRef(_bclSource, this);
-                        var del = new CancelDelegateToken<CancellationTokenSource>(_bclSource, source => source.Cancel(false));
-                        var node = CallbackNodeImpl<CancelDelegateToken<CancellationTokenSource>>.GetOrCreate(del, this);
+                        var del = DelegateWrapper.Create(_bclSource, source => source.Cancel(false));
+                        var node = CallbackNodeImpl<DelegateCaptureVoidVoid<CancellationTokenSource>>.GetOrCreate(del, this);
                         InsertPrevious(node);
                     }
                     return _bclSource.Token;

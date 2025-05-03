@@ -5,6 +5,7 @@
 #endif
 
 using Proto.Promises.Collections;
+using Proto.Promises.Linq.Sources;
 using System.Diagnostics;
 
 namespace Proto.Promises.Linq
@@ -60,8 +61,7 @@ namespace Proto.Promises.Linq
                         }
                     }
 
-                    // We wait for this enumerator to be disposed in case the source contains temp collections.
-                    await writer.YieldAsync(default).ForLinqExtension();
+                    await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                 }
                 finally
                 {

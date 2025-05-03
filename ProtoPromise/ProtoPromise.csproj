@@ -2,27 +2,17 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netstandard2.1;net6.0;net8.0</TargetFrameworks>
-    <Version>3.3.0</Version>
-    <!--Set true to help debug internal promise code (allows the debugger to step into the code and includes internal stacktraces).-->
-    <DeveloperMode>false</DeveloperMode>
-  </PropertyGroup>
-
-  <PropertyGroup>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <OutDir>bin\$(TargetFramework)\$(Configuration)</OutDir>
   </PropertyGroup>
 
   <PropertyGroup>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Description>Robust and efficient library for management of asynchronous operations.</Description>
+    <PackageTags>promise;promises;task;tasks;unity;coroutine;coroutines;concurrency;concurrent;parallel;asynchronous;async;await;thread;threads;threading;then;thenable;callback;callbacks</PackageTags>
   </PropertyGroup>
-
-  <ItemGroup>
-    <AssemblyAttribute Include="CLSCompliantAttribute">
-      <_Parameter1>true</_Parameter1>
-    </AssemblyAttribute>
-  </ItemGroup>
 
   <Choose>
     <!--Unity's IL2CPP runtime had a lot of issues that we had to work around, many of which were fixed when they added .Net Standard 2.1 support (but not all of them).
@@ -39,7 +29,6 @@
       <PropertyGroup>
         <!--For function pointers.-->
         <LangVersion>9</LangVersion>
-        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <!--We check UNITY_2021_2_OR_NEWER to see if C#9 is supported, since Unity doesn't have a language define constant for it.-->
         <DefineConstants>$(DefineConstants);ENABLE_IL2CPP;UNITY_2021_2_OR_NEWER</DefineConstants>
       </PropertyGroup>
@@ -48,46 +37,32 @@
       <PropertyGroup>
         <!--We can use the latest C# version in net6.0 and later since Unity doesn't even support it yet.-->
         <LangVersion>12</LangVersion>
-        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <!--We check UNITY_2021_2_OR_NEWER to see if C#9 is supported, since Unity doesn't have a language define constant for it.-->
         <DefineConstants>$(DefineConstants);UNITY_2021_2_OR_NEWER</DefineConstants>
       </PropertyGroup>
     </Otherwise>
   </Choose>
 
-  <PropertyGroup Condition="'$(DeveloperMode)'=='true'">
-    <DefineConstants>$(DefineConstants);TRACE;PROTO_PROMISE_DEVELOPER_MODE</DefineConstants>
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>portable</DebugType>
-    <Optimize>false</Optimize>
-  </PropertyGroup>
-
+  <!--Always reference polyfill packages when publicly exposing types from them.-->
   <ItemGroup>
-    <Compile Include="..\Package\Core\**/*.cs" />
-    <Compile Remove="nuget\**" />
-    <Content Remove="nuget\**" />
-    <EmbeddedResource Remove="nuget\**" />
-    <None Remove="nuget\**" />
+    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.6.0" />
+    <PackageReference Include="Microsoft.Bcl.TimeProvider" Version="8.0.1" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="Microsoft.Bcl.HashCode" Version="6.0.0" />
-    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.6.0" />
-    <PackageReference Include="System.Buffers" Version="4.6.0" />
     <PackageReference Include="System.Memory" Version="4.6.0" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' != 'net8.0'">
-    <PackageReference Include="Microsoft.Bcl.TimeProvider" Version="8.0.1" />
+  <ItemGroup>
+    <ProjectReference Include="..\ProtoPromise.Analyzer\ProtoPromise.Analyzer\ProtoPromise.Analyzer.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
+    <Compile Include="..\Package\Core\**\*.cs" />
   </ItemGroup>
-
-  <!--Exclude the analyzer reference while building the nuget package.-->
-  <ItemGroup Condition="'$(IsNugetBuild)' != 'true'">
-    <ProjectReference Include="..\ProtoPromise.Analyzer\ProtoPromise.Analyzer\ProtoPromise.Analyzer.csproj"
-                      PrivateAssets="all"
-                      ReferenceOutputAssembly="false"
-                      OutputItemType="Analyzer"
-                      SetTargetFramework="TargetFramework=netstandard2.0" />
+  
+  <ItemGroup>
+    <Content Include="..\ProtoPromise.Analyzer\ProtoPromise.Analyzer\bin\$(Configuration)\netstandard2.0\ProtoPromise.Analyzer.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    <Content Include="bin\**\*" Pack="true" PackagePath="lib" Visible="false" />
+    <Content Include="buildTransitive\**\*" Pack="true" PackagePath="buildTransitive" />
   </ItemGroup>
 
 </Project>

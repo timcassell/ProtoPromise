@@ -7,6 +7,7 @@
 using Proto.Promises.Collections;
 using Proto.Promises.CompilerServices;
 using Proto.Promises.Linq;
+using Proto.Promises.Linq.Sources;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -42,8 +43,6 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TResult>>(0);
                     try
                     {
@@ -57,8 +56,7 @@ namespace Proto.Promises
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -123,8 +121,6 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TResult>>(0);
                     try
                     {
@@ -138,8 +134,7 @@ namespace Proto.Promises
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -204,8 +199,6 @@ namespace Proto.Promises
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
                     var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TResult>>(0);
                     try
                     {
@@ -213,14 +206,13 @@ namespace Proto.Promises
                         {
                             var innerEnumerator = _selector.Invoke(_configuredAsyncEnumerator.Current).GetAsyncEnumerator(_configuredAsyncEnumerator._enumerator._target._cancelationToken);
                             enumerators.Add(innerEnumerator);
-                            while (await innerEnumerator.MoveNextAsync())
+                            while (await innerEnumerator.MoveNextAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions))
                             {
                                 await writer.YieldAsync(innerEnumerator.Current);
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -238,7 +230,7 @@ namespace Proto.Promises
                             {
                                 try
                                 {
-                                    await enumerators[i].DisposeAsync();
+                                    await enumerators[i].DisposeAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 }
                                 catch (Exception e)
                                 {
@@ -286,23 +278,20 @@ namespace Proto.Promises
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
                     var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TResult>>(0);
                     try
                     {
                         while (await _configuredAsyncEnumerator.MoveNextAsync())
                         {
-                            var innerEnumerator = (await _selector.Invoke(_configuredAsyncEnumerator.Current)).GetAsyncEnumerator(_configuredAsyncEnumerator._enumerator._target._cancelationToken);
+                            var innerEnumerator = (await _selector.Invoke(_configuredAsyncEnumerator.Current).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions)).GetAsyncEnumerator(_configuredAsyncEnumerator._enumerator._target._cancelationToken);
                             enumerators.Add(innerEnumerator);
-                            while (await innerEnumerator.MoveNextAsync())
+                            while (await innerEnumerator.MoveNextAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions))
                             {
                                 await writer.YieldAsync(innerEnumerator.Current);
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -320,7 +309,7 @@ namespace Proto.Promises
                             {
                                 try
                                 {
-                                    await enumerators[i].DisposeAsync();
+                                    await enumerators[i].DisposeAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 }
                                 catch (Exception e)
                                 {
@@ -368,8 +357,6 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TResult>>(0);
                     try
                     {
@@ -384,8 +371,7 @@ namespace Proto.Promises
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -450,8 +436,6 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TResult>>(0);
                     try
                     {
@@ -466,8 +450,7 @@ namespace Proto.Promises
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -532,8 +515,6 @@ namespace Proto.Promises
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
                     var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TResult>>(0);
                     try
                     {
@@ -542,14 +523,13 @@ namespace Proto.Promises
                         {
                             var innerEnumerator = _selector.Invoke(_configuredAsyncEnumerator.Current, checked(i++)).GetAsyncEnumerator(cancelationToken);
                             enumerators.Add(innerEnumerator);
-                            while (await innerEnumerator.MoveNextAsync())
+                            while (await innerEnumerator.MoveNextAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions))
                             {
                                 await writer.YieldAsync(innerEnumerator.Current);
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -567,7 +547,7 @@ namespace Proto.Promises
                             {
                                 try
                                 {
-                                    await enumerators[i].DisposeAsync();
+                                    await enumerators[i].DisposeAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 }
                                 catch (Exception e)
                                 {
@@ -615,24 +595,21 @@ namespace Proto.Promises
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
                     var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TResult>>(0);
                     try
                     {
                         int i = 0;
                         while (await _configuredAsyncEnumerator.MoveNextAsync())
                         {
-                            var innerEnumerator = (await _selector.Invoke(_configuredAsyncEnumerator.Current, checked(i++))).GetAsyncEnumerator(cancelationToken);
+                            var innerEnumerator = (await _selector.Invoke(_configuredAsyncEnumerator.Current, checked(i++)).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions)).GetAsyncEnumerator(cancelationToken);
                             enumerators.Add(innerEnumerator);
-                            while (await innerEnumerator.MoveNextAsync())
+                            while (await innerEnumerator.MoveNextAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions))
                             {
                                 await writer.YieldAsync(innerEnumerator.Current);
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -650,7 +627,7 @@ namespace Proto.Promises
                             {
                                 try
                                 {
-                                    await enumerators[i].DisposeAsync();
+                                    await enumerators[i].DisposeAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 }
                                 catch (Exception e)
                                 {
@@ -707,8 +684,6 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TCollection>>(0);
                     try
                     {
@@ -723,8 +698,7 @@ namespace Proto.Promises
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -793,8 +767,6 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TCollection>>(0);
                     try
                     {
@@ -809,8 +781,7 @@ namespace Proto.Promises
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -879,8 +850,6 @@ namespace Proto.Promises
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
                     var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TCollection>>(0);
                     try
                     {
@@ -889,14 +858,13 @@ namespace Proto.Promises
                             var outerResult = _configuredAsyncEnumerator.Current;
                             var innerEnumerator = _collectionSelector.Invoke(_configuredAsyncEnumerator.Current).GetAsyncEnumerator(_configuredAsyncEnumerator._enumerator._target._cancelationToken);
                             enumerators.Add(innerEnumerator);
-                            while (await innerEnumerator.MoveNextAsync())
+                            while (await innerEnumerator.MoveNextAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions))
                             {
                                 await writer.YieldAsync(_resultSelector.Invoke(outerResult, innerEnumerator.Current));
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -914,7 +882,7 @@ namespace Proto.Promises
                             {
                                 try
                                 {
-                                    await enumerators[i].DisposeAsync();
+                                    await enumerators[i].DisposeAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 }
                                 catch (Exception e)
                                 {
@@ -966,24 +934,21 @@ namespace Proto.Promises
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
                     var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TCollection>>(0);
                     try
                     {
                         while (await _configuredAsyncEnumerator.MoveNextAsync())
                         {
                             var outerResult = _configuredAsyncEnumerator.Current;
-                            var innerEnumerator = (await _collectionSelector.Invoke(outerResult)).GetAsyncEnumerator(_configuredAsyncEnumerator._enumerator._target._cancelationToken);
+                            var innerEnumerator = (await _collectionSelector.Invoke(outerResult).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions)).GetAsyncEnumerator(_configuredAsyncEnumerator._enumerator._target._cancelationToken);
                             enumerators.Add(innerEnumerator);
-                            while (await innerEnumerator.MoveNextAsync())
+                            while (await innerEnumerator.MoveNextAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions))
                             {
-                                await writer.YieldAsync(await _resultSelector.Invoke(outerResult, innerEnumerator.Current));
+                                await writer.YieldAsync(await _resultSelector.Invoke(outerResult, innerEnumerator.Current).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions));
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -1001,7 +966,7 @@ namespace Proto.Promises
                             {
                                 try
                                 {
-                                    await enumerators[i].DisposeAsync();
+                                    await enumerators[i].DisposeAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 }
                                 catch (Exception e)
                                 {
@@ -1053,8 +1018,6 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TCollection>>(0);
                     try
                     {
@@ -1070,8 +1033,7 @@ namespace Proto.Promises
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -1140,8 +1102,6 @@ namespace Proto.Promises
                     // We need to propagate the token that was passed in, so we assign it before starting iteration.
                     _asyncEnumerator._target._cancelationToken = cancelationToken;
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TCollection>>(0);
                     try
                     {
@@ -1157,8 +1117,7 @@ namespace Proto.Promises
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -1227,8 +1186,6 @@ namespace Proto.Promises
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
                     var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TCollection>>(0);
                     try
                     {
@@ -1238,14 +1195,13 @@ namespace Proto.Promises
                             var outerResult = _configuredAsyncEnumerator.Current;
                             var innerEnumerator = _collectionSelector.Invoke(outerResult, checked(i++)).GetAsyncEnumerator(cancelationToken);
                             enumerators.Add(innerEnumerator);
-                            while (await innerEnumerator.MoveNextAsync())
+                            while (await innerEnumerator.MoveNextAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions))
                             {
                                 await writer.YieldAsync(_resultSelector.Invoke(outerResult, innerEnumerator.Current));
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -1263,7 +1219,7 @@ namespace Proto.Promises
                             {
                                 try
                                 {
-                                    await enumerators[i].DisposeAsync();
+                                    await enumerators[i].DisposeAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 }
                                 catch (Exception e)
                                 {
@@ -1315,8 +1271,6 @@ namespace Proto.Promises
                     var enumerableRef = _configuredAsyncEnumerator._enumerator._target;
                     var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
 
-                    // We don't dispose the enumerators until the owner is disposed.
-                    // This is in case any enumerator contains TempCollections that they will still be valid until the owner is disposed.
                     var enumerators = new TempCollectionBuilder<AsyncEnumerator<TCollection>>(0);
                     try
                     {
@@ -1324,16 +1278,15 @@ namespace Proto.Promises
                         while (await _configuredAsyncEnumerator.MoveNextAsync())
                         {
                             var outerResult = _configuredAsyncEnumerator.Current;
-                            var innerEnumerator = (await _collectionSelector.Invoke(outerResult, checked(i++))).GetAsyncEnumerator(cancelationToken);
+                            var innerEnumerator = (await _collectionSelector.Invoke(outerResult, checked(i++)).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions)).GetAsyncEnumerator(cancelationToken);
                             enumerators.Add(innerEnumerator);
                             while (await innerEnumerator.MoveNextAsync())
                             {
-                                await writer.YieldAsync(await _resultSelector.Invoke(outerResult, innerEnumerator.Current));
+                                await writer.YieldAsync(await _resultSelector.Invoke(outerResult, innerEnumerator.Current).ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions));
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -1351,7 +1304,7 @@ namespace Proto.Promises
                             {
                                 try
                                 {
-                                    await enumerators[i].DisposeAsync();
+                                    await enumerators[i].DisposeAsync().ConfigureAwait(_configuredAsyncEnumerator.ContinuationOptions);
                                 }
                                 catch (Exception e)
                                 {

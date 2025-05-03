@@ -16,7 +16,7 @@ namespace Proto.Promises.Linq
         /// Creates a <see cref="HashSet{T}"/> from an async-enumerable sequence.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="HashSet{T}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="HashSet{T}"/> from.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A <see cref="Promise{T}"/> whose result will be a <see cref="HashSet{T}"/> that contains the elements from the source sequence.</returns>
         public static Promise<HashSet<TSource>> ToHashSetAsync<TSource>(this AsyncEnumerable<TSource> source, CancelationToken cancelationToken = default)
@@ -26,7 +26,7 @@ namespace Proto.Promises.Linq
         /// Creates a <see cref="HashSet{T}"/> from an async-enumerable sequence using the specified <paramref name="comparer"/> to compare keys.
         /// </summary>
         /// <typeparam name="TSource">The type of the elements in the source sequence.</typeparam>
-        /// <param name="source">An async-enumerable sequence to create a <see cref="HashSet{T}"/> for.</param>
+        /// <param name="source">An async-enumerable sequence to create a <see cref="HashSet{T}"/> from.</param>
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare keys.</param>
         /// <param name="cancelationToken">The optional cancelation token to be used for canceling the sequence at any time.</param>
         /// <returns>A <see cref="Promise{T}"/> whose result will be a <see cref="HashSet{T}"/> that contains values of type <typeparamref name="TSource"/> selected from the source sequence.</returns>

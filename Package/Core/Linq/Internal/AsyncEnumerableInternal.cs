@@ -15,6 +15,8 @@ namespace Proto.Promises
 {
     partial class Internal
     {
+        // TODO: Rename to IAsyncEnumerableSource<T>, put under Proto.Promises.Linq.Sources namespace, and make it public.
+        // Add similar IAsyncEnumeratorSource<T> and use it in AsyncEnumerator<T>.
         internal interface IAsyncEnumerable<T>
         {
             AsyncEnumerator<T> GetAsyncEnumerator(int id, CancelationToken cancelationToken);
@@ -72,7 +74,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal abstract class AsyncEnumerableBase<T> : PromiseSingleAwait<bool>, IAsyncEnumerable<T>
+            internal abstract class AsyncEnumerableBase<T> : SingleAwaitPromise<bool>, IAsyncEnumerable<T>
             {
                 internal CancelationToken _cancelationToken;
                 protected T _current;
@@ -210,7 +212,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal AsyncStreamYielder<T> YieldAsync(in T value, int id)
+                internal AsyncStreamYielder<T> YieldAsync(in T value, int id, bool hasValue = true)
                 {
                     int newId = id - 1;
                     if (Interlocked.CompareExchange(ref _enumerableId, newId, id) != id)
@@ -222,7 +224,7 @@ namespace Proto.Promises
                     _iteratorCompleteExpectedId = newId;
                     // When the async iterator function completes, we set it to the original id + 2 so we can detect that case.
                     _iteratorCompleteId = newId + 2;
-                    return new AsyncStreamYielder<T>(this, newId);
+                    return new AsyncStreamYielder<T>(this, newId, hasValue);
                 }
 
                 internal override Promise DisposeAsync(int id)
@@ -304,7 +306,7 @@ namespace Proto.Promises
                     HandleNextInternal(state);
                 }
 
-                internal void GetResultForAsyncStreamYielder(int enumerableId)
+                internal void GetResultForAsyncStreamYielder(int enumerableId, bool throwIfDisposed)
                 {
                     int enumId = _enumerableId;
                     // We add 1 because MoveNextAsync is expected to be called before this.
@@ -316,8 +318,13 @@ namespace Proto.Promises
                             // DisposeAsync was called early (before the async iterator function completed).
                             // Reset in case the async iterator function completes synchronously from Start.
                             ResetWithoutStacktrace();
-                            // Throw this special exception so that the async iterator function will run any finally blocks and complete.
-                            throw AsyncEnumerableDisposedException.GetOrCreate();
+                            // We don't throw for `AsyncEnumerableSourceHelpers.WaitForDisposeAsync` for performance reasons.
+                            if (throwIfDisposed)
+                            {
+                                // Throw this special exception so that the async iterator function will run any finally blocks and complete.
+                                throw AsyncEnumerableDisposedException.GetOrCreate();
+                            }
+                            return;
                         }
                         throw new InvalidOperationException("AsyncStreamYielder.GetResult: instance is not valid. This should only be called from the async iterator method, and it may only be called once.", GetFormattedStacktrace(2));
                     }

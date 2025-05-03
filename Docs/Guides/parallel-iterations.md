@@ -1,12 +1,13 @@
 # Parallel Iterations
 
-You may have a very large collection that you need to iterate as quickly as possible without blocking the current thread. A `foreach` loop will do the job, but it will only run each iteration sequentially on the current thread.
-`Parallel.ForEach` will do the job concurrently, possibly utilizing multiple threads, but it will still block the current thread until all iterations are complete. `Promise.ParallelForEach` to the rescue!
+You may have a very large data set that you need to iterate as quickly as possible. You can use the `ParallelAsync` class (in the `Proto.Promises.Threading` namespace) to perform parallel and asynchronous iterations to greatly speed up the execution and prevent blocking the UI thread.
+
+You can use `ParallelAsync.ForEach` in place of a `foreach` loop to iterate over a collection or sequence.
 
 ```cs
-public static Promise IterateAsync<T>(this IEnumerable<T> enumerable, Action<T> action)
+public static async Promise IterateAsync<T>(this IEnumerable<T> enumerable, Action<T> action)
 {
-    return Promise.ParallelForEach(enumerable, (item, cancelationToken) =>
+    await ParallelAsync.ForEach(enumerable, (item, cancelationToken) =>
     {
         action(item);
         return Promise.Resolved();
@@ -14,21 +15,17 @@ public static Promise IterateAsync<T>(this IEnumerable<T> enumerable, Action<T> 
 }
 ```
 
-This will run each iteration concurrently without blocking the current thread.
+This will run each iteration concurrently without blocking the current thread. It also supports `AsyncEnumerable<T>` iterations.
 
-You may also wish to parallelize a `for` loop, which you can do with `Promise.ParallelFor`.
+You may also wish to parallelize a `for` loop, which you can do with `ParallelAsync.For`.
 
 ```cs
-public static Promise ForAsync(int min, int max, Action<int> action)
+public static async Promise ForAsync(int min, int max, Action<int> action)
 {
-    return Promise.ParallelFor(min, max, (item, cancelationToken) =>
+    await ParallelAsync.For(min, max, (item, cancelationToken) =>
     {
         action(item);
         return Promise.Resolved();
     });
 }
 ```
-
-(`Promise.ParallelForEach` is similar to `Parallel.ForEachAsync` in .Net 6+, but uses `Promise` instead of `Task` to be more efficient, and works in older runtimes.)
-
-You can also use `Promise.ParallelForEachAsync` to iterate `AsyncEnumerable<T>` in parallel.

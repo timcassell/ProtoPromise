@@ -6,6 +6,7 @@
 
 using Proto.Promises.Collections;
 using Proto.Promises.Linq;
+using Proto.Promises.Linq.Sources;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -141,8 +142,8 @@ namespace Proto.Promises
                         }
                     }
 
-                    // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                    await YieldAsync(default, streamWriterId).ForLinqExtension();
+                    // await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
+                    await YieldAsync(default, streamWriterId, false);
                 }
                 finally
                 {
@@ -387,8 +388,8 @@ namespace Proto.Promises
                         }
                     }
 
-                    // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                    await YieldAsync(default, streamWriterId).ForLinqExtension();
+                    // await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
+                    await YieldAsync(default, streamWriterId, false);
                 }
                 finally
                 {
@@ -543,8 +544,7 @@ namespace Proto.Promises
                         await writer.YieldAsync(queue.DequeueHead());
                     }
 
-                    // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                    await writer.YieldAsync(default).ForLinqExtension();
+                    await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                 }
                 finally
                 {

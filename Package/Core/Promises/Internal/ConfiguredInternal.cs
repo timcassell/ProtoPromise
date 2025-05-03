@@ -18,7 +18,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal sealed partial class ConfiguredPromise<TResult> : PromiseSingleAwait<TResult>
+            internal sealed partial class ConfiguredPromise<TResult> : SingleAwaitPromise<TResult>
             {
                 private ConfiguredPromise() { }
 
@@ -38,7 +38,7 @@ namespace Proto.Promises
                         : obj.UnsafeAs<ConfiguredPromise<TResult>>();
                 }
 
-                private static ConfiguredPromise<TResult> GetOrCreateBase(SynchronizationContext synchronizationContext, CompletedContinuationBehavior completedBehavior)
+                private static ConfiguredPromise<TResult> GetOrCreate(SynchronizationContext synchronizationContext, CompletedContinuationBehavior completedBehavior)
                 {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     if (synchronizationContext == null)
@@ -50,29 +50,28 @@ namespace Proto.Promises
 #endif
                     var promise = GetOrCreate();
                     promise.Reset();
-#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
-                    // If the promise is converted to ValueTask, we ignore the context scheduling,
-                    // since this is already configured to continue on a specified context.
-                    promise._ignoreValueTaskContextScheduling = true;
-#endif
                     promise._synchronizationContext = synchronizationContext;
                     promise._completedBehavior = completedBehavior;
                     return promise;
                 }
 
-                internal static ConfiguredPromise<TResult> GetOrCreate(SynchronizationContext synchronizationContext, CompletedContinuationBehavior completedBehavior)
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> New(Promise previous, SynchronizationContext synchronizationContext, CompletedContinuationBehavior completedBehavior)
                 {
-                    var promise = GetOrCreateBase(synchronizationContext, completedBehavior);
-                    return promise;
+                    var promise = GetOrCreate(synchronizationContext, completedBehavior);
+                    promise.SetPrevious(previous._ref);
+                    previous._ref.HookupNewWaiter(previous._id, promise);
+                    return new Promise<TResult>(promise);
                 }
 
-                internal static ConfiguredPromise<TResult> GetOrCreateFromResolved(SynchronizationContext synchronizationContext, in TResult result, CompletedContinuationBehavior completedBehavior)
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> New(SynchronizationContext synchronizationContext, CompletedContinuationBehavior completedBehavior, in TResult result)
                 {
-                    var promise = GetOrCreateBase(synchronizationContext, completedBehavior);
+                    var promise = GetOrCreate(synchronizationContext, completedBehavior);
                     promise._result = result;
                     promise._tempState = Promise.State.Resolved;
                     promise._next = PromiseCompletionSentinel.s_instance;
-                    return promise;
+                    return new Promise<TResult>(promise);
                 }
 
                 internal override void Handle(PromiseRefBase handler, Promise.State state)

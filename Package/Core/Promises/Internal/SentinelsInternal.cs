@@ -13,7 +13,7 @@ namespace Proto.Promises
 {
     partial class Internal
     {
-        internal abstract partial class PromiseRefBase
+        partial class PromiseRefBase
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -151,14 +151,14 @@ namespace Proto.Promises
                     return true;
                 }
 
+                internal override PromiseRefBase GetDuplicate(short promiseId)
+                    => GetDuplicateT(promiseId);
+
                 internal override PromiseRef<TResult> GetDuplicateT(short promiseId)
                 {
                     ValidateId(promiseId, this, 2);
                     return this;
                 }
-
-                internal override PromiseRefBase GetDuplicate(short promiseId)
-                    => this;
 
                 internal override bool GetIsValid(short promiseId)
                     => promiseId == Id;

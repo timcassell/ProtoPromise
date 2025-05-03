@@ -6,6 +6,7 @@
 
 using Proto.Promises.CompilerServices;
 using Proto.Promises.Linq;
+using Proto.Promises.Linq.Sources;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -49,11 +50,8 @@ namespace Proto.Promises
                                 await writer.YieldAsync(element);
                             }
                         }
-                        // We don't dispose the source enumerator until the owner is disposed.
-                        // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -103,11 +101,8 @@ namespace Proto.Promises
                                 await writer.YieldAsync(element);
                             }
                         }
-                        // We don't dispose the source enumerator until the owner is disposed.
-                        // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -157,11 +152,8 @@ namespace Proto.Promises
                                 await writer.YieldAsync(element);
                             }
                         }
-                        // We don't dispose the source enumerator until the owner is disposed.
-                        // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -212,11 +204,8 @@ namespace Proto.Promises
                                 await writer.YieldAsync(element);
                             }
                         }
-                        // We don't dispose the source enumerator until the owner is disposed.
-                        // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -268,11 +257,8 @@ namespace Proto.Promises
                                 await writer.YieldAsync(element);
                             }
                         }
-                        // We don't dispose the source enumerator until the owner is disposed.
-                        // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -322,11 +308,8 @@ namespace Proto.Promises
                                 await writer.YieldAsync(element);
                             }
                         }
-                        // We don't dispose the source enumerator until the owner is disposed.
-                        // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -377,11 +360,8 @@ namespace Proto.Promises
                                 await writer.YieldAsync(element);
                             }
                         }
-                        // We don't dispose the source enumerator until the owner is disposed.
-                        // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -433,11 +413,8 @@ namespace Proto.Promises
                                 await writer.YieldAsync(element);
                             }
                         }
-                        // We don't dispose the source enumerator until the owner is disposed.
-                        // This is in case the source enumerator contains TempCollection that they will still be valid until the owner is disposed.
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {

@@ -7,6 +7,7 @@
 using Proto.Promises.Linq;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Threading;
 
 namespace Proto.Promises
@@ -17,15 +18,16 @@ namespace Proto.Promises
         /// <param name="fromIndex">The start index, inclusive.</param>
         /// <param name="toIndex">The end index, exclusive.</param>
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
-        /// <param name="cancelationToken">A cancelation token that may be used to cancel the for each operation.</param>
+        /// <param name="cancelationToken">A cancelation token that may be used to cancel the for operation.</param>
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
-        /// <returns>A promise that represents the entire for each operation.</returns>
+        /// <returns>A promise that represents the entire for operation.</returns>
+        [Obsolete("Prefer ParallelAsync.For"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelFor(int fromIndex, int toIndex, Func<int, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
             ValidateArgument(body, nameof(body), 1);
 
-            return Internal.ParallelFor(fromIndex, toIndex, new Internal.ParallelBody<int>(body), cancelationToken, Config.BackgroundContext, maxDegreeOfParallelism);
+            return Internal.ParallelFor(fromIndex, toIndex, DelegateWrapper.Create(body), cancelationToken, Config.BackgroundContext, maxDegreeOfParallelism);
         }
 
         /// <summary>Executes a for loop in which iterations may run in parallel.</summary>
@@ -33,15 +35,16 @@ namespace Proto.Promises
         /// <param name="toIndex">The end index, exclusive.</param>
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
         /// <param name="synchronizationContext">The synchronization context on which the iterations will be ran. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
-        /// <param name="cancelationToken">A cancelation token that may be used to cancel the for each operation.</param>
+        /// <param name="cancelationToken">A cancelation token that may be used to cancel the for operation.</param>
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
-        /// <returns>A promise that represents the entire for each operation.</returns>
+        /// <returns>A promise that represents the entire for operation.</returns>
+        [Obsolete("Prefer ParallelAsync.For"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelFor(int fromIndex, int toIndex, Func<int, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
             ValidateArgument(body, nameof(body), 1);
 
-            return Internal.ParallelFor(fromIndex, toIndex, new Internal.ParallelBody<int>(body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
+            return Internal.ParallelFor(fromIndex, toIndex, DelegateWrapper.Create(body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
         }
 
         /// <summary>Executes a for loop in which iterations may run in parallel on <see cref="Config.BackgroundContext"/>.</summary>
@@ -49,15 +52,16 @@ namespace Proto.Promises
         /// <param name="toIndex">The end index, exclusive.</param>
         /// <param name="captureValue">The captured value that will be passed to the <paramref name="body"/>.</param>
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
-        /// <param name="cancelationToken">A cancelation token that may be used to cancel the for each operation.</param>
+        /// <param name="cancelationToken">A cancelation token that may be used to cancel the for operation.</param>
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
-        /// <returns>A promise that represents the entire for each operation.</returns>
+        /// <returns>A promise that represents the entire for operation.</returns>
+        [Obsolete("Prefer ParallelAsync.For"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelFor<TCapture>(int fromIndex, int toIndex, TCapture captureValue, Func<int, TCapture, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
             ValidateArgument(body, nameof(body), 1);
 
-            return Internal.ParallelFor(fromIndex, toIndex, new Internal.ParallelCaptureBody<int, TCapture>(captureValue, body), cancelationToken, Config.BackgroundContext, maxDegreeOfParallelism);
+            return Internal.ParallelFor(fromIndex, toIndex, DelegateWrapper.Create(captureValue, body), cancelationToken, Config.BackgroundContext, maxDegreeOfParallelism);
         }
 
         /// <summary>Executes a for loop in which iterations may run in parallel.</summary>
@@ -66,15 +70,16 @@ namespace Proto.Promises
         /// <param name="captureValue">The captured value that will be passed to the <paramref name="body"/>.</param>
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
         /// <param name="synchronizationContext">The synchronization context on which the iterations will be ran. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
-        /// <param name="cancelationToken">A cancelation token that may be used to cancel the for each operation.</param>
+        /// <param name="cancelationToken">A cancelation token that may be used to cancel the for operation.</param>
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
-        /// <returns>A promise that represents the entire for each operation.</returns>
+        /// <returns>A promise that represents the entire for operation.</returns>
+        [Obsolete("Prefer ParallelAsync.For"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelFor<TCapture>(int fromIndex, int toIndex, TCapture captureValue, Func<int, TCapture, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
             ValidateArgument(body, nameof(body), 1);
 
-            return Internal.ParallelFor(fromIndex, toIndex, new Internal.ParallelCaptureBody<int, TCapture>(captureValue, body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
+            return Internal.ParallelFor(fromIndex, toIndex, DelegateWrapper.Create(captureValue, body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
         }
 
         /// <summary>Executes a for each operation on an <see cref="IEnumerable{TSource}"/> in which iterations may run in parallel on <see cref="Config.BackgroundContext"/>.</summary>
@@ -85,6 +90,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEach<TSource>(IEnumerable<TSource> source, Func<TSource, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
             => Promise<TSource>.ParallelForEach(source, body, Config.BackgroundContext, cancelationToken, maxDegreeOfParallelism);
@@ -98,6 +104,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEach<TSource>(IEnumerable<TSource> source, Func<TSource, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
             => Promise<TSource>.ParallelForEach(source, body, synchronizationContext, cancelationToken, maxDegreeOfParallelism);
@@ -112,6 +119,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEach<TSource, TCapture>(IEnumerable<TSource> source, TCapture captureValue, Func<TSource, TCapture, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
             => Promise<TSource>.ParallelForEach(source, captureValue, body, Config.BackgroundContext, cancelationToken, maxDegreeOfParallelism);
@@ -127,6 +135,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEach<TSource, TCapture>(IEnumerable<TSource> source, TCapture captureValue, Func<TSource, TCapture, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
             => Promise<TSource>.ParallelForEach(source, captureValue, body, synchronizationContext, cancelationToken, maxDegreeOfParallelism);
@@ -140,6 +149,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEachAsync<TSource>(IAsyncEnumerable<TSource> source, Func<TSource, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
             => Promise<TSource>.ParallelForEachAsync(source, body, Config.BackgroundContext, cancelationToken, maxDegreeOfParallelism);
@@ -153,6 +163,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEachAsync<TSource>(IAsyncEnumerable<TSource> source, Func<TSource, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
             => Promise<TSource>.ParallelForEachAsync(source, body, synchronizationContext, cancelationToken, maxDegreeOfParallelism);
@@ -167,6 +178,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEachAsync<TSource, TCapture>(IAsyncEnumerable<TSource> source, TCapture captureValue, Func<TSource, TCapture, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
             => Promise<TSource>.ParallelForEachAsync(source, captureValue, body, Config.BackgroundContext, cancelationToken, maxDegreeOfParallelism);
@@ -182,6 +194,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEachAsync<TSource, TCapture>(IAsyncEnumerable<TSource> source, TCapture captureValue, Func<TSource, TCapture, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
             => Promise<TSource>.ParallelForEachAsync(source, captureValue, body, synchronizationContext, cancelationToken, maxDegreeOfParallelism);
@@ -196,6 +209,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEachAsync<TSource>(AsyncEnumerable<TSource> source, Func<TSource, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
             => Promise<TSource>.ParallelForEachAsync(source, body, Config.BackgroundContext, cancelationToken, maxDegreeOfParallelism);
@@ -209,6 +223,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEachAsync<TSource>(AsyncEnumerable<TSource> source, Func<TSource, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
             => Promise<TSource>.ParallelForEachAsync(source, body, synchronizationContext, cancelationToken, maxDegreeOfParallelism);
@@ -223,6 +238,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEachAsync<TSource, TCapture>(AsyncEnumerable<TSource> source, TCapture captureValue, Func<TSource, TCapture, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
             => Promise<TSource>.ParallelForEachAsync(source, captureValue, body, Config.BackgroundContext, cancelationToken, maxDegreeOfParallelism);
@@ -238,6 +254,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEachAsync<TSource, TCapture>(AsyncEnumerable<TSource> source, TCapture captureValue, Func<TSource, TCapture, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
             => Promise<TSource>.ParallelForEachAsync(source, captureValue, body, synchronizationContext, cancelationToken, maxDegreeOfParallelism);
@@ -252,6 +269,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEach(IEnumerable<T> source, Func<T, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
@@ -268,6 +286,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEach(IEnumerable<T> source, Func<T, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
@@ -285,6 +304,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEach<TCapture>(IEnumerable<T> source, TCapture captureValue, Func<T, TCapture, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
@@ -303,6 +323,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEach<TCapture>(IEnumerable<T> source, TCapture captureValue, Func<T, TCapture, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
@@ -313,12 +334,13 @@ namespace Proto.Promises
 
         /// <summary>Executes a for each operation on an <see cref="IEnumerator{T}"/> in which iterations may run in parallel on <see cref="Promise.Config.BackgroundContext"/>.</summary>
         /// <typeparam name="TEnumerator">The type of the enumerator.</typeparam>
-        /// <param name="source">An enumerable data source.</param>
+        /// <param name="source">An enumerator data source.</param>
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
         /// <param name="cancelationToken">A cancelation token that may be used to cancel the for each operation.</param>
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync<T>.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEach<TEnumerator>(TEnumerator source, Func<T, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
             where TEnumerator : IEnumerator<T>
@@ -328,13 +350,14 @@ namespace Proto.Promises
 
         /// <summary>Executes a for each operation on an <see cref="IEnumerator{T}"/> in which iterations may run in parallel.</summary>
         /// <typeparam name="TEnumerator">The type of the enumerator.</typeparam>
-        /// <param name="source">An enumerable data source.</param>
+        /// <param name="source">An enumerator data source.</param>
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
         /// <param name="synchronizationContext">The synchronization context on which the iterations will be ran. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
         /// <param name="cancelationToken">A cancelation token that may be used to cancel the for each operation.</param>
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync<T>.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEach<TEnumerator>(TEnumerator source, Func<T, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
             where TEnumerator : IEnumerator<T>
@@ -342,19 +365,21 @@ namespace Proto.Promises
             ValidateArgument(source, nameof(source), 1);
             ValidateArgument(body, nameof(body), 1);
 
-            return Internal.ParallelForEach<TEnumerator, Internal.ParallelBody<T>, T>(source, new Internal.ParallelBody<T>(body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
+            return Internal.ParallelForEach<TEnumerator, Internal.Delegate2ArgResult<T, CancelationToken, Promise>, T>(
+                source, DelegateWrapper.Create(body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
         }
 
         /// <summary>Executes a for each operation on an <see cref="IEnumerator{T}"/> in which iterations may run in parallel on <see cref="Promise.Config.BackgroundContext"/>.</summary>
         /// <typeparam name="TEnumerator">The type of the enumerator.</typeparam>
         /// <typeparam name="TCapture">The type of the captured value.</typeparam>
-        /// <param name="source">An enumerable data source.</param>
+        /// <param name="source">An enumerator data source.</param>
         /// <param name="captureValue">The captured value that will be passed to the <paramref name="body"/>.</param>
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
         /// <param name="cancelationToken">A cancelation token that may be used to cancel the for each operation.</param>
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync<T>.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEach<TEnumerator, TCapture>(TEnumerator source, TCapture captureValue, Func<T, TCapture, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
             where TEnumerator : IEnumerator<T>
@@ -365,7 +390,7 @@ namespace Proto.Promises
         /// <summary>Executes a for each operation on an <see cref="IEnumerator{T}"/> in which iterations may run in parallel.</summary>
         /// <typeparam name="TEnumerator">The type of the enumerator.</typeparam>
         /// <typeparam name="TCapture">The type of the captured value.</typeparam>
-        /// <param name="source">An enumerable data source.</param>
+        /// <param name="source">An enumerator data source.</param>
         /// <param name="captureValue">The captured value that will be passed to the <paramref name="body"/>.</param>
         /// <param name="body">An asynchronous delegate that is invoked once per element in the data source.</param>
         /// <param name="synchronizationContext">The synchronization context on which the iterations will be ran. If null, <see cref="ThreadPool.QueueUserWorkItem(WaitCallback, object)"/> will be used.</param>
@@ -373,6 +398,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync<T>.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEach<TEnumerator, TCapture>(TEnumerator source, TCapture captureValue, Func<T, TCapture, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
             where TEnumerator : IEnumerator<T>
@@ -380,7 +406,8 @@ namespace Proto.Promises
             ValidateArgument(source, nameof(source), 1);
             ValidateArgument(body, nameof(body), 1);
 
-            return Internal.ParallelForEach<TEnumerator, Internal.ParallelCaptureBody<T, TCapture>, T>(source, new Internal.ParallelCaptureBody<T, TCapture>(captureValue, body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
+            return Internal.ParallelForEach<TEnumerator, Internal.DelegateArgCaptureArgResult<T, TCapture, CancelationToken, Promise>, T>(
+                source, DelegateWrapper.Create(captureValue, body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
         }
 
 #if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
@@ -391,6 +418,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEachAsync(IAsyncEnumerable<T> source, Func<T, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
@@ -408,6 +436,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEachAsync(IAsyncEnumerable<T> source, Func<T, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
@@ -426,6 +455,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEachAsync<TCapture>(IAsyncEnumerable<T> source, TCapture captureValue, Func<T, TCapture, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
@@ -445,6 +475,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEachAsync<TCapture>(IAsyncEnumerable<T> source, TCapture captureValue, Func<T, TCapture, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
@@ -463,6 +494,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEachAsync(AsyncEnumerable<T> source, Func<T, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
@@ -477,12 +509,13 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEachAsync(AsyncEnumerable<T> source, Func<T, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
             ValidateArgument(body, nameof(body), 1);
 
-            return Internal.ParallelForEachAsync(source, new Internal.ParallelBody<T>(body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
+            return Internal.ParallelForEachAsync(source, DelegateWrapper.Create(body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
         }
 
         /// <summary>Executes a for each operation on an <see cref="AsyncEnumerable{T}"/> in which iterations may run in parallel on <see cref="Promise.Config.BackgroundContext"/>.</summary>
@@ -494,6 +527,7 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEachAsync<TCapture>(AsyncEnumerable<T> source, TCapture captureValue, Func<T, TCapture, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
@@ -510,12 +544,13 @@ namespace Proto.Promises
         /// <param name="maxDegreeOfParallelism">The maximum number of concurrent iterations. If -1, this value will be set to <see cref="Environment.ProcessorCount"/>.</param>
         /// <exception cref="System.ArgumentNullException">The exception that is thrown when the <paramref name="source"/> argument or <paramref name="body"/> argument is null.</exception>
         /// <returns>A promise that represents the entire for each operation.</returns>
+        [Obsolete("Prefer ParallelAsync.ForEach"), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise ParallelForEachAsync<TCapture>(AsyncEnumerable<T> source, TCapture captureValue, Func<T, TCapture, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
             ValidateArgument(body, nameof(body), 1);
 
-            return Internal.ParallelForEachAsync(source, new Internal.ParallelCaptureBody<T, TCapture>(captureValue, body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
+            return Internal.ParallelForEachAsync(source, DelegateWrapper.Create(captureValue, body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
         }
     }
 }

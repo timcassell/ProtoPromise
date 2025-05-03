@@ -17,12 +17,14 @@ namespace Proto.Promises.CompilerServices
     {
         private readonly Internal.PromiseRefBase.AsyncEnumerableWithIterator<T> _target;
         private readonly int _enumerableId;
+        private readonly bool _hasValue;
 
         [MethodImpl(Internal.InlineOption)]
-        internal AsyncStreamYielder(Internal.PromiseRefBase.AsyncEnumerableWithIterator<T> target, int enumerableId)
+        internal AsyncStreamYielder(Internal.PromiseRefBase.AsyncEnumerableWithIterator<T> target, int enumerableId, bool hasValue)
         {
             _target = target;
             _enumerableId = enumerableId;
+            _hasValue = hasValue;
             CreateOverride();
         }
 
@@ -59,20 +61,16 @@ namespace Proto.Promises.CompilerServices
         /// <remarks>This method is intended for compiler use rather than use directly in code.</remarks>
         [MethodImpl(Internal.InlineOption)]
         public void GetResult()
-            => _target.GetResultForAsyncStreamYielder(_enumerableId);
+            => _target.GetResultForAsyncStreamYielder(_enumerableId, _hasValue);
 
         [MethodImpl(Internal.InlineOption)]
         void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
-            => _target.AwaitOnCompletedForAsyncStreamYielder(asyncPromiseRef, _enumerableId);
+            => _target.AwaitOnCompletedForAsyncStreamYielder(asyncPromiseRef, _enumerableId, _hasValue);
 
         void INotifyCompletion.OnCompleted(Action continuation)
             => throw new InvalidOperationException("AsyncStreamYielder must only be used in AsyncEnumerable methods.");
 
         void ICriticalNotifyCompletion.UnsafeOnCompleted(Action continuation)
             => throw new InvalidOperationException("AsyncStreamYielder must only be used in AsyncEnumerable methods.");
-
-        [MethodImpl(Internal.InlineOption)]
-        internal Internal.PromiseRefBase.AsyncStreamAwaiterForLinqExtension<T> ForLinqExtension()
-            => new Internal.PromiseRefBase.AsyncStreamAwaiterForLinqExtension<T>(_target, _enumerableId);
     }
 }

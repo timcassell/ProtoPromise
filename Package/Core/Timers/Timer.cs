@@ -46,7 +46,6 @@ namespace Proto.Timers
         /// The time interval between invocations of the callback method specified when the Timer was constructed.
         /// Specify <see cref="Timeout.InfiniteTimeSpan"/> to disable periodic signaling.
         /// </param>
-        /// <returns><see langword="true"/> if the timer was successfully updated; otherwise, <see langword="false"/>.</returns>
         /// <exception cref="ArgumentOutOfRangeException">The <paramref name="dueTime"/> or <paramref name="period"/> parameter, in milliseconds, is less than -1 or greater than 4294967294.</exception>
         /// <exception cref="ObjectDisposedException">This was disposed.</exception>
         /// <exception cref="NullReferenceException">This is a default value.</exception>

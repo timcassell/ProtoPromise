@@ -35,7 +35,7 @@ namespace Proto.Promises
             private int _groupingsLength;
             internal int _count;
 
-            internal LookupImpl(TEqualityComparer comparer, bool willBeDisposed)
+            internal LookupImpl(TEqualityComparer comparer)
             {
                 _comparer = comparer;
                 _lastGrouping = null;
@@ -201,7 +201,7 @@ namespace Proto.Promises
                 where TElementSelector : IFunc<TSource, TElement>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer, false);
+                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer);
 
                 try
                 {
@@ -230,7 +230,7 @@ namespace Proto.Promises
                 where TKeySelector : IFunc<TElement, TKey>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer, false);
+                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer);
 
                 try
                 {
@@ -258,7 +258,7 @@ namespace Proto.Promises
                 where TElementSelector : IFunc<TSource, Promise<TElement>>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer, false);
+                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer);
 
                 try
                 {
@@ -287,7 +287,7 @@ namespace Proto.Promises
                 where TKeySelector : IFunc<TElement, Promise<TKey>>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer, false);
+                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer);
 
                 try
                 {
@@ -315,7 +315,7 @@ namespace Proto.Promises
                 where TElementSelector : IFunc<TSource, TElement>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer, false);
+                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer);
 
                 try
                 {
@@ -344,7 +344,7 @@ namespace Proto.Promises
                 where TKeySelector : IFunc<TElement, TKey>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer, false);
+                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer);
 
                 try
                 {
@@ -372,7 +372,7 @@ namespace Proto.Promises
                 where TElementSelector : IFunc<TSource, Promise<TElement>>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer, false);
+                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer);
 
                 try
                 {
@@ -382,7 +382,7 @@ namespace Proto.Promises
                         // In case the key selector changed context, we need to make sure we're on the configured context before invoking the comparer and elementSelector.
                         var key = await keySelector.Invoke(item).ConfigureAwait(configuredAsyncEnumerator.ContinuationOptions);
                         var group = lookup.GetOrCreateGrouping(key, false);
-                        var element = await elementSelector.Invoke(item);
+                        var element = await elementSelector.Invoke(item).ConfigureAwait(configuredAsyncEnumerator.ContinuationOptions);
                         group.Add(element);
                     }
                 }
@@ -401,7 +401,7 @@ namespace Proto.Promises
                 where TKeySelector : IFunc<TElement, Promise<TKey>>
                 where TEqualityComparer : IEqualityComparer<TKey>
             {
-                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer, false);
+                var lookup = new LookupImpl<TKey, TElement, TEqualityComparer>(comparer);
 
                 try
                 {

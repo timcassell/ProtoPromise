@@ -24,9 +24,7 @@ namespace Proto.Timers
         protected TimerFactory() { }
 
         /// <summary>Creates a new <see cref="Timer"/> instance, using <see cref="TimeSpan"/> values to measure time intervals.</summary>
-        /// <returns>
-        /// The newly created <see cref="Timer"/> instance.
-        /// </returns>
+        /// <returns>The newly created <see cref="Timer"/> instance.</returns>
         /// <remarks>
         /// <para/>
         /// The delegate specified by the callback parameter is invoked once after <paramref name="dueTime"/> elapses, and thereafter each time the <paramref name="period"/> time interval elapses.

@@ -97,7 +97,7 @@ namespace Proto.Promises
                 if (promise._ref != null)
                 {
                     checked { ++count; }
-                    group.AddPromise(promise._ref, promise._id);
+                    group.AddPromise(promise);
                 }
                 return new PromiseMergeGroup(cancelationRef, group, count, group.Id, isExtended);
             }
@@ -110,7 +110,7 @@ namespace Proto.Promises
             if (promise._ref != null)
             {
                 group = Internal.GetOrCreateMergePromiseGroupVoid(cancelationRef);
-                group.AddPromise(promise._ref, promise._id);
+                group.AddPromise(promise);
                 return new PromiseMergeGroup(cancelationRef, group, 1, group.Id, isExtended);
             }
 
@@ -142,7 +142,7 @@ namespace Proto.Promises
                 if (promise._ref != null)
                 {
                     checked { ++count; }
-                    group.AddPromiseForMerge(promise._ref, promise._id, index);
+                    group.AddPromiseForMerge(promise, index);
                 }
                 return new PromiseMergeGroup(cancelationRef, group, count, group.Id, isExtended);
             }
@@ -155,7 +155,7 @@ namespace Proto.Promises
             if (promise._ref != null)
             {
                 group = Internal.GetOrCreateMergePromiseGroupVoid(cancelationRef);
-                group.AddPromiseForMerge(promise._ref, promise._id, index);
+                group.AddPromiseForMerge(promise, index);
                 return new PromiseMergeGroup(cancelationRef, group, 1, group.Id, isExtended);
             }
 
@@ -211,11 +211,11 @@ namespace Proto.Promises
             }
         }
 
-        internal PromiseMergeGroup MergeForExtension(Internal.PromiseRefBase promise, short id)
+        internal PromiseMergeGroup MergeForExtension(Promise promise)
         {
             // We don't do any validation checks here, because they were already done in the caller.
             var group = Internal.GetOrCreateMergePromiseGroupVoid(_cancelationRef);
-            group.AddPromiseForMerge(promise, id, 0);
+            group.AddPromiseForMerge(promise, 0);
             return new PromiseMergeGroup(_cancelationRef, group, 1, group.Id, true);
         }
     }
@@ -278,9 +278,7 @@ namespace Proto.Promises
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetOne<T1>(), false);
-            group.HookupNewPromise(group.Id, promise);
-            return new Promise<T1>(promise, promise.Id);
+            return Internal.NewMergePromiseGroup(group, _value, Promise.MergeResultFuncs.GetOne<T1>(), false);
         }
     }
 
@@ -342,9 +340,7 @@ namespace Proto.Promises
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetTwo<T1, T2>(), mergeGroup._isExtended);
-            group.HookupNewPromise(group.Id, promise);
-            return new Promise<(T1, T2)>(promise, promise.Id);
+            return Internal.NewMergePromiseGroup(group, _value, Promise.MergeResultFuncs.GetTwo<T1, T2>(), mergeGroup._isExtended);
         }
     }
 
@@ -406,9 +402,7 @@ namespace Proto.Promises
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetThree<T1, T2, T3>(), mergeGroup._isExtended);
-            group.HookupNewPromise(group.Id, promise);
-            return new Promise<(T1, T2, T3)>(promise, promise.Id);
+            return Internal.NewMergePromiseGroup(group, _value, Promise.MergeResultFuncs.GetThree<T1, T2, T3>(), mergeGroup._isExtended);
         }
     }
 
@@ -470,9 +464,7 @@ namespace Proto.Promises
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetFour<T1, T2, T3, T4>(), mergeGroup._isExtended);
-            group.HookupNewPromise(group.Id, promise);
-            return new Promise<(T1, T2, T3, T4)>(promise, promise.Id);
+            return Internal.NewMergePromiseGroup(group, _value, Promise.MergeResultFuncs.GetFour<T1, T2, T3, T4>(), mergeGroup._isExtended);
         }
     }
 
@@ -534,9 +526,7 @@ namespace Proto.Promises
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>(), mergeGroup._isExtended);
-            group.HookupNewPromise(group.Id, promise);
-            return new Promise<(T1, T2, T3, T4, T5)>(promise, promise.Id);
+            return Internal.NewMergePromiseGroup(group, _value, Promise.MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>(), mergeGroup._isExtended);
         }
     }
 
@@ -598,9 +588,7 @@ namespace Proto.Promises
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>(), mergeGroup._isExtended);
-            group.HookupNewPromise(group.Id, promise);
-            return new Promise<(T1, T2, T3, T4, T5, T6)>(promise, promise.Id);
+            return Internal.NewMergePromiseGroup(group, _value, Promise.MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>(), mergeGroup._isExtended);
         }
     }
 
@@ -658,11 +646,10 @@ namespace Proto.Promises
             }
 
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>(), mergeGroup._isExtended);
-            group.HookupNewPromise(group.Id, promise);
+            var promise = Internal.NewMergePromiseGroup(group, _value, Promise.MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>(), mergeGroup._isExtended);
 
             return new PromiseMergeGroup(mergeGroup._cancelationRef, true)
-                .MergeForExtension(promise, promise.Id);
+                .MergeForExtension(promise);
         }
 
         /// <summary>
@@ -691,9 +678,7 @@ namespace Proto.Promises
                 Internal.ThrowInvalidMergeGroup(1);
             }
             group.MarkReady(mergeGroup._count);
-            var promise = Internal.GetOrCreateMergePromiseGroup(_value, Promise.MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>(), mergeGroup._isExtended);
-            group.HookupNewPromise(group.Id, promise);
-            return new Promise<(T1, T2, T3, T4, T5, T6, T7)>(promise, promise.Id);
+            return Internal.NewMergePromiseGroup(group, _value, Promise.MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>(), mergeGroup._isExtended);
         }
     }
 }

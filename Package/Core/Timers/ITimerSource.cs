@@ -17,7 +17,6 @@ namespace Proto.Timers
         /// Specify <see cref="Timeout.InfiniteTimeSpan"/> to disable periodic signaling.
         /// </param>
         /// <param name="token">An opaque value that was provided to the <see cref="Timer"/> constructor.</param>
-        /// <returns><see langword="true"/> if the timer was successfully updated; otherwise, <see langword="false"/>.</returns>
         /// <exception cref="ArgumentOutOfRangeException">The <paramref name="dueTime"/> or <paramref name="period"/> parameter, in milliseconds, is less than -1 or greater than 4294967294.</exception>
         /// <exception cref="ObjectDisposedException">This was disposed.</exception>
         void Change(TimeSpan dueTime, TimeSpan period, int token);

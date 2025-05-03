@@ -10,6 +10,7 @@ using Proto.Promises.Linq;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using Proto.Promises.Linq.Sources;
 
 namespace Proto.Promises
 {
@@ -139,8 +140,7 @@ namespace Proto.Promises
                         await writer.YieldAsync(_source.Current);
                     }
 
-                    // We wait for this enumerator to be disposed in case the source contains temp collections.
-                    await writer.YieldAsync(default).ForLinqExtension();
+                    await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                 }
                 finally
                 {
@@ -227,8 +227,7 @@ namespace Proto.Promises
                     }
                     await writer.YieldAsync(_appended);
 
-                    // We wait for this enumerator to be disposed in case the source contains temp collections.
-                    await writer.YieldAsync(default).ForLinqExtension();
+                    await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                 }
                 finally
                 {
@@ -319,8 +318,7 @@ namespace Proto.Promises
                     }
                     await writer.YieldAsync(_appended);
 
-                    // We wait for this enumerator to be disposed in case the source contains temp collections.
-                    await writer.YieldAsync(default).ForLinqExtension();
+                    await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                 }
                 finally
                 {
@@ -424,8 +422,7 @@ namespace Proto.Promises
                         await writer.YieldAsync(_source.Current);
                     }
 
-                    // We wait for this enumerator to be disposed in case the source contains temp collections.
-                    await writer.YieldAsync(default).ForLinqExtension();
+                    await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                 }
                 finally
                 {
@@ -520,8 +517,7 @@ namespace Proto.Promises
                         await writer.YieldAsync(_appended[i]);
                     }
 
-                    // We wait for this enumerator to be disposed in case the source contains temp collections.
-                    await writer.YieldAsync(default).ForLinqExtension();
+                    await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                 }
                 finally
                 {
@@ -616,8 +612,7 @@ namespace Proto.Promises
                         await writer.YieldAsync(_appended[i]);
                     }
 
-                    // We wait for this enumerator to be disposed in case the source contains temp collections.
-                    await writer.YieldAsync(default).ForLinqExtension();
+                    await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                 }
                 finally
                 {

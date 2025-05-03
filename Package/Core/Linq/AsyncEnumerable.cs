@@ -25,9 +25,6 @@ namespace Proto.Promises.Linq
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
     public readonly partial struct AsyncEnumerable<T>
-#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
-        : IAsyncEnumerable<T>
-#endif
     {
         internal readonly Internal.IAsyncEnumerable<T> _target;
         internal readonly int _id;
@@ -35,6 +32,7 @@ namespace Proto.Promises.Linq
         /// <summary>
         /// Gets whether this instance is valid for enumeration. Once enumeration has begun, this will return false.
         /// </summary>
+        [Obsolete("Due to object pooling, this property is inherently unsafe. This will be removed in a future version.", false), EditorBrowsable(EditorBrowsableState.Never)]
         public bool CanBeEnumerated
             => _target?.GetCanBeEnumerated(_id) == true;
 
@@ -51,26 +49,17 @@ namespace Proto.Promises.Linq
         /// <summary>
         /// Returns an enumerator that iterates asynchronously through the async-enumerable sequence.
         /// </summary>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
+        /// <exception cref="InvalidOperationException">This is not valid for enumeration.</exception>
         [MethodImpl(Internal.InlineOption)]
         public AsyncEnumerator<T> GetAsyncEnumerator(CancelationToken cancelationToken)
-        {
-            var target = _target;
-            if (target == null)
-            {
-                Internal.ThrowInvalidAsyncEnumerable(1);
-            }
-            return target.GetAsyncEnumerator(_id, cancelationToken);
-        }
+            => _target.GetAsyncEnumerator(_id, cancelationToken);
 
         /// <summary>
         /// Returns an enumerator that iterates asynchronously through the async-enumerable sequence.
         /// </summary>
         [MethodImpl(Internal.InlineOption)]
         public AsyncEnumerator<T> GetAsyncEnumerator() => GetAsyncEnumerator(CancelationToken.None);
-
-#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
-        IAsyncEnumerator<T> IAsyncEnumerable<T>.GetAsyncEnumerator(CancellationToken cancellationToken) => GetAsyncEnumerator(cancellationToken.ToCancelationToken());
-#endif
 
         /// <summary>
         /// Sets the <see cref="CancelationToken"/> to be passed to <see cref="AsyncEnumerable{T}.GetAsyncEnumerator(CancelationToken)"/> when iterating.
@@ -108,16 +97,20 @@ namespace Proto.Promises.Linq
         public ConfiguredAsyncEnumerable<T> ConfigureAwait(ContinuationOptions continuationOptions)
             => new ConfiguredAsyncEnumerable<T>(this, CancelationToken.None, continuationOptions);
 
-#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
-        // These methods exist to hide the built-in IAsyncEnumerable extension methods, and use promise-optimized implementations instead if they are used.
+        // TODO: These methods are only necessary when this implements IAsyncEnumerable<T>, move them to the #if section in v4.
+        /// <summary>
+        /// This method exists only to hide the extension method for <see cref="IAsyncEnumerable{T}"/>. Prefer <see cref="WithCancelation(CancelationToken)"/>.
+        /// </summary>
         [EditorBrowsable(EditorBrowsableState.Never)]
         public ConfiguredAsyncEnumerable<T> WithCancellation(CancellationToken cancellationToken)
             => WithCancelation(cancellationToken.ToCancelationToken());
 
+        /// <summary>
+        /// This method exists only to hide the extension method for <see cref="IAsyncEnumerable{T}"/>. Prefer <see cref="ConfigureAwait(ContinuationOptions)"/>.
+        /// </summary>
         [EditorBrowsable(EditorBrowsableState.Never)]
         public ConfiguredAsyncEnumerable<T> ConfigureAwait(bool continueOnCapturedContext)
             => ConfigureAwait(continueOnCapturedContext ? ContinuationOptions.CapturedContext : ContinuationOptions.Synchronous);
-#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
     }
 
     /// <summary>
@@ -128,10 +121,7 @@ namespace Proto.Promises.Linq
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public readonly struct AsyncEnumerator<T>
-#if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
-        : IAsyncEnumerator<T>
-#endif
+    public readonly partial struct AsyncEnumerator<T>
     {
         internal readonly Internal.PromiseRefBase.AsyncEnumerableBase<T> _target;
         private readonly int _id;
@@ -146,6 +136,8 @@ namespace Proto.Promises.Linq
         /// <summary>
         /// Gets the element in the async-enumerable sequence at the current position of the enumerator.
         /// </summary>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
+        /// <exception cref="InvalidOperationException">This is not valid for enumeration.</exception>
         public T Current
         {
             [MethodImpl(Internal.InlineOption)]
@@ -155,18 +147,29 @@ namespace Proto.Promises.Linq
         /// <summary>
         /// Advances the enumerator asynchronously to the next element of the async-enumerable sequence.
         /// </summary>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
+        /// <exception cref="InvalidOperationException">This is not valid for enumeration.</exception>
         public Promise<bool> MoveNextAsync()
             => _target.MoveNextAsync(_id);
 
         /// <summary>
         /// Asynchronously releases resources used by this enumerator.
         /// </summary>
+        /// <exception cref="NullReferenceException">This is a default value.</exception>
         public Promise DisposeAsync()
             => _target.DisposeAsync(_id);
+    }
 
 #if UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
+    public readonly partial struct AsyncEnumerable<T> : IAsyncEnumerable<T>
+    {
+        IAsyncEnumerator<T> IAsyncEnumerable<T>.GetAsyncEnumerator(CancellationToken cancellationToken) => GetAsyncEnumerator(cancellationToken.ToCancelationToken());
+    }
+
+    public readonly partial struct AsyncEnumerator<T> : IAsyncEnumerator<T>
+    {
         System.Threading.Tasks.ValueTask<bool> IAsyncEnumerator<T>.MoveNextAsync() => MoveNextAsync();
         System.Threading.Tasks.ValueTask IAsyncDisposable.DisposeAsync() => DisposeAsync();
-#endif
     }
+#endif
 }

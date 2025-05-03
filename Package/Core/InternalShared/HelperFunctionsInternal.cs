@@ -170,11 +170,6 @@ namespace Proto.Promises
 #endif
         }
 
-#if !(NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER || UNITY_2021_2_OR_NEWER)
-        internal static bool Remove<TKey, TValue>(this Dictionary<TKey, TValue> dict, TKey key, out TValue value)
-            => dict.TryGetValue(key, out value) && dict.Remove(key);
-#endif
-
         internal static MaybeJoinedCancelationSource MaybeJoinCancelationTokens(CancelationToken first, CancelationToken second, out CancelationToken maybeJoinedToken)
         {
             if (first == second | !first.CanBeCanceled)

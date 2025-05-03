@@ -86,7 +86,13 @@ namespace Proto.Promises.Collections
             // We dispose completed segments at safe intervals (the retain counter is zero) instead of waiting
             // for Dispose in order to prevent a memory leak due to caching dropped segments for too long.
             // We do this instead of simply dropping the references and allowing GC to clean them up to keep this non-allocating.
+            DisposeSegments(needToDisposeHead);
+        }
 
+        // Separated to another method because it's a lot of code that we don't necessarily want inlined that is unlikely to be called frequently.
+        // Not annotating it with NoInlining in case the JIT decides it's actually profitable to inline it.
+        private void DisposeSegments(ConcurrentQueueSegment<T> needToDisposeHead)
+        {
             // It is possible another thread is racing to clean up the same segments, which we need to handle.
             _smallFields._crossSegmentLock.Enter();
             {
@@ -148,13 +154,13 @@ namespace Proto.Promises.Collections
             var spinner = new SpinWait();
             while (_smallFields._retainCounter != 1)
             {
-                spinner.SpinOnce();
+                spinner.SpinOnce(sleep1Threshold: -1);
             }
 
             // This instance should not be mutated after Dispose is called.
             Debug.Assert(_smallFields._crossSegmentLock.TryEnter());
             // We release the retain counter back to zero for future re-use.
-            // We can't assert the value, becaues other threads retain this before validation.
+            // We can't assert the value, because other threads retain this before validation.
             Internal.InterlockedAddWithUnsignedOverflowCheck(ref _smallFields._retainCounter, -1);
 
             var disposeStack = _needToDispose.TakeAndClear();
@@ -282,6 +288,7 @@ namespace Proto.Promises.Collections
                                         count += s._headAndTail.tail - s.FreezeOffset;
                                     }
 
+                                    _smallFields._crossSegmentLock.Exit();
                                     return count;
                                 }
                             }

@@ -176,7 +176,6 @@ namespace Proto.Promises
         {
             const string CausalitySplitMessage = "--- End of stack trace from the previous location where the exception was thrown ---";
 
-            // StackTrace.ToString() format issue was fixed in the new runtime.
             var causalityTrace = stackTraces
                 .Select(stackTrace => stackTrace.GetFrames()
                     .Where(frame =>
@@ -299,24 +298,26 @@ namespace Proto.Promises
                 // This allows us to check Merge/All/Race/First Promises iteratively.
                 Stack<PromiseRefBase> previouses = PreviousesForIterativeAlgorithm;
                 PromiseRefBase prev = other._previous;
-            Repeat:
-                for (; prev != null; prev = prev._previous)
+                while (true)
                 {
-                    if (prev == this)
+                    for (; prev != null; prev = prev._previous)
                     {
-                        other.MaybeMarkAwaitedAndDispose(other.Id);
-                        previouses.Clear();
-                        if (awaited)
-                            throw new InvalidOperationException("Circular Promise chain detected.", GetFormattedStacktrace(other));
-                        throw new InvalidReturnException("Circular Promise chain detected.", GetFormattedStacktrace(other));
+                        if (prev == this)
+                        {
+                            other.MaybeMarkAwaitedAndDispose(other.Id);
+                            previouses.Clear();
+                            if (awaited)
+                                throw new InvalidOperationException("Circular Promise chain detected.", GetFormattedStacktrace(other));
+                            throw new InvalidReturnException("Circular Promise chain detected.", GetFormattedStacktrace(other));
+                        }
+                        prev.BorrowPreviousPromises(previouses);
                     }
-                    prev.BorrowPreviousPromises(previouses);
-                }
 
-                if (previouses.Count > 0)
-                {
+                    if (previouses.Count <= 0)
+                    {
+                        break;
+                    }
                     prev = previouses.Pop();
-                    goto Repeat;
                 }
             }
 

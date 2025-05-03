@@ -8,6 +8,7 @@ using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Collections;
 using Proto.Promises.Linq;
+using Proto.Promises.Linq.Sources;
 using ProtoPromiseTests.APIs.Collections;
 using System;
 using System.Collections.Generic;
@@ -891,7 +892,7 @@ namespace ProtoPromiseTests.APIs.Linq
                     }
 
                     // Wait for dispose before throwing.
-                    await streamWriter.YieldAsync(default).ForLinqExtension();
+                    await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(streamWriter);
                 }
                 finally
                 {

@@ -98,7 +98,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.ExceptByHelper<TKey>.ExceptBy(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
+            return Internal.ExceptByHelper<TKey>.ExceptBy(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -135,7 +135,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.ExceptByHelper<TKey>.ExceptBy(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return Internal.ExceptByHelper<TKey>.ExceptBy(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -168,7 +168,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.ExceptByHelper<TKey>.ExceptByAwait(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
+            return Internal.ExceptByHelper<TKey>.ExceptByAwait(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -205,7 +205,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.ExceptByHelper<TKey>.ExceptByAwait(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return Internal.ExceptByHelper<TKey>.ExceptByAwait(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -238,7 +238,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.ExceptByHelper<TKey>.ExceptBy(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
+            return Internal.ExceptByHelper<TKey>.ExceptBy(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -275,7 +275,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.ExceptByHelper<TKey>.ExceptBy(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return Internal.ExceptByHelper<TKey>.ExceptBy(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
 
         /// <summary>
@@ -308,7 +308,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.ExceptByHelper<TKey>.ExceptByAwait(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(keySelector), comparer);
+            return Internal.ExceptByHelper<TKey>.ExceptByAwait(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
 
         /// <summary>
@@ -345,7 +345,7 @@ namespace Proto.Promises.Linq
             ValidateArgument(keySelector, nameof(keySelector), 1);
             ValidateArgument(comparer, nameof(comparer), 1);
 
-            return Internal.ExceptByHelper<TKey>.ExceptByAwait(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), Internal.PromiseRefBase.DelegateWrapper.Create(captureValue, keySelector), comparer);
+            return Internal.ExceptByHelper<TKey>.ExceptByAwait(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
     }
 }

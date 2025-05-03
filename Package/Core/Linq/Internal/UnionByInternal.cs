@@ -6,6 +6,7 @@
 
 using Proto.Promises.CompilerServices;
 using Proto.Promises.Linq;
+using Proto.Promises.Linq.Sources;
 using System.Collections.Generic;
 using System.Diagnostics;
 
@@ -47,7 +48,7 @@ namespace Proto.Promises
                     _secondAsyncEnumerator._target._cancelationToken = cancelationToken;
                     try
                     {
-                        using (var set = new Internal.PoolBackedSet<TKey, TEqualityComparer>(_comparer))
+                        using (var set = new PoolBackedSet<TKey, TEqualityComparer>(_comparer))
                         {
                             while (await _firstAsyncEnumerator.MoveNextAsync())
                             {
@@ -67,8 +68,7 @@ namespace Proto.Promises
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -127,7 +127,7 @@ namespace Proto.Promises
                     _secondAsyncEnumerator._target._cancelationToken = cancelationToken;
                     try
                     {
-                        using (var set = new Internal.PoolBackedSet<TKey, TEqualityComparer>(_comparer))
+                        using (var set = new PoolBackedSet<TKey, TEqualityComparer>(_comparer))
                         {
                             while (await _firstAsyncEnumerator.MoveNextAsync())
                             {
@@ -147,8 +147,7 @@ namespace Proto.Promises
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -204,13 +203,13 @@ namespace Proto.Promises
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _firstAsyncEnumerator._enumerator._target;
-                    var maybeJoinedCancelationSource = Internal.MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
                     // Use the same cancelation token for both enumerators.
                     _secondAsyncEnumerator._target._cancelationToken = enumerableRef._cancelationToken;
 
                     try
                     {
-                        using (var set = new Internal.PoolBackedSet<TKey, TEqualityComparer>(_comparer))
+                        using (var set = new PoolBackedSet<TKey, TEqualityComparer>(_comparer))
                         {
                             while (await _firstAsyncEnumerator.MoveNextAsync())
                             {
@@ -231,8 +230,7 @@ namespace Proto.Promises
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -243,16 +241,21 @@ namespace Proto.Promises
                         }
                         finally
                         {
-                            await _secondAsyncEnumerator.DisposeAsync();
+                            await _secondAsyncEnumerator.DisposeAsync().ConfigureAwait(_firstAsyncEnumerator.ContinuationOptions);
                         }
                     }
                 }
 
-                public Promise DisposeAsyncWithoutStart()
+                public async Promise DisposeAsyncWithoutStart()
                 {
-                    // We consume less memory by using .Finally instead of async/await.
-                    return _firstAsyncEnumerator.DisposeAsync()
-                        .Finally(_secondAsyncEnumerator, e => e.DisposeAsync());
+                    try
+                    {
+                        await _firstAsyncEnumerator.DisposeAsync();
+                    }
+                    finally
+                    {
+                        await _secondAsyncEnumerator.DisposeAsync().ConfigureAwait(_firstAsyncEnumerator.ContinuationOptions);
+                    }
                 }
             }
 
@@ -289,13 +292,13 @@ namespace Proto.Promises
                 {
                     // The enumerator may have been configured with a cancelation token. We need to join the passed in token before starting iteration.
                     var enumerableRef = _firstAsyncEnumerator._enumerator._target;
-                    var maybeJoinedCancelationSource = Internal.MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
+                    var maybeJoinedCancelationSource = MaybeJoinCancelationTokens(enumerableRef._cancelationToken, cancelationToken, out enumerableRef._cancelationToken);
                     // Use the same cancelation token for both enumerators.
                     _secondAsyncEnumerator._target._cancelationToken = enumerableRef._cancelationToken;
 
                     try
                     {
-                        using (var set = new Internal.PoolBackedSet<TKey, TEqualityComparer>(_comparer))
+                        using (var set = new PoolBackedSet<TKey, TEqualityComparer>(_comparer))
                         {
                             while (await _firstAsyncEnumerator.MoveNextAsync())
                             {
@@ -320,8 +323,7 @@ namespace Proto.Promises
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -332,16 +334,21 @@ namespace Proto.Promises
                         }
                         finally
                         {
-                            await _secondAsyncEnumerator.DisposeAsync();
+                            await _secondAsyncEnumerator.DisposeAsync().ConfigureAwait(_firstAsyncEnumerator.ContinuationOptions);
                         }
                     }
                 }
 
-                public Promise DisposeAsyncWithoutStart()
+                public async Promise DisposeAsyncWithoutStart()
                 {
-                    // We consume less memory by using .Finally instead of async/await.
-                    return _firstAsyncEnumerator.DisposeAsync()
-                        .Finally(_secondAsyncEnumerator, e => e.DisposeAsync());
+                    try
+                    {
+                        await _firstAsyncEnumerator.DisposeAsync();
+                    }
+                    finally
+                    {
+                        await _secondAsyncEnumerator.DisposeAsync().ConfigureAwait(_firstAsyncEnumerator.ContinuationOptions);
+                    }
                 }
             }
 

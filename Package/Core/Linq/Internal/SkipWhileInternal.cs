@@ -6,6 +6,7 @@
 
 using Proto.Promises.CompilerServices;
 using Proto.Promises.Linq;
+using Proto.Promises.Linq.Sources;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -55,12 +56,11 @@ namespace Proto.Promises
                                 {
                                     await writer.YieldAsync(_source.Current);
                                 }
-                                return;
+                                break;
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -109,12 +109,11 @@ namespace Proto.Promises
                                 {
                                     await writer.YieldAsync(_source.Current);
                                 }
-                                return;
+                                break;
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -164,12 +163,11 @@ namespace Proto.Promises
                                 {
                                     await writer.YieldAsync(_source.Current);
                                 }
-                                return;
+                                break;
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -219,12 +217,11 @@ namespace Proto.Promises
                                 {
                                     await writer.YieldAsync(_source.Current);
                                 }
-                                return;
+                                break;
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -273,12 +270,11 @@ namespace Proto.Promises
                                 {
                                     await writer.YieldAsync(_configuredSource.Current);
                                 }
-                                return;
+                                break;
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -321,19 +317,18 @@ namespace Proto.Promises
                         while (await _configuredSource.MoveNextAsync())
                         {
                             var element = _configuredSource.Current;
-                            if (!await _predicate.Invoke(element))
+                            if (!await _predicate.Invoke(element).ConfigureAwait(_configuredSource.ContinuationOptions))
                             {
                                 await writer.YieldAsync(element);
                                 while (await _configuredSource.MoveNextAsync())
                                 {
                                     await writer.YieldAsync(_configuredSource.Current);
                                 }
-                                return;
+                                break;
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -384,12 +379,11 @@ namespace Proto.Promises
                                 {
                                     await writer.YieldAsync(_configuredSource.Current);
                                 }
-                                return;
+                                break;
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
@@ -433,19 +427,18 @@ namespace Proto.Promises
                         while (await _configuredSource.MoveNextAsync())
                         {
                             var element = _configuredSource.Current;
-                            if (!await _predicate.Invoke(element, checked(++index)))
+                            if (!await _predicate.Invoke(element, checked(++index)).ConfigureAwait(_configuredSource.ContinuationOptions))
                             {
                                 await writer.YieldAsync(element);
                                 while (await _configuredSource.MoveNextAsync())
                                 {
                                     await writer.YieldAsync(_configuredSource.Current);
                                 }
-                                return;
+                                break;
                             }
                         }
 
-                        // We yield and wait for the enumerator to be disposed, but only if there were no exceptions.
-                        await writer.YieldAsync(default).ForLinqExtension();
+                        await AsyncEnumerableSourceHelpers.WaitForDisposeAsync(writer);
                     }
                     finally
                     {
