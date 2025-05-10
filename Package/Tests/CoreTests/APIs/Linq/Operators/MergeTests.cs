@@ -9,7 +9,7 @@ using Proto.Promises;
 using Proto.Promises.Collections;
 using Proto.Promises.Linq;
 using Proto.Promises.Linq.Sources;
-using ProtoPromiseTests.APIs.Collections;
+using ProtoPromise.Tests.APIs.Collections;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,7 +18,7 @@ using System.Threading;
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
 
-namespace ProtoPromiseTests.APIs.Linq
+namespace ProtoPromise.Tests.APIs.Linq
 {
     public class MergeTests
     {

@@ -5,9 +5,6 @@
     <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
     <!--In case any IL2CPP issues need to be resolved like in the core library.-->
     <DefineConstants>$(DefineConstants);ENABLE_IL2CPP</DefineConstants>
-    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
   </PropertyGroup>
 
   <Choose>
@@ -27,12 +24,11 @@
   </Choose>
 
   <ItemGroup>
+    <ProjectReference Include="..\ProtoPromise\ProtoPromise.csproj" />
+    
     <Compile Include="..\..\Package\UnityHelpers\2018.3\**\*.cs" />
+    
     <None Remove="UnityEngine.dll" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\ProtoPromise\ProtoPromise.csproj" />
     <Reference Include="UnityEngine">
       <HintPath>UnityEngine.dll</HintPath>
       <Private>false</Private>

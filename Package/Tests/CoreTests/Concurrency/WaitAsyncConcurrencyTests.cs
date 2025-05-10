@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace ProtoPromiseTests.Concurrency
+namespace ProtoPromise.Tests.Concurrency
 {
     public class WaitAsyncConcurrencyTests
     {

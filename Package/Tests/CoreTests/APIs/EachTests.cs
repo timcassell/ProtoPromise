@@ -10,7 +10,7 @@ using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 
-namespace ProtoPromiseTests.APIs
+namespace ProtoPromise.Tests.APIs
 {
     public class EachTests
     {

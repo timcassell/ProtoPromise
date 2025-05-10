@@ -8,7 +8,7 @@ using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.CompilerServices;
 using Proto.Promises.Linq;
-using ProtoPromiseTests.APIs.Collections;
+using ProtoPromise.Tests.APIs.Collections;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -19,7 +19,7 @@ using System.Threading;
 #pragma warning disable CS0162 // Unreachable code detected
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
 
-namespace ProtoPromiseTests.APIs.Linq
+namespace ProtoPromise.Tests.APIs.Linq
 {
     public static class SelectHelper
     {

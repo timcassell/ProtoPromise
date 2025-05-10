@@ -7,4 +7,6 @@ using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("ProtoPromise.UnityHelpers.2018.3")]
 [assembly: InternalsVisibleTo("ProtoPromise.UnityHelpers.2023.1")]
-[assembly: InternalsVisibleTo("ProtoPromiseTests")]
+[assembly: InternalsVisibleTo("ProtoPromise.Tests")]
+[assembly: InternalsVisibleTo("ProtoPromise.Tests.UnityHelpers.2018.3")]
+[assembly: InternalsVisibleTo("ProtoPromise.Tests.UnityHelpers.2023.1")]

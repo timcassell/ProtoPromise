@@ -14,7 +14,7 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-namespace ProtoPromiseTests.APIs
+namespace ProtoPromise.Tests.APIs
 {
     public class CancelationTests
     {

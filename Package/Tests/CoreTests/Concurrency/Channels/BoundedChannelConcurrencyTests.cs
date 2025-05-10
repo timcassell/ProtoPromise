@@ -14,7 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace ProtoPromiseTests.Concurrency.Channels
+namespace ProtoPromise.Tests.Concurrency.Channels
 {
     public class BoundedChannelConcurrencyTests
     {

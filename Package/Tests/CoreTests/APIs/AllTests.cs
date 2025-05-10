@@ -8,7 +8,7 @@ using System.Linq;
 using Proto.Promises;
 using NUnit.Framework;
 
-namespace ProtoPromiseTests.APIs
+namespace ProtoPromise.Tests.APIs
 {
     public class AllTests
     {

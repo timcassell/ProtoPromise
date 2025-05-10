@@ -6,12 +6,12 @@
 
 using NUnit.Framework;
 using Proto.Promises;
-using ProtoPromiseTests.Concurrency;
+using ProtoPromise.Tests.Concurrency;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 
-namespace ProtoPromiseTests.APIs
+namespace ProtoPromise.Tests.APIs
 {
     public class MiscellaneousTests
     {

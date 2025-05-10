@@ -12,7 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ProtoPromiseTests.Concurrency
+namespace ProtoPromise.Tests.Concurrency
 {
     public class AllConcurrencyTests
     {

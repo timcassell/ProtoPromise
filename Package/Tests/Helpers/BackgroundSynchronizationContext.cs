@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace ProtoPromiseTests
+namespace ProtoPromise.Tests
 {
     // Used instead of ThreadPool, because ThreadPool has issues in old runtime, causing tests to fail.
     // This also allows the test runner to wait for all background actions to complete.

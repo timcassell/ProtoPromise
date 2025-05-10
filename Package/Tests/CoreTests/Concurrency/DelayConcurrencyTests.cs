@@ -15,7 +15,7 @@ using System.Threading;
 
 #if !UNITY_WEBGL
 
-namespace ProtoPromiseTests.Concurrency
+namespace ProtoPromise.Tests.Concurrency
 {
     public enum FakeConcurrentTimerType
     {

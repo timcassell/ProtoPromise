@@ -5,7 +5,7 @@ using Proto.Promises.Linq;
 using System;
 using System.Threading;
 
-namespace ProtoPromiseTests.APIs.Channels
+namespace ProtoPromise.Tests.APIs.Channels
 {
     public class UnboundedChannelTests
     {

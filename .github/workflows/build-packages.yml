@@ -26,13 +26,13 @@ jobs:
         run: dotnet build -c Release
 
       - name: Pack ProtoPromise
-        run: dotnet pack ProtoPromise/ProtoPromise.csproj --no-build --output ./
+        run: dotnet pack Core/ProtoPromise/ProtoPromise.csproj --no-build --output ./
 
       - name: Pack Unity Helpers 2018.3
-        run: dotnet pack ProtoPromise.UnityHelpers/2018.3/ProtoPromise.UnityHelpers.2018.3.csproj --no-build --output ./
+        run: dotnet pack Core/ProtoPromise.UnityHelpers.2018.3/ProtoPromise.UnityHelpers.2018.3.csproj --no-build --output ./
 
       - name: Pack Unity Helpers 2023.1
-        run: dotnet pack ProtoPromise.UnityHelpers/2023.1/ProtoPromise.UnityHelpers.2023.1.csproj --no-build --output ./
+        run: dotnet pack Core/ProtoPromise.UnityHelpers.2023.1/ProtoPromise.UnityHelpers.2023.1.csproj --no-build --output ./
         
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

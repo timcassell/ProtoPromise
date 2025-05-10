@@ -99,14 +99,13 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
+            internal static HandleablePromiseBase TryTakeOrInvalid<
 #if NET6_0_OR_GREATER && (PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE)
-            internal static HandleablePromiseBase TryTakeOrInvalid<[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(
+                [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(
                 System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicConstructors
-                | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] T>()
-#else
-            internal static HandleablePromiseBase TryTakeOrInvalid<T>()
+                | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
 #endif
-                where T : HandleablePromiseBase
+                T>() where T : HandleablePromiseBase
             {
                 var obj = Type<T>.TryTakeOrInvalid();
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE

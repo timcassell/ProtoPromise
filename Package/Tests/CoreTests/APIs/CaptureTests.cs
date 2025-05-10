@@ -9,7 +9,7 @@ using Proto.Promises;
 using System;
 using System.Threading;
 
-namespace ProtoPromiseTests.APIs
+namespace ProtoPromise.Tests.APIs
 {
     public class CaptureTests
     {

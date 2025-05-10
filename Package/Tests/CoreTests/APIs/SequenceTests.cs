@@ -9,7 +9,7 @@ using Proto.Promises;
 using System;
 using System.Linq;
 
-namespace ProtoPromiseTests.APIs
+namespace ProtoPromise.Tests.APIs
 {
     public class SequenceTests
     {

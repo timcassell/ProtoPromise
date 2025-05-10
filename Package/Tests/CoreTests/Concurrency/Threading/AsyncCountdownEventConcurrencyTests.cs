@@ -13,7 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace ProtoPromiseTests.Concurrency.Threading
+namespace ProtoPromise.Tests.Concurrency.Threading
 {
     public class AsyncCountdownEventConcurrencyTests
     {

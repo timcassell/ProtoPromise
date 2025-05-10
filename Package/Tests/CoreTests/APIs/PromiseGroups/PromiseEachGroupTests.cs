@@ -10,7 +10,7 @@ using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 
-namespace ProtoPromiseTests.APIs.PromiseGroups
+namespace ProtoPromise.Tests.APIs.PromiseGroups
 {
     public class PromiseEachGroupTests
     {

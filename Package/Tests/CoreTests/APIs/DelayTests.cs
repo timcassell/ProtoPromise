@@ -10,7 +10,7 @@ using Proto.Timers;
 using System;
 using System.Threading;
 
-namespace ProtoPromiseTests.APIs
+namespace ProtoPromise.Tests.APIs
 {
     public enum TimerFactoryType
     {

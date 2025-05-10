@@ -6,7 +6,7 @@ using Proto.Promises.Threading;
 using System;
 using System.Threading;
 
-namespace ProtoPromiseTests.Concurrency.Threading
+namespace ProtoPromise.Tests.Concurrency.Threading
 {
     public class AsyncSemaphoreConcurrencyTests
     {

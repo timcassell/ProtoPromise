@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 
-namespace ProtoPromiseTests.Concurrency.Linq
+namespace ProtoPromise.Tests.Concurrency.Linq
 {
     public class AsyncEnumerableMergeConcurrencyTests
     {
