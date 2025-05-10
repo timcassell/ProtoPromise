@@ -30,6 +30,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProtoPromise.Tests.Analyzer
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProtoPromise.Tests.UnityHelpers.2023.1", "Tests\ProtoPromise.Tests.UnityHelpers.2023.1\ProtoPromise.Tests.UnityHelpers.2023.1.csproj", "{29BD10B2-8E52-CBD3-FB04-54999F0FB8FB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProtoPromise.Tests.AotCompatibility", "Tests\ProtoPromise.Tests.AotCompatibility\ProtoPromise.Tests.AotCompatibility.csproj", "{2263FE93-FF4E-0BB5-A40F-578651348BCB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -68,6 +70,10 @@ Global
 		{29BD10B2-8E52-CBD3-FB04-54999F0FB8FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{29BD10B2-8E52-CBD3-FB04-54999F0FB8FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{29BD10B2-8E52-CBD3-FB04-54999F0FB8FB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2263FE93-FF4E-0BB5-A40F-578651348BCB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2263FE93-FF4E-0BB5-A40F-578651348BCB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2263FE93-FF4E-0BB5-A40F-578651348BCB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2263FE93-FF4E-0BB5-A40F-578651348BCB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -81,6 +87,7 @@ Global
 		{01CC54F5-42DD-B01D-128D-2944EAD600EF} = {BCA7863A-7EFE-4B91-9B10-DF378CEDC828}
 		{11C0D63D-F654-B218-4CB3-F93B84578CC1} = {BCA7863A-7EFE-4B91-9B10-DF378CEDC828}
 		{29BD10B2-8E52-CBD3-FB04-54999F0FB8FB} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{2263FE93-FF4E-0BB5-A40F-578651348BCB} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F0A3E32B-A74C-40A9-A0D7-0E1BE536226B}

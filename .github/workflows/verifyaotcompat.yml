@@ -1,0 +1,32 @@
+name: Verify AOT Compatibility
+
+on: [pull_request, push]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  run-verify-aot-compat:
+    name: ${{ matrix.config }}-${{ matrix.tfm }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [Release]
+        tfm: [net8.0]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.X
+
+      - name: publish AOT testApp, assert static analysis warning count, and run the app
+        shell: pwsh
+        run: .\.github\test-aot-compatibility.ps1 ${{ matrix.tfm }} ${{ matrix.config }}
+        timeout-minutes: 360
