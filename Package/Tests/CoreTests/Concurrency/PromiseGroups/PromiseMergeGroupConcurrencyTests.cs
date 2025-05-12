@@ -11,7 +11,7 @@ using Proto.Promises;
 using System;
 using System.Collections.Generic;
 
-namespace ProtoPromiseTests.Concurrency.PromiseGroups
+namespace ProtoPromise.Tests.Concurrency.PromiseGroups
 {
     public class PromiseMergeGroupConcurrencyTests
     {

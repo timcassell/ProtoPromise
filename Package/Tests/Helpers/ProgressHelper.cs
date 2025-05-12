@@ -3,7 +3,7 @@ using Proto.Promises;
 using System;
 using System.Threading;
 
-namespace ProtoPromiseTests
+namespace ProtoPromise.Tests
 {
     public enum ProgressType
     {

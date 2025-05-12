@@ -10,7 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ProtoPromiseTests.APIs.PromiseGroups
+namespace ProtoPromise.Tests.APIs.PromiseGroups
 {
     public class PromiseAllGroupTests
     {

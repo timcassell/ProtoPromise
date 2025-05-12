@@ -6,12 +6,12 @@
 
 using NUnit.Framework;
 using Proto.Promises;
-using ProtoPromiseTests.Concurrency;
+using ProtoPromise.Tests.Concurrency;
 using System;
 using System.Linq;
 using System.Threading;
 
-namespace ProtoPromiseTests.APIs.Utilities
+namespace ProtoPromise.Tests.APIs.Utilities
 {
     public class ProgressTests
     {

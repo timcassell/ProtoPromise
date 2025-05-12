@@ -10,7 +10,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ProtoPromiseTests.APIs.Utilities
+namespace ProtoPromise.Tests.APIs.Utilities
 {
     public class AsyncLazyTests
     {

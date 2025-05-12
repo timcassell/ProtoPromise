@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <LangVersion>7.3</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NUnit" Version="3.14.0" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\..\Core\ProtoPromise\ProtoPromise.csproj" />
+    <ProjectReference Include="..\..\Core\ProtoPromise.UnityHelpers.2018.3\ProtoPromise.UnityHelpers.2018.3.csproj" />
+
+    <Compile Include="..\..\Package\Tests\Helpers\**\*.cs" Visible="false" />
+    <Compile Include="..\..\Package\Tests\UnityTests\2018.3\**\*.cs" />
+    
+    <None Remove="..\..\Core\ProtoPromise.UnityHelpers.2018.3\UnityEngine.dll" />
+    <Reference Include="UnityEngine">
+      <HintPath>..\..\Core\ProtoPromise.UnityHelpers.2018.3\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <None Remove="UnityEngine.TestRunner.dll" />
+    <Reference Include="UnityEngine.TestRunner">
+      <HintPath>UnityEngine.TestRunner.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

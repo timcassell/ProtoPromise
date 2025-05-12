@@ -5,14 +5,14 @@
 using NUnit.Framework;
 using Proto.Promises;
 using Proto.Timers;
-using ProtoPromiseTests.APIs;
+using ProtoPromise.Tests.APIs;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 
-namespace ProtoPromiseTests.Concurrency
+namespace ProtoPromise.Tests.Concurrency
 {
     public class CancelationConcurrencyTests
     {

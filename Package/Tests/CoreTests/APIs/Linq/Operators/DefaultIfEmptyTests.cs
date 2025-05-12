@@ -14,7 +14,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-namespace ProtoPromiseTests.APIs.Linq
+namespace ProtoPromise.Tests.APIs.Linq
 {
     public class DefaultIfEmptyTests
     {

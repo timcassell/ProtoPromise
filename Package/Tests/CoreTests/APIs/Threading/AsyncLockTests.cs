@@ -11,7 +11,7 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-namespace ProtoPromiseTests.APIs.Threading
+namespace ProtoPromise.Tests.APIs.Threading
 {
 #if UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER || NETCOREAPP
     public class AsyncLockTests

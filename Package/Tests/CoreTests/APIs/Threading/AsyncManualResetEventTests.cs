@@ -11,7 +11,7 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-namespace ProtoPromiseTests.APIs.Threading
+namespace ProtoPromise.Tests.APIs.Threading
 {
     public class AsyncManualResetEventTests
     {

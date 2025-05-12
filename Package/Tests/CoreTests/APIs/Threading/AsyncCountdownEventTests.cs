@@ -12,7 +12,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Xml.Schema;
 
-namespace ProtoPromiseTests.APIs.Threading
+namespace ProtoPromise.Tests.APIs.Threading
 {
     public class AsyncCountdownEventTests
     {

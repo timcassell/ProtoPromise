@@ -13,7 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 
-namespace ProtoPromiseTests.APIs.Threading
+namespace ProtoPromise.Tests.APIs.Threading
 {
 #if !UNITY_WEBGL
     public sealed class ParallelForTests

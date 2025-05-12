@@ -3,7 +3,7 @@
 using NUnit.Framework;
 using Proto.Promises;
 
-namespace ProtoPromiseTests.APIs
+namespace ProtoPromise.Tests.APIs
 {
     public class APlus_2_1_PromiseStates
     {

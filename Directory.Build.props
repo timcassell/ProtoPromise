@@ -10,21 +10,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <!-- Remove unnecessary suppression -->
     <NoWarn>$(NoWarn);IDE0079</NoWarn>
-
-    <PackageVersion>$(Version)</PackageVersion>
-    <Authors>Tim Cassell</Authors>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/timcassell/ProtoPromise</PackageProjectUrl>
-    <RepositoryType>git</RepositoryType>
-    <RepositoryUrl>https://github.com/timcassell/ProtoPromise</RepositoryUrl>
-    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <Copyright>Copyright ©2025 Tim Cassell</Copyright>
-    <PackageReadmeFile>readme.md</PackageReadmeFile>
   </PropertyGroup>
-
-  <ItemGroup>
-    <None Include="readme.md" Pack="true" PackagePath="\" />
-  </ItemGroup>
 
   <PropertyGroup Condition="'$(DeveloperMode)'=='true'">
     <DefineConstants>$(DefineConstants);TRACE;PROTO_PROMISE_DEVELOPER_MODE</DefineConstants>

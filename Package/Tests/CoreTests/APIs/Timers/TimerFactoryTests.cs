@@ -14,7 +14,7 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 
-namespace ProtoPromiseTests.APIs.Timers
+namespace ProtoPromise.Tests.APIs.Timers
 {
     public class TimerFactoryTests
     {

@@ -7,11 +7,11 @@
 using Proto.Promises;
 using NUnit.Framework;
 using System.Threading;
-using ProtoPromiseTests.Concurrency;
+using ProtoPromise.Tests.Concurrency;
 using System.Collections.Generic;
 using System;
 
-namespace ProtoPromiseTests.APIs
+namespace ProtoPromise.Tests.APIs
 {
     public class NewAndRunTests
     {

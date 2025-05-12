@@ -25,7 +25,7 @@ namespace System.Runtime.CompilerServices
 }
 #endif
 
-namespace ProtoPromiseTests.APIs
+namespace ProtoPromise.Tests.APIs
 {
     public class MergeSettledTests
     {

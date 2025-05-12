@@ -16,7 +16,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 
-namespace ProtoPromiseTests.Concurrency.Timers
+namespace ProtoPromise.Tests.Concurrency.Timers
 {
     public class TimerFactoryConcurrencyTests
     {

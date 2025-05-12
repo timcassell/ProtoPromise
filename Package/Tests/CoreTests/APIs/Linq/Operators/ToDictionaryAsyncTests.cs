@@ -17,7 +17,7 @@ using System.Threading;
 #pragma warning disable CS0162 // Unreachable code detected
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
 
-namespace ProtoPromiseTests.APIs.Linq
+namespace ProtoPromise.Tests.APIs.Linq
 {
     public class ToDictionaryAsyncTests
     {

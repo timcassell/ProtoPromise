@@ -12,7 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
-namespace ProtoPromiseTests.Concurrency.PromiseGroups
+namespace ProtoPromise.Tests.Concurrency.PromiseGroups
 {
     public class PromiseMergeResultsGroupConcurrencyTests
     {

@@ -11,7 +11,7 @@ using Proto.Promises.Collections;
 using Proto.Promises.Linq;
 using System;
 
-namespace ProtoPromiseTests.APIs.Collections
+namespace ProtoPromise.Tests.APIs.Collections
 {
     public class TempCollectionTests
     {

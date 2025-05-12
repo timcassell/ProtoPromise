@@ -7,12 +7,12 @@
 using NUnit.Framework;
 using Proto.Promises;
 using Proto.Timers;
-using ProtoPromiseTests.Concurrency;
+using ProtoPromise.Tests.Concurrency;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace ProtoPromiseTests.APIs
+namespace ProtoPromise.Tests.APIs
 {
     public class WaitAsyncTests
     {

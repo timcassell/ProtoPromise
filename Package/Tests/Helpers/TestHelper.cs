@@ -15,7 +15,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-namespace ProtoPromiseTests
+namespace ProtoPromise.Tests
 {
     public enum CompleteType : byte
     {

@@ -13,7 +13,7 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace ProtoPromiseTests.Unity
+namespace ProtoPromise.Tests.Unity
 {
     public class AwaitableExtensionsTests
     {

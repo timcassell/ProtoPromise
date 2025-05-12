@@ -10,7 +10,7 @@ using NUnit.Framework;
 using Proto.Promises;
 using System;
 
-namespace ProtoPromiseTests.APIs
+namespace ProtoPromise.Tests.APIs
 {
     public class APlus_2_2_TheThenMethod
     {

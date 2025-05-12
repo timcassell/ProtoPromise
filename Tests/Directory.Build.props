@@ -1,0 +1,20 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..\'))" />
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <!-- GC and finalizers are non-deterministic, even if we call GC.WaitForPendingFinalizers(),
+    so we cannot rely on them for unit testing in CI. This will only be enabled for local testing. -->
+    <TestGC>false</TestGC>
+    <RunAnalyzers>false</RunAnalyzers>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TestGC)'=='true'">
+    <DefineConstants>$(DefineConstants);PROTO_PROMISE_TEST_GC_ENABLED</DefineConstants>
+  </PropertyGroup>
+
+  <!-- For command-line testing -->
+  <PropertyGroup Condition="'$(ExtraDefineConstants)'!=''">
+    <DefineConstants>$(DefineConstants);$(ExtraDefineConstants)</DefineConstants>
+  </PropertyGroup>
+</Project>

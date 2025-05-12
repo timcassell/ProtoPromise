@@ -8,7 +8,7 @@ using NUnit.Framework;
 using Proto.Promises;
 using System.Threading.Tasks;
 
-namespace ProtoPromiseTests.APIs
+namespace ProtoPromise.Tests.APIs
 {
     public class AwaitTests
     {
