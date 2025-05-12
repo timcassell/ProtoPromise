@@ -1,5 +1,5 @@
 {
-    "name": "ProtoPromise.Tests",
+    "name": "ProtoPromiseTests",
     "references": [
         "ProtoPromise",
         "ProtoPromise.UnityHelpers.2018.3",
