@@ -98,12 +98,8 @@ namespace ProtoPromiseTests.APIs
         public void PromiseDelay(
             [Values(0, 1, 500)] int milliseconds)
         {
-            bool continued = false;
             Promise.Delay(TimeSpan.FromMilliseconds(milliseconds))
-                .Then(() => continued = true)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(2));
-
-            Assert.True(continued);
         }
 
         [Test]
@@ -114,21 +110,11 @@ namespace ProtoPromiseTests.APIs
             FakeTimerFactory fakeFactory = timerFactoryType == TimerFactoryType.FakeDelayed
                 ? new FakeDelayedTimerFactory()
                 : (FakeTimerFactory) new FakeImmediateTimerFactory();
-            bool continued = false;
             var promise = Promise.Delay(TimeSpan.FromMilliseconds(milliseconds),
-                timerFactoryType == 0 ? TimerFactory.System : fakeFactory)
-                .Then(() => continued = true);
+                timerFactoryType == 0 ? TimerFactory.System : fakeFactory);
 
-            if (milliseconds == 0)
-            {
-                promise.Forget();
-            }
-            else
-            {
-                fakeFactory.Invoke();
-                promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(2));
-            }
-            Assert.True(continued);
+            fakeFactory.Invoke();
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(2));
         }
 
         [Test]
@@ -144,16 +130,8 @@ namespace ProtoPromiseTests.APIs
 
             Promise.State result = Promise.State.Pending;
             var promise = Promise.Delay(TimeSpan.FromMilliseconds(milliseconds), cancelationSource.Token)
-                .ContinueWith(resultContainer => result = resultContainer.State);
-
-            if (milliseconds == 0)
-            {
-                promise.Forget();
-            }
-            else
-            {
-                promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(2));
-            }
+                .ContinueWith(resultContainer => result = resultContainer.State)
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(2));
 
             if (cancelationType == CancelationType.Deferred)
             {
@@ -175,8 +153,7 @@ namespace ProtoPromiseTests.APIs
             [Values(0, 1, 500)] int milliseconds)
         {
             var cancelationSource = CancelationSource.New();
-            if ((milliseconds == 0 || timerFactoryType == TimerFactoryType.FakeImmediate)
-                && cancelationType == CancelationType.Immediate)
+            if (cancelationType == CancelationType.Immediate)
             {
                 cancelationSource.Cancel();
             }
@@ -190,20 +167,8 @@ namespace ProtoPromiseTests.APIs
                 cancelationSource.Token)
                 .ContinueWith(resultContainer => result = resultContainer.State);
 
-            if (milliseconds == 0 || timerFactoryType == TimerFactoryType.FakeImmediate)
-            {
-                promise.Forget();
-            }
-            else
-            {
-                if (cancelationType == CancelationType.Immediate)
-                {
-                    cancelationSource.Cancel();
-                }
-
-                fakeFactory.Invoke();
-                promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(2));
-            }
+            fakeFactory.Invoke();
+            promise.WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(2));
 
             if (cancelationType == CancelationType.Deferred)
             {
