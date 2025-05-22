@@ -670,7 +670,7 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                return new PromiseMergeGroup(mergeGroup._cancelationRef, mergeGroup._cleanupCallbacks, true);
+                return new PromiseMergeGroup(mergeGroup._cancelationRef, mergeGroup._cleanupCallbacks, mergeGroup._cleanupCount, true);
             }
 
             if (!group.TryIncrementId(mergeGroup._groupId))
@@ -1258,7 +1258,7 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                return new PromiseMergeGroup(mergeGroup._cancelationRef, mergeGroup._cleanupCallbacks, true);
+                return new PromiseMergeGroup(mergeGroup._cancelationRef, mergeGroup._cleanupCallbacks, mergeGroup._cleanupCount, true);
             }
 
             if (!group.TryIncrementId(mergeGroup._groupId))

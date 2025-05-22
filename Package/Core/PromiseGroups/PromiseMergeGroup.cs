@@ -35,8 +35,8 @@ namespace Proto.Promises
         internal readonly bool _isExtended;
 
         [MethodImpl(Internal.InlineOption)]
-        internal PromiseMergeGroup(Internal.CancelationRef cancelationRef, Internal.ValueLinkedStack<Internal.CleanupCallbackBase> cleanupCallbacks, bool isExtended)
-            : this(cancelationRef, null, cleanupCallbacks, 0, 0, 0, isExtended)
+        internal PromiseMergeGroup(Internal.CancelationRef cancelationRef, Internal.ValueLinkedStack<Internal.CleanupCallbackBase> cleanupCallbacks, int cleanupCount, bool isExtended)
+            : this(cancelationRef, null, cleanupCallbacks, cleanupCount, 0, 0, isExtended)
         {
         }
 
@@ -71,7 +71,7 @@ namespace Proto.Promises
             var cancelationRef = Internal.CancelationRef.GetOrCreate();
             cancelationRef.MaybeLinkToken(sourceCancelationToken);
             groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseMergeGroup(cancelationRef, new Internal.ValueLinkedStack<Internal.CleanupCallbackBase>(), false);
+            return new PromiseMergeGroup(cancelationRef, new Internal.ValueLinkedStack<Internal.CleanupCallbackBase>(), 0, false);
         }
 
         /// <summary>
@@ -120,7 +120,7 @@ namespace Proto.Promises
                 return new PromiseMergeGroup(cancelationRef, group, _cleanupCallbacks, _cleanupCount, 1, group.Id, isExtended);
             }
 
-            return new PromiseMergeGroup(cancelationRef, _cleanupCallbacks, isExtended);
+            return new PromiseMergeGroup(cancelationRef, _cleanupCallbacks, _cleanupCount, isExtended);
         }
 
         /// <summary>
@@ -208,6 +208,11 @@ namespace Proto.Promises
             {
                 Internal.ThrowInvalidMergeGroup(2);
             }
+            var cleanupCallbacks = _cleanupCallbacks;
+            while (cleanupCallbacks.IsNotEmpty)
+            {
+                cleanupCallbacks.Pop().Dispose();
+            }
         }
 
         internal PromiseMergeGroup Merge(Promise promise, int index)
@@ -252,7 +257,7 @@ namespace Proto.Promises
                 return new PromiseMergeGroup(cancelationRef, group, _cleanupCallbacks, _cleanupCount, 1, group.Id, isExtended);
             }
 
-            return new PromiseMergeGroup(cancelationRef, _cleanupCallbacks, isExtended);
+            return new PromiseMergeGroup(cancelationRef, _cleanupCallbacks, _cleanupCount, isExtended);
         }
 
         internal PromiseMergeGroup Merge(Promise promise, int index, Internal.CleanupCallbackBase cleanupCallback)
@@ -262,6 +267,7 @@ namespace Proto.Promises
 #endif
             var cancelationRef = _cancelationRef;
             var group = _group;
+            var cleanupCallbacks = _cleanupCallbacks;
             uint count = _count;
             var isExtended = _isExtended;
             if (cancelationRef == null)
@@ -282,7 +288,6 @@ namespace Proto.Promises
                     checked { ++count; }
                     group.AddPromiseForMerge(promise, index);
                 }
-                var cleanupCallbacks = _cleanupCallbacks;
                 cleanupCallbacks.Push(cleanupCallback);
                 return new PromiseMergeGroup(cancelationRef, group, cleanupCallbacks, unchecked(_cleanupCount + 1), count, group.Id, isExtended);
             }
@@ -292,16 +297,15 @@ namespace Proto.Promises
                 Internal.ThrowInvalidMergeGroup(2);
             }
 
+            cleanupCallbacks.Push(cleanupCallback);
             if (promise._ref != null)
             {
                 group = Internal.GetOrCreateMergePromiseGroupVoid(cancelationRef);
                 group.AddPromiseForMerge(promise, index);
-                var cleanupCallbacks = _cleanupCallbacks;
-                cleanupCallbacks.Push(cleanupCallback);
                 return new PromiseMergeGroup(cancelationRef, group, cleanupCallbacks, unchecked(_cleanupCount + 1), 1, group.Id, isExtended);
             }
 
-            return new PromiseMergeGroup(cancelationRef, _cleanupCallbacks, isExtended);
+            return new PromiseMergeGroup(cancelationRef, cleanupCallbacks, unchecked(_cleanupCount + 1), isExtended);
         }
 
         internal PromiseMergeGroup MergeForExtension(Promise promise)
@@ -995,7 +999,7 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                return new PromiseMergeGroup(mergeGroup._cancelationRef, mergeGroup._cleanupCallbacks, true);
+                return new PromiseMergeGroup(mergeGroup._cancelationRef, mergeGroup._cleanupCallbacks, mergeGroup._cleanupCount, true);
             }
 
             if (!group.TryIncrementId(mergeGroup._groupId))
