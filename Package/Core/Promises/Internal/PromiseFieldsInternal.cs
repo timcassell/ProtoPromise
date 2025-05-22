@@ -548,7 +548,12 @@ namespace Proto.Promises
 
             partial class MergePromiseGroup<TResult> : SingleAwaitPromise<TResult>
             {
+                private List<Exception> _exceptions;
+                private ValueLinkedStack<CleanupCallbackBase> _cleanupCallbacks;
+                private int _cleanupCount;
                 private bool _isExtended;
+                private bool _isFinal;
+                private bool _isCleaning;
             }
 
             partial class MergePromiseResultsGroup<TResult> : SingleAwaitPromise<TResult>
