@@ -4,10 +4,13 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0028 // Collection initialization can be simplified
+#pragma warning disable IDE0306 // Collection initialization can be simplified
+
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Threading;
 
 namespace Proto.Promises
 {
@@ -201,13 +204,18 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> New(MergePromiseGroupVoid group, in TResult value, GetResultDelegate<TResult> getResultFunc, bool isExtended)
+                internal static Promise<TResult> New(MergePromiseGroupVoid group, in TResult value, GetResultDelegate<TResult> getResultFunc, bool isExtended, bool isFinal,
+                    ValueLinkedStack<CleanupCallbackBase> cleanupCallbacks, int cleanupCount)
                 {
                     s_getResult = getResultFunc;
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._result = value;
                     promise._isExtended = isExtended;
+                    promise._isFinal = isFinal;
+                    promise._cleanupCallbacks = cleanupCallbacks;
+                    promise._cleanupCount = cleanupCount;
+                    promise._isCleaning = false;
                     promise.SetPrevious(group);
                     group.HookupNewWaiter(group.Id, promise);
                     return new Promise<TResult>(promise);
@@ -223,6 +231,21 @@ namespace Proto.Promises
                 {
                     handler.SetCompletionState(state);
 
+                    if (_isCleaning)
+                    {
+                        HandleCleanupPromise(handler, state);
+                        return;
+                    }
+                    
+                    // The cleanup stack is possibly shared between multiple extended merge groups.
+                    // Only prepare the count of cleanups for this promise, not the entire stack.
+                    var cleanupCallback = _cleanupCallbacks.Peek();
+                    for (var i = _cleanupCount; i > 0; --i)
+                    {
+                        cleanupCallback.Prepare();
+                        cleanupCallback = cleanupCallback._next.UnsafeAs<CleanupCallbackBase>();
+                    }
+
                     var group = handler.UnsafeAs<MergePromiseGroupVoid>();
                     var passthroughs = group._completedPassThroughs.TakeAndClear();
                     while (passthroughs.IsNotEmpty)
@@ -233,21 +256,7 @@ namespace Proto.Promises
                         s_getResult.Invoke(owner, index, ref _result);
                         if (owner.State == Promise.State.Rejected)
                         {
-                            var exception = owner.RejectContainer.GetValueAsException();
-                            if (_isExtended & index == 0)
-                            {
-                                // If this is an extended merge group, we need to extract the inner exceptions of the first cluster to make a flattened AggregateException.
-                                // We only do this for 1 layer instead of using the Flatten method of the AggregateException, because we only want to flatten the exceptions from the group,
-                                // and not any nested AggregateExceptions from the actual async work.
-                                foreach (var ex in exception.UnsafeAs<AggregateException>().InnerExceptions)
-                                {
-                                    group.RecordException(ex);
-                                }
-                            }
-                            else
-                            {
-                                group.RecordException(exception);
-                            }
+                            RecordRejection(group, owner, index);
                         }
                         passthrough.Dispose();
                     }
@@ -265,7 +274,110 @@ namespace Proto.Promises
                     }
                     group.MaybeDispose();
 
-                    HandleNextInternal(state);
+                    if (_isFinal & _cleanupCallbacks.IsNotEmpty)
+                    {
+                        Cleanup(state);
+                    }
+                    else
+                    {
+                        HandleNextInternal(state);
+                    }
+                }
+
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private void RecordRejection(MergePromiseGroupVoid group, PromiseRefBase owner, int index)
+                {
+                    var exception = owner.RejectContainer.GetValueAsException();
+                    if (_isExtended & index == 0)
+                    {
+                        // If this is an extended merge group, we need to extract the inner exceptions of the first cluster to make a flattened AggregateException.
+                        // We only do this for 1 layer instead of using the Flatten method of the AggregateException, because we only want to flatten the exceptions from the group,
+                        // and not any nested AggregateExceptions from the actual async work.
+                        foreach (var ex in exception.UnsafeAs<AggregateException>().InnerExceptions)
+                        {
+                            group.RecordException(ex);
+                        }
+                    }
+                    else
+                    {
+                        group.RecordException(exception);
+                    }
+                }
+
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private void HandleCleanupPromise(PromiseRefBase handler, Promise.State state)
+                {
+                    if (state == Promise.State.Rejected)
+                    {
+                        var exception = handler.RejectContainer.GetValueAsException();
+                        lock (this)
+                        {
+                            // Extract the previous exceptions to append the new exception if another promise hasn't already done so.
+                            if (RejectContainer != null)
+                            {
+                                _exceptions = new List<Exception>(RejectContainer.GetValueAsException().UnsafeAs<AggregateException>().InnerExceptions);
+                                RejectContainer = null;
+                            }
+                            RecordException(exception, ref _exceptions);
+                        }
+                    }
+                    handler.MaybeDispose();
+
+                    MaybeHandleNextAfterCleanup();
+                }
+
+                private void Cleanup(Promise.State state)
+                {
+                    var cleanupCallbacks = _cleanupCallbacks.TakeAndClear();
+                    if (state == Promise.State.Resolved)
+                    {
+                        do
+                        {
+                            cleanupCallbacks.Pop().Dispose();
+                        } while (cleanupCallbacks.IsNotEmpty);
+
+                        HandleNextInternal(Promise.State.Resolved);
+                        return;
+                    }
+
+                    // We reuse the _cleanupCount as an interlocked counter to know when all cleanup promises are complete.
+                    _cleanupCount = 1;
+                    _isCleaning = true;
+                    do
+                    {
+                        var cleanupPromise = cleanupCallbacks.Pop().DisposeAndInvoke();
+                        if (cleanupPromise._ref == null)
+                        {
+                            continue;
+                        }
+
+                        if (cleanupPromise._ref.State == Promise.State.Resolved)
+                        {
+                            cleanupPromise._ref.MaybeMarkAwaitedAndDispose(cleanupPromise._id);
+                        }
+                        else
+                        {
+                            InterlockedAddWithUnsignedOverflowCheck(ref _cleanupCount, 1);
+                            cleanupPromise._ref.HookupExistingWaiter(cleanupPromise._id, this);
+                        }
+                    } while (cleanupCallbacks.IsNotEmpty);
+
+                    MaybeHandleNextAfterCleanup();
+                }
+
+                private void MaybeHandleNextAfterCleanup()
+                {
+                    if (InterlockedAddWithUnsignedOverflowCheck(ref _cleanupCount, -1) != 0)
+                    {
+                        return;
+                    }
+
+                    if (_exceptions != null)
+                    {
+                        RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
+                        _exceptions = null;
+                    }
+                    HandleNextInternal(RejectContainer == null ? Promise.State.Canceled : Promise.State.Rejected);
                 }
             }
         } // class PromiseRefBase
@@ -276,8 +388,8 @@ namespace Proto.Promises
 
         [MethodImpl(InlineOption)]
         internal static Promise<TResult> NewMergePromiseGroup<TResult>(
-            PromiseRefBase.MergePromiseGroupVoid group, in TResult value, GetResultDelegate<TResult> getResultFunc, bool isExtended)
-            => PromiseRefBase.MergePromiseGroup<TResult>.New(group, value, getResultFunc, isExtended);
+            PromiseRefBase.MergePromiseGroupVoid group, in TResult value, GetResultDelegate<TResult> getResultFunc, bool isExtended, bool isFinal, ValueLinkedStack<CleanupCallbackBase> cleanupCallbacks, int cleanupCount)
+            => PromiseRefBase.MergePromiseGroup<TResult>.New(group, value, getResultFunc, isExtended, isFinal, cleanupCallbacks, cleanupCount);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void ThrowInvalidMergeGroup(int skipFrames)
