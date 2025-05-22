@@ -92,7 +92,7 @@ jobs:
           - unity: { major: 2019 }
             buildTargetId: 1
           - unity: { major: 2023 }
-            buildTargetId: standalone
+            buildTargetId: Standalone
 
     steps:
       - name: Checkout
