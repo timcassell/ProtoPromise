@@ -1,10 +1,8 @@
 {
   "dependencies": {
     "com.timcassell.protopromise": "file:../../Package",
-    "com.unity.multiplayer.center": "1.0.0",
     "com.unity.test-framework": "1.5.1",
     "com.unity.ugui": "2.0.0",
-    "com.unity.modules.accessibility": "1.0.0",
     "com.unity.modules.imageconversion": "1.0.0",
     "com.unity.modules.imgui": "1.0.0",
     "com.unity.modules.ui": "1.0.0",
