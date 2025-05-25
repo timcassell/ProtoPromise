@@ -29,7 +29,7 @@ namespace ProtoPromise.Tests.Concurrency.Timers
         [TearDown]
         public void Teardown()
         {
-            TestHelper.Cleanup();
+            TestHelper.Cleanup(spinForThreadPool: true);
         }
 
         private sealed class CustomTimeProvider : TimeProvider { }

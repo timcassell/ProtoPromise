@@ -29,7 +29,8 @@ namespace ProtoPromise.Tests.APIs
             [TearDown]
             public void Teardown()
             {
-                TestHelper.Cleanup();
+                // We test delayed cancelation here, so we need to give some extra time for the system timers to complete on the thread pool.
+                TestHelper.Cleanup(spinForThreadPool: true);
             }
 
             [Test]

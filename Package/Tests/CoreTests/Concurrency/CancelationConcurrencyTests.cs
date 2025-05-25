@@ -25,7 +25,7 @@ namespace ProtoPromise.Tests.Concurrency
         [TearDown]
         public void Teardown()
         {
-            TestHelper.Cleanup();
+            TestHelper.Cleanup(spinForThreadPool: true);
         }
 
         [Test]

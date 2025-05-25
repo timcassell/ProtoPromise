@@ -27,7 +27,7 @@ namespace ProtoPromise.Tests.APIs.Timers
         [TearDown]
         public void Teardown()
         {
-            TestHelper.Cleanup();
+            TestHelper.Cleanup(spinForThreadPool: true);
         }
 
         private class TimerState
