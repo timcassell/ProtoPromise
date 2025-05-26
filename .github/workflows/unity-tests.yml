@@ -48,7 +48,7 @@ jobs:
               symbol: PROTO_PROMISE_POOL_DISABLE
             }
         # Editor uses 2018 to test netstandard2.0 in Mono.
-        # Standalone uses 2019 and 2023 to test IL2CPP with netstandard2.0 and netstandard2.1.
+        # Standalone uses 2019 and 6000 to test IL2CPP with netstandard2.0 and netstandard2.1.
         unity:
           - {
               major: 2018,
@@ -59,8 +59,8 @@ jobs:
               version: 2019.4.40f1,
             }
           - {
-              major: 2023,
-              version: 2023.1.0f1,
+              major: 6000,
+              version: 6000.0.48f1,
             }
 
         exclude:
@@ -76,7 +76,7 @@ jobs:
             }
           - {
               testMode: { name: Editor },
-              unity: { major: 2023 }
+              unity: { major: 6000 }
             }
           # Standalone with IL2CPP can only be built with 2019.4+ (unity-builder docker images constraint).
           - {
@@ -91,8 +91,8 @@ jobs:
             buildTargetId: 1
           - unity: { major: 2019 }
             buildTargetId: 1
-          - unity: { major: 2023 }
-            buildTargetId: standalone
+          - unity: { major: 6000 }
+            buildTargetId: Standalone
 
     steps:
       - name: Checkout

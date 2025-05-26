@@ -186,9 +186,9 @@ namespace Proto.Promises
 #endif
     public class RethrowException : Exception, Internal.IRejectionToContainer
     {
-        // Old Unity runtime has a bug where stack traces are continually appended to the exception, causing a memory leak and runtime slowdowns.
+        // Unity runtimes have a bug where stack traces are continually appended to the exception, causing a memory leak and runtime slowdowns.
         // To avoid the issue, we only use a singleton in runtimes where the bug is not present.
-#if PROMISE_DEBUG || NETSTANDARD2_0 || (UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER)
+#if PROMISE_DEBUG || !NETCOREAPP || UNITY_2018_3_OR_NEWER
         // Don't re-use instance in DEBUG mode so that we can read its stacktrace on any thread.
         internal static RethrowException GetOrCreate() => new RethrowException();
 #else

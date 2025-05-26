@@ -133,7 +133,7 @@ namespace ProtoPromise.Tests
             Assert.AreEqual(expected, actual);
         }
 
-        public static void Cleanup()
+        public static void Cleanup(bool spinForThreadPool = false)
         {
             WaitForAllThreadsToCompleteAndGcCollect();
 
@@ -153,7 +153,7 @@ namespace ProtoPromise.Tests
             }
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            Internal.AssertAllObjectsReleased();
+            Internal.AssertAllObjectsReleased(spinForThreadPool);
 #endif
 
             s_expectedUncaughtRejectValue = null;
