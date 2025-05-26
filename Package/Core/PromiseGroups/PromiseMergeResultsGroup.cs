@@ -670,7 +670,7 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                return new PromiseMergeGroup(mergeGroup._cancelationRef, true);
+                return new PromiseMergeGroup(mergeGroup._cancelationRef, mergeGroup._cleanupCallbacks, mergeGroup._cleanupCount, true);
             }
 
             if (!group.TryIncrementId(mergeGroup._groupId))
@@ -691,8 +691,7 @@ namespace Proto.Promises
                 false
             );
 
-            return new PromiseMergeGroup(mergeGroup._cancelationRef, true)
-                .MergeForExtension(promise);
+            return mergeGroup.MergeForExtension(promise);
         }
 
         /// <summary>
@@ -1259,7 +1258,7 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                return new PromiseMergeGroup(mergeGroup._cancelationRef, true);
+                return new PromiseMergeGroup(mergeGroup._cancelationRef, mergeGroup._cleanupCallbacks, mergeGroup._cleanupCount, true);
             }
 
             if (!group.TryIncrementId(mergeGroup._groupId))
@@ -1280,8 +1279,7 @@ namespace Proto.Promises
                 true
             );
 
-            return new PromiseMergeGroup(mergeGroup._cancelationRef, true)
-                .MergeForExtension(promise);
+            return mergeGroup.MergeForExtension(promise);
         }
 
         /// <summary>
