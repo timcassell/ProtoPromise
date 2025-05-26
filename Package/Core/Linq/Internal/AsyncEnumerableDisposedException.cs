@@ -7,9 +7,9 @@ namespace Proto.Promises.CompilerServices
 {
     internal sealed class AsyncEnumerableDisposedException : Exception
     {
-        // Old Unity runtime has a bug where stack traces are continually appended to the exception, causing a memory leak and runtime slowdowns.
+        // Unity runtimes have a bug where stack traces are continually appended to the exception, causing a memory leak and runtime slowdowns.
         // To avoid the issue, we only use a singleton in runtimes where the bug is not present.
-#if NETSTANDARD2_0 || (UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER)
+#if PROMISE_DEBUG || !NETCOREAPP || UNITY_2018_3_OR_NEWER
         [MethodImpl(Internal.InlineOption)]
         internal static AsyncEnumerableDisposedException GetOrCreate() => new AsyncEnumerableDisposedException();
         
