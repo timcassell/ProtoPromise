@@ -1280,15 +1280,6 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
             }
         }
 
-        public enum CleanupType
-        {
-            None,
-            Sync,
-            SyncCapture,
-            Async,
-            AsyncCapture
-        }
-
         private static IEnumerable<TestCaseData> GetOnCleanupIsInvokedCorrectlyArgs()
         {
             // Don't test captures for every combination to reduce number of tests.

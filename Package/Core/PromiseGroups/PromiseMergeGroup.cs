@@ -27,7 +27,7 @@ namespace Proto.Promises
     {
         internal readonly Internal.CancelationRef _cancelationRef;
         internal readonly Internal.PromiseRefBase.MergePromiseGroupVoid _group;
-        internal readonly Internal.ValueLinkedStack<Internal.CleanupCallbackBase> _cleanupCallbacks;
+        internal readonly Internal.ValueLinkedStack<Internal.MergeCleanupCallback> _cleanupCallbacks;
         internal readonly int _cancelationId;
         internal readonly int _cleanupCount;
         internal readonly uint _count;
@@ -35,13 +35,13 @@ namespace Proto.Promises
         internal readonly bool _isExtended;
 
         [MethodImpl(Internal.InlineOption)]
-        internal PromiseMergeGroup(Internal.CancelationRef cancelationRef, Internal.ValueLinkedStack<Internal.CleanupCallbackBase> cleanupCallbacks, int cleanupCount, bool isExtended)
+        internal PromiseMergeGroup(Internal.CancelationRef cancelationRef, Internal.ValueLinkedStack<Internal.MergeCleanupCallback> cleanupCallbacks, int cleanupCount, bool isExtended)
             : this(cancelationRef, null, cleanupCallbacks, cleanupCount, 0, 0, isExtended)
         {
         }
 
         [MethodImpl(Internal.InlineOption)]
-        private PromiseMergeGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.MergePromiseGroupVoid group, Internal.ValueLinkedStack<Internal.CleanupCallbackBase> cleanupCallbacks,
+        private PromiseMergeGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.MergePromiseGroupVoid group, Internal.ValueLinkedStack<Internal.MergeCleanupCallback> cleanupCallbacks,
             int cleanupCount, uint count, short groupId, bool isExtended)
         {
             _cancelationRef = cancelationRef;
@@ -71,7 +71,7 @@ namespace Proto.Promises
             var cancelationRef = Internal.CancelationRef.GetOrCreate();
             cancelationRef.MaybeLinkToken(sourceCancelationToken);
             groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseMergeGroup(cancelationRef, new Internal.ValueLinkedStack<Internal.CleanupCallbackBase>(), 0, false);
+            return new PromiseMergeGroup(cancelationRef, new Internal.ValueLinkedStack<Internal.MergeCleanupCallback>(), 0, false);
         }
 
         /// <summary>
@@ -136,7 +136,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         /// <param name="onCleanup">The delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1> Add<T1>(Promise<T1> promise, Action<T1> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, onCleanup));
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
@@ -145,7 +145,7 @@ namespace Proto.Promises
         /// <param name="cleanupCaptureValue">The captured value that will be passed to <paramref name="onCleanup"/>.</param>
         /// <param name="onCleanup">The delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1> Add<T1, TCaptureCleanup>(Promise<T1> promise, TCaptureCleanup cleanupCaptureValue, Action<TCaptureCleanup, T1> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
@@ -153,7 +153,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         /// <param name="onCleanup">The async delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1> Add<T1>(Promise<T1> promise, Func<T1, Promise> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, onCleanup));
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
@@ -162,10 +162,10 @@ namespace Proto.Promises
         /// <param name="cleanupCaptureValue">The captured value that will be passed to <paramref name="onCleanup"/>.</param>
         /// <param name="onCleanup">The async delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1> Add<T1, TCaptureCleanup>(Promise<T1> promise, TCaptureCleanup cleanupCaptureValue, Func<TCaptureCleanup, T1, Promise> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
         
         [MethodImpl(Internal.InlineOption)]
-        private PromiseMergeGroup<T1> Add<T1>(in Promise<T1> promise, Internal.CleanupCallbackBase cleanupCallback)
+        private PromiseMergeGroup<T1> Add<T1>(in Promise<T1> promise, Internal.MergeCleanupCallback cleanupCallback)
             => new PromiseMergeGroup<T1>(Merge(promise, 0, cleanupCallback), promise._result);
 
         /// <summary>
@@ -260,7 +260,7 @@ namespace Proto.Promises
             return new PromiseMergeGroup(cancelationRef, _cleanupCallbacks, _cleanupCount, isExtended);
         }
 
-        internal PromiseMergeGroup Merge(Promise promise, int index, Internal.CleanupCallbackBase cleanupCallback)
+        internal PromiseMergeGroup Merge(Promise promise, int index, Internal.MergeCleanupCallback cleanupCallback)
         {
 #if PROMISE_DEBUG
             Internal.ValidateArgument(promise, nameof(promise), 2);
@@ -315,7 +315,7 @@ namespace Proto.Promises
             group.AddPromiseForMerge(promise, 0);
             // The previous promise stores the head to its cleanup stack, the new promise adds on top of the stack without modifying the previous stack (the items are a linked-list).
             // The cleanup count is reset to 0 so when the new promise is complete, it won't double-prepare the previous cleanups.
-            var cleanupCallbacks = new Internal.ValueLinkedStack<Internal.CleanupCallbackBase>(_cleanupCallbacks.Peek());
+            var cleanupCallbacks = new Internal.ValueLinkedStack<Internal.MergeCleanupCallback>(_cleanupCallbacks.Peek());
             return new PromiseMergeGroup(_cancelationRef, group, cleanupCallbacks, 0, 1, group.Id, true);
         }
     }
@@ -358,7 +358,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         /// <param name="onCleanup">The delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2> Add<T2>(Promise<T2> promise, Action<T2> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, onCleanup));
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
@@ -367,7 +367,7 @@ namespace Proto.Promises
         /// <param name="cleanupCaptureValue">The captured value that will be passed to <paramref name="onCleanup"/>.</param>
         /// <param name="onCleanup">The delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2> Add<T2, TCaptureCleanup>(Promise<T2> promise, TCaptureCleanup cleanupCaptureValue, Action<TCaptureCleanup, T2> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
@@ -375,7 +375,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         /// <param name="onCleanup">The async delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2> Add<T2>(Promise<T2> promise, Func<T2, Promise> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, onCleanup));
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
@@ -384,10 +384,10 @@ namespace Proto.Promises
         /// <param name="cleanupCaptureValue">The captured value that will be passed to <paramref name="onCleanup"/>.</param>
         /// <param name="onCleanup">The async delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2> Add<T2, TCaptureCleanup>(Promise<T2> promise, TCaptureCleanup cleanupCaptureValue, Func<TCaptureCleanup, T2, Promise> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
 
         [MethodImpl(Internal.InlineOption)]
-        private PromiseMergeGroup<T1, T2> Add<T2>(in Promise<T2> promise, Internal.CleanupCallbackBase cleanupCallback)
+        private PromiseMergeGroup<T1, T2> Add<T2>(in Promise<T2> promise, Internal.MergeCleanupCallback cleanupCallback)
             => new PromiseMergeGroup<T1, T2>(_mergeGroup.Merge(promise, 1, cleanupCallback), (_value, promise._result));
 
         /// <summary>
@@ -458,7 +458,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         /// <param name="onCleanup">The delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2, T3> Add<T3>(Promise<T3> promise, Action<T3> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, onCleanup));
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
@@ -467,7 +467,7 @@ namespace Proto.Promises
         /// <param name="cleanupCaptureValue">The captured value that will be passed to <paramref name="onCleanup"/>.</param>
         /// <param name="onCleanup">The delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2, T3> Add<T3, TCaptureCleanup>(Promise<T3> promise, TCaptureCleanup cleanupCaptureValue, Action<TCaptureCleanup, T3> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
@@ -475,7 +475,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         /// <param name="onCleanup">The async delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2, T3> Add<T3>(Promise<T3> promise, Func<T3, Promise> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, onCleanup));
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
@@ -484,10 +484,10 @@ namespace Proto.Promises
         /// <param name="cleanupCaptureValue">The captured value that will be passed to <paramref name="onCleanup"/>.</param>
         /// <param name="onCleanup">The async delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2, T3> Add<T3, TCaptureCleanup>(Promise<T3> promise, TCaptureCleanup cleanupCaptureValue, Func<TCaptureCleanup, T3, Promise> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
 
         [MethodImpl(Internal.InlineOption)]
-        private PromiseMergeGroup<T1, T2, T3> Add<T3>(in Promise<T3> promise, Internal.CleanupCallbackBase cleanupCallback)
+        private PromiseMergeGroup<T1, T2, T3> Add<T3>(in Promise<T3> promise, Internal.MergeCleanupCallback cleanupCallback)
             => new PromiseMergeGroup<T1, T2, T3>(_mergeGroup.Merge(promise, 1, cleanupCallback), (_value.Item1, _value.Item2, promise._result));
 
         /// <summary>
@@ -558,7 +558,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         /// <param name="onCleanup">The delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2, T3, T4> Add<T4>(Promise<T4> promise, Action<T4> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, onCleanup));
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
@@ -567,7 +567,7 @@ namespace Proto.Promises
         /// <param name="cleanupCaptureValue">The captured value that will be passed to <paramref name="onCleanup"/>.</param>
         /// <param name="onCleanup">The delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2, T3, T4> Add<T4, TCaptureCleanup>(Promise<T4> promise, TCaptureCleanup cleanupCaptureValue, Action<TCaptureCleanup, T4> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
@@ -575,7 +575,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         /// <param name="onCleanup">The async delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2, T3, T4> Add<T4>(Promise<T4> promise, Func<T4, Promise> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, onCleanup));
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
@@ -584,10 +584,10 @@ namespace Proto.Promises
         /// <param name="cleanupCaptureValue">The captured value that will be passed to <paramref name="onCleanup"/>.</param>
         /// <param name="onCleanup">The async delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2, T3, T4> Add<T4, TCaptureCleanup>(Promise<T4> promise, TCaptureCleanup cleanupCaptureValue, Func<TCaptureCleanup, T4, Promise> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
 
         [MethodImpl(Internal.InlineOption)]
-        private PromiseMergeGroup<T1, T2, T3, T4> Add<T4>(in Promise<T4> promise, Internal.CleanupCallbackBase cleanupCallback)
+        private PromiseMergeGroup<T1, T2, T3, T4> Add<T4>(in Promise<T4> promise, Internal.MergeCleanupCallback cleanupCallback)
             => new PromiseMergeGroup<T1, T2, T3, T4>(_mergeGroup.Merge(promise, 1, cleanupCallback), (_value.Item1, _value.Item2, _value.Item3, promise._result));
 
         /// <summary>
@@ -658,7 +658,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         /// <param name="onCleanup">The delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2, T3, T4, T5> Add<T5>(Promise<T5> promise, Action<T5> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, onCleanup));
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
@@ -667,7 +667,7 @@ namespace Proto.Promises
         /// <param name="cleanupCaptureValue">The captured value that will be passed to <paramref name="onCleanup"/>.</param>
         /// <param name="onCleanup">The delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2, T3, T4, T5> Add<T5, TCaptureCleanup>(Promise<T5> promise, TCaptureCleanup cleanupCaptureValue, Action<TCaptureCleanup, T5> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
@@ -675,7 +675,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         /// <param name="onCleanup">The async delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2, T3, T4, T5> Add<T5>(Promise<T5> promise, Func<T5, Promise> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, onCleanup));
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
@@ -684,10 +684,10 @@ namespace Proto.Promises
         /// <param name="cleanupCaptureValue">The captured value that will be passed to <paramref name="onCleanup"/>.</param>
         /// <param name="onCleanup">The async delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2, T3, T4, T5> Add<T5, TCaptureCleanup>(Promise<T5> promise, TCaptureCleanup cleanupCaptureValue, Func<TCaptureCleanup, T5, Promise> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
 
         [MethodImpl(Internal.InlineOption)]
-        private PromiseMergeGroup<T1, T2, T3, T4, T5> Add<T5>(in Promise<T5> promise, Internal.CleanupCallbackBase cleanupCallback)
+        private PromiseMergeGroup<T1, T2, T3, T4, T5> Add<T5>(in Promise<T5> promise, Internal.MergeCleanupCallback cleanupCallback)
             => new PromiseMergeGroup<T1, T2, T3, T4, T5>(_mergeGroup.Merge(promise, 1, cleanupCallback), (_value.Item1, _value.Item2, _value.Item3, _value.Item4, promise._result));
 
         /// <summary>
@@ -758,7 +758,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         /// <param name="onCleanup">The delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2, T3, T4, T5, T6> Add<T6>(Promise<T6> promise, Action<T6> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, onCleanup));
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
@@ -767,7 +767,7 @@ namespace Proto.Promises
         /// <param name="cleanupCaptureValue">The captured value that will be passed to <paramref name="onCleanup"/>.</param>
         /// <param name="onCleanup">The delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2, T3, T4, T5, T6> Add<T6, TCaptureCleanup>(Promise<T6> promise, TCaptureCleanup cleanupCaptureValue, Action<TCaptureCleanup, T6> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
@@ -775,7 +775,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         /// <param name="onCleanup">The async delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2, T3, T4, T5, T6> Add<T6>(Promise<T6> promise, Func<T6, Promise> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, onCleanup));
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
@@ -784,10 +784,10 @@ namespace Proto.Promises
         /// <param name="cleanupCaptureValue">The captured value that will be passed to <paramref name="onCleanup"/>.</param>
         /// <param name="onCleanup">The async delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2, T3, T4, T5, T6> Add<T6, TCaptureCleanup>(Promise<T6> promise, TCaptureCleanup cleanupCaptureValue, Func<TCaptureCleanup, T6, Promise> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
 
         [MethodImpl(Internal.InlineOption)]
-        private PromiseMergeGroup<T1, T2, T3, T4, T5, T6> Add<T6>(in Promise<T6> promise, Internal.CleanupCallbackBase cleanupCallback)
+        private PromiseMergeGroup<T1, T2, T3, T4, T5, T6> Add<T6>(in Promise<T6> promise, Internal.MergeCleanupCallback cleanupCallback)
             => new PromiseMergeGroup<T1, T2, T3, T4, T5, T6>(_mergeGroup.Merge(promise, 1, cleanupCallback), (_value.Item1, _value.Item2, _value.Item3, _value.Item4, _value.Item5, promise._result));
 
         /// <summary>
@@ -858,7 +858,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         /// <param name="onCleanup">The delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2, T3, T4, T5, T6, T7> Add<T7>(Promise<T7> promise, Action<T7> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, onCleanup));
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
@@ -867,7 +867,7 @@ namespace Proto.Promises
         /// <param name="cleanupCaptureValue">The captured value that will be passed to <paramref name="onCleanup"/>.</param>
         /// <param name="onCleanup">The delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2, T3, T4, T5, T6, T7> Add<T7, TCaptureCleanup>(Promise<T7> promise, TCaptureCleanup cleanupCaptureValue, Action<TCaptureCleanup, T7> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
@@ -875,7 +875,7 @@ namespace Proto.Promises
         /// <param name="promise">The <see cref="Promise{T}"/> to add to this group.</param>
         /// <param name="onCleanup">The async delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2, T3, T4, T5, T6, T7> Add<T7>(Promise<T7> promise, Func<T7, Promise> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, onCleanup));
 
         /// <summary>
         /// Returns a new group with the <paramref name="promise"/> added to it.
@@ -884,10 +884,10 @@ namespace Proto.Promises
         /// <param name="cleanupCaptureValue">The captured value that will be passed to <paramref name="onCleanup"/>.</param>
         /// <param name="onCleanup">The async delegate that will be invoked if the <paramref name="promise"/> is resolved and any other promise in this group is canceled or rejected.</param>
         public PromiseMergeGroup<T1, T2, T3, T4, T5, T6, T7> Add<T7, TCaptureCleanup>(Promise<T7> promise, TCaptureCleanup cleanupCaptureValue, Func<TCaptureCleanup, T7, Promise> onCleanup)
-            => Add(promise, CleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
+            => Add(promise, MergeCleanupCallbackHelper.GetOrCreate(promise, cleanupCaptureValue, onCleanup));
 
         [MethodImpl(Internal.InlineOption)]
-        private PromiseMergeGroup<T1, T2, T3, T4, T5, T6, T7> Add<T7>(in Promise<T7> promise, Internal.CleanupCallbackBase cleanupCallback)
+        private PromiseMergeGroup<T1, T2, T3, T4, T5, T6, T7> Add<T7>(in Promise<T7> promise, Internal.MergeCleanupCallback cleanupCallback)
             => new PromiseMergeGroup<T1, T2, T3, T4, T5, T6, T7>(_mergeGroup.Merge(promise, 1, cleanupCallback), (_value.Item1, _value.Item2, _value.Item3, _value.Item4, _value.Item5, _value.Item6, promise._result));
 
         /// <summary>

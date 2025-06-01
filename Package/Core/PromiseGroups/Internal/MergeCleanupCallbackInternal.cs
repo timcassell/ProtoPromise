@@ -6,6 +6,7 @@
 
 #pragma warning disable IDE0090 // Use 'new(...)'
 
+using Proto.Promises.Collections;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -15,44 +16,56 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    internal static class CleanupCallbackHelper
+    internal static class MergeCleanupCallbackHelper
     {
         [MethodImpl(Internal.InlineOption)]
-        internal static Internal.CleanupCallbackBase GetOrCreate<TArg>(in Promise<TArg> promise, Action<TArg> onCleanup)
+        internal static Internal.MergeCleanupCallback GetOrCreate<TArg>(in Promise<TArg> promise, Action<TArg> onCleanup)
         {
-            if (onCleanup == null) throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+            if (onCleanup == null)
+            {
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+            }
 
             return GetOrCreate(promise, DelegateWrapper.Create(onCleanup));
         }
 
         [MethodImpl(Internal.InlineOption)]
-        internal static Internal.CleanupCallbackBase GetOrCreate<TArg, TCapture>(in Promise<TArg> promise, in TCapture capturedValue, Action<TCapture, TArg> onCleanup)
+        internal static Internal.MergeCleanupCallback GetOrCreate<TArg, TCapture>(in Promise<TArg> promise, in TCapture capturedValue, Action<TCapture, TArg> onCleanup)
         {
-            if (onCleanup == null) throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+            if (onCleanup == null)
+            {
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+            }
 
             return GetOrCreate(promise, DelegateWrapper.Create(capturedValue, onCleanup));
         }
 
         [MethodImpl(Internal.InlineOption)]
-        internal static Internal.CleanupCallbackBase GetOrCreate<TArg>(in Promise<TArg> promise, Func<TArg, Promise> onCleanup)
+        internal static Internal.MergeCleanupCallback GetOrCreate<TArg>(in Promise<TArg> promise, Func<TArg, Promise> onCleanup)
         {
-            if (onCleanup == null) throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+            if (onCleanup == null)
+            {
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+            }
 
             return GetOrCreate(promise, DelegateWrapper.Create(onCleanup));
         }
 
         [MethodImpl(Internal.InlineOption)]
-        internal static Internal.CleanupCallbackBase GetOrCreate<TArg, TCapture>(in Promise<TArg> promise, in TCapture capturedValue, Func<TCapture, TArg, Promise> onCleanup)
+        internal static Internal.MergeCleanupCallback GetOrCreate<TArg, TCapture>(in Promise<TArg> promise, in TCapture capturedValue, Func<TCapture, TArg, Promise> onCleanup)
         {
-            if (onCleanup == null) throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+            if (onCleanup == null)
+            {
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+            }
 
             return GetOrCreate(promise, DelegateWrapper.Create(capturedValue, onCleanup));
         }
 
         [MethodImpl(Internal.InlineOption)]
-        private static Internal.CleanupCallback<TArg, TDelegate> GetOrCreate<TArg, TDelegate>(in Promise<TArg> promise, in TDelegate callback)
+        private static Internal.MergeCleanupCallback<TArg, TDelegate> GetOrCreate<TArg, TDelegate>(in Promise<TArg> promise, in TDelegate callback)
             where TDelegate : IFunc<TArg, Promise>
-            => Internal.CleanupCallback<TArg, TDelegate>.GetOrCreate(promise, callback);
+            => Internal.MergeCleanupCallback<TArg, TDelegate>.GetOrCreate(promise, callback);
     }
 
     partial class Internal
@@ -60,32 +73,27 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal abstract class CleanupCallbackBase : HandleablePromiseBase, ILinked<CleanupCallbackBase>
+        internal abstract class MergeCleanupCallback : HandleablePromiseBase, ILinked<MergeCleanupCallback>
         {
-            CleanupCallbackBase ILinked<CleanupCallbackBase>.Next
+            MergeCleanupCallback ILinked<MergeCleanupCallback>.Next
             {
                 [MethodImpl(InlineOption)]
-                get => _next.UnsafeAs<CleanupCallbackBase>();
+                get => _next.UnsafeAs<MergeCleanupCallback>();
                 [MethodImpl(InlineOption)]
                 set => _next = value;
             }
 
             internal abstract void Prepare();
-            internal abstract Promise DisposeAndInvoke();
+            internal abstract Promise InvokeAndDispose();
             internal abstract void Dispose();
         }
-
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class CleanupCallback<TArg, TDelegate> : CleanupCallbackBase, ITraceable
+        internal sealed class MergeCleanupCallback<TArg, TDelegate> : MergeCleanupCallback
             where TDelegate : IFunc<TArg, Promise>
         {
-#if PROMISE_DEBUG
-            CausalityTrace ITraceable.Trace { get; set; }
-#endif
-
             // We store the owner to retrieve its result. We don't dispose it here, though, it's disposed in PromisePassThrough.
             private PromiseRefBase.PromiseRef<TArg> _owner;
             private TDelegate _callback;
@@ -93,24 +101,33 @@ namespace Proto.Promises
             private bool _needsCleanup;
 
             [MethodImpl(InlineOption)]
-            private static CleanupCallback<TArg, TDelegate> GetOrCreate()
+            private static MergeCleanupCallback<TArg, TDelegate> GetOrCreate()
             {
-                var obj = ObjectPool.TryTakeOrInvalid<CleanupCallback<TArg, TDelegate>>();
+                var obj = ObjectPool.TryTakeOrInvalid<MergeCleanupCallback<TArg, TDelegate>>();
                 return obj == PromiseRefBase.InvalidAwaitSentinel.s_instance
-                    ? new CleanupCallback<TArg, TDelegate>()
-                    : obj.UnsafeAs<CleanupCallback<TArg, TDelegate>>();
+                    ? new MergeCleanupCallback<TArg, TDelegate>()
+                    : obj.UnsafeAs<MergeCleanupCallback<TArg, TDelegate>>();
             }
 
             [MethodImpl(InlineOption)]
-            internal static CleanupCallback<TArg, TDelegate> GetOrCreate(in Promise<TArg> promise, in TDelegate callback)
+            internal static MergeCleanupCallback<TArg, TDelegate> GetOrCreate(in Promise<TArg> promise, in TDelegate callback)
             {
                 var cb = GetOrCreate();
                 cb._next = null;
-                SetCreatedStacktrace(cb, 2);
                 cb._owner = promise._ref;
                 cb._callback = callback;
                 cb._arg = promise._result;
                 return cb;
+            }
+
+            internal override void Dispose()
+            {
+                ThrowIfInPool(this);
+
+                _owner = null;
+                _callback = default;
+                ClearReferences(ref _arg);
+                ObjectPool.MaybeRepool(this);
             }
 
             internal override void Prepare()
@@ -133,7 +150,7 @@ namespace Proto.Promises
                 }
             }
 
-            internal override Promise DisposeAndInvoke()
+            internal override Promise InvokeAndDispose()
             {
                 ThrowIfInPool(this);
 
@@ -156,16 +173,6 @@ namespace Proto.Promises
                     return Promise.FromException(e);
                 }
             }
-
-            internal override void Dispose()
-            {
-                ThrowIfInPool(this);
-
-                _owner = null;
-                _callback = default;
-                ClearReferences(ref _arg);
-                ObjectPool.MaybeRepool(this);
-            }
-        }
-    }
-}
+        } // class MergeCleanupCallback<TArg, TDelegate>
+    } // class Internal
+} // namespace Proto.Promises

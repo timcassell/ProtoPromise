@@ -5,12 +5,14 @@
 #endif
 
 #pragma warning disable IDE0028 // Collection initialization can be simplified
+#pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0306 // Collection initialization can be simplified
 
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Proto.Promises
 {
@@ -18,7 +20,7 @@ namespace Proto.Promises
     {
         partial class HandleablePromiseBase
         {
-            internal virtual void Handle(PromiseRefBase.PromisePassThroughForMergeGroup passthrough, PromiseRefBase handler, Promise.State state) { throw new System.InvalidOperationException(); }
+            internal virtual void Handle(PromiseRefBase.PromisePassThroughForMergeGroup passthrough, PromiseRefBase handler, Promise.State state) => throw new System.InvalidOperationException();
         }
 
         partial class PromiseRefBase
@@ -205,7 +207,7 @@ namespace Proto.Promises
 
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> New(MergePromiseGroupVoid group, in TResult value, GetResultDelegate<TResult> getResultFunc, bool isExtended, bool isFinal,
-                    ValueLinkedStack<CleanupCallbackBase> cleanupCallbacks, int cleanupCount)
+                    ValueLinkedStack<MergeCleanupCallback> cleanupCallbacks, int cleanupCount)
                 {
                     s_getResult = getResultFunc;
                     var promise = GetOrCreate();
@@ -223,6 +225,7 @@ namespace Proto.Promises
 
                 internal override void MaybeDispose()
                 {
+                    ValidateNoPending();
                     Dispose();
                     ObjectPool.MaybeRepool(this);
                 }
@@ -243,7 +246,7 @@ namespace Proto.Promises
                     for (var i = _cleanupCount; i > 0; --i)
                     {
                         cleanupCallback.Prepare();
-                        cleanupCallback = cleanupCallback._next.UnsafeAs<CleanupCallbackBase>();
+                        cleanupCallback = cleanupCallback._next.UnsafeAs<MergeCleanupCallback>();
                     }
 
                     var group = handler.UnsafeAs<MergePromiseGroupVoid>();
@@ -307,23 +310,28 @@ namespace Proto.Promises
                 [MethodImpl(MethodImplOptions.NoInlining)]
                 private void HandleCleanupPromise(PromiseRefBase handler, Promise.State state)
                 {
+                    RemoveForCircularAwaitDetection(handler);
                     if (state == Promise.State.Rejected)
                     {
-                        var exception = handler.RejectContainer.GetValueAsException();
-                        lock (this)
-                        {
-                            // Extract the previous exceptions to append the new exception if another promise hasn't already done so.
-                            if (RejectContainer != null)
-                            {
-                                _exceptions = new List<Exception>(RejectContainer.GetValueAsException().UnsafeAs<AggregateException>().InnerExceptions);
-                                RejectContainer = null;
-                            }
-                            RecordException(exception, ref _exceptions);
-                        }
+                        RecordCleanupException(handler.RejectContainer.GetValueAsException());
                     }
                     handler.MaybeDispose();
 
                     MaybeHandleNextAfterCleanup();
+                }
+
+                private void RecordCleanupException(Exception exception)
+                {
+                    lock (this)
+                    {
+                        // Extract the previous exceptions to append the new exception if another promise hasn't already done so.
+                        if (RejectContainer != null)
+                        {
+                            _exceptions = new List<Exception>(RejectContainer.GetValueAsException().UnsafeAs<AggregateException>().InnerExceptions);
+                            RejectContainer = null;
+                        }
+                        RecordException(exception, ref _exceptions);
+                    }
                 }
 
                 private void Cleanup(Promise.State state)
@@ -345,20 +353,23 @@ namespace Proto.Promises
                     _isCleaning = true;
                     do
                     {
-                        var cleanupPromise = cleanupCallbacks.Pop().DisposeAndInvoke();
+                        var cleanupPromise = cleanupCallbacks.Pop().InvokeAndDispose();
                         if (cleanupPromise._ref == null)
                         {
                             continue;
                         }
-
-                        if (cleanupPromise._ref.State == Promise.State.Resolved)
+                        try
                         {
-                            cleanupPromise._ref.MaybeMarkAwaitedAndDispose(cleanupPromise._id);
-                        }
-                        else
-                        {
-                            InterlockedAddWithUnsignedOverflowCheck(ref _cleanupCount, 1);
+                            Interlocked.Increment(ref _cleanupCount);
+                            ValidateReturn(cleanupPromise);
+                            AddForCircularAwaitDetection(cleanupPromise._ref);
                             cleanupPromise._ref.HookupExistingWaiter(cleanupPromise._id, this);
+                        }
+                        catch (Exception e)
+                        {
+                            Interlocked.Decrement(ref _cleanupCount);
+                            RemoveForCircularAwaitDetection(cleanupPromise._ref);
+                            RecordCleanupException(e is InvalidReturnException ? e : new InvalidReturnException("onCleanup returned an invalid promise.", string.Empty));
                         }
                     } while (cleanupCallbacks.IsNotEmpty);
 
@@ -379,7 +390,56 @@ namespace Proto.Promises
                     }
                     HandleNextInternal(RejectContainer == null ? Promise.State.Canceled : Promise.State.Rejected);
                 }
+
+                partial void AddForCircularAwaitDetection(PromiseRefBase pendingPromise);
+                partial void RemoveForCircularAwaitDetection(PromiseRefBase completePromise);
+                partial void ValidateNoPending();
+            } // class MergePromiseGroup<TResult>
+
+#if PROMISE_DEBUG
+            partial class MergePromiseGroup<TResult>
+            {
+                private readonly HashSet<PromiseRefBase> _pendingPromises = new HashSet<PromiseRefBase>();
+
+                protected override void BorrowPreviousPromises(Stack<PromiseRefBase> borrower)
+                {
+                    lock (_pendingPromises)
+                    {
+                        foreach (var promiseRef in _pendingPromises)
+                        {
+                            borrower.Push(promiseRef);
+                        }
+                    }
+                }
+
+                partial void ValidateNoPending()
+                {
+                    lock (_pendingPromises)
+                    {
+                        if (_pendingPromises.Count != 0)
+                        {
+                            throw new System.InvalidOperationException("MergePromiseGroup disposed with pending promises.");
+                        }
+                    }
+                }
+
+                partial void AddForCircularAwaitDetection(PromiseRefBase pendingPromise)
+                {
+                    lock (_pendingPromises)
+                    {
+                        _pendingPromises.Add(pendingPromise);
+                    }
+                }
+
+                partial void RemoveForCircularAwaitDetection(PromiseRefBase completePromise)
+                {
+                    lock (_pendingPromises)
+                    {
+                        _pendingPromises.Remove(completePromise);
+                    }
+                }
             }
+#endif
         } // class PromiseRefBase
 
         [MethodImpl(InlineOption)]
@@ -388,7 +448,7 @@ namespace Proto.Promises
 
         [MethodImpl(InlineOption)]
         internal static Promise<TResult> NewMergePromiseGroup<TResult>(
-            PromiseRefBase.MergePromiseGroupVoid group, in TResult value, GetResultDelegate<TResult> getResultFunc, bool isExtended, bool isFinal, ValueLinkedStack<CleanupCallbackBase> cleanupCallbacks, int cleanupCount)
+            PromiseRefBase.MergePromiseGroupVoid group, in TResult value, GetResultDelegate<TResult> getResultFunc, bool isExtended, bool isFinal, ValueLinkedStack<MergeCleanupCallback> cleanupCallbacks, int cleanupCount)
             => PromiseRefBase.MergePromiseGroup<TResult>.New(group, value, getResultFunc, isExtended, isFinal, cleanupCallbacks, cleanupCount);
 
         [MethodImpl(MethodImplOptions.NoInlining)]

@@ -28,7 +28,7 @@ namespace Proto.Promises
                 partial void RemoveComplete(PromiseRefBase completePromise);
                 partial void ValidateNoPending();
 
-                internal override void Handle(PromiseRefBase handler, Promise.State state) { throw new System.InvalidOperationException(); }
+                internal override void Handle(PromiseRefBase handler, Promise.State state) => throw new System.InvalidOperationException();
 
                 [MethodImpl(InlineOption)]
                 protected void Reset(CancelationRef cancelationSource)
@@ -166,6 +166,12 @@ namespace Proto.Promises
                         _pendingPromises.Remove(completePromise);
                     }
                 }
+
+                protected void AddForCircularAwaitDetection(PromiseRefBase pendingPromise)
+                    => AddPending(pendingPromise);
+
+                protected void RemoveForCircularAwaitDetection(PromiseRefBase pendingPromise)
+                    => RemoveComplete(pendingPromise);
             }
 #endif
         } // class PromiseRefBase
