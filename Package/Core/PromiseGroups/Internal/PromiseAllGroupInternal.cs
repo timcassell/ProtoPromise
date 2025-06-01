@@ -137,13 +137,14 @@ namespace Proto.Promises
                             {
                                 var passThrough = resolvedPassThroughs.Pop();
                                 T arg = passThrough.Owner.GetResult<T>();
+                                int index = passThrough.Index;
                                 passThrough.Dispose();
-                                InvokeAndWaitForCleanup(cleanupCallback, arg);
+                                InvokeAndWaitForCleanup(cleanupCallback, arg, index);
                             } while (resolvedPassThroughs.IsNotEmpty);
 
                             foreach (var index in cleanupCallback.ResolvedIndices)
                             {
-                                InvokeAndWaitForCleanup(cleanupCallback, _result[index]);
+                                InvokeAndWaitForCleanup(cleanupCallback, _result[index], index);
                             }
 
                             cleanupCallback.Dispose();
@@ -159,7 +160,7 @@ namespace Proto.Promises
                         _waitCount = 1;
                         foreach (var index in cleanupCallback.ResolvedIndices)
                         {
-                            InvokeAndWaitForCleanup(cleanupCallback, _result[index]);
+                            InvokeAndWaitForCleanup(cleanupCallback, _result[index], index);
                         }
 
                         cleanupCallback.Dispose();
@@ -179,9 +180,9 @@ namespace Proto.Promises
                     HandleNextInternal(state);
                 }
 
-                private void InvokeAndWaitForCleanup(AllCleanupCallback<T> cleanupCallback, in T arg)
+                private void InvokeAndWaitForCleanup(AllCleanupCallback<T> cleanupCallback, in T arg, int index)
                 {
-                    var cleanupPromise = cleanupCallback.Invoke(arg);
+                    var cleanupPromise = cleanupCallback.Invoke(arg, index);
                     if (cleanupPromise._ref == null)
                     {
                         return;

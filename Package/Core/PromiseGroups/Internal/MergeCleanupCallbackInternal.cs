@@ -4,9 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-#pragma warning disable IDE0090 // Use 'new(...)'
-
-using Proto.Promises.Collections;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
