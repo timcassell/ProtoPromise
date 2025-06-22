@@ -131,7 +131,7 @@ namespace Proto.Promises
                 // We already canceled the group token, no need to cancel it again if a promise is non-resolved.
                 group = Internal.GetOrCreateRacePromiseWithIndexGroupVoid(cancelationRef, false);
                 group.RecordException(e);
-                group._cancelationThrew = true;
+                group._cancelationOrCleanupThrew = true;
                 return new PromiseRaceWithIndexGroup(cancelationRef, group, 0, index, winIndex, group.Id, false);
             }
 
@@ -300,7 +300,7 @@ namespace Proto.Promises
                 // We already canceled the group token, no need to cancel it again if a promise is non-resolved.
                 group = Internal.GetOrCreateRacePromiseWithIndexGroup<T>(cancelationRef, false);
                 group.RecordException(e);
-                group._cancelationThrew = true;
+                group._cancelationOrCleanupThrew = true;
                 return new PromiseRaceWithIndexGroup<T>(cancelationRef, group, default, 0, index, group.Id, false, winIndex);
             }
 

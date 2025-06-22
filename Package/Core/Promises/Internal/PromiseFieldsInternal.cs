@@ -578,11 +578,16 @@ namespace Proto.Promises
             {
                 protected int _isResolved; // Flag used to indicate that the promise has already been resolved. int for Interlocked.
                 protected bool _cancelOnNonResolved;
-                internal bool _cancelationThrew;
+                internal bool _cancelationOrCleanupThrew;
+            }
+
+            partial class RacePromiseGroupVoid : RacePromiseGroupBase<VoidResult>
+            {
             }
 
             partial class RacePromiseGroup<TResult> : RacePromiseGroupBase<TResult>
             {
+                private RaceCleanupCallback<TResult> _cleanupCallback;
             }
 
             partial class RacePromiseWithIndexGroupVoid : RacePromiseGroupBase<int>
