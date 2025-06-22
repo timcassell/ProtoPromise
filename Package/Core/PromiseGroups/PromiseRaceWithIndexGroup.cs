@@ -112,11 +112,11 @@ namespace Proto.Promises
             if (promise._ref != null)
             {
                 group = Internal.GetOrCreateRacePromiseWithIndexGroupVoid(cancelationRef, cancelOnNonResolved);
-                group.AddPromiseWithIndex(promise, index);
                 if (winIndex != -1)
                 {
                     group.SetResolved(winIndex);
                 }
+                group.AddPromiseWithIndex(promise, index);
                 return new PromiseRaceWithIndexGroup(cancelationRef, group, 1, index, winIndex, group.Id, cancelOnNonResolved);
             }
 
@@ -281,11 +281,11 @@ namespace Proto.Promises
             if (promise._ref != null)
             {
                 group = Internal.GetOrCreateRacePromiseWithIndexGroup<T>(cancelationRef, cancelOnNonResolved);
-                group.AddPromiseWithIndex(promise, index);
                 if (winIndex != -1)
                 {
                     group.SetResolved((winIndex, _result));
                 }
+                group.AddPromiseWithIndex(promise, index);
                 return new PromiseRaceWithIndexGroup<T>(cancelationRef, group, default, 1, index, group.Id, cancelOnNonResolved, winIndex);
             }
 
