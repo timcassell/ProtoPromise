@@ -99,7 +99,7 @@ namespace Proto.Promises
                 else if (winIndex == -1)
                 {
                     winIndex = index;
-                    group.SetResolved(index);
+                    group.MaybeSetResolved(index);
                 }
                 return new PromiseRaceWithIndexGroup(cancelationRef, group, count, index, winIndex, group.Id, cancelOnNonResolved);
             }
@@ -268,7 +268,7 @@ namespace Proto.Promises
                 else if (winIndex == -1)
                 {
                     winIndex = index;
-                    group.SetResolved((index, promise._result));
+                    group.MaybeSetResolved((index, promise._result));
                 }
                 return new PromiseRaceWithIndexGroup<T>(cancelationRef, group, default, count, index, group.Id, cancelOnNonResolved, winIndex);
             }
