@@ -7,6 +7,7 @@
 using NUnit.Framework;
 using Proto.Promises;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace ProtoPromise.Tests.APIs.PromiseGroups
@@ -1277,6 +1278,619 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
                 tryCompleter8();
                 Assert.IsTrue(completed);
             }
+        }
+
+        private static IEnumerable<TestCaseData> GetOnCleanupIsInvokedCorrectlyArgs()
+        {
+            // Don't test captures for every combination to reduce number of tests.
+            var testCleanupTypes = new[] { CleanupType.None, CleanupType.Sync, CleanupType.Async };
+
+            foreach (CleanupType cleanupType1 in testCleanupTypes)
+            foreach (CleanupType cleanupType2 in testCleanupTypes)
+            {
+                if (cleanupType1 == CleanupType.None && cleanupType2 == CleanupType.None) continue;
+
+                foreach (CompleteType completeType1 in Enum.GetValues(typeof(CompleteType)))
+                foreach (var alreadyComplete1 in new[] { true, false })
+                foreach (CompleteType completeType2 in Enum.GetValues(typeof(CompleteType)))
+                foreach (var alreadyComplete2 in new[] { true, false })
+                {
+                    CompleteType[] cleanupCompleteType1s = cleanupType1 == CleanupType.None
+                        ? new[] { CompleteType.Resolve }
+                        : new[] { CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel };
+                    bool[] cleanupAlreadyComplete1s = cleanupType1 < CleanupType.Async
+                        ? new[] { true }
+                        : new[] { true, false };
+                    CompleteType[] cleanupCompleteType2s = cleanupType1 == CleanupType.None
+                        ? new[] { CompleteType.Resolve }
+                        : new[] { CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel };
+                    bool[] cleanupAlreadyComplete2s = cleanupType2 < CleanupType.Async
+                        ? new[] { true }
+                        : new[] { true, false };
+                    foreach (CompleteType cleanupCompleteType1 in cleanupCompleteType1s)
+                    foreach (var cleanupAlreadyComplete1 in cleanupAlreadyComplete1s)
+                    foreach (CompleteType cleanupCompleteType2 in cleanupCompleteType2s)
+                    foreach (var cleanupAlreadyComplete2 in cleanupAlreadyComplete2s)
+                    {
+                        // Skip most cases where cleanup is not invoked.
+                        bool expectedInvoke1 = completeType1 == CompleteType.Resolve && completeType2 != CompleteType.Resolve && cleanupType1 != CleanupType.None;
+                        bool expectedInvoke2 = completeType2 == CompleteType.Resolve && completeType1 != CompleteType.Resolve && cleanupType2 != CleanupType.None;
+                        if (!expectedInvoke1 && !expectedInvoke2 && cleanupCompleteType1 != CompleteType.Resolve && cleanupCompleteType2 != CompleteType.Resolve) continue;
+
+                        yield return new TestCaseData(completeType1, alreadyComplete1, completeType2, alreadyComplete2, cleanupType1, cleanupType2,
+                            cleanupCompleteType1, cleanupAlreadyComplete1, cleanupCompleteType2, cleanupAlreadyComplete2);
+                    }
+                }
+            }
+
+            // Just test a few cases for captures.
+            yield return new TestCaseData(CompleteType.Resolve, true, CompleteType.Reject, true, CleanupType.SyncCapture, CleanupType.None, CompleteType.Resolve, true, CompleteType.Resolve, true);
+            yield return new TestCaseData(CompleteType.Resolve, true, CompleteType.Reject, true, CleanupType.AsyncCapture, CleanupType.None, CompleteType.Resolve, true, CompleteType.Resolve, true);
+            yield return new TestCaseData(CompleteType.Reject, true, CompleteType.Resolve, true, CleanupType.None, CleanupType.SyncCapture, CompleteType.Resolve, true, CompleteType.Resolve, true);
+            yield return new TestCaseData(CompleteType.Reject, true, CompleteType.Resolve, true, CleanupType.None, CleanupType.AsyncCapture, CompleteType.Resolve, true, CompleteType.Resolve, true);
+        }
+
+        [Test, TestCaseSource(nameof(GetOnCleanupIsInvokedCorrectlyArgs))]
+        public void PromiseMergeGroup_OnCleanupIsInvokedCorrectly_2(
+            CompleteType completeType1,
+            bool alreadyComplete1,
+            CompleteType completeType2,
+            bool alreadyComplete2,
+            CleanupType cleanupType1,
+            CleanupType cleanupType2,
+            CompleteType cleanupCompleteType1,
+            bool cleanupAlreadyComplete1,
+            CompleteType cleanupCompleteType2,
+            bool cleanupAlreadyComplete2)
+        {
+            var mergeGroup = PromiseMergeGroup.New(out _);
+
+            const string captureValue = "CaptureValue";
+            bool expectedInvoke1 = completeType1 == CompleteType.Resolve && completeType2 != CompleteType.Resolve && cleanupType1 != CleanupType.None;
+            bool expectedInvoke2 = completeType2 == CompleteType.Resolve && completeType1 != CompleteType.Resolve && cleanupType2 != CleanupType.None;
+            Promise.State expectedState = completeType1 == CompleteType.Resolve && completeType2 == CompleteType.Resolve
+                ? Promise.State.Resolved
+                : completeType1 == CompleteType.Reject || completeType2 == CompleteType.Reject
+                    || (expectedInvoke1 && cleanupCompleteType1 == CompleteType.Reject)
+                    || (expectedInvoke2 && cleanupCompleteType2 == CompleteType.Reject)
+                ? Promise.State.Rejected : Promise.State.Canceled;
+
+            bool didInvoke1 = false;
+            bool didInvoke2 = false;
+            bool completed = false;
+
+            var promise1 = TestHelper.BuildPromise(completeType1, alreadyComplete1, 1, new System.InvalidOperationException("Bang!"), out var tryCompleter1);
+            var promise2 = TestHelper.BuildPromise(completeType2, alreadyComplete2, 2, new System.InvalidOperationException("Bang!"), out var tryCompleter2);
+
+            var cleanupPromise1 = TestHelper.BuildPromise(cleanupCompleteType1, cleanupAlreadyComplete1, new System.InvalidOperationException("Bang!"), out var cleanupTryCompleter1);
+            var cleanupPromise2 = TestHelper.BuildPromise(cleanupCompleteType2, cleanupAlreadyComplete2, new System.InvalidOperationException("Bang!"), out var cleanupTryCompleter2);
+            if (!expectedInvoke1 || cleanupType1 < CleanupType.Async)
+            {
+                cleanupAlreadyComplete1 = true;
+                cleanupPromise1.Catch(() => { }).Forget();
+            }
+            if (!expectedInvoke2 || cleanupType2 < CleanupType.Async)
+            {
+                cleanupAlreadyComplete2 = true;
+                cleanupPromise2.Catch(() => { }).Forget();
+            }
+
+            void MaybeThrow(CompleteType completeType)
+            {
+                if (completeType == CompleteType.Cancel) throw Promise.CancelException();
+                if (completeType == CompleteType.Reject) throw new System.InvalidOperationException("Bang!");
+            }
+
+            var mergeGroup1 = cleanupType1 == CleanupType.None ? mergeGroup.Add(promise1)
+                : cleanupType1 == CleanupType.Sync ? mergeGroup.Add(promise1, v => { Assert.AreEqual(v, 1); didInvoke1 = true; MaybeThrow(cleanupCompleteType1); })
+                : cleanupType1 == CleanupType.SyncCapture ? mergeGroup.Add(promise1, captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(v, 1); didInvoke1 = true; MaybeThrow(cleanupCompleteType1); })
+                : cleanupType1 == CleanupType.Async ? mergeGroup.Add(promise1, v => { Assert.AreEqual(v, 1); didInvoke1 = true; return cleanupPromise1; })
+                : mergeGroup.Add(promise1, captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(v, 1); didInvoke1 = true; return cleanupPromise1; });
+
+            var mergeGroup2 = cleanupType2 == CleanupType.None ? mergeGroup1.Add(promise2)
+                : cleanupType2 == CleanupType.Sync ? mergeGroup1.Add(promise2, v => { Assert.AreEqual(v, 2); didInvoke2 = true; MaybeThrow(cleanupCompleteType2); })
+                : cleanupType2 == CleanupType.SyncCapture ? mergeGroup1.Add(promise2, captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(v, 2); didInvoke2 = true; MaybeThrow(cleanupCompleteType2); })
+                : cleanupType2 == CleanupType.Async ? mergeGroup1.Add(promise2, v => { Assert.AreEqual(v, 2); didInvoke2 = true; return cleanupPromise2; })
+                : mergeGroup1.Add(promise2, captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(v, 2); didInvoke2 = true; return cleanupPromise2; });
+
+            mergeGroup2
+                .WaitAsync()
+                .ContinueWith(result =>
+                {
+                    completed = true;
+                    Assert.AreEqual(expectedState, result.State);
+                    if (expectedState == Promise.State.Resolved)
+                    {
+                        Assert.AreEqual((1, 2), result.Value);
+                        return;
+                    }
+
+                    if (expectedState == Promise.State.Canceled)
+                    {
+                        return;
+                    }
+
+                    int expectedExceptionCount = 0;
+                    if (completeType1 == CompleteType.Reject
+                        || (expectedInvoke1 && cleanupCompleteType1 == CompleteType.Reject))
+                    {
+                        ++expectedExceptionCount;
+                    }
+                    if (completeType2 == CompleteType.Reject
+                        || (expectedInvoke2 && cleanupCompleteType2 == CompleteType.Reject))
+                    {
+                        ++expectedExceptionCount;
+                    }
+
+                    Assert.Greater(expectedExceptionCount, 0);
+
+                    Assert.IsInstanceOf<AggregateException>(result.Reason);
+                    Assert.AreEqual(expectedExceptionCount, result.Reason.UnsafeAs<AggregateException>().InnerExceptions.Count);
+                })
+                .Forget();
+
+            Assert.AreEqual(alreadyComplete1 && alreadyComplete2 && cleanupAlreadyComplete1 && cleanupAlreadyComplete2, completed);
+
+            tryCompleter1();
+            Assert.AreEqual(alreadyComplete2 && cleanupAlreadyComplete1 && cleanupAlreadyComplete2, completed);
+
+            tryCompleter2();
+            Assert.AreEqual(cleanupAlreadyComplete1 && cleanupAlreadyComplete2, completed);
+
+            Assert.AreEqual(expectedInvoke1, didInvoke1);
+            Assert.AreEqual(expectedInvoke2, didInvoke2);
+
+            cleanupTryCompleter1();
+            Assert.AreEqual(cleanupAlreadyComplete2, completed);
+
+            cleanupTryCompleter2();
+            Assert.IsTrue(completed);
+        }
+
+        [Test, TestCaseSource(nameof(GetOnCleanupIsInvokedCorrectlyArgs))]
+        public void PromiseMergeGroup_OnCleanupIsInvokedCorrectly_8(
+            CompleteType completeType1,
+            bool alreadyComplete1,
+            CompleteType completeType2,
+            bool alreadyComplete2,
+            CleanupType cleanupType1,
+            CleanupType cleanupType2,
+            CompleteType cleanupCompleteType1,
+            bool cleanupAlreadyComplete1,
+            CompleteType cleanupCompleteType2,
+            bool cleanupAlreadyComplete2)
+        {
+            var mergeGroup = PromiseMergeGroup.New(out _);
+
+            const string captureValue = "CaptureValue";
+            bool expectedInvoke1 = completeType1 == CompleteType.Resolve && completeType2 != CompleteType.Resolve && cleanupType1 != CleanupType.None;
+            bool expectedInvoke2 = completeType2 == CompleteType.Resolve && completeType1 != CompleteType.Resolve && cleanupType2 != CleanupType.None;
+            Promise.State expectedState = completeType1 == CompleteType.Resolve && completeType2 == CompleteType.Resolve
+                ? Promise.State.Resolved
+                : completeType1 == CompleteType.Reject || completeType2 == CompleteType.Reject
+                    || (expectedInvoke1 && cleanupCompleteType1 == CompleteType.Reject)
+                    || (expectedInvoke2 && cleanupCompleteType2 == CompleteType.Reject)
+                ? Promise.State.Rejected : Promise.State.Canceled;
+
+            bool didInvoke1 = false;
+            bool didInvoke2 = false;
+            bool completed = false;
+
+            var promise1 = TestHelper.BuildPromise(completeType1, alreadyComplete1, 1, new System.InvalidOperationException("Bang!"), out var tryCompleter1);
+            var promise2 = TestHelper.BuildPromise(completeType2, alreadyComplete2, 8, new System.InvalidOperationException("Bang!"), out var tryCompleter2);
+
+            var cleanupPromise1 = TestHelper.BuildPromise(cleanupCompleteType1, cleanupAlreadyComplete1, new System.InvalidOperationException("Bang!"), out var cleanupTryCompleter1);
+            var cleanupPromise2 = TestHelper.BuildPromise(cleanupCompleteType2, cleanupAlreadyComplete2, new System.InvalidOperationException("Bang!"), out var cleanupTryCompleter2);
+            if (!expectedInvoke1 || cleanupType1 < CleanupType.Async)
+            {
+                cleanupAlreadyComplete1 = true;
+                cleanupPromise1.Catch(() => { }).Forget();
+            }
+            if (!expectedInvoke2 || cleanupType2 < CleanupType.Async)
+            {
+                cleanupAlreadyComplete2 = true;
+                cleanupPromise2.Catch(() => { }).Forget();
+            }
+
+            void MaybeThrow(CompleteType completeType)
+            {
+                if (completeType == CompleteType.Cancel)
+                    throw Promise.CancelException();
+                if (completeType == CompleteType.Reject)
+                    throw new System.InvalidOperationException("Bang!");
+            }
+
+            var mergeGroup1 = cleanupType1 == CleanupType.None ? mergeGroup.Add(promise1)
+                : cleanupType1 == CleanupType.Sync ? mergeGroup.Add(promise1, v => { Assert.AreEqual(v, 1); didInvoke1 = true; MaybeThrow(cleanupCompleteType1); })
+                : cleanupType1 == CleanupType.SyncCapture ? mergeGroup.Add(promise1, captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(v, 1); didInvoke1 = true; MaybeThrow(cleanupCompleteType1); })
+                : cleanupType1 == CleanupType.Async ? mergeGroup.Add(promise1, v => { Assert.AreEqual(v, 1); didInvoke1 = true; return cleanupPromise1; })
+                : mergeGroup.Add(promise1, captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(v, 1); didInvoke1 = true; return cleanupPromise1; });
+
+            var mergeGroup7 = mergeGroup1
+                .Add(Promise.Resolved(2))
+                .Add(Promise.Resolved(3))
+                .Add(Promise.Resolved(4))
+                .Add(Promise.Resolved(5))
+                .Add(Promise.Resolved(6))
+                .Add(Promise.Resolved(7));
+
+            var mergeGroup8 = cleanupType2 == CleanupType.None ? mergeGroup7.Add(promise2)
+                : cleanupType2 == CleanupType.Sync ? mergeGroup7.Add(promise2, v => { Assert.AreEqual(v, 8); didInvoke2 = true; MaybeThrow(cleanupCompleteType2); })
+                : cleanupType2 == CleanupType.SyncCapture ? mergeGroup7.Add(promise2, captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(v, 8); didInvoke2 = true; MaybeThrow(cleanupCompleteType2); })
+                : cleanupType2 == CleanupType.Async ? mergeGroup7.Add(promise2, v => { Assert.AreEqual(v, 8); didInvoke2 = true; return cleanupPromise2; })
+                : mergeGroup7.Add(promise2, captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(v, 8); didInvoke2 = true; return cleanupPromise2; });
+
+            mergeGroup8
+                .WaitAsync()
+                .ContinueWith(result =>
+                {
+                    completed = true;
+                    Assert.AreEqual(expectedState, result.State);
+                    if (expectedState == Promise.State.Resolved)
+                    {
+                        Assert.AreEqual(((1, 2, 3, 4, 5, 6, 7), 8), result.Value);
+                        return;
+                    }
+
+                    if (expectedState == Promise.State.Canceled)
+                    {
+                        return;
+                    }
+
+                    int expectedExceptionCount = 0;
+                    if (completeType1 == CompleteType.Reject
+                        || (expectedInvoke1 && cleanupCompleteType1 == CompleteType.Reject))
+                    {
+                        ++expectedExceptionCount;
+                    }
+                    if (completeType2 == CompleteType.Reject
+                        || (expectedInvoke2 && cleanupCompleteType2 == CompleteType.Reject))
+                    {
+                        ++expectedExceptionCount;
+                    }
+
+                    Assert.Greater(expectedExceptionCount, 0);
+
+                    Assert.IsInstanceOf<AggregateException>(result.Reason);
+                    Assert.AreEqual(expectedExceptionCount, result.Reason.UnsafeAs<AggregateException>().InnerExceptions.Count);
+                })
+                .Forget();
+
+            Assert.AreEqual(alreadyComplete1 && alreadyComplete2 && cleanupAlreadyComplete1 && cleanupAlreadyComplete2, completed);
+
+            tryCompleter1();
+            Assert.AreEqual(alreadyComplete2 && cleanupAlreadyComplete1 && cleanupAlreadyComplete2, completed);
+
+            tryCompleter2();
+            Assert.AreEqual(cleanupAlreadyComplete1 && cleanupAlreadyComplete2, completed);
+
+            Assert.AreEqual(expectedInvoke1, didInvoke1);
+            Assert.AreEqual(expectedInvoke2, didInvoke2);
+
+            cleanupTryCompleter1();
+            Assert.AreEqual(cleanupAlreadyComplete2, completed);
+
+            cleanupTryCompleter2();
+            Assert.IsTrue(completed);
+        }
+
+        // Simpler, non-exhaustive tests to make sure all cleanups are invoked for each group arity.
+        [Test]
+        public void PromiseMergeGroup_AllOnCleanupAreInvoked_Sync(
+            [Range(1, 8)] int count)
+        {
+            int invokedCount = 0;
+
+            object mergeGroup = PromiseMergeGroup.New(out _)
+                .Add(Promise.Canceled());
+
+            for (int i = 1; i <= count; ++i)
+            {
+                switch (i)
+                {
+                    case 1:
+                        mergeGroup = ((PromiseMergeGroup) mergeGroup).Add(Promise.Resolved(1), v => { Assert.AreEqual(1, v); ++invokedCount; });
+                        break;
+                    case 2:
+                        mergeGroup = ((PromiseMergeGroup<int>) mergeGroup).Add(Promise.Resolved(2), v => { Assert.AreEqual(2, v); ++invokedCount; });
+                        break;
+                    case 3:
+                        mergeGroup = ((PromiseMergeGroup<int, int>) mergeGroup).Add(Promise.Resolved(3), v => { Assert.AreEqual(3, v); ++invokedCount; });
+                        break;
+                    case 4:
+                        mergeGroup = ((PromiseMergeGroup<int, int, int>) mergeGroup).Add(Promise.Resolved(4), v => { Assert.AreEqual(4, v); ++invokedCount; });
+                        break;
+                    case 5:
+                        mergeGroup = ((PromiseMergeGroup<int, int, int, int>) mergeGroup).Add(Promise.Resolved(5), v => { Assert.AreEqual(5, v); ++invokedCount; });
+                        break;
+                    case 6:
+                        mergeGroup = ((PromiseMergeGroup<int, int, int, int, int>) mergeGroup).Add(Promise.Resolved(6), v => { Assert.AreEqual(6, v); ++invokedCount; });
+                        break;
+                    case 7:
+                        mergeGroup = ((PromiseMergeGroup<int, int, int, int, int, int>) mergeGroup).Add(Promise.Resolved(7), v => { Assert.AreEqual(7, v); ++invokedCount; });
+                        break;
+                    case 8:
+                        mergeGroup = ((PromiseMergeGroup<int, int, int, int, int, int, int>) mergeGroup).Add(Promise.Resolved(8), v => { Assert.AreEqual(8, v); ++invokedCount; });
+                        break;
+                    default:
+                        throw new System.ArgumentOutOfRangeException(nameof(i));
+                }
+            }
+
+            Promise promise;
+            switch (count)
+            {
+                case 1:
+                    promise = ((PromiseMergeGroup<int>) mergeGroup).WaitAsync();
+                    break;
+                case 2:
+                    promise = ((PromiseMergeGroup<int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 3:
+                    promise = ((PromiseMergeGroup<int, int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 4:
+                    promise = ((PromiseMergeGroup<int, int, int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 5:
+                    promise = ((PromiseMergeGroup<int, int, int, int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 6:
+                    promise = ((PromiseMergeGroup<int, int, int, int, int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 7:
+                    promise = ((PromiseMergeGroup<int, int, int, int, int, int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 8:
+                    promise = ((PromiseMergeGroup<(int, int, int, int, int, int, int), int>) mergeGroup).WaitAsync();
+                    break;
+                default:
+                    throw new System.ArgumentOutOfRangeException(nameof(count));
+            }
+
+            promise
+                .CatchCancelation(() => { })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            Assert.AreEqual(count, invokedCount);
+        }
+
+        [Test]
+        public void PromiseMergeGroup_AllOnCleanupAreInvoked_SyncCapture(
+    [Range(1, 8)] int count)
+        {
+            int invokedCount = 0;
+            const string captureValue = "CaptureValue";
+
+            object mergeGroup = PromiseMergeGroup.New(out _)
+                .Add(Promise.Canceled());
+
+            for (int i = 1; i <= count; ++i)
+            {
+                switch (i)
+                {
+                    case 1:
+                        mergeGroup = ((PromiseMergeGroup) mergeGroup).Add(Promise.Resolved(1), captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(1, v); ++invokedCount; });
+                        break;
+                    case 2:
+                        mergeGroup = ((PromiseMergeGroup<int>) mergeGroup).Add(Promise.Resolved(2), captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(2, v); ++invokedCount; });
+                        break;
+                    case 3:
+                        mergeGroup = ((PromiseMergeGroup<int, int>) mergeGroup).Add(Promise.Resolved(3), captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(3, v); ++invokedCount; });
+                        break;
+                    case 4:
+                        mergeGroup = ((PromiseMergeGroup<int, int, int>) mergeGroup).Add(Promise.Resolved(4), captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(4, v); ++invokedCount; });
+                        break;
+                    case 5:
+                        mergeGroup = ((PromiseMergeGroup<int, int, int, int>) mergeGroup).Add(Promise.Resolved(5), captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(5, v); ++invokedCount; });
+                        break;
+                    case 6:
+                        mergeGroup = ((PromiseMergeGroup<int, int, int, int, int>) mergeGroup).Add(Promise.Resolved(6), captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(6, v); ++invokedCount; });
+                        break;
+                    case 7:
+                        mergeGroup = ((PromiseMergeGroup<int, int, int, int, int, int>) mergeGroup).Add(Promise.Resolved(7), captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(7, v); ++invokedCount; });
+                        break;
+                    case 8:
+                        mergeGroup = ((PromiseMergeGroup<int, int, int, int, int, int, int>) mergeGroup).Add(Promise.Resolved(8), captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(8, v); ++invokedCount; });
+                        break;
+                    default:
+                        throw new System.ArgumentOutOfRangeException(nameof(i));
+                }
+            }
+
+            Promise promise;
+            switch (count)
+            {
+                case 1:
+                    promise = ((PromiseMergeGroup<int>) mergeGroup).WaitAsync();
+                    break;
+                case 2:
+                    promise = ((PromiseMergeGroup<int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 3:
+                    promise = ((PromiseMergeGroup<int, int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 4:
+                    promise = ((PromiseMergeGroup<int, int, int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 5:
+                    promise = ((PromiseMergeGroup<int, int, int, int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 6:
+                    promise = ((PromiseMergeGroup<int, int, int, int, int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 7:
+                    promise = ((PromiseMergeGroup<int, int, int, int, int, int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 8:
+                    promise = ((PromiseMergeGroup<(int, int, int, int, int, int, int), int>) mergeGroup).WaitAsync();
+                    break;
+                default:
+                    throw new System.ArgumentOutOfRangeException(nameof(count));
+            }
+
+            promise
+                .CatchCancelation(() => { })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            Assert.AreEqual(count, invokedCount);
+        }
+
+        [Test]
+        public void PromiseMergeGroup_AllOnCleanupAreInvoked_Async(
+            [Range(1, 8)] int count)
+        {
+            int invokedCount = 0;
+
+            object mergeGroup = PromiseMergeGroup.New(out _)
+                .Add(Promise.Canceled());
+
+            for (int i = 1; i <= count; ++i)
+            {
+                switch (i)
+                {
+                    case 1:
+                        mergeGroup = ((PromiseMergeGroup) mergeGroup).Add(Promise.Resolved(1), v => { Assert.AreEqual(1, v); ++invokedCount; return Promise.Resolved(); });
+                        break;
+                    case 2:
+                        mergeGroup = ((PromiseMergeGroup<int>) mergeGroup).Add(Promise.Resolved(2), v => { Assert.AreEqual(2, v); ++invokedCount; return Promise.Resolved(); });
+                        break;
+                    case 3:
+                        mergeGroup = ((PromiseMergeGroup<int, int>) mergeGroup).Add(Promise.Resolved(3), v => { Assert.AreEqual(3, v); ++invokedCount; return Promise.Resolved(); });
+                        break;
+                    case 4:
+                        mergeGroup = ((PromiseMergeGroup<int, int, int>) mergeGroup).Add(Promise.Resolved(4), v => { Assert.AreEqual(4, v); ++invokedCount; return Promise.Resolved(); });
+                        break;
+                    case 5:
+                        mergeGroup = ((PromiseMergeGroup<int, int, int, int>) mergeGroup).Add(Promise.Resolved(5), v => { Assert.AreEqual(5, v); ++invokedCount; return Promise.Resolved(); });
+                        break;
+                    case 6:
+                        mergeGroup = ((PromiseMergeGroup<int, int, int, int, int>) mergeGroup).Add(Promise.Resolved(6), v => { Assert.AreEqual(6, v); ++invokedCount; return Promise.Resolved(); });
+                        break;
+                    case 7:
+                        mergeGroup = ((PromiseMergeGroup<int, int, int, int, int, int>) mergeGroup).Add(Promise.Resolved(7), v => { Assert.AreEqual(7, v); ++invokedCount; return Promise.Resolved(); });
+                        break;
+                    case 8:
+                        mergeGroup = ((PromiseMergeGroup<int, int, int, int, int, int, int>) mergeGroup).Add(Promise.Resolved(8), v => { Assert.AreEqual(8, v); ++invokedCount; return Promise.Resolved(); });
+                        break;
+                    default:
+                        throw new System.ArgumentOutOfRangeException(nameof(i));
+                }
+            }
+
+            Promise promise;
+            switch (count)
+            {
+                case 1:
+                    promise = ((PromiseMergeGroup<int>) mergeGroup).WaitAsync();
+                    break;
+                case 2:
+                    promise = ((PromiseMergeGroup<int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 3:
+                    promise = ((PromiseMergeGroup<int, int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 4:
+                    promise = ((PromiseMergeGroup<int, int, int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 5:
+                    promise = ((PromiseMergeGroup<int, int, int, int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 6:
+                    promise = ((PromiseMergeGroup<int, int, int, int, int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 7:
+                    promise = ((PromiseMergeGroup<int, int, int, int, int, int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 8:
+                    promise = ((PromiseMergeGroup<(int, int, int, int, int, int, int), int>) mergeGroup).WaitAsync();
+                    break;
+                default:
+                    throw new System.ArgumentOutOfRangeException(nameof(count));
+            }
+
+            promise
+                .CatchCancelation(() => { })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            Assert.AreEqual(count, invokedCount);
+        }
+
+        [Test]
+        public void PromiseMergeGroup_AllOnCleanupAreInvoked_AsyncCapture(
+            [Range(1, 8)] int count)
+        {
+            int invokedCount = 0;
+            const string captureValue = "CaptureValue";
+
+            object mergeGroup = PromiseMergeGroup.New(out _)
+                .Add(Promise.Canceled());
+
+            for (int i = 1; i <= count; ++i)
+            {
+                switch (i)
+                {
+                    case 1:
+                        mergeGroup = ((PromiseMergeGroup) mergeGroup).Add(Promise.Resolved(1), captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(1, v); ++invokedCount; return Promise.Resolved(); });
+                        break;
+                    case 2:
+                        mergeGroup = ((PromiseMergeGroup<int>) mergeGroup).Add(Promise.Resolved(2), captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(2, v); ++invokedCount; return Promise.Resolved(); });
+                        break;
+                    case 3:
+                        mergeGroup = ((PromiseMergeGroup<int, int>) mergeGroup).Add(Promise.Resolved(3), captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(3, v); ++invokedCount; return Promise.Resolved(); });
+                        break;
+                    case 4:
+                        mergeGroup = ((PromiseMergeGroup<int, int, int>) mergeGroup).Add(Promise.Resolved(4), captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(4, v); ++invokedCount; return Promise.Resolved(); });
+                        break;
+                    case 5:
+                        mergeGroup = ((PromiseMergeGroup<int, int, int, int>) mergeGroup).Add(Promise.Resolved(5), captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(5, v); ++invokedCount; return Promise.Resolved(); });
+                        break;
+                    case 6:
+                        mergeGroup = ((PromiseMergeGroup<int, int, int, int, int>) mergeGroup).Add(Promise.Resolved(6), captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(6, v); ++invokedCount; return Promise.Resolved(); });
+                        break;
+                    case 7:
+                        mergeGroup = ((PromiseMergeGroup<int, int, int, int, int, int>) mergeGroup).Add(Promise.Resolved(7), captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(7, v); ++invokedCount; return Promise.Resolved(); });
+                        break;
+                    case 8:
+                        mergeGroup = ((PromiseMergeGroup<int, int, int, int, int, int, int>) mergeGroup).Add(Promise.Resolved(8), captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); Assert.AreEqual(8, v); ++invokedCount; return Promise.Resolved(); });
+                        break;
+                    default:
+                        throw new System.ArgumentOutOfRangeException(nameof(i));
+                }
+            }
+
+            Promise promise;
+            switch (count)
+            {
+                case 1:
+                    promise = ((PromiseMergeGroup<int>) mergeGroup).WaitAsync();
+                    break;
+                case 2:
+                    promise = ((PromiseMergeGroup<int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 3:
+                    promise = ((PromiseMergeGroup<int, int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 4:
+                    promise = ((PromiseMergeGroup<int, int, int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 5:
+                    promise = ((PromiseMergeGroup<int, int, int, int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 6:
+                    promise = ((PromiseMergeGroup<int, int, int, int, int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 7:
+                    promise = ((PromiseMergeGroup<int, int, int, int, int, int, int>) mergeGroup).WaitAsync();
+                    break;
+                case 8:
+                    promise = ((PromiseMergeGroup<(int, int, int, int, int, int, int), int>) mergeGroup).WaitAsync();
+                    break;
+                default:
+                    throw new System.ArgumentOutOfRangeException(nameof(count));
+            }
+
+            promise
+                .CatchCancelation(() => { })
+                .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+            Assert.AreEqual(count, invokedCount);
         }
     }
 }

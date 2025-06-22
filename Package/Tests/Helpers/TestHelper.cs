@@ -50,6 +50,15 @@ namespace ProtoPromise.Tests
         Immediate
     }
 
+    public enum CleanupType
+    {
+        None,
+        Sync,
+        SyncCapture,
+        Async,
+        AsyncCapture
+    }
+
     public delegate void TestAction<T>(ref T value);
     public delegate void TestAction<T1, T2>(ref T1 value1, T2 value2);
 

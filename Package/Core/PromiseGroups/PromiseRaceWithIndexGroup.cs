@@ -112,11 +112,11 @@ namespace Proto.Promises
             if (promise._ref != null)
             {
                 group = Internal.GetOrCreateRacePromiseWithIndexGroupVoid(cancelationRef, cancelOnNonResolved);
-                group.AddPromiseWithIndex(promise, index);
                 if (winIndex != -1)
                 {
                     group.SetResolved(winIndex);
                 }
+                group.AddPromiseWithIndex(promise, index);
                 return new PromiseRaceWithIndexGroup(cancelationRef, group, 1, index, winIndex, group.Id, cancelOnNonResolved);
             }
 
@@ -131,7 +131,7 @@ namespace Proto.Promises
                 // We already canceled the group token, no need to cancel it again if a promise is non-resolved.
                 group = Internal.GetOrCreateRacePromiseWithIndexGroupVoid(cancelationRef, false);
                 group.RecordException(e);
-                group._cancelationThrew = true;
+                group._cancelationOrCleanupThrew = true;
                 return new PromiseRaceWithIndexGroup(cancelationRef, group, 0, index, winIndex, group.Id, false);
             }
 
@@ -281,11 +281,11 @@ namespace Proto.Promises
             if (promise._ref != null)
             {
                 group = Internal.GetOrCreateRacePromiseWithIndexGroup<T>(cancelationRef, cancelOnNonResolved);
-                group.AddPromiseWithIndex(promise, index);
                 if (winIndex != -1)
                 {
                     group.SetResolved((winIndex, _result));
                 }
+                group.AddPromiseWithIndex(promise, index);
                 return new PromiseRaceWithIndexGroup<T>(cancelationRef, group, default, 1, index, group.Id, cancelOnNonResolved, winIndex);
             }
 
@@ -300,7 +300,7 @@ namespace Proto.Promises
                 // We already canceled the group token, no need to cancel it again if a promise is non-resolved.
                 group = Internal.GetOrCreateRacePromiseWithIndexGroup<T>(cancelationRef, false);
                 group.RecordException(e);
-                group._cancelationThrew = true;
+                group._cancelationOrCleanupThrew = true;
                 return new PromiseRaceWithIndexGroup<T>(cancelationRef, group, default, 0, index, group.Id, false, winIndex);
             }
 
