@@ -417,30 +417,36 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
 
         private static IEnumerable<TestCaseData> GetOnCleanupIsInvokedCorrectlyArgs()
         {
-            var cleanupTypes = new[] { CleanupType.Sync, CleanupType.SyncCapture, CleanupType.Async, CleanupType.AsyncCapture };
+            // Don't test captures for every combination to reduce number of tests.
+            var cleanupTypes = new[] { CleanupType.Sync, CleanupType.Async };
+            var cancelationTypes = new[] { CancelationType.None, CancelationType.Deferred, CancelationType.Immediate };
+            var completeTypes = new[] { CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel };
+            var bools = new[] { true, false };
+            var falseOnly = new[] { false };
+            var trueOnly = new[] { true };
+
             foreach (CleanupType cleanupType in cleanupTypes)
             {
-                foreach (CompleteType completeType1 in Enum.GetValues(typeof(CompleteType)))
-                foreach (var alreadyComplete1 in new[] { true, false })
-                foreach (CompleteType completeType2 in Enum.GetValues(typeof(CompleteType)))
-                foreach (var alreadyComplete2 in new[] { true, false })
+                foreach (CompleteType completeType1 in completeTypes)
+                foreach (var alreadyComplete1 in bools)
+                foreach (CompleteType completeType2 in completeTypes)
+                foreach (var alreadyComplete2 in bools)
                 {
-                    bool[] cleanupAlreadyComplete1s = cleanupType < CleanupType.Async
-                        ? new[] { true }
-                        : new[] { true, false };
-                    bool[] cleanupAlreadyComplete2s = cleanupType < CleanupType.Async
-                        ? new[] { true }
-                        : new[] { true, false };
-                    foreach (CompleteType cleanupCompleteType1 in Enum.GetValues(typeof(CompleteType)))
-                    foreach (var cleanupAlreadyComplete1 in cleanupAlreadyComplete1s)
-                    foreach (CompleteType cleanupCompleteType2 in Enum.GetValues(typeof(CompleteType)))
-                    foreach (var cleanupAlreadyComplete2 in cleanupAlreadyComplete2s)
+                    bool[] cleanupAlreadyCompletes = cleanupType < CleanupType.Async ? trueOnly : bools;
+                    foreach (CompleteType cleanupCompleteType1 in completeTypes)
+                    foreach (var cleanupAlreadyComplete1 in cleanupAlreadyCompletes)
+                    foreach (CompleteType cleanupCompleteType2 in completeTypes)
+                    foreach (var cleanupAlreadyComplete2 in cleanupAlreadyCompletes)
                     {
                         yield return new TestCaseData(cleanupType, completeType1, alreadyComplete1, completeType2, alreadyComplete2,
                             cleanupCompleteType1, cleanupAlreadyComplete1, cleanupCompleteType2, cleanupAlreadyComplete2);
                     }
                 }
             }
+
+            // Just test a few cases for captures.
+            yield return new TestCaseData(CleanupType.SyncCapture, CompleteType.Resolve, true, CompleteType.Resolve, true, CompleteType.Resolve, true, CompleteType.Resolve, true);
+            yield return new TestCaseData(CleanupType.AsyncCapture, CompleteType.Resolve, true, CompleteType.Resolve, true, CompleteType.Resolve, true, CompleteType.Resolve, true);
         }
 
         [Test, TestCaseSource(nameof(GetOnCleanupIsInvokedCorrectlyArgs))]

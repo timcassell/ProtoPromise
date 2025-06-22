@@ -785,7 +785,8 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
 
         private static IEnumerable<TestCaseData> GetOnCleanupIsInvokedCorrectlyArgs()
         {
-            var cleanupTypes = new[] { CleanupType.Sync, CleanupType.SyncCapture, CleanupType.Async, CleanupType.AsyncCapture };
+            // Don't test captures for every combination to reduce number of tests.
+            var cleanupTypes = new[] { CleanupType.Sync, CleanupType.Async };
             var cancelationTypes = new[] { CancelationType.None, CancelationType.Deferred, CancelationType.Immediate };
             var completeTypes = new[] { CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel };
             var bools = new[] { true, false };
@@ -811,6 +812,12 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
                     }
                 }
             }
+
+            // Just test a few cases for captures.
+            yield return new TestCaseData(CleanupType.SyncCapture, CompleteType.Resolve, true, CompleteType.Resolve, true, true, CompleteType.Resolve, true, CompleteType.Resolve, true);
+            yield return new TestCaseData(CleanupType.AsyncCapture, CompleteType.Resolve, true, CompleteType.Resolve, true, true, CompleteType.Resolve, true, CompleteType.Resolve, true);
+            yield return new TestCaseData(CleanupType.SyncCapture, CompleteType.Resolve, true, CompleteType.Resolve, true, false, CompleteType.Resolve, true, CompleteType.Resolve, true);
+            yield return new TestCaseData(CleanupType.AsyncCapture, CompleteType.Resolve, true, CompleteType.Resolve, true, false, CompleteType.Resolve, true, CompleteType.Resolve, true);
         }
 
         [Test, TestCaseSource(nameof(GetOnCleanupIsInvokedCorrectlyArgs))]

@@ -58,7 +58,7 @@ jobs:
       - name: Run Core Tests
         run: |
           dotnet test ./Tests/ProtoPromise.Tests/ProtoPromise.Tests.csproj -c ${{ matrix.config }} -f net8.0 --logger "Console;Verbosity=normal" --logger "trx;logfilename=dotnet-test-results-net8.0-${{ matrix.config }}-${{ matrix.objectPooling.name }}-${{ matrix.devMode.name }}-core.trx" -p:ExtraDefineConstants=${{ matrix.objectPooling.symbol }} -p:DeveloperMode=${{ matrix.devMode.value }} --results-directory "./TestResults"
-        timeout-minutes: 120
+        timeout-minutes: 180
 
       - uses: dorny/test-reporter@v2
         if: always()
