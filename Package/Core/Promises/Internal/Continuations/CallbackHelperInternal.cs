@@ -991,6 +991,52 @@ namespace Proto.Promises
                     }
                     return ContinueVoidResultWaitPromise<TResult, TDelegate>.New(_this, onContinue);
                 }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> AppendResult(Promise _this, in TResult result)
+                {
+                    if (_this._ref == null)
+                    {
+                        return Promise.Resolved(result);
+                    }
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return MaybeAppendResolved(_this, result);
+                    }
+                    return AppendResultPromise<TResult>.New(_this, result);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<(TResult, TAppend)> AppendResult<TAppend>(Promise<TResult> _this, in TAppend value)
+                {
+                    if (_this._ref == null)
+                    {
+                        return Promise.Resolved((_this._result, value));
+                    }
+                    if (_this._ref.State != Promise.State.Pending)
+                    {
+                        return CallbackHelperResult<(TResult, TAppend)>.MaybeAppendResolved(_this, (_this._ref._result, value));
+                    }
+                    return AppendResultPromise<TResult, TAppend>.New(_this, value);
+                }
+
+                // This is rare, only happens when the promise already completed (usually an already completed promise is not backed by a reference), or if a promise is incorrectly awaited twice.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private static Promise<TResult> MaybeAppendResolved(Promise _this, in TResult result)
+                {
+                    if (_this._ref.State == Promise.State.Resolved)
+                    {
+                        _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                        return Promise.Resolved(result);
+                    }
+
+                    var rejectContainer = _this._ref.RejectContainer;
+                    _this._ref.SuppressRejection = true;
+                    _this._ref.MaybeMarkAwaitedAndDispose(_this._id);
+                    return _this._ref.State == Promise.State.Canceled
+                        ? Promise<TResult>.Canceled()
+                        : Promise<TResult>.Rejected(rejectContainer);
+                }
             } // class CallbackHelperResult<TResult>
 
 #if !PROTO_PROMISE_DEVELOPER_MODE

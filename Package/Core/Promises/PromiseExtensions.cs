@@ -19,7 +19,6 @@ namespace Proto.Promises
     {
         // AppendResult are extension methods instead of instance methods in case users want to add their own AppendResult extensions with ValueTuple arity greater than 2.
         // Instance methods would take precedence, causing results to be ((T1, T2), T3) instead of (T1, T2, T3).
-        // TODO: Optimize these to avoid delegates.
 
         /// <summary>
         /// Appends a result to the specified <paramref name="promise"/>, transforming it into a <see cref="Promise{T}"/>
@@ -33,7 +32,7 @@ namespace Proto.Promises
         /// when the <paramref name="promise"/> is resolved, or otherwise adopts the state of <paramref name="promise"/>.
         /// </returns>
         public static Promise<TAppend> AppendResult<TAppend>(this Promise promise, TAppend value)
-            => promise.Then(value, v => v);
+            => Internal.PromiseRefBase.CallbackHelperResult<TAppend>.AppendResult(promise, value);
 
         /// <summary>
         /// Appends <paramref name="value"/> to the result of the specified <paramref name="promise"/>, transforming it into a <see cref="Promise{T}"/>
@@ -48,6 +47,6 @@ namespace Proto.Promises
         /// <paramref name="value"/> when the <paramref name="promise"/> is resolved, or otherwise adopts the state of <paramref name="promise"/>.
         /// </returns>
         public static Promise<(T, TAppend)> AppendResult<T, TAppend>(this in Promise<T> promise, TAppend value)
-            => promise.Then(value, (v, r) => (r, v));
+            => Internal.PromiseRefBase.CallbackHelperResult<T>.AppendResult(promise, value);
     } // class PromiseExtensions
 }// namespace Proto.Promises

@@ -602,6 +602,91 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
+            private sealed class AppendResultPromise<TResult> : SingleAwaitPromise<TResult>
+            {
+                private AppendResultPromise() { }
+
+                [MethodImpl(InlineOption)]
+                private static AppendResultPromise<TResult> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<AppendResultPromise<TResult>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new AppendResultPromise<TResult>()
+                        : obj.UnsafeAs<AppendResultPromise<TResult>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<TResult> New(Promise previous, in TResult result)
+                {
+                    var promise = GetOrCreate();
+                    promise.Reset();
+                    promise._result = result;
+                    promise.SetPrevious(previous._ref);
+                    previous._ref.HookupNewWaiter(previous._id, promise);
+                    return new Promise<TResult>(promise);
+                }
+
+                internal override void MaybeDispose()
+                {
+                    Dispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                {
+                    ThrowIfInPool(this);
+
+                    handler.SetCompletionState(state);
+                    HandleSelfWithoutResult(handler, state);
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private sealed class AppendResultPromise<TResult, TAppend> : SingleAwaitPromise<(TResult, TAppend)>
+            {
+                private AppendResultPromise() { }
+
+                [MethodImpl(InlineOption)]
+                private static AppendResultPromise<TResult, TAppend> GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<AppendResultPromise<TResult, TAppend>>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new AppendResultPromise<TResult, TAppend>()
+                        : obj.UnsafeAs<AppendResultPromise<TResult, TAppend>>();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal static Promise<(TResult, TAppend)> New(Promise previous, in TAppend value)
+                {
+                    var promise = GetOrCreate();
+                    promise.Reset();
+                    promise._result.Item2 = value;
+                    promise.SetPrevious(previous._ref);
+                    previous._ref.HookupNewWaiter(previous._id, promise);
+                    return new Promise<(TResult, TAppend)>(promise);
+                }
+
+                internal override void MaybeDispose()
+                {
+                    Dispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                {
+                    ThrowIfInPool(this);
+
+                    handler.SetCompletionState(state);
+                    _result.Item1 = handler.GetResult<TResult>();
+                    HandleSelfWithoutResult(handler, state);
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             internal abstract partial class CallbackWaitPromiseBase<TResult> : SingleAwaitPromise<TResult>
             {
                 protected new void Reset()
