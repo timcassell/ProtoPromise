@@ -57,12 +57,23 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
 
+                    _isResolved = 1;
+                    _completeState = Promise.State.Resolved;
+                    _result = result;
+                    CancelGroup();
+                }
+
+                [MethodImpl(InlineOption)]
+                internal void MaybeSetResolved(in TResult result)
+                {
+                    ThrowIfInPool(this);
+
                     if (Interlocked.Exchange(ref _isResolved, 1) == 0)
                     {
                         _completeState = Promise.State.Resolved;
                         _result = result;
+                        CancelGroup();
                     }
-                    CancelGroup();
                 }
 
                 new protected void CancelGroup()
@@ -143,8 +154,8 @@ namespace Proto.Promises
                         if (Interlocked.Exchange(ref _isResolved, 1) == 0)
                         {
                             _completeState = Promise.State.Resolved;
+                            CancelGroup();
                         }
-                        CancelGroup();
                     }
                     else
                     {
@@ -217,12 +228,12 @@ namespace Proto.Promises
                             releaseCount = -2;
                             _completeState = Promise.State.Resolved;
                             _result = handler.GetResult<TResult>();
+                            CancelGroup();
                         }
                         else
                         {
                             MaybeInvokeCleanupCallback(ref releaseCount, handler.GetResult<TResult>());
                         }
-                        CancelGroup();
                     }
                     else
                     {
@@ -413,8 +424,8 @@ namespace Proto.Promises
                         {
                             _completeState = Promise.State.Resolved;
                             _result = index;
+                            CancelGroup();
                         }
-                        CancelGroup();
                     }
                     else
                     {
@@ -473,8 +484,8 @@ namespace Proto.Promises
                         {
                             _completeState = Promise.State.Resolved;
                             _result = (index, handler.GetResult<TResult>());
+                            CancelGroup();
                         }
-                        CancelGroup();
                     }
                     else
                     {

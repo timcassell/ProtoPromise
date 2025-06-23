@@ -366,7 +366,7 @@ namespace Proto.Promises
                 else if (!isResolved)
                 {
                     isResolved = true;
-                    group.SetResolved(promise._result);
+                    group.MaybeSetResolved(promise._result);
                 }
                 else
                 {
