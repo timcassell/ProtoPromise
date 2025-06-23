@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 
 namespace Proto.Promises
 {
@@ -15,6 +16,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise Race(Promise promise1, Promise promise2)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -26,6 +30,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise Race(Promise promise1, Promise promise2, Promise promise3)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -38,6 +45,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise Race(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -51,6 +61,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise Race(params Promise[] promises)
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -64,6 +77,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise Race(ReadOnlySpan<Promise> promises)
             => Race(promises.GetPersistedEnumerator());
 #endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
@@ -72,6 +88,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise Race(IEnumerable<Promise> promises)
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -82,6 +101,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise Race<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -135,6 +157,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{TAppend}(Promise, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> RaceWithIndex(Promise promise1, Promise promise2)
         {
 
@@ -147,6 +173,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{TAppend}(Promise, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> RaceWithIndex(Promise promise1, Promise promise2, Promise promise3)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -159,6 +189,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{TAppend}(Promise, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> RaceWithIndex(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -172,6 +206,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{TAppend}(Promise, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> RaceWithIndex(params Promise[] promises)
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -185,6 +223,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{TAppend}(Promise, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> RaceWithIndex(ReadOnlySpan<Promise> promises)
             => RaceWithIndex(promises.GetPersistedEnumerator());
 #endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
@@ -193,6 +235,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{TAppend}(Promise, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> RaceWithIndex(IEnumerable<Promise> promises)
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -203,6 +249,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{TAppend}(Promise, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> RaceWithIndex<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -261,6 +311,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2)
             => Promise<T>.Race(promise1, promise2);
 
@@ -268,6 +321,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
             => Promise<T>.Race(promise1, promise2, promise3);
 
@@ -275,6 +331,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise<T> Race<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
             => Promise<T>.Race(promise1, promise2, promise3, promise4);
 
@@ -282,6 +341,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise<T> Race<T>(params Promise<T>[] promises)
             => Promise<T>.Race(promises);
 
@@ -292,6 +354,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise<T> Race<T>(ReadOnlySpan<Promise<T>> promises)
             => Promise<T>.Race(promises.GetPersistedEnumerator());
 #endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
@@ -300,6 +365,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise<T> Race<T>(IEnumerable<Promise<T>> promises)
             => Promise<T>.Race(promises);
 
@@ -307,6 +375,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise<T> Race<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
             => Promise<T>.Race(promises);
 
@@ -314,6 +385,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
         /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise First(Promise promise1, Promise promise2)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -325,6 +399,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
         /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise First(Promise promise1, Promise promise2, Promise promise3)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -337,6 +414,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when the first of the promises has resolved.
         /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise First(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -350,6 +430,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
         /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise First(params Promise[] promises)
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -363,6 +446,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
         /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise First(ReadOnlySpan<Promise> promises)
             => First(promises.GetPersistedEnumerator());
 #endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
@@ -371,6 +457,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
         /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise First(IEnumerable<Promise> promises)
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -381,6 +470,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
         /// If all promises are rejected or canceled, the returned <see cref="Promise"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise First<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -438,6 +530,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{TAppend}(Promise, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> FirstWithIndex(Promise promise1, Promise promise2)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -449,6 +545,7 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> FirstWithIndex(Promise promise1, Promise promise2, Promise promise3)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -461,6 +558,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{TAppend}(Promise, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> FirstWithIndex(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -474,6 +575,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{TAppend}(Promise, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> FirstWithIndex(params Promise[] promises)
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -487,6 +592,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{TAppend}(Promise, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> FirstWithIndex(ReadOnlySpan<Promise> promises)
             => FirstWithIndex(promises.GetPersistedEnumerator());
 #endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
@@ -495,6 +604,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when the first of the <paramref name="promises"/> has resolved.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{TAppend}(Promise, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> FirstWithIndex(IEnumerable<Promise> promises)
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -505,6 +618,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="int"/> that will resolve when the first of the promises has resolved with the index of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{TAppend}(Promise, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> FirstWithIndex<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -567,6 +684,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2)
             => Promise<T>.First(promise1, promise2);
 
@@ -574,6 +694,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
             => Promise<T>.First(promise1, promise2, promise3);
 
@@ -581,6 +704,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise<T> First<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
             => Promise<T>.First(promise1, promise2, promise3, promise4);
 
@@ -588,6 +714,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise<T> First<T>(params Promise<T>[] promises)
             => Promise<T>.First(promises);
 
@@ -598,6 +727,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise<T> First<T>(ReadOnlySpan<Promise<T>> promises)
             => Promise<T>.First(promises.GetPersistedEnumerator());
 #endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
@@ -606,6 +738,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise<T> First<T>(IEnumerable<Promise<T>> promises)
             => Promise<T>.First(promises);
 
@@ -613,6 +748,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve when the first of the promises has resolved with the same value as that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseRaceGroup"/> instead.
+        /// </remarks>
         public static Promise<T> First<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
             => Promise<T>.First(promises);
 
@@ -620,6 +758,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{T, TAppend}(in Promise{T}, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(Promise<T> promise1, Promise<T> promise2)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -631,6 +773,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{T, TAppend}(in Promise{T}, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<in(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -643,6 +789,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{T, TAppend}(in Promise{T}, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -656,6 +806,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{T, TAppend}(in Promise{T}, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(params Promise<T>[] promises)
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -669,6 +823,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{T, TAppend}(in Promise{T}, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(ReadOnlySpan<Promise<T>> promises)
             => RaceWithIndex<T, Internal.PersistedSpanEnumerator<Promise<T>>>(promises.GetPersistedEnumerator());
 #endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
@@ -677,6 +835,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{T, TAppend}(in Promise{T}, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(IEnumerable<Promise<T>> promises)
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -687,6 +849,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{T, TAppend}(in Promise{T}, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> RaceWithIndex<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -749,6 +915,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{T, TAppend}(in Promise{T}, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(Promise<T> promise1, Promise<T> promise2)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -760,6 +930,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{T, TAppend}(in Promise{T}, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -772,6 +946,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{T, TAppend}(in Promise{T}, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -785,6 +963,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{T, TAppend}(in Promise{T}, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(params Promise<T>[] promises)
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -798,6 +980,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{T, TAppend}(in Promise{T}, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(ReadOnlySpan<Promise<T>> promises)
             => FirstWithIndex<T, Internal.PersistedSpanEnumerator<Promise<T>>>(promises.GetPersistedEnumerator());
 #endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
@@ -806,6 +992,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{T, TAppend}(in Promise{T}, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(IEnumerable<Promise<T>> promises)
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -816,6 +1006,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve when the first of the promises has resolved with the index and result of that promise.
         /// If all promises are rejected or canceled, the returned <see cref="Promise{T}"/> will be canceled or rejected with the same reason as the last <see cref="Promise{T}"/> that is rejected or canceled.
         /// </summary>
+        /// <remarks>
+        /// This function is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{T, TAppend}(in Promise{T}, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+        /// </remarks>
+        [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> FirstWithIndex<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
             ValidateArgument(promises, nameof(promises), 1);

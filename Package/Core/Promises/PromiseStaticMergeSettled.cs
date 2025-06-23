@@ -33,6 +33,9 @@ namespace Proto.Promises
         /// <param name="promise1">The first promise to combine.</param>
         /// <param name="promise2">The second promise to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseAllResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<IList<ResultContainer>> AllSettled(Promise promise1, Promise promise2, IList<ResultContainer> valueContainer = null)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -47,6 +50,9 @@ namespace Proto.Promises
         /// <param name="promise2">The second promise to combine.</param>
         /// <param name="promise3">The third promise to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseAllResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<IList<ResultContainer>> AllSettled(Promise promise1, Promise promise2, Promise promise3, IList<ResultContainer> valueContainer = null)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -63,6 +69,9 @@ namespace Proto.Promises
         /// <param name="promise3">The third promise to combine.</param>
         /// <param name="promise4">The 4th promise to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseAllResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<IList<ResultContainer>> AllSettled(Promise promise1, Promise promise2, Promise promise3, Promise promise4, IList<ResultContainer> valueContainer = null)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -76,6 +85,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
         /// </summary>
         /// <param name="promises">The promises to combine.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseAllResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<IList<ResultContainer>> AllSettled(params Promise[] promises)
             => AllSettled(promises, new ResultContainer[promises.Length]);
 
@@ -87,6 +99,9 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promises">The promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseAllResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<IList<ResultContainer>> AllSettled(ReadOnlySpan<Promise> promises, IList<ResultContainer> valueContainer = null)
             => AllSettled(promises.GetPersistedEnumerator(), valueContainer);
 #endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
@@ -96,6 +111,9 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promises">The promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseAllResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<IList<ResultContainer>> AllSettled(Promise[] promises, IList<ResultContainer> valueContainer = null)
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -107,6 +125,9 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promises">The promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseAllResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<IList<ResultContainer>> AllSettled(IEnumerable<Promise> promises, IList<ResultContainer> valueContainer = null)
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -118,6 +139,9 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promises">The enumerator of promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseAllResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<IList<ResultContainer>> AllSettled<TEnumerator>(TEnumerator promises, IList<ResultContainer> valueContainer = null) where TEnumerator : IEnumerator<Promise>
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -209,6 +233,9 @@ namespace Proto.Promises
         /// <param name="promise1">The first promise to combine.</param>
         /// <param name="promise2">The second promise to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseAllResultsGroup{T}"/> instead.
+        /// </remarks>
         public static Promise<IList<Promise<T>.ResultContainer>> AllSettled<T>(Promise<T> promise1, Promise<T> promise2, IList<Promise<T>.ResultContainer> valueContainer = null)
             => Promise<T>.AllSettled(promise1, promise2, valueContainer);
 
@@ -219,6 +246,9 @@ namespace Proto.Promises
         /// <param name="promise2">The second promise to combine.</param>
         /// <param name="promise3">The third promise to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseAllResultsGroup{T}"/> instead.
+        /// </remarks>
         public static Promise<IList<Promise<T>.ResultContainer>> AllSettled<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, IList<Promise<T>.ResultContainer> valueContainer = null)
             => Promise<T>.AllSettled(promise1, promise2, promise3, valueContainer);
 
@@ -230,6 +260,9 @@ namespace Proto.Promises
         /// <param name="promise3">The third promise to combine.</param>
         /// <param name="promise4">The fourth promise to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseAllResultsGroup{T}"/> instead.
+        /// </remarks>
         public static Promise<IList<Promise<T>.ResultContainer>> AllSettled<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4, IList<Promise<T>.ResultContainer> valueContainer = null)
             => Promise<T>.AllSettled(promise1, promise2, promise3, promise4, valueContainer);
 
@@ -237,6 +270,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of <see cref="Promise{T}.ResultContainer"/>s in the same order as <paramref name="promises"/> when they have all completed.
         /// </summary>
         /// <param name="promises">The promises to combine.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseAllResultsGroup{T}"/> instead.
+        /// </remarks>
         public static Promise<IList<Promise<T>.ResultContainer>> AllSettled<T>(params Promise<T>[] promises)
             => Promise<T>.AllSettled(promises);
 
@@ -248,6 +284,9 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promises">The promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseAllResultsGroup{T}"/> instead.
+        /// </remarks>
         public static Promise<IList<Promise<T>.ResultContainer>> AllSettled<T>(ReadOnlySpan<Promise<T>> promises, IList<Promise<T>.ResultContainer> valueContainer = null)
             => Promise<T>.AllSettled(promises.GetPersistedEnumerator(), valueContainer);
 #endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
@@ -257,6 +296,9 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promises">The promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseAllResultsGroup{T}"/> instead.
+        /// </remarks>
         public static Promise<IList<Promise<T>.ResultContainer>> AllSettled<T>(IEnumerable<Promise<T>> promises, IList<Promise<T>.ResultContainer> valueContainer = null)
             => Promise<T>.AllSettled(promises, valueContainer);
 
@@ -265,6 +307,9 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promises">The enumerator of promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the result containers. If it is not provided, a new one will be created.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseAllResultsGroup{T}"/> instead.
+        /// </remarks>
         public static Promise<IList<Promise<T>.ResultContainer>> AllSettled<T, TEnumerator>(TEnumerator promises, IList<Promise<T>.ResultContainer> valueContainer = null) where TEnumerator : IEnumerator<Promise<T>>
             => Promise<T>.AllSettled(promises, valueContainer);
 
@@ -310,6 +355,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(ResultContainer, ResultContainer)> MergeSettled(Promise promise1, Promise promise2)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -363,6 +411,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, ResultContainer)> MergeSettled<T1>(Promise<T1> promise1, Promise promise2)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -417,6 +468,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer)> MergeSettled<T1, T2>(Promise<T1> promise1, Promise<T2> promise2)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -477,6 +531,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(ResultContainer, ResultContainer, ResultContainer)> MergeSettled(
             Promise promise1, Promise promise2, Promise promise3)
         {
@@ -536,6 +593,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1>(
             Promise<T1> promise1, Promise promise2, Promise promise3)
         {
@@ -595,6 +655,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer)> MergeSettled<T1, T2>(
             Promise<T1> promise1, Promise<T2> promise2, Promise promise3)
         {
@@ -654,6 +717,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer)> MergeSettled<T1, T2, T3>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3)
         {
@@ -720,6 +786,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled(
             Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
@@ -784,6 +853,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1>(
             Promise<T1> promise1, Promise promise2, Promise promise3, Promise promise4)
         {
@@ -848,6 +920,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2>(
             Promise<T1> promise1, Promise<T2> promise2, Promise promise3, Promise promise4)
         {
@@ -913,6 +988,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4)
         {
@@ -978,6 +1056,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer)> MergeSettled<T1, T2, T3, T4>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4)
         {
@@ -1049,6 +1130,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled(
             Promise promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5)
         {
@@ -1118,6 +1202,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1>(
             Promise<T1> promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5)
         {
@@ -1187,6 +1274,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2>(
             Promise<T1> promise1, Promise<T2> promise2, Promise promise3, Promise promise4, Promise promise5)
         {
@@ -1257,6 +1347,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4, Promise promise5)
         {
@@ -1327,6 +1420,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3, T4>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise promise5)
         {
@@ -1397,6 +1493,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer)> MergeSettled<T1, T2, T3, T4, T5>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5)
         {
@@ -1474,6 +1573,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled(
             Promise promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6)
         {
@@ -1549,6 +1651,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1>(
             Promise<T1> promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6)
         {
@@ -1624,6 +1729,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2>(
             Promise<T1> promise1, Promise<T2> promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6)
         {
@@ -1699,6 +1807,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4, Promise promise5, Promise promise6)
         {
@@ -1774,6 +1885,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3, T4>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise promise5, Promise promise6)
         {
@@ -1849,6 +1963,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3, T4, T5>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise promise6)
         {
@@ -1924,6 +2041,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer)> MergeSettled<T1, T2, T3, T4, T5, T6>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6)
         {
@@ -2006,6 +2126,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled(
             Promise promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6, Promise promise7)
         {
@@ -2086,6 +2209,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1>(
             Promise<T1> promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6, Promise promise7)
         {
@@ -2166,6 +2292,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2>(
             Promise<T1> promise1, Promise<T2> promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6, Promise promise7)
         {
@@ -2246,6 +2375,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4, Promise promise5, Promise promise6, Promise promise7)
         {
@@ -2326,6 +2458,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3, T4>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise promise5, Promise promise6, Promise promise7)
         {
@@ -2406,6 +2541,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3, T4, T5>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise promise6, Promise promise7)
         {
@@ -2486,6 +2624,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3, T4, T5, T6>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise promise7)
         {
@@ -2566,6 +2707,9 @@ namespace Proto.Promises
         /// <summary>
         /// Returns a <see cref="Promise{T}"/> that will resolve with the result container of each promise when they have all completed.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeResultsGroup"/> instead.
+        /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer)> MergeSettled<T1, T2, T3, T4, T5, T6, T7>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise<T7> promise7)
         {

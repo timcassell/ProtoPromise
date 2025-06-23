@@ -15,6 +15,9 @@ namespace Proto.Promises
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseEachGroup"/> instead.
+        /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each(Promise promise1, Promise promise2)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -25,6 +28,9 @@ namespace Proto.Promises
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseEachGroup"/> instead.
+        /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each(Promise promise1, Promise promise2, Promise promise3)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -36,6 +42,9 @@ namespace Proto.Promises
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseEachGroup"/> instead.
+        /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -48,6 +57,9 @@ namespace Proto.Promises
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseEachGroup"/> instead.
+        /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each(params Promise[] promises)
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -60,6 +72,9 @@ namespace Proto.Promises
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseEachGroup"/> instead.
+        /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each(ReadOnlySpan<Promise> promises)
             => Each(promises.GetPersistedEnumerator());
 #endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
@@ -67,6 +82,9 @@ namespace Proto.Promises
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseEachGroup"/> instead.
+        /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each(IEnumerable<Promise> promises)
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -76,6 +94,9 @@ namespace Proto.Promises
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseEachGroup"/> instead.
+        /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -108,24 +129,36 @@ namespace Proto.Promises
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseEachGroup{T}"/> instead.
+        /// </remarks>
         public static AsyncEnumerable<Promise<T>.ResultContainer> Each<T>(Promise<T> promise1, Promise<T> promise2)
             => Promise<T>.Each(promise1, promise2);
 
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseEachGroup{T}"/> instead.
+        /// </remarks>
         public static AsyncEnumerable<Promise<T>.ResultContainer> Each<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
             => Promise<T>.Each(promise1, promise2, promise3);
 
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseEachGroup{T}"/> instead.
+        /// </remarks>
         public static AsyncEnumerable<Promise<T>.ResultContainer> Each<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
             => Promise<T>.Each(promise1, promise2, promise3, promise4);
 
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseEachGroup{T}"/> instead.
+        /// </remarks>
         public static AsyncEnumerable<Promise<T>.ResultContainer> Each<T>(params Promise<T>[] promises)
             => Promise<T>.Each(promises);
 
@@ -135,6 +168,9 @@ namespace Proto.Promises
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseEachGroup{T}"/> instead.
+        /// </remarks>
         public static AsyncEnumerable<Promise<T>.ResultContainer> Each<T>(ReadOnlySpan<Promise<T>> promises)
             => Promise<T>.Each(promises.GetPersistedEnumerator());
 #endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
@@ -142,12 +178,18 @@ namespace Proto.Promises
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseEachGroup{T}"/> instead.
+        /// </remarks>
         public static AsyncEnumerable<Promise<T>.ResultContainer> Each<T>(IEnumerable<Promise<T>> promises)
             => Promise<T>.Each(promises);
 
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseEachGroup{T}"/> instead.
+        /// </remarks>
         public static AsyncEnumerable<Promise<T>.ResultContainer> Each<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
             => Promise<T>.Each(promises);
     }
@@ -157,6 +199,9 @@ namespace Proto.Promises
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseEachGroup{T}"/> instead.
+        /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each(Promise<T> promise1, Promise<T> promise2)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -167,6 +212,9 @@ namespace Proto.Promises
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseEachGroup{T}"/> instead.
+        /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -178,6 +226,9 @@ namespace Proto.Promises
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseEachGroup{T}"/> instead.
+        /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -190,6 +241,9 @@ namespace Proto.Promises
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseEachGroup{T}"/> instead.
+        /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each(params Promise<T>[] promises)
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -202,6 +256,9 @@ namespace Proto.Promises
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseEachGroup{T}"/> instead.
+        /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each(ReadOnlySpan<Promise<T>> promises)
             => Each(promises.GetPersistedEnumerator());
 #endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
@@ -209,6 +266,9 @@ namespace Proto.Promises
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseEachGroup{T}"/> instead.
+        /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each(IEnumerable<Promise<T>> promises)
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -218,6 +278,9 @@ namespace Proto.Promises
         /// <summary>
         /// Creates an <see cref="AsyncEnumerable{T}"/> that will yield the results of the supplied promises as those promises complete.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseEachGroup{T}"/> instead.
+        /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
             ValidateArgument(promises, nameof(promises), 1);

@@ -665,6 +665,7 @@ namespace ProtoPromise.Tests.APIs
             cancelationSource.Dispose();
         }
 
+#pragma warning disable CS0618 // Type or member is obsolete
         [Test]
         public void FirstWithIndex_2_void(
             [Values(0, 1)] int winIndex,
@@ -940,5 +941,6 @@ namespace ProtoPromise.Tests.APIs
             Assert.AreEqual(winIndex, resultIndex);
             Assert.AreEqual(1, result);
         }
+#pragma warning restore CS0618 // Type or member is obsolete
     }
 }

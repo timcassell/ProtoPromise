@@ -12,6 +12,7 @@ using System.Linq;
 
 namespace ProtoPromise.Tests.APIs.PromiseGroups
 {
+#pragma warning disable CS0618 // Type or member is obsolete
     public class PromiseRaceWithIndexGroupTests
     {
         [SetUp]

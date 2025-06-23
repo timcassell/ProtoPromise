@@ -625,6 +625,7 @@ namespace ProtoPromise.Tests.APIs
             }
         }
 
+#pragma warning disable CS0618 // Type or member is obsolete
         [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseRaceWithIndex_UncaughtRejectionIsSentToUncaughtRejectionHandler_void(object expectedRejectionValue)
         {
@@ -742,6 +743,7 @@ namespace ProtoPromise.Tests.APIs
                 Promise.Config.UncaughtRejectionHandler = currentRejectionHandler;
             }
         }
+#pragma warning restore CS0618 // Type or member is obsolete
 
         [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseFirst_UncaughtRejectionIsSuppressed_void(object expectedRejectionValue)
@@ -837,6 +839,7 @@ namespace ProtoPromise.Tests.APIs
             }
         }
 
+#pragma warning disable CS0618 // Type or member is obsolete
         [Test, TestCaseSource(nameof(GetExpectedRejections))]
         public void PromiseFirstWithIndex_UncaughtRejectionIsSuppressed_void(object expectedRejectionValue)
         {
@@ -930,6 +933,7 @@ namespace ProtoPromise.Tests.APIs
                 Promise.Config.UncaughtRejectionHandler = currentRejectionHandler;
             }
         }
+#pragma warning restore CS0618 // Type or member is obsolete
 
 #if !UNITY_WEBGL
         private static IEnumerable<TestCaseData> GetExpectedRejectionsAndTimeout()
