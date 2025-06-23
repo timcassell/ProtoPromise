@@ -1510,5 +1510,80 @@ namespace ProtoPromise.Tests.APIs
 
             deferred.Resolve(1);
         }
+
+        [Test]
+        public void PromiseAppendResult_void(
+            [Values] CompleteType completeType,
+            [Values] bool alreadyComplete)
+        {
+            const int appendValue = 42;
+            var expectedException = new System.Exception("Bang!");
+            int expectedCompletedCount = 0;
+            int completedCount = 0;
+
+            var promiseRetainer = TestHelper.BuildPromise(completeType, alreadyComplete, expectedException, out var tryCompleter).GetRetainer();
+            foreach (var promise in TestHelper.GetTestablePromises(promiseRetainer))
+            {
+                ++expectedCompletedCount;
+                promise
+                    .AppendResult(appendValue)
+                    .ContinueWith(result =>
+                    {
+                        Assert.AreEqual((Promise.State) completeType, result.State);
+                        if (completeType == CompleteType.Resolve)
+                        {
+                            Assert.AreEqual(appendValue, result.Value);
+                        }
+                        else if (completeType == CompleteType.Reject)
+                        {
+                            Assert.AreEqual(expectedException, result.Reason);
+                        }
+                        ++completedCount;
+                    })
+                    .Forget();
+            }
+
+            tryCompleter.Invoke();
+            Assert.AreEqual(expectedCompletedCount, completedCount);
+            promiseRetainer.Dispose();
+        }
+
+        [Test]
+        public void PromiseAppendResult_T(
+            [Values] CompleteType completeType,
+            [Values] bool alreadyComplete)
+        {
+            const int expectedResult = 1;
+            const int appendValue = 42;
+            var expectedException = new System.Exception("Bang!");
+            int expectedCompletedCount = 0;
+            int completedCount = 0;
+
+            var promiseRetainer = TestHelper.BuildPromise(completeType, alreadyComplete, expectedResult, expectedException, out var tryCompleter).GetRetainer();
+            foreach (var promise in TestHelper.GetTestablePromises(promiseRetainer))
+            {
+                ++expectedCompletedCount;
+                promise
+                    .AppendResult(appendValue)
+                    .ContinueWith(result =>
+                    {
+                        Assert.AreEqual((Promise.State) completeType, result.State);
+                        if (completeType == CompleteType.Resolve)
+                        {
+                            Assert.AreEqual((expectedResult, appendValue), result.Value);
+                        }
+                        else if (completeType == CompleteType.Reject)
+                        {
+                            Assert.AreEqual(expectedException, result.Reason);
+                        }
+                        ++completedCount;
+                    })
+                    .Forget();
+            }
+
+            tryCompleter.Invoke();
+            Assert.AreEqual(expectedCompletedCount, completedCount);
+            promiseRetainer.Dispose();
+        }
     }
 }

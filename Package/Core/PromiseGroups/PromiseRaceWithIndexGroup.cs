@@ -5,6 +5,7 @@
 #endif
 
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -14,6 +15,10 @@ namespace Proto.Promises
     /// <summary>
     /// A structured concurrency group used to race promises, incorporating their indices. Waits for the first promise to resolve.
     /// </summary>
+    /// <remarks>
+    /// This type is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{TAppend}(Promise, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+    /// </remarks>
+    [Obsolete("Prefer Promise.AppendResult(int) and PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
@@ -180,6 +185,10 @@ namespace Proto.Promises
     /// <summary>
     /// A structured concurrency group used to race promises, incorporating their indices. Waits for the first promise to resolve.
     /// </summary>
+    /// <remarks>
+    /// This type is obsolete. Prefer <see cref="PromiseExtensions.AppendResult{T, TAppend}(in Promise{T}, TAppend)"/> and <see cref="PromiseRaceGroup{T}"/> instead.
+    /// </remarks>
+    [Obsolete("Prefer Promise.AppendResult(int) and PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif

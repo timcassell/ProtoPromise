@@ -17,6 +17,11 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when all promises have resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <param name="promise1">The first promise to combine.</param>
+        /// <param name="promise2">The second promise to combine.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeGroup"/> instead.
+        /// </remarks>
         public static Promise All(Promise promise1, Promise promise2)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -28,6 +33,12 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when all promises have resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <param name="promise1">The first promise to combine.</param>
+        /// <param name="promise2">The second promise to combine.</param>
+        /// <param name="promise3">The third promise to combine.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeGroup"/> instead.
+        /// </remarks>
         public static Promise All(Promise promise1, Promise promise2, Promise promise3)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -40,6 +51,13 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when all promises have resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <param name="promise1">The first promise to combine.</param>
+        /// <param name="promise2">The second promise to combine.</param>
+        /// <param name="promise3">The third promise to combine.</param>
+        /// <param name="promise4">The fourth promise to combine.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeGroup"/> instead.
+        /// </remarks>
         public static Promise All(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -53,6 +71,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when all <paramref name="promises"/> have resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <param name="promises">The promises to combine.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeGroup"/> instead.
+        /// </remarks>
         public static Promise All(params Promise[] promises)
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -66,6 +88,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when all <paramref name="promises"/> have resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <param name="promises">The promises to combine.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeGroup"/> instead.
+        /// </remarks>
         public static Promise All(ReadOnlySpan<Promise> promises)
             => All(promises.GetPersistedEnumerator());
 #endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
@@ -74,6 +100,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when all <paramref name="promises"/> have resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <param name="promises">The promises to combine.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeGroup"/> instead.
+        /// </remarks>
         public static Promise All(IEnumerable<Promise> promises)
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -84,6 +114,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise"/> that will resolve when all <paramref name="promises"/> have resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <param name="promises">The promises to combine.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeGroup"/> instead.
+        /// </remarks>
         public static Promise All<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
             ValidateArgument(promises, nameof(promises), 1);
@@ -129,6 +163,9 @@ namespace Proto.Promises
         /// <param name="promise1">The first promise to combine.</param>
         /// <param name="promise2">The second promise to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseAllGroup{T}"/> instead.
+        /// </remarks>
         public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2, IList<T> valueContainer = null)
             => Promise<T>.All(promise1, promise2, valueContainer);
 
@@ -140,6 +177,9 @@ namespace Proto.Promises
         /// <param name="promise2">The second promise to combine.</param>
         /// <param name="promise3">The third promise to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseAllGroup{T}"/> instead.
+        /// </remarks>
         public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, IList<T> valueContainer = null)
             => Promise<T>.All(promise1, promise2, promise3, valueContainer);
 
@@ -152,6 +192,9 @@ namespace Proto.Promises
         /// <param name="promise3">The third promise to combine.</param>
         /// <param name="promise4">The fourth promise to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseAllGroup{T}"/> instead.
+        /// </remarks>
         public static Promise<IList<T>> All<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4, IList<T> valueContainer = null)
             => Promise<T>.All(promise1, promise2, promise3, promise4, valueContainer);
 
@@ -159,6 +202,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of values in the same order as <paramref name="promises"/> when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <param name="promises">The promises to combine.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseAllGroup{T}"/> instead.
+        /// </remarks>
         public static Promise<IList<T>> All<T>(params Promise<T>[] promises)
             => Promise<T>.All(promises);
 
@@ -169,6 +216,10 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve with a list of values in the same order as <paramref name="promises"/> when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <param name="promises">The promises to combine.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseAllGroup{T}"/> instead.
+        /// </remarks>
         public static Promise All<T>(ReadOnlySpan<Promise<T>> promises)
             => Promise<T>.All(promises.GetPersistedEnumerator());
 #endif // !UNITY_2018_3_OR_NEWER || UNITY_2021_2_OR_NEWER
@@ -179,6 +230,9 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promises">The promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseAllGroup{T}"/> instead.
+        /// </remarks>
         public static Promise<IList<T>> All<T>(IEnumerable<Promise<T>> promises, IList<T> valueContainer = null)
             => Promise<T>.All(promises, valueContainer);
 
@@ -188,6 +242,9 @@ namespace Proto.Promises
         /// </summary>
         /// <param name="promises">The enumerator of promises to combine.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
+        /// <remarks>
+        /// Consider using <see cref="PromiseAllGroup{T}"/> instead.
+        /// </remarks>
         public static Promise<IList<T>> All<T, TEnumerator>(TEnumerator promises, IList<T> valueContainer = null) where TEnumerator : IEnumerator<Promise<T>>
             => Promise<T>.All(promises, valueContainer);
 
@@ -233,6 +290,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> that will resolve with the value of <paramref name="promise1"/> when both promises have resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeGroup"/> instead.
+        /// </remarks>
         public static Promise<T1> Merge<T1>(Promise<T1> promise1, Promise promise2)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -300,6 +360,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeGroup"/> instead.
+        /// </remarks>
         public static Promise<(T1, T2)> Merge<T1, T2>(Promise<T1> promise1, Promise<T2> promise2)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -316,6 +379,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeGroup"/> instead.
+        /// </remarks>
         public static Promise<(T1, T2)> Merge<T1, T2>(Promise<T1> promise1, Promise<T2> promise2, Promise promise3)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -373,6 +439,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeGroup"/> instead.
+        /// </remarks>
         public static Promise<(T1, T2, T3)> Merge<T1, T2, T3>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -391,6 +460,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeGroup"/> instead.
+        /// </remarks>
         public static Promise<(T1, T2, T3)> Merge<T1, T2, T3>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -453,6 +525,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeGroup"/> instead.
+        /// </remarks>
         public static Promise<(T1, T2, T3, T4)> Merge<T1, T2, T3, T4>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -473,6 +548,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeGroup"/> instead.
+        /// </remarks>
         public static Promise<(T1, T2, T3, T4)> Merge<T1, T2, T3, T4>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise promise5)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -540,6 +618,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4, T5}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeGroup"/> instead.
+        /// </remarks>
         public static Promise<(T1, T2, T3, T4, T5)> Merge<T1, T2, T3, T4, T5>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -562,6 +643,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4, T5}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeGroup"/> instead.
+        /// </remarks>
         public static Promise<(T1, T2, T3, T4, T5)> Merge<T1, T2, T3, T4, T5>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise promise6)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -634,6 +718,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4, T5, T6}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeGroup"/> instead.
+        /// </remarks>
         public static Promise<(T1, T2, T3, T4, T5, T6)> Merge<T1, T2, T3, T4, T5, T6>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -658,6 +745,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4, T5, T6}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeGroup"/> instead.
+        /// </remarks>
         public static Promise<(T1, T2, T3, T4, T5, T6)> Merge<T1, T2, T3, T4, T5, T6>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise promise7)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -735,6 +825,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4, T5, T6, T7}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeGroup"/> instead.
+        /// </remarks>
         public static Promise<(T1, T2, T3, T4, T5, T6, T7)> Merge<T1, T2, T3, T4, T5, T6, T7>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise<T7> promise7)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
@@ -761,6 +854,9 @@ namespace Proto.Promises
         /// Returns a <see cref="Promise{T}"/> of <see cref="ValueTuple{T1, T2, T3, T4, T5, T6, T7}"/> that will resolve with the values of the promises when they have all resolved.
         /// If any promise is rejected or canceled, the returned <see cref="Promise{T}"/> will immediately be canceled or rejected with the same reason.
         /// </summary>
+        /// <remarks>
+        /// Consider using <see cref="PromiseMergeGroup"/> instead.
+        /// </remarks>
         public static Promise<(T1, T2, T3, T4, T5, T6, T7)> Merge<T1, T2, T3, T4, T5, T6, T7>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise<T7> promise7, Promise promise8)
         {
             ValidateArgument(promise1, nameof(promise1), 1);
