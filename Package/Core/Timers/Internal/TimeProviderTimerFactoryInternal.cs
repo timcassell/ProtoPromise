@@ -9,6 +9,7 @@ using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using PromisesInternal = Proto.Promises.Internal;
 
 #pragma warning disable IDE0090 // Use 'new(...)'
 
@@ -22,19 +23,19 @@ namespace Proto.Timers
         private sealed class TimeProviderTimerFactory : TimerFactory
         {
             // We have to use per-instance object pooling instead of global, because TimerFactory is abstract, and can have many different implementations.
-            internal readonly Internal.LocalObjectPool<TimeProviderTimerFactoryTimer> _timerPool;
+            internal readonly PromisesInternal.LocalObjectPool<TimeProviderTimerFactoryTimer> _timerPool;
 
             internal TimeProviderTimerFactory(TimeProvider timeProvider)
             {
                 _timeProvider = timeProvider;
-                _timerPool = new Internal.LocalObjectPool<TimeProviderTimerFactoryTimer>(() => new TimeProviderTimerFactoryTimer(this));
+                _timerPool = new PromisesInternal.LocalObjectPool<TimeProviderTimerFactoryTimer>(() => new TimeProviderTimerFactoryTimer(this));
             }
 
             public override Timer CreateTimer(TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
             {
                 if (callback == null)
                 {
-                    throw new Promises.ArgumentNullException(nameof(callback), "callback may not be null", Internal.GetFormattedStacktrace(1));
+                    throw new Promises.ArgumentNullException(nameof(callback), "callback may not be null", PromisesInternal.GetFormattedStacktrace(1));
                 }
                 var timer = TimeProviderTimerFactoryTimer.GetOrCreate(this, callback, state, dueTime, period);
                 return new Timer(timer, timer.Version);
@@ -47,7 +48,7 @@ namespace Proto.Timers
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        private sealed class TimeProviderTimerFactoryTimer : Internal.HandleablePromiseBase, ITimerSource
+        private sealed class TimeProviderTimerFactoryTimer : PromisesInternal.HandleablePromiseBase, ITimerSource
         {
             private readonly TimeProviderTimerFactory _factory;
             // Timer doubles as the sync lock.
@@ -63,7 +64,7 @@ namespace Proto.Timers
                 _factory = factory;
                 // We don't need the extra overhead of the timer capturing the execution context.
                 // We capture it manually per usage of this instance.
-                using (Internal.SuppressExecutionContextFlow())
+                using (PromisesInternal.SuppressExecutionContextFlow())
                 {
                     _timer = factory._timeProvider.CreateTimer(OnTimerCallback, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
                 }
@@ -73,21 +74,21 @@ namespace Proto.Timers
             {
                 if (_callbackInvoker != null)
                 {
-                    Internal.Discard(_callbackInvoker); // Prevent the invoker's base finalizer from adding an extra exception.
-                    Internal.ReportRejection(new UnreleasedObjectException($"A timer's resources were garbage collected without being disposed. {this}"), _callbackInvoker);
+                    PromisesInternal.Discard(_callbackInvoker); // Prevent the invoker's base finalizer from adding an extra exception.
+                    PromisesInternal.ReportRejection(new UnreleasedObjectException($"A timer's resources were garbage collected without being disposed. {this}"), _callbackInvoker);
                 }
             }
 
-            [MethodImpl(Internal.InlineOption)]
+            [MethodImpl(PromisesInternal.InlineOption)]
             private static TimeProviderTimerFactoryTimer GetOrCreate(TimeProviderTimerFactory factory)
             {
                 var obj = factory._timerPool.TryTakeOrInvalid();
-                return obj == Internal.PromiseRefBase.InvalidAwaitSentinel.s_instance
+                return obj == PromisesInternal.PromiseRefBase.InvalidAwaitSentinel.s_instance
                     ? new TimeProviderTimerFactoryTimer(factory)
                     : obj.UnsafeAs<TimeProviderTimerFactoryTimer>();
             }
 
-            [MethodImpl(Internal.InlineOption)]
+            [MethodImpl(PromisesInternal.InlineOption)]
             internal static TimeProviderTimerFactoryTimer GetOrCreate(TimeProviderTimerFactory factory, TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
             {
                 var timer = GetOrCreate(factory);
@@ -119,7 +120,7 @@ namespace Proto.Timers
                 }
                 catch (Exception e)
                 {
-                    Internal.ReportRejection(e, callbackInvoker);
+                    PromisesInternal.ReportRejection(e, callbackInvoker);
                 }
             }
 
@@ -166,7 +167,7 @@ namespace Proto.Timers
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
             // We inherit from PromiseSingleAwait<> to support DisposeAsync.
-            private sealed class CallbackInvoker : Internal.PromiseRefBase.SingleAwaitPromise<Internal.VoidResult>
+            private sealed class CallbackInvoker : PromisesInternal.PromiseRefBase.SingleAwaitPromise<PromisesInternal.VoidResult>
             {
                 private TimeProvider _timeProvider;
                 private TimerCallback _callback;
@@ -176,16 +177,16 @@ namespace Proto.Timers
                 private TimeSpan _period;
                 private int _retainCounter;
 
-                [MethodImpl(Internal.InlineOption)]
+                [MethodImpl(PromisesInternal.InlineOption)]
                 internal static CallbackInvoker GetOrCreate()
                 {
-                    var obj = Internal.ObjectPool.TryTakeOrInvalid<CallbackInvoker>();
+                    var obj = PromisesInternal.ObjectPool.TryTakeOrInvalid<CallbackInvoker>();
                     return obj == InvalidAwaitSentinel.s_instance
                         ? new CallbackInvoker()
                         : obj.UnsafeAs<CallbackInvoker>();
                 }
 
-                [MethodImpl(Internal.InlineOption)]
+                [MethodImpl(PromisesInternal.InlineOption)]
                 internal static CallbackInvoker GetOrCreate(TimeProvider timeProvider, TimerCallback callback, object state)
                 {
                     var callbackInvoker = GetOrCreate();
@@ -208,10 +209,10 @@ namespace Proto.Timers
                     Dispose();
                     _callback = null;
                     _state = null;
-                    Internal.ObjectPool.MaybeRepool(this);
+                    PromisesInternal.ObjectPool.MaybeRepool(this);
                 }
 
-                [MethodImpl(Internal.InlineOption)]
+                [MethodImpl(PromisesInternal.InlineOption)]
                 internal void PrepareChange(TimeSpan dueTime, TimeSpan period)
                 {
                     _changedTimestamp = _timeProvider.GetTimestamp();
@@ -219,7 +220,7 @@ namespace Proto.Timers
                     _period = period;
                 }
 
-                [MethodImpl(Internal.InlineOption)]
+                [MethodImpl(PromisesInternal.InlineOption)]
                 internal bool TryPrepareInvoke(ITimer timer)
                 {
                     // If the dueTime is infinite, this should not be invoked.
@@ -249,11 +250,11 @@ namespace Proto.Timers
                         _dueTime += _period;
                     }
 
-                    Internal.InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, 1);
+                    PromisesInternal.InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, 1);
                     return true;
                 }
 
-                [MethodImpl(Internal.InlineOption)]
+                [MethodImpl(PromisesInternal.InlineOption)]
                 internal void Invoke()
                 {
                     var executionContext = ContinuationContext;
@@ -273,23 +274,23 @@ namespace Proto.Timers
                     }
                 }
 
-                [MethodImpl(Internal.InlineOption)]
+                [MethodImpl(PromisesInternal.InlineOption)]
                 private void InvokeDirect()
                 {
                     _callback.Invoke(_state);
                     Release();
                 }
 
-                [MethodImpl(Internal.InlineOption)]
+                [MethodImpl(PromisesInternal.InlineOption)]
                 private void Release()
                 {
-                    if (Internal.InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0)
+                    if (PromisesInternal.InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0)
                     {
                         HandleNextInternal(Promise.State.Resolved);
                     }
                 }
 
-                [MethodImpl(Internal.InlineOption)]
+                [MethodImpl(PromisesInternal.InlineOption)]
                 internal Promise DisposeAsync()
                 {
                     Release();

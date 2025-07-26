@@ -9,6 +9,7 @@ using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using PromisesInternal = Proto.Promises.Internal;
 
 namespace Proto.Timers
 {
@@ -53,16 +54,16 @@ namespace Proto.Timers
         {
             private UnitySimulatedTimerFactoryTimer() { }
 
-            [MethodImpl(Internal.InlineOption)]
+            [MethodImpl(PromisesInternal.InlineOption)]
             private static UnitySimulatedTimerFactoryTimer GetOrCreate()
             {
-                var obj = Internal.ObjectPool.TryTakeOrInvalid<UnitySimulatedTimerFactoryTimer>();
+                var obj = PromisesInternal.ObjectPool.TryTakeOrInvalid<UnitySimulatedTimerFactoryTimer>();
                 return obj == InvalidAwaitSentinel.s_instance
                     ? new UnitySimulatedTimerFactoryTimer()
                     : obj.UnsafeAs<UnitySimulatedTimerFactoryTimer>();
             }
 
-            [MethodImpl(Internal.InlineOption)]
+            [MethodImpl(PromisesInternal.InlineOption)]
             internal static UnitySimulatedTimerFactoryTimer GetOrCreate(TimerCallback callback, object state)
             {
                 var timer = GetOrCreate();
@@ -73,7 +74,7 @@ namespace Proto.Timers
             internal override void MaybeDispose()
             {
                 Dispose();
-                Internal.ObjectPool.MaybeRepool(this);
+                PromisesInternal.ObjectPool.MaybeRepool(this);
             }
 
             protected override void ChangeImpl(TimeSpan dueTime, TimeSpan period, int token)
@@ -131,7 +132,7 @@ namespace Proto.Timers
                 }
                 catch (Exception e)
                 {
-                    Internal.ReportRejection(e, this);
+                    PromisesInternal.ReportRejection(e, this);
                 }
 
                 if (_period <= 0)
