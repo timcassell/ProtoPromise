@@ -9,6 +9,7 @@ using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using static Proto.Promises.Internal;
 
 namespace Proto.Timers
 {
@@ -16,7 +17,7 @@ namespace Proto.Timers
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
     // We inherit from PromiseSingleAwait<> to support DisposeAsync.
-    internal abstract class UnityTimerBase : Internal.PromiseRefBase.SingleAwaitPromise<Internal.VoidResult>, ITimerSource
+    internal abstract class UnityTimerBase : PromiseRefBase.SingleAwaitPromise<VoidResult>, ITimerSource
     {
         private TimerCallback _callback;
         private object _state;
@@ -35,11 +36,11 @@ namespace Proto.Timers
             if (!_isDisposed)
             {
                 WasAwaitedOrForgotten = true; // Stop base finalizer from adding an extra exception.
-                Internal.ReportRejection(new UnreleasedObjectException($"A timer's resources were garbage collected without being disposed. {this}"), this);
+                ReportRejection(new UnreleasedObjectException($"A timer's resources were garbage collected without being disposed. {this}"), this);
             }
         }
 
-        [MethodImpl(Internal.InlineOption)]
+        [MethodImpl(InlineOption)]
         protected void Reset(TimerCallback callback, object state)
         {
             Reset();
@@ -62,7 +63,7 @@ namespace Proto.Timers
             _state = null;
         }
 
-        [MethodImpl(Internal.InlineOption)]
+        [MethodImpl(InlineOption)]
         protected void Retain()
         {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -73,7 +74,7 @@ namespace Proto.Timers
             }
         }
 
-        [MethodImpl(Internal.InlineOption)]
+        [MethodImpl(InlineOption)]
         protected void Release()
         {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -87,7 +88,7 @@ namespace Proto.Timers
             }
         }
 
-        [MethodImpl(Internal.InlineOption)]
+        [MethodImpl(InlineOption)]
         protected void Invoke()
         {
             var executionContext = ContinuationContext;
@@ -107,7 +108,7 @@ namespace Proto.Timers
             }
         }
 
-        [MethodImpl(Internal.InlineOption)]
+        [MethodImpl(InlineOption)]
         private void InvokeDirect()
             => _callback.Invoke(_state);
 
@@ -135,7 +136,7 @@ namespace Proto.Timers
             long tm = (long) time.TotalMilliseconds;
             if (tm < -1 || tm > MaxSupportedTimeout)
             {
-                throw new Promises.ArgumentOutOfRangeException(paramName, Internal.GetFormattedStacktrace(3));
+                throw new Promises.ArgumentOutOfRangeException(paramName, GetFormattedStacktrace(3));
             }
             return (float) time.TotalSeconds;
         }
