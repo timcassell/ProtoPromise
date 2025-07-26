@@ -9,7 +9,7 @@ using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using PromisesInternal = Proto.Promises.Internal;
+using static Proto.Promises.Internal;
 
 namespace Proto.Timers
 {
@@ -25,7 +25,7 @@ namespace Proto.Timers
             {
                 if (callback == null)
                 {
-                    throw new Promises.ArgumentNullException(nameof(callback), "callback may not be null", PromisesInternal.GetFormattedStacktrace(1));
+                    throw new Promises.ArgumentNullException(nameof(callback), "callback may not be null", GetFormattedStacktrace(1));
                 }
                 var timer = SystemTimerFactoryTimer.GetOrCreate(callback, state, dueTime, period);
                 return new Timer(timer, timer.Version);
@@ -38,7 +38,7 @@ namespace Proto.Timers
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        private sealed class SystemTimerFactoryTimer : PromisesInternal.HandleablePromiseBase, ITimerSource
+        private sealed class SystemTimerFactoryTimer : HandleablePromiseBase, ITimerSource
         {
             // Timer doubles as the sync lock.
             private readonly ITimer _timer;
@@ -52,7 +52,7 @@ namespace Proto.Timers
             {
                 // We don't need the extra overhead of the system timer capturing the execution context.
                 // We capture it manually per usage of this instance.
-                using (PromisesInternal.SuppressExecutionContextFlow())
+                using (SuppressExecutionContextFlow())
                 {
                     _timer = TimeProvider.System.CreateTimer(OnTimerCallback, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
                 }
@@ -62,21 +62,21 @@ namespace Proto.Timers
             {
                 if (_callbackInvoker != null)
                 {
-                    PromisesInternal.Discard(_callbackInvoker); // Prevent the invoker's base finalizer from adding an extra exception.
-                    PromisesInternal.ReportRejection(new UnreleasedObjectException($"A timer's resources were garbage collected without being disposed. {this}"), _callbackInvoker);
+                    Discard(_callbackInvoker); // Prevent the invoker's base finalizer from adding an extra exception.
+                    ReportRejection(new UnreleasedObjectException($"A timer's resources were garbage collected without being disposed. {this}"), _callbackInvoker);
                 }
             }
 
-            [MethodImpl(PromisesInternal.InlineOption)]
+            [MethodImpl(InlineOption)]
             private static SystemTimerFactoryTimer GetOrCreate()
             {
-                var obj = PromisesInternal.ObjectPool.TryTakeOrInvalid<SystemTimerFactoryTimer>();
-                return obj == PromisesInternal.PromiseRefBase.InvalidAwaitSentinel.s_instance
+                var obj = ObjectPool.TryTakeOrInvalid<SystemTimerFactoryTimer>();
+                return obj == PromiseRefBase.InvalidAwaitSentinel.s_instance
                     ? new SystemTimerFactoryTimer()
                     : obj.UnsafeAs<SystemTimerFactoryTimer>();
             }
 
-            [MethodImpl(PromisesInternal.InlineOption)]
+            [MethodImpl(InlineOption)]
             internal static SystemTimerFactoryTimer GetOrCreate(TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
             {
                 var timer = GetOrCreate();
@@ -108,7 +108,7 @@ namespace Proto.Timers
                 }
                 catch (Exception e)
                 {
-                    PromisesInternal.ReportRejection(e, callbackInvoker);
+                    ReportRejection(e, callbackInvoker);
                 }
             }
 
@@ -144,7 +144,7 @@ namespace Proto.Timers
 
                 _timer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
 
-                PromisesInternal.ObjectPool.MaybeRepool(this);
+                ObjectPool.MaybeRepool(this);
                 return callbackInvoker.DisposeAsync();
             }
 
@@ -155,7 +155,7 @@ namespace Proto.Timers
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
             // We inherit from PromiseSingleAwait<> to support DisposeAsync.
-            private sealed class CallbackInvoker : PromisesInternal.PromiseRefBase.SingleAwaitPromise<PromisesInternal.VoidResult>
+            private sealed class CallbackInvoker : PromiseRefBase.SingleAwaitPromise<VoidResult>
             {
                 private TimerCallback _callback;
                 private object _state;
@@ -164,16 +164,16 @@ namespace Proto.Timers
                 private TimeSpan _period;
                 private int _retainCounter;
 
-                [MethodImpl(PromisesInternal.InlineOption)]
+                [MethodImpl(InlineOption)]
                 internal static CallbackInvoker GetOrCreate()
                 {
-                    var obj = PromisesInternal.ObjectPool.TryTakeOrInvalid<CallbackInvoker>();
+                    var obj = ObjectPool.TryTakeOrInvalid<CallbackInvoker>();
                     return obj == InvalidAwaitSentinel.s_instance
                         ? new CallbackInvoker()
                         : obj.UnsafeAs<CallbackInvoker>();
                 }
 
-                [MethodImpl(PromisesInternal.InlineOption)]
+                [MethodImpl(InlineOption)]
                 internal static CallbackInvoker GetOrCreate(TimerCallback callback, object state)
                 {
                     var callbackInvoker = GetOrCreate();
@@ -195,10 +195,10 @@ namespace Proto.Timers
                     Dispose();
                     _callback = null;
                     _state = null;
-                    PromisesInternal.ObjectPool.MaybeRepool(this);
+                    ObjectPool.MaybeRepool(this);
                 }
 
-                [MethodImpl(PromisesInternal.InlineOption)]
+                [MethodImpl(InlineOption)]
                 internal void PrepareChange(TimeSpan dueTime, TimeSpan period)
                 {
                     _changedTimestamp = TimeProvider.System.GetTimestamp();
@@ -206,7 +206,7 @@ namespace Proto.Timers
                     _period = period;
                 }
 
-                [MethodImpl(PromisesInternal.InlineOption)]
+                [MethodImpl(InlineOption)]
                 internal bool TryPrepareInvoke(ITimer timer)
                 {
                     // If the dueTime is infinite, this should not be invoked.
@@ -236,11 +236,11 @@ namespace Proto.Timers
                         _dueTime += _period;
                     }
 
-                    PromisesInternal.InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, 1);
+                    InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, 1);
                     return true;
                 }
 
-                [MethodImpl(PromisesInternal.InlineOption)]
+                [MethodImpl(InlineOption)]
                 internal void Invoke()
                 {
                     var executionContext = ContinuationContext;
@@ -260,23 +260,23 @@ namespace Proto.Timers
                     }
                 }
 
-                [MethodImpl(PromisesInternal.InlineOption)]
+                [MethodImpl(InlineOption)]
                 private void InvokeDirect()
                 {
                     _callback.Invoke(_state);
                     Release();
                 }
 
-                [MethodImpl(PromisesInternal.InlineOption)]
+                [MethodImpl(InlineOption)]
                 private void Release()
                 {
-                    if (PromisesInternal.InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0)
+                    if (InterlockedAddWithUnsignedOverflowCheck(ref _retainCounter, -1) == 0)
                     {
                         HandleNextInternal(Promise.State.Resolved);
                     }
                 }
 
-                [MethodImpl(PromisesInternal.InlineOption)]
+                [MethodImpl(InlineOption)]
                 internal Promise DisposeAsync()
                 {
                     Release();
