@@ -2,6 +2,7 @@ using Proto.Promises;
 using System;
 using System.Diagnostics;
 using System.Threading;
+using static Proto.Promises.Internal;
 
 namespace Proto.Timers
 {
@@ -69,7 +70,7 @@ namespace Proto.Timers
         {
             if (timeProvider is null)
             {
-                throw new Promises.ArgumentNullException(nameof(timeProvider), $"The provided {nameof(timeProvider)} may not be null", Internal.GetFormattedStacktrace(1));
+                throw new Promises.ArgumentNullException(nameof(timeProvider), $"The provided {nameof(timeProvider)} may not be null", GetFormattedStacktrace(1));
             }
 
             return timeProvider == TimeProvider.System ? System

@@ -1,16 +1,14 @@
 {
     "name": "ProtoPromise.UnityHelpers.2023.1",
-    "rootNamespace": "",
     "references": [
         "ProtoPromise"
     ],
+    "optionalUnityReferences": [],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
-    "overrideReferences": false,
+    "overrideReferences": true,
     "precompiledReferences": [],
     "autoReferenced": true,
-    "defineConstraints": [],
-    "versionDefines": [],
-    "noEngineReferences": false
+    "defineConstraints": []
 }
