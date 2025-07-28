@@ -219,7 +219,7 @@ namespace Proto.Promises
                     ++cancelRef._internalRetainCounter; // Add an extra internal retain for the timer disposal.
                     using (SuppressExecutionContextFlow())
                     {
-                        cancelRef._timer = timerFactory.CreateTimer(obj => obj.UnsafeAs<CancelationRef>().OnTimerCallback(), cancelRef, delay, Timeout.InfiniteTimeSpan);
+                        cancelRef._timer = timerFactory.CreateTimer(obj => obj.UnsafeAs<CancelationRef>().CancelUnsafe(), cancelRef, delay, Timeout.InfiniteTimeSpan);
                         if (cancelRef._timer == default)
                         {
                             Discard(cancelRef);
@@ -228,18 +228,6 @@ namespace Proto.Promises
                     }
                 }
                 return cancelRef;
-            }
-
-            private void OnTimerCallback()
-            {
-                // Due to object pooling, this is not a fool-proof check. But it's good enough to protect against accidental non-compliant timer implementations,
-                // as object pooling is disabled in DEBUG mode, and it's still possible to catch the improper call while this is in the pool.
-                if (_timer == default)
-                {
-                    throw new InvalidOperationException("Timer callback may not be invoked after its DisposeAsync Promise has completed.", GetFormattedStacktrace(1));
-                }
-
-                CancelUnsafe();
             }
 
             [MethodImpl(InlineOption)]
@@ -339,7 +327,7 @@ namespace Proto.Promises
                     // There is no existing timer, create a new default timer.
                     using (SuppressExecutionContextFlow())
                     {
-                        timer = Promise.Config.DefaultTimerFactory.CreateTimer(obj => obj.UnsafeAs<CancelationRef>().OnTimerCallback(), this, delay, Timeout.InfiniteTimeSpan);
+                        timer = Promise.Config.DefaultTimerFactory.CreateTimer(obj => obj.UnsafeAs<CancelationRef>().CancelUnsafe(), this, delay, Timeout.InfiniteTimeSpan);
                     }
 
                     _smallFields._locker.Enter();
