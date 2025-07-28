@@ -8,7 +8,6 @@ using Proto.Promises.Linq;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace Proto.Promises
 {
@@ -64,10 +63,9 @@ namespace Proto.Promises
         /// </remarks>
         public static PromiseEachGroup New(CancelationToken sourceCancelationToken, out CancelationToken groupCancelationToken)
         {
-            var cancelationRef = Internal.CancelationRef.GetOrCreate();
-            cancelationRef.MaybeLinkToken(sourceCancelationToken);
-            groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseEachGroup(cancelationRef, null, 0, 0, 0);
+            var groupCancelationSource = CancelationSource.New(sourceCancelationToken);
+            groupCancelationToken = groupCancelationSource.Token;
+            return new PromiseEachGroup(groupCancelationSource._ref, null, 0, 0, 0);
         }
 
         /// <summary>
@@ -194,10 +192,9 @@ namespace Proto.Promises
         /// </remarks>
         public static PromiseEachGroup<T> New(CancelationToken sourceCancelationToken, out CancelationToken groupCancelationToken)
         {
-            var cancelationRef = Internal.CancelationRef.GetOrCreate();
-            cancelationRef.MaybeLinkToken(sourceCancelationToken);
-            groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseEachGroup<T>(cancelationRef, null, 0, 0, 0);
+            var groupCancelationSource = CancelationSource.New(sourceCancelationToken);
+            groupCancelationToken = groupCancelationSource.Token;
+            return new PromiseEachGroup<T>(groupCancelationSource._ref, null, 0, 0, 0);
         }
 
         /// <summary>

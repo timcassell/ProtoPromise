@@ -9,7 +9,6 @@ using Proto.Promises;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 
 namespace ProtoPromise.Tests.APIs.PromiseGroups
 {
@@ -60,7 +59,7 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
         }
 
         [Test]
-        public void PromiseAllGroupIsResolvedWhenNoPromisesAreAdded(
+        public void PromiseAllGroupIsResolvedOrCanceledWhenNoPromisesAreAdded(
             [Values] CancelationType cancelationType,
             [Values] bool provideList)
         {
@@ -71,22 +70,26 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
                     : cancelationType == CancelationType.Deferred ? PromiseAllGroup<int>.New(cancelationSource.Token, out _, list)
                     : PromiseAllGroup<int>.New(CancelationToken.Canceled(), out _, list);
 
-                bool resolved = false;
+                Promise.State state = Promise.State.Pending;
 
                 allGroup
                     .WaitAsync()
-                    .Then(values =>
+                    .ContinueWith(resultContainer =>
                     {
-                        resolved = true;
-                        Assert.Zero(values.Count);
-                        if (provideList)
+                        state = resultContainer.State;
+                        if (state == Promise.State.Resolved)
                         {
-                            Assert.AreSame(list, values);
+                            Assert.Zero(resultContainer.Value.Count);
+                            if (provideList)
+                            {
+                                Assert.AreSame(list, resultContainer.Value);
+                            }
                         }
                     })
                     .Forget();
 
-                Assert.True(resolved);
+                var expectedState = cancelationType == CancelationType.Immediate ? Promise.State.Canceled : Promise.State.Resolved;
+                Assert.AreEqual(expectedState, state);
             }
         }
 
@@ -108,6 +111,9 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
 
                 int value1 = 1;
                 bool completed = false;
+                Promise.State expectedState = cancelationType != CancelationType.Immediate ? (Promise.State) completeType
+                    : completeType == CompleteType.Reject ? Promise.State.Rejected
+                    : Promise.State.Canceled;
 
                 allGroup
                     .Add(TestHelper.BuildPromise(completeType, alreadyComplete, value1, expectedException, out var tryCompleter))
@@ -116,13 +122,13 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
                     {
                         completed = true;
 
-                        Assert.AreEqual(completeType, (CompleteType) result.State);
-                        if (completeType == CompleteType.Reject)
+                        Assert.AreEqual(expectedState, result.State);
+                        if (expectedState == Promise.State.Rejected)
                         {
                             Assert.IsAssignableFrom<AggregateException>(result.Reason);
                             Assert.AreEqual(expectedException, result.Reason.UnsafeAs<AggregateException>().InnerExceptions[0]);
                         }
-                        else if (completeType == CompleteType.Resolve)
+                        else if (expectedState == Promise.State.Resolved)
                         {
                             CollectionAssert.AreEqual(new[] { value1 }, result.Value);
                             if (provideList)
@@ -161,6 +167,12 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
                 int value1 = 1;
                 int value2 = 2;
                 bool completed = false;
+                Promise.State expectedPromiseState = completeType1 == CompleteType.Reject || completeType2 == CompleteType.Reject ? Promise.State.Rejected
+                    : completeType1 == CompleteType.Cancel || completeType2 == CompleteType.Cancel ? Promise.State.Canceled
+                    : Promise.State.Resolved;
+                Promise.State expectedFinalState = cancelationType != CancelationType.Immediate ? expectedPromiseState
+                    : expectedPromiseState == Promise.State.Rejected ? Promise.State.Rejected
+                    : Promise.State.Canceled;
 
                 allGroup
                     .Add(TestHelper.BuildPromise(completeType1, alreadyComplete1, value1, expectedException, out var tryCompleter1))
@@ -170,19 +182,14 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
                     {
                         completed = true;
 
-                        if (completeType1 == CompleteType.Reject || completeType2 == CompleteType.Reject)
+                        Assert.AreEqual(expectedFinalState, result.State);
+                        if (expectedFinalState == Promise.State.Rejected)
                         {
-                            Assert.AreEqual(Promise.State.Rejected, result.State);
                             Assert.IsAssignableFrom<AggregateException>(result.Reason);
                             Assert.AreEqual(expectedException, result.Reason.UnsafeAs<AggregateException>().InnerExceptions[0]);
                         }
-                        else if (completeType1 == CompleteType.Cancel || completeType2 == CompleteType.Cancel)
+                        else if (expectedFinalState == Promise.State.Resolved)
                         {
-                            Assert.AreEqual(Promise.State.Canceled, result.State);
-                        }
-                        else
-                        {
-                            Assert.AreEqual(Promise.State.Resolved, result.State);
                             CollectionAssert.AreEqual(new[] { value1, value2 }, result.Value);
                             if (provideList)
                             {
@@ -412,6 +419,69 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
 
                 tryCompleter2();
                 Assert.IsTrue(completed);
+            }
+        }
+
+        [Test]
+        public void PromiseAllGroup_OnCleanupIsInvokedCorrectly_1(
+            [Values] CancelationType cancelationType,
+            [Values] CompleteType completeType1,
+            [Values] bool alreadyComplete1,
+            [Values] bool alreadyComplete2)
+        {
+            using (var cancelationSource = CancelationSource.New())
+            {
+                int expectedValue1 = 1;
+                int expectedValue2 = 2;
+                int invokeCount = 0;
+
+                void OnCleanup(int value)
+                {
+                    ++invokeCount;
+                    Assert.True(value == expectedValue1 || value == expectedValue2);
+                }
+
+                Promise.State expectedState = cancelationType != CancelationType.Immediate ? (Promise.State) completeType1
+                    : completeType1 == CompleteType.Reject ? Promise.State.Rejected
+                    : Promise.State.Canceled;
+
+                var allGroup = cancelationType == CancelationType.None ? PromiseAllGroup<int>.New(out _, v => OnCleanup(v))
+                    : cancelationType == CancelationType.Deferred ? PromiseAllGroup<int>.New(cancelationSource.Token, out _, v => OnCleanup(v))
+                    : PromiseAllGroup<int>.New(CancelationToken.Canceled(), out _, v => OnCleanup(v));
+
+                bool completed = false;
+                allGroup
+                    .Add(TestHelper.BuildPromise(completeType1, alreadyComplete1, expectedValue1, new System.InvalidOperationException("Bang!"), out var tryCompleter1))
+                    .Add(TestHelper.BuildPromise(CompleteType.Resolve, alreadyComplete2, expectedValue2, new System.InvalidOperationException("Bang!"), out var tryCompleter2))
+                    .WaitAsync()
+                    .ContinueWith(result =>
+                    {
+                        completed = true;
+                        Assert.AreEqual(expectedState, result.State);
+                        if (expectedState == Promise.State.Resolved)
+                        {
+                            CollectionAssert.AreEqual(new[] { 1, 2 }, result.Value);
+                        }
+                        else if (expectedState == Promise.State.Rejected)
+                        {
+                            Assert.IsInstanceOf<AggregateException>(result.Reason);
+                            Assert.AreEqual(1, result.Reason.UnsafeAs<AggregateException>().InnerExceptions.Count);
+                        }
+                    })
+                    .Forget();
+
+                Assert.AreEqual(alreadyComplete1 && alreadyComplete2, completed);
+
+                tryCompleter1();
+                Assert.AreEqual(alreadyComplete2, completed);
+
+                tryCompleter2();
+                Assert.True(completed);
+
+                int expectedInvokeCount = expectedState == Promise.State.Resolved ? 0
+                    : completeType1 == CompleteType.Resolve ? 2
+                    : 1;
+                Assert.AreEqual(expectedInvokeCount, invokeCount);
             }
         }
 

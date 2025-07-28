@@ -88,12 +88,6 @@ namespace Proto.Promises
 #endif
             internal abstract partial class MergePromiseGroupBase<TResult> : PromiseGroupBase<TResult>
             {
-                [MethodImpl(InlineOption)]
-                new protected void CancelGroup()
-                {
-                    _completeState = Promise.State.Canceled;
-                    base.CancelGroup();
-                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -114,7 +108,6 @@ namespace Proto.Promises
                 internal static MergePromiseGroupVoid GetOrCreate(CancelationRef cancelationSource)
                 {
                     var promise = GetOrCreate();
-                    promise._completeState = Promise.State.Resolved; // Default to Resolved state. If the promise is actually canceled or rejected, the state will be overwritten.
                     promise.Reset(cancelationSource);
                     return promise;
                 }
@@ -149,7 +142,7 @@ namespace Proto.Promises
                 {
                     if (_exceptions == null)
                     {
-                        return _completeState;
+                        return _cancelationRef.IsCanceledUnsafe() ? Promise.State.Canceled : Promise.State.Resolved;
                     }
 
                     RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
@@ -173,7 +166,7 @@ namespace Proto.Promises
                         // All promises are complete.
                         // We just pass the state here and don't do anything about the exceptions,
                         // because the attached promise will handle the actual completion logic.
-                        HandleNextInternal(_completeState);
+                        HandleNextInternal(_cancelationRef.IsCanceledUnsafe() ? Promise.State.Canceled : Promise.State.Resolved);
                     }
                 }
 

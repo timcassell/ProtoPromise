@@ -34,7 +34,6 @@ namespace Proto.Promises
                 {
                     var promise = GetOrCreate();
                     promise._result = value;
-                    promise._completeState = Promise.State.Resolved; // Default to Resolved state. If the promise is actually canceled or rejected, the state will be overwritten.
                     promise.Reset(cancelationSource);
                     return promise;
                 }
@@ -117,7 +116,6 @@ namespace Proto.Promises
                 {
                     var promise = GetOrCreate();
                     promise._result = value;
-                    promise._completeState = Promise.State.Resolved; // Default to Resolved state. If the promise is actually canceled or rejected, the state will be overwritten.
                     promise.Reset(cancelationSource);
                     return promise;
                 }

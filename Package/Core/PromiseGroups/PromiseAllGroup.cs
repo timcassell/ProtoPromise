@@ -6,7 +6,6 @@
 
 #pragma warning disable IDE0028 // Collection initialization can be simplified
 
-using Proto.Promises.Collections;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -47,16 +46,15 @@ namespace Proto.Promises
 
         private static PromiseAllGroup<T> New(CancelationToken sourceCancelationToken, out CancelationToken groupCancelationToken, IList<T> valueContainer, Internal.AllCleanupCallback<T> cleanupCallback)
         {
-            var cancelationRef = Internal.CancelationRef.GetOrCreate();
-            cancelationRef.MaybeLinkToken(sourceCancelationToken);
-            groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseAllGroup<T>(valueContainer ?? new List<T>(), cancelationRef, null, cleanupCallback, 0, 0, 0);
+            var groupCancelationSource = CancelationSource.New(sourceCancelationToken);
+            groupCancelationToken = groupCancelationSource.Token;
+            return new PromiseAllGroup<T>(valueContainer ?? new List<T>(), groupCancelationSource._ref, null, cleanupCallback, 0, 0, 0);
         }
 
         /// <summary>
         /// Get a new <see cref="PromiseAllGroup{T}"/> and the <see cref="CancelationToken"/> tied to it.
         /// </summary>
-        /// <param name="groupCancelationToken">The token that will be canceled if any of the promises in the group are rejected or canceled.</param>
+        /// <param name="groupCancelationToken">The token that will be canceled if the group is rejected or canceled.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static PromiseAllGroup<T> New(out CancelationToken groupCancelationToken, IList<T> valueContainer = null)
             => New(CancelationToken.None, out groupCancelationToken, valueContainer, null);
@@ -65,7 +63,7 @@ namespace Proto.Promises
         /// Get a new <see cref="PromiseAllGroup{T}"/> that will be canceled when the <paramref name="sourceCancelationToken"/> is canceled, and the <see cref="CancelationToken"/> tied to it.
         /// </summary>
         /// <param name="sourceCancelationToken">The token used to cancel the group early.</param>
-        /// <param name="groupCancelationToken">The token that will be canceled if <paramref name="sourceCancelationToken"/> is canceled or any of the promises in the group are rejected or canceled.</param>
+        /// <param name="groupCancelationToken">The token that will be canceled if the group is rejected or canceled.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static PromiseAllGroup<T> New(CancelationToken sourceCancelationToken, out CancelationToken groupCancelationToken, IList<T> valueContainer = null)
             => New(sourceCancelationToken, out groupCancelationToken, valueContainer, null);
@@ -73,8 +71,8 @@ namespace Proto.Promises
         /// <summary>
         /// Get a new <see cref="PromiseAllGroup{T}"/> and the <see cref="CancelationToken"/> tied to it.
         /// </summary>
-        /// <param name="groupCancelationToken">The token that will be canceled if any of the promises in the group are rejected or canceled.</param>
-        /// <param name="onCleanup">The delegate that will be invoked for each resolved element if any promises in this group are canceled or rejected.</param>
+        /// <param name="groupCancelationToken">The token that will be canceled if the group is rejected or canceled.</param>
+        /// <param name="onCleanup">The delegate that will be invoked for each resolved element if the group is rejected or canceled.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static PromiseAllGroup<T> New(out CancelationToken groupCancelationToken,
             Action<T> onCleanup, IList<T> valueContainer = null)
@@ -84,8 +82,8 @@ namespace Proto.Promises
         /// Get a new <see cref="PromiseAllGroup{T}"/> that will be canceled when the <paramref name="sourceCancelationToken"/> is canceled, and the <see cref="CancelationToken"/> tied to it.
         /// </summary>
         /// <param name="sourceCancelationToken">The token used to cancel the group early.</param>
-        /// <param name="groupCancelationToken">The token that will be canceled if <paramref name="sourceCancelationToken"/> is canceled or any of the promises in the group are rejected or canceled.</param>
-        /// <param name="onCleanup">The delegate that will be invoked for each resolved element if any promises in this group are canceled or rejected.</param>
+        /// <param name="groupCancelationToken">The token that will be canceled if the group is rejected or canceled.</param>
+        /// <param name="onCleanup">The delegate that will be invoked for each resolved element if the group is rejected or canceled.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static PromiseAllGroup<T> New(CancelationToken sourceCancelationToken, out CancelationToken groupCancelationToken,
             Action<T> onCleanup, IList<T> valueContainer = null)
@@ -94,9 +92,9 @@ namespace Proto.Promises
         /// <summary>
         /// Get a new <see cref="PromiseAllGroup{T}"/> and the <see cref="CancelationToken"/> tied to it.
         /// </summary>
-        /// <param name="groupCancelationToken">The token that will be canceled if any of the promises in the group are rejected or canceled.</param>
+        /// <param name="groupCancelationToken">The token that will be canceled if the group is rejected or canceled.</param>
         /// <param name="cleanupCaptureValue">The captured value that will be passed to <paramref name="onCleanup"/>.</param>
-        /// <param name="onCleanup">The delegate that will be invoked for each resolved element if any promises in this group are canceled or rejected.</param>
+        /// <param name="onCleanup">The delegate that will be invoked for each resolved element if the group is rejected or canceled.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static PromiseAllGroup<T> New<TCaptureCleanup>(out CancelationToken groupCancelationToken,
             TCaptureCleanup cleanupCaptureValue, Action<TCaptureCleanup, T> onCleanup, IList<T> valueContainer = null)
@@ -106,9 +104,9 @@ namespace Proto.Promises
         /// Get a new <see cref="PromiseAllGroup{T}"/> that will be canceled when the <paramref name="sourceCancelationToken"/> is canceled, and the <see cref="CancelationToken"/> tied to it.
         /// </summary>
         /// <param name="sourceCancelationToken">The token used to cancel the group early.</param>
-        /// <param name="groupCancelationToken">The token that will be canceled if <paramref name="sourceCancelationToken"/> is canceled or any of the promises in the group are rejected or canceled.</param>
+        /// <param name="groupCancelationToken">The token that will be canceled if the group is rejected or canceled.</param>
         /// <param name="cleanupCaptureValue">The captured value that will be passed to <paramref name="onCleanup"/>.</param>
-        /// <param name="onCleanup">The delegate that will be invoked for each resolved element if any promises in this group are canceled or rejected.</param>
+        /// <param name="onCleanup">The delegate that will be invoked for each resolved element if the group is rejected or canceled.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static PromiseAllGroup<T> New<TCaptureCleanup>(CancelationToken sourceCancelationToken, out CancelationToken groupCancelationToken,
             TCaptureCleanup cleanupCaptureValue, Action<TCaptureCleanup, T> onCleanup, IList<T> valueContainer = null)
@@ -117,8 +115,8 @@ namespace Proto.Promises
         /// <summary>
         /// Get a new <see cref="PromiseAllGroup{T}"/> and the <see cref="CancelationToken"/> tied to it.
         /// </summary>
-        /// <param name="groupCancelationToken">The token that will be canceled if any of the promises in the group are rejected or canceled.</param>
-        /// <param name="onCleanup">The async delegate that will be invoked for each resolved element if any promises in this group are canceled or rejected.</param>
+        /// <param name="groupCancelationToken">The token that will be canceled if the group is rejected or canceled.</param>
+        /// <param name="onCleanup">The async delegate that will be invoked for each resolved element if the group is rejected or canceled.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static PromiseAllGroup<T> New(out CancelationToken groupCancelationToken,
             Func<T, Promise> onCleanup, IList<T> valueContainer = null)
@@ -128,8 +126,8 @@ namespace Proto.Promises
         /// Get a new <see cref="PromiseAllGroup{T}"/> that will be canceled when the <paramref name="sourceCancelationToken"/> is canceled, and the <see cref="CancelationToken"/> tied to it.
         /// </summary>
         /// <param name="sourceCancelationToken">The token used to cancel the group early.</param>
-        /// <param name="groupCancelationToken">The token that will be canceled if <paramref name="sourceCancelationToken"/> is canceled or any of the promises in the group are rejected or canceled.</param>
-        /// <param name="onCleanup">The async delegate that will be invoked for each resolved element if any promises in this group are canceled or rejected.</param>
+        /// <param name="groupCancelationToken">The token that will be canceled if the group is rejected or canceled.</param>
+        /// <param name="onCleanup">The async delegate that will be invoked for each resolved element if the group is rejected or canceled.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static PromiseAllGroup<T> New(CancelationToken sourceCancelationToken, out CancelationToken groupCancelationToken,
             Func<T, Promise> onCleanup, IList<T> valueContainer = null)
@@ -138,9 +136,9 @@ namespace Proto.Promises
         /// <summary>
         /// Get a new <see cref="PromiseAllGroup{T}"/> and the <see cref="CancelationToken"/> tied to it.
         /// </summary>
-        /// <param name="groupCancelationToken">The token that will be canceled if any of the promises in the group are rejected or canceled.</param>
+        /// <param name="groupCancelationToken">The token that will be canceled if the group is rejected or canceled.</param>
         /// <param name="cleanupCaptureValue">The captured value that will be passed to <paramref name="onCleanup"/>.</param>
-        /// <param name="onCleanup">The async delegate that will be invoked for each resolved element if any promises in this group are canceled or rejected.</param>
+        /// <param name="onCleanup">The async delegate that will be invoked for each resolved element if the group is rejected or canceled.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static PromiseAllGroup<T> New<TCaptureCleanup>(out CancelationToken groupCancelationToken,
             TCaptureCleanup cleanupCaptureValue, Func<TCaptureCleanup, T, Promise> onCleanup, IList<T> valueContainer = null)
@@ -150,9 +148,9 @@ namespace Proto.Promises
         /// Get a new <see cref="PromiseAllGroup{T}"/> that will be canceled when the <paramref name="sourceCancelationToken"/> is canceled, and the <see cref="CancelationToken"/> tied to it.
         /// </summary>
         /// <param name="sourceCancelationToken">The token used to cancel the group early.</param>
-        /// <param name="groupCancelationToken">The token that will be canceled if <paramref name="sourceCancelationToken"/> is canceled or any of the promises in the group are rejected or canceled.</param>
+        /// <param name="groupCancelationToken">The token that will be canceled if the group is rejected or canceled.</param>
         /// <param name="cleanupCaptureValue">The captured value that will be passed to <paramref name="onCleanup"/>.</param>
-        /// <param name="onCleanup">The async delegate that will be invoked for each resolved element if any promises in this group are canceled or rejected.</param>
+        /// <param name="onCleanup">The async delegate that will be invoked for each resolved element if the group is rejected or canceled.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static PromiseAllGroup<T> New<TCaptureCleanup>(CancelationToken sourceCancelationToken, out CancelationToken groupCancelationToken,
             TCaptureCleanup cleanupCaptureValue, Func<TCaptureCleanup, T, Promise> onCleanup, IList<T> valueContainer = null)
@@ -161,8 +159,8 @@ namespace Proto.Promises
         /// <summary>
         /// Get a new <see cref="PromiseAllGroup{T}"/> and the <see cref="CancelationToken"/> tied to it.
         /// </summary>
-        /// <param name="groupCancelationToken">The token that will be canceled if any of the promises in the group are rejected or canceled.</param>
-        /// <param name="onCleanup">The delegate that will be invoked for each resolved element and its index if any promises in this group are canceled or rejected.</param>
+        /// <param name="groupCancelationToken">The token that will be canceled if the group is rejected or canceled.</param>
+        /// <param name="onCleanup">The delegate that will be invoked for each resolved element and its index if the group is rejected or canceled.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static PromiseAllGroup<T> New(out CancelationToken groupCancelationToken,
             Action<T, int> onCleanup, IList<T> valueContainer = null)
@@ -172,8 +170,8 @@ namespace Proto.Promises
         /// Get a new <see cref="PromiseAllGroup{T}"/> that will be canceled when the <paramref name="sourceCancelationToken"/> is canceled, and the <see cref="CancelationToken"/> tied to it.
         /// </summary>
         /// <param name="sourceCancelationToken">The token used to cancel the group early.</param>
-        /// <param name="groupCancelationToken">The token that will be canceled if <paramref name="sourceCancelationToken"/> is canceled or any of the promises in the group are rejected or canceled.</param>
-        /// <param name="onCleanup">The delegate that will be invoked for each resolved element and its index if any promises in this group are canceled or rejected.</param>
+        /// <param name="groupCancelationToken">The token that will be canceled if the group is rejected or canceled.</param>
+        /// <param name="onCleanup">The delegate that will be invoked for each resolved element and its index if the group is rejected or canceled.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static PromiseAllGroup<T> New(CancelationToken sourceCancelationToken, out CancelationToken groupCancelationToken,
             Action<T, int> onCleanup, IList<T> valueContainer = null)
@@ -182,9 +180,9 @@ namespace Proto.Promises
         /// <summary>
         /// Get a new <see cref="PromiseAllGroup{T}"/> and the <see cref="CancelationToken"/> tied to it.
         /// </summary>
-        /// <param name="groupCancelationToken">The token that will be canceled if any of the promises in the group are rejected or canceled.</param>
+        /// <param name="groupCancelationToken">The token that will be canceled if the group is rejected or canceled.</param>
         /// <param name="cleanupCaptureValue">The captured value that will be passed to <paramref name="onCleanup"/>.</param>
-        /// <param name="onCleanup">The delegate that will be invoked for each resolved element and its index if any promises in this group are canceled or rejected.</param>
+        /// <param name="onCleanup">The delegate that will be invoked for each resolved element and its index if the group is rejected or canceled.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static PromiseAllGroup<T> New<TCaptureCleanup>(out CancelationToken groupCancelationToken,
             TCaptureCleanup cleanupCaptureValue, Action<TCaptureCleanup, T, int> onCleanup, IList<T> valueContainer = null)
@@ -194,9 +192,9 @@ namespace Proto.Promises
         /// Get a new <see cref="PromiseAllGroup{T}"/> that will be canceled when the <paramref name="sourceCancelationToken"/> is canceled, and the <see cref="CancelationToken"/> tied to it.
         /// </summary>
         /// <param name="sourceCancelationToken">The token used to cancel the group early.</param>
-        /// <param name="groupCancelationToken">The token that will be canceled if <paramref name="sourceCancelationToken"/> is canceled or any of the promises in the group are rejected or canceled.</param>
+        /// <param name="groupCancelationToken">The token that will be canceled if the group is rejected or canceled.</param>
         /// <param name="cleanupCaptureValue">The captured value that will be passed to <paramref name="onCleanup"/>.</param>
-        /// <param name="onCleanup">The delegate that will be invoked for each resolved element and its index if any promises in this group are canceled or rejected.</param>
+        /// <param name="onCleanup">The delegate that will be invoked for each resolved element and its index if the group is rejected or canceled.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static PromiseAllGroup<T> New<TCaptureCleanup>(CancelationToken sourceCancelationToken, out CancelationToken groupCancelationToken,
             TCaptureCleanup cleanupCaptureValue, Action<TCaptureCleanup, T, int> onCleanup, IList<T> valueContainer = null)
@@ -205,8 +203,8 @@ namespace Proto.Promises
         /// <summary>
         /// Get a new <see cref="PromiseAllGroup{T}"/> and the <see cref="CancelationToken"/> tied to it.
         /// </summary>
-        /// <param name="groupCancelationToken">The token that will be canceled if any of the promises in the group are rejected or canceled.</param>
-        /// <param name="onCleanup">The async delegate that will be invoked for each resolved element and its index if any promises in this group are canceled or rejected.</param>
+        /// <param name="groupCancelationToken">The token that will be canceled if the group is rejected or canceled.</param>
+        /// <param name="onCleanup">The async delegate that will be invoked for each resolved element and its index if the group is rejected or canceled.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static PromiseAllGroup<T> New(out CancelationToken groupCancelationToken,
             Func<T, int, Promise> onCleanup, IList<T> valueContainer = null)
@@ -216,8 +214,8 @@ namespace Proto.Promises
         /// Get a new <see cref="PromiseAllGroup{T}"/> that will be canceled when the <paramref name="sourceCancelationToken"/> is canceled, and the <see cref="CancelationToken"/> tied to it.
         /// </summary>
         /// <param name="sourceCancelationToken">The token used to cancel the group early.</param>
-        /// <param name="groupCancelationToken">The token that will be canceled if <paramref name="sourceCancelationToken"/> is canceled or any of the promises in the group are rejected or canceled.</param>
-        /// <param name="onCleanup">The async delegate that will be invoked for each resolved element and its index if any promises in this group are canceled or rejected.</param>
+        /// <param name="groupCancelationToken">The token that will be canceled if the group is rejected or canceled.</param>
+        /// <param name="onCleanup">The async delegate that will be invoked for each resolved element and its index if the group is rejected or canceled.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static PromiseAllGroup<T> New(CancelationToken sourceCancelationToken, out CancelationToken groupCancelationToken,
             Func<T, int, Promise> onCleanup, IList<T> valueContainer = null)
@@ -226,9 +224,9 @@ namespace Proto.Promises
         /// <summary>
         /// Get a new <see cref="PromiseAllGroup{T}"/> and the <see cref="CancelationToken"/> tied to it.
         /// </summary>
-        /// <param name="groupCancelationToken">The token that will be canceled if any of the promises in the group are rejected or canceled.</param>
+        /// <param name="groupCancelationToken">The token that will be canceled if the group is rejected or canceled.</param>
         /// <param name="cleanupCaptureValue">The captured value that will be passed to <paramref name="onCleanup"/>.</param>
-        /// <param name="onCleanup">The async delegate that will be invoked for each resolved element and its index if any promises in this group are canceled or rejected.</param>
+        /// <param name="onCleanup">The async delegate that will be invoked for each resolved element and its index if the group is rejected or canceled.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static PromiseAllGroup<T> New<TCaptureCleanup>(out CancelationToken groupCancelationToken,
             TCaptureCleanup cleanupCaptureValue, Func<TCaptureCleanup, T, int, Promise> onCleanup, IList<T> valueContainer = null)
@@ -238,9 +236,9 @@ namespace Proto.Promises
         /// Get a new <see cref="PromiseAllGroup{T}"/> that will be canceled when the <paramref name="sourceCancelationToken"/> is canceled, and the <see cref="CancelationToken"/> tied to it.
         /// </summary>
         /// <param name="sourceCancelationToken">The token used to cancel the group early.</param>
-        /// <param name="groupCancelationToken">The token that will be canceled if <paramref name="sourceCancelationToken"/> is canceled or any of the promises in the group are rejected or canceled.</param>
+        /// <param name="groupCancelationToken">The token that will be canceled if the group is rejected or canceled.</param>
         /// <param name="cleanupCaptureValue">The captured value that will be passed to <paramref name="onCleanup"/>.</param>
-        /// <param name="onCleanup">The async delegate that will be invoked for each resolved element and its index if any promises in this group are canceled or rejected.</param>
+        /// <param name="onCleanup">The async delegate that will be invoked for each resolved element and its index if the group is rejected or canceled.</param>
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static PromiseAllGroup<T> New<TCaptureCleanup>(CancelationToken sourceCancelationToken, out CancelationToken groupCancelationToken,
             TCaptureCleanup cleanupCaptureValue, Func<TCaptureCleanup, T, int, Promise> onCleanup, IList<T> valueContainer = null)
@@ -306,17 +304,19 @@ namespace Proto.Promises
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If all promises are resolved, the returned promise will be resolved with a list containing each of their resolved values.
-        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if any promise is canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// If the group is canceled, the returned promise will be canceled.
+        /// Otherwise, the returned promise will be resolved with a list containing the resolved values of each of the promises.
+        /// </remarks>
         public Promise<IList<T>> WaitAsync()
         {
             var list = _valueContainer;
             var cancelationRef = _cancelationRef;
             var group = _group;
             int count = _count;
-            int index = _index;
+            int promiseCount = _index;
             if (cancelationRef == null | list == null)
             {
                 Internal.ThrowInvalidAllGroup(1);
@@ -324,14 +324,35 @@ namespace Proto.Promises
 
             if (group == null)
             {
+                bool canceled = cancelationRef.IsCanceledUnsafe();
                 if (!cancelationRef.TryDispose(_cancelationId))
                 {
                     Internal.ThrowInvalidAllGroup(1);
                 }
 
+                var cleanupCallback = _cleanupCallback;
+                if (canceled)
+                {
+                    if (cleanupCallback == null | promiseCount == 0)
+                    {
+                        cleanupCallback?.Dispose();
+                        return Promise<IList<T>>.Canceled();
+                    }
+
+                    // Cleanup, and cancel if none of the cleanup callbacks throw.
+                    var cleanupGroup = PromiseMergeGroup.New(out var _);
+                    for (int i = 0; i < promiseCount; ++i)
+                    {
+                        cleanupGroup = cleanupGroup.Add(cleanupCallback.Invoke(list[i], i));
+                    }
+                    cleanupCallback.Dispose();
+                    return cleanupGroup.WaitAsync()
+                        .Then(() => Promise<IList<T>>.Canceled());
+                }
+
                 // Make sure list has the same count as promises.
-                list.MaybeShrink(index);
-                _cleanupCallback?.Dispose();
+                list.MaybeShrink(promiseCount);
+                cleanupCallback?.Dispose();
                 return Promise.Resolved(list);
             }
 
@@ -341,7 +362,7 @@ namespace Proto.Promises
             }
 
             // Make sure list has the same count as promises.
-            list.MaybeShrink(index);
+            list.MaybeShrink(promiseCount);
             group.MarkReady(count);
             return new Promise<IList<T>>(group, group.Id);
         }

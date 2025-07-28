@@ -82,6 +82,7 @@ namespace Proto.Promises
 
             internal abstract void Prepare();
             internal abstract Promise InvokeAndDispose();
+            internal abstract Promise InvokeAndDisposeImmediate();
             internal abstract void Dispose();
         }
 
@@ -149,13 +150,18 @@ namespace Proto.Promises
 
             internal override Promise InvokeAndDispose()
             {
-                ThrowIfInPool(this);
-
-                if (!_needsCleanup)
+                if (_needsCleanup)
                 {
-                    Dispose();
-                    return Promise.Resolved();
+                    return InvokeAndDisposeImmediate();
                 }
+
+                Dispose();
+                return Promise.Resolved();
+            }
+
+            internal override Promise InvokeAndDisposeImmediate()
+            {
+                ThrowIfInPool(this);
 
                 var callback = _callback;
                 var arg = _arg;
