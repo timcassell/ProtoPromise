@@ -169,10 +169,12 @@ namespace Proto.Promises
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If all promises are resolved, the returned promise will be resolved.
-        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if any promise is canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// If the group is canceled, the returned promise will be canceled.
+        /// Otherwise, the returned promise will be resolved.
+        /// </remarks>
         public Promise WaitAsync()
         {
             var cancelationRef = _cancelationRef;
@@ -424,10 +426,12 @@ namespace Proto.Promises
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If all promises are resolved, the returned promise will be resolved with the resolved value.
-        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if any promise is canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// If the group is canceled, the returned promise will be canceled.
+        /// Otherwise, the returned promise will be resolved the resolved value.
+        /// </remarks>
         public Promise<T1> WaitAsync()
         {
             var mergeGroup = _mergeGroup;
@@ -549,10 +553,12 @@ namespace Proto.Promises
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If all promises are resolved, the returned promise will be resolved with a tuple containing each of their resolved values.
-        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if any promise is canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// If the group is canceled, the returned promise will be canceled.
+        /// Otherwise, the returned promise will be resolved with a tuple containing the resolved values of each of the promises.
+        /// </remarks>
         public Promise<(T1, T2)> WaitAsync()
         {
             var mergeGroup = _mergeGroup;
@@ -648,10 +654,12 @@ namespace Proto.Promises
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If all promises are resolved, the returned promise will be resolved with a tuple containing each of their resolved values.
-        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if any promise is canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// If the group is canceled, the returned promise will be canceled.
+        /// Otherwise, the returned promise will be resolved with a tuple containing the resolved values of each of the promises.
+        /// </remarks>
         public Promise<(T1, T2, T3)> WaitAsync()
         {
             var mergeGroup = _mergeGroup;
@@ -747,10 +755,12 @@ namespace Proto.Promises
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If all promises are resolved, the returned promise will be resolved with a tuple containing each of their resolved values.
-        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if any promise is canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// If the group is canceled, the returned promise will be canceled.
+        /// Otherwise, the returned promise will be resolved with a tuple containing the resolved values of each of the promises.
+        /// </remarks>
         public Promise<(T1, T2, T3, T4)> WaitAsync()
         {
             var mergeGroup = _mergeGroup;
@@ -846,10 +856,12 @@ namespace Proto.Promises
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If all promises are resolved, the returned promise will be resolved with a tuple containing each of their resolved values.
-        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if any promise is canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// If the group is canceled, the returned promise will be canceled.
+        /// Otherwise, the returned promise will be resolved with a tuple containing the resolved values of each of the promises.
+        /// </remarks>
         public Promise<(T1, T2, T3, T4, T5)> WaitAsync()
         {
             var mergeGroup = _mergeGroup;
@@ -945,10 +957,12 @@ namespace Proto.Promises
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If all promises are resolved, the returned promise will be resolved with a tuple containing each of their resolved values.
-        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if any promise is canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// If the group is canceled, the returned promise will be canceled.
+        /// Otherwise, the returned promise will be resolved with a tuple containing the resolved values of each of the promises.
+        /// </remarks>
         public Promise<(T1, T2, T3, T4, T5, T6)> WaitAsync()
         {
             var mergeGroup = _mergeGroup;
@@ -1067,10 +1081,12 @@ namespace Proto.Promises
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If all promises are resolved, the returned promise will be resolved with a tuple containing each of their resolved values.
-        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if any promise is canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// If the group is canceled, the returned promise will be canceled.
+        /// Otherwise, the returned promise will be resolved with a tuple containing the resolved values of each of the promises.
+        /// </remarks>
         public Promise<(T1, T2, T3, T4, T5, T6, T7)> WaitAsync()
         {
             var mergeGroup = _mergeGroup;

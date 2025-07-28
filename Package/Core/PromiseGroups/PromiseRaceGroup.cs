@@ -145,10 +145,12 @@ namespace Proto.Promises
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If any promise is resolved, the returned promise will be resolved.
-        /// If no promises are resolved and any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if all promises are canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If the group is not canceled and any promise is resolved, the returned promise will be resolved.
+        /// Otherwise, if any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// Otherwise, the returned promise will be canceled.
+        /// </remarks>
         public Promise WaitAsync()
         {
             var groupCancelationRef = _groupCancelationRef;
@@ -506,10 +508,12 @@ namespace Proto.Promises
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If any promise is resolved, the returned promise will be resolved with the value of the promise that resolved first.
-        /// If no promises are resolved and any promise is rejected, or if any cleanup delegate threw, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if all promises are canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If the group is not canceled and any promise is resolved, the returned promise will be resolved with the value of the promise that resolved first.
+        /// Otherwise, if any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// Otherwise, the returned promise will be canceled.
+        /// </remarks>
         public Promise<T> WaitAsync()
         {
             var cancelationRef = _groupCancelationRef;

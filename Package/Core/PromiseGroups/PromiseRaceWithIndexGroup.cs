@@ -66,10 +66,12 @@ namespace Proto.Promises
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If any promise is resolved, the returned promise will be resolved with the index of the promise that resolved first.
-        /// If no promises are resolved and any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if all promises are canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If the group is not canceled and any promise is resolved, the returned promise will be resolved with the index of the promise that resolved first.
+        /// Otherwise, if any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// Otherwise, the returned promise will be canceled.
+        /// </remarks>
         public Promise<int> WaitAsync()
             => _group.WaitAsync();
     }
@@ -127,10 +129,12 @@ namespace Proto.Promises
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If any promise is resolved, the returned promise will be resolved with the index and value of the promise that resolved first.
-        /// If no promises are resolved and any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if all promises are canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If the group is not canceled and any promise is resolved, the returned promise will be resolved with the index and value of the promise that resolved first.
+        /// Otherwise, if any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// Otherwise, the returned promise will be canceled.
+        /// </remarks>
         public Promise<(int winIndex, T result)> WaitAsync()
             => _group.WaitAsync().Then(tuple => (tuple.Item2, tuple.Item1));
     }
