@@ -556,18 +556,6 @@ namespace Proto.Promises
                 }
             }
 
-            private void OnTimerCallback()
-            {
-                // Due to object pooling, this is not a fool-proof check. But it's good enough to protect against accidental non-compliant timer implementations,
-                // as object pooling is disabled in DEBUG mode, and it's still possible to catch the improper call while this is in the pool.
-                if (_timer == default)
-                {
-                    throw new InvalidOperationException("Timer callback may not be invoked after its DisposeAsync Promise has completed.", GetFormattedStacktrace(1));
-                }
-
-                CancelUnsafe();
-            }
-
             // Internal Cancel method skipping the disposed check.
             internal void CancelUnsafe()
             {
