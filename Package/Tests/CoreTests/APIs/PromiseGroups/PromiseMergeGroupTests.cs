@@ -103,22 +103,26 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
         }
 
         [Test]
-        public void PromiseMergeGroupIsResolvedWhenNoPromisesAreAdded(
+        public void PromiseMergeGroupIsResolvedOrCanceledWhenNoPromisesAreAdded(
             [Values] CancelationType cancelationType)
         {
             using (var cancelationSource = CancelationSource.New())
             {
-                bool resolved = false;
+                Promise.State state = Promise.State.Pending;
+
+                Promise.State expectedState = cancelationType == CancelationType.Immediate
+                    ? Promise.State.Canceled
+                    : Promise.State.Resolved;
 
                 var mergeGroup = cancelationType == CancelationType.None ? PromiseMergeGroup.New(out _)
                     : cancelationType == CancelationType.Deferred ? PromiseMergeGroup.New(cancelationSource.Token, out _)
                     : PromiseMergeGroup.New(CancelationToken.Canceled(), out _);
                 mergeGroup
                     .WaitAsync()
-                    .Then(() => resolved = true)
+                    .ContinueWith(resultContainer => state = resultContainer.State)
                     .Forget();
 
-                Assert.True(resolved);
+                Assert.AreEqual(expectedState, state);
             }
         }
 
