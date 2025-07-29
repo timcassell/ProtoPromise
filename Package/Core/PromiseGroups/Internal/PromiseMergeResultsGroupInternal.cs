@@ -53,7 +53,7 @@ namespace Proto.Promises
                 {
                     handler.SetCompletionState(state);
 
-                    // If any of the promises in the group completed unsuccessfully, the group state was set to canceled.
+                    // If any of the promises in the group completed unsuccessfully, the group cancelation token was canceled.
                     // We ignore that and set it to always resolved, because we're yielding a ValueTuple of ResultContainers.
                     state = Promise.State.Resolved;
                     var group = handler.UnsafeAs<MergePromiseGroupVoid>();

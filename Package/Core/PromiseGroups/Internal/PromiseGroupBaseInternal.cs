@@ -31,10 +31,10 @@ namespace Proto.Promises
                 internal override void Handle(PromiseRefBase handler, Promise.State state) => throw new System.InvalidOperationException();
 
                 [MethodImpl(InlineOption)]
-                protected void Reset(CancelationRef cancelationSource)
+                protected void Reset(CancelationRef cancelationRef)
                 {
-                    _cancelationRef = cancelationSource;
-                    _cancelationId = cancelationSource.SourceId;
+                    _cancelationRef = cancelationRef;
+                    _cancelationId = cancelationRef.SourceId;
                     Reset();
                 }
 
@@ -57,14 +57,6 @@ namespace Proto.Promises
                 {
                     RemoveComplete(completePromise);
                     completePromise.SetCompletionState(state);
-                }
-
-                [MethodImpl(InlineOption)]
-                internal void AddPromiseWithIndex(Promise promise, int index)
-                {
-                    AddPending(promise._ref);
-                    var passthrough = PromisePassThrough.GetOrCreate(promise._ref, this, index);
-                    promise._ref.HookupNewWaiter(promise._id, passthrough);
                 }
 
                 [MethodImpl(InlineOption)]

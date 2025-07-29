@@ -4,6 +4,8 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0028 // Simplify collection initialization
+
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -55,10 +57,9 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static PromiseAllResultsGroup New(CancelationToken sourceCancelationToken, out CancelationToken groupCancelationToken, IList<Promise.ResultContainer> valueContainer = null)
         {
-            var cancelationRef = Internal.CancelationRef.GetOrCreate();
-            cancelationRef.MaybeLinkToken(sourceCancelationToken);
-            groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseAllResultsGroup(valueContainer ?? new List<Promise.ResultContainer>(), cancelationRef, null, 0, 0, 0);
+            var groupCancelationSource = CancelationSource.New(sourceCancelationToken);
+            groupCancelationToken = groupCancelationSource.Token;
+            return new PromiseAllResultsGroup(valueContainer ?? new List<Promise.ResultContainer>(), groupCancelationSource._ref, null, 0, 0, 0);
         }
 
         /// <summary>
@@ -199,10 +200,9 @@ namespace Proto.Promises
         /// <param name="valueContainer">Optional list that will be used to contain the resolved values. If it is not provided, a new one will be created.</param>
         public static PromiseAllResultsGroup<T> New(CancelationToken sourceCancelationToken, out CancelationToken groupCancelationToken, IList<Promise<T>.ResultContainer> valueContainer = null)
         {
-            var cancelationRef = Internal.CancelationRef.GetOrCreate();
-            cancelationRef.MaybeLinkToken(sourceCancelationToken);
-            groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseAllResultsGroup<T>(valueContainer ?? new List<Promise<T>.ResultContainer>(), cancelationRef, null, 0, 0, 0);
+            var groupCancelationSource = CancelationSource.New(sourceCancelationToken);
+            groupCancelationToken = groupCancelationSource.Token;
+            return new PromiseAllResultsGroup<T>(valueContainer ?? new List<Promise<T>.ResultContainer>(), groupCancelationSource._ref, null, 0, 0, 0);
         }
 
         /// <summary>

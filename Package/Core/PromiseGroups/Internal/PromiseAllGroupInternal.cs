@@ -31,13 +31,12 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static AllPromiseGroup<T> GetOrCreate(CancelationRef cancelationSource, IList<T> result, AllCleanupCallback<T> cleanupCallback)
+                internal static AllPromiseGroup<T> GetOrCreate(CancelationRef cancelationRef, IList<T> result, AllCleanupCallback<T> cleanupCallback)
                 {
                     var promise = GetOrCreate();
                     promise._result = result;
                     promise._cleanupCallback = cleanupCallback;
-                    promise._completeState = Promise.State.Resolved; // Default to Resolved state. If the promise is actually canceled or rejected, the state will be overwritten.
-                    promise.Reset(cancelationSource);
+                    promise.Reset(cancelationRef);
                     return promise;
                 }
 
@@ -63,8 +62,11 @@ namespace Proto.Promises
                         return;
                     }
 
-                    state = _completeState;
-                    if (_exceptions != null)
+                    if (_exceptions == null)
+                    {
+                        state = _cancelationRef.IsCanceledUnsafe() ? Promise.State.Canceled : Promise.State.Resolved;
+                    }
+                    else
                     {
                         state = Promise.State.Rejected;
                         RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
@@ -95,7 +97,6 @@ namespace Proto.Promises
 
                 private void CompleteAndCleanup()
                 {
-                    var state = _completeState;
                     var passthroughs = _completedPassThroughs.TakeAndClear();
                     var resolvedPassThroughs = new ValueLinkedStack<PromisePassThroughForMergeGroup>();
                     while (passthroughs.IsNotEmpty)
@@ -119,9 +120,10 @@ namespace Proto.Promises
 
                     var cleanupCallback = _cleanupCallback;
                     _cleanupCallback = null;
+                    bool canceled = _cancelationRef.IsCanceledUnsafe();
                     if (resolvedPassThroughs.IsNotEmpty)
                     {
-                        if (state == Promise.State.Resolved | cleanupCallback == null)
+                        if (!canceled | cleanupCallback == null)
                         {
                             do
                             {
@@ -170,7 +172,12 @@ namespace Proto.Promises
                         }
                     }
 
-                    if (_exceptions != null)
+                    Promise.State state;
+                    if (_exceptions == null)
+                    {
+                        state = canceled ? Promise.State.Canceled : Promise.State.Resolved;
+                    }
+                    else
                     {
                         state = Promise.State.Rejected;
                         RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
@@ -219,8 +226,8 @@ namespace Proto.Promises
         } // class PromiseRefBase
 
         [MethodImpl(InlineOption)]
-        internal static PromiseRefBase.AllPromiseGroup<T> GetOrCreateAllPromiseGroup<T>(CancelationRef cancelationSource, IList<T> result, AllCleanupCallback<T> cleanupCallback)
-            => PromiseRefBase.AllPromiseGroup<T>.GetOrCreate(cancelationSource, result, cleanupCallback);
+        internal static PromiseRefBase.AllPromiseGroup<T> GetOrCreateAllPromiseGroup<T>(CancelationRef groupCancelationRef, IList<T> result, AllCleanupCallback<T> cleanupCallback)
+            => PromiseRefBase.AllPromiseGroup<T>.GetOrCreate(groupCancelationRef, result, cleanupCallback);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void ThrowInvalidAllGroup(int skipFrames)

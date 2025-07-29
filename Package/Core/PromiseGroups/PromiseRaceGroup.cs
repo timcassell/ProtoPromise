@@ -7,7 +7,6 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace Proto.Promises
 {
@@ -19,7 +18,8 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseRaceGroup
     {
-        private readonly Internal.CancelationRef _cancelationRef;
+        private readonly Internal.CancelationRef _sourceCancelationRef;
+        private readonly Internal.CancelationRef _groupCancelationRef;
         private readonly Internal.PromiseRefBase.RacePromiseGroupVoid _group;
         private readonly int _cancelationId;
         private readonly uint _count;
@@ -28,12 +28,13 @@ namespace Proto.Promises
         private readonly bool _isResolved;
 
         [MethodImpl(Internal.InlineOption)]
-        private PromiseRaceGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.RacePromiseGroupVoid group,
+        private PromiseRaceGroup(Internal.CancelationRef sourceCancelationRef, Internal.CancelationRef groupCancelationRef, Internal.PromiseRefBase.RacePromiseGroupVoid group,
             uint count, short groupId, bool cancelOnNonResolved, bool isResolved)
         {
-            _cancelationRef = cancelationRef;
+            _sourceCancelationRef = sourceCancelationRef;
+            _groupCancelationRef = groupCancelationRef;
             _group = group;
-            _cancelationId = cancelationRef.SourceId;
+            _cancelationId = groupCancelationRef.SourceId;
             _count = count;
             _groupId = groupId;
             _cancelOnNonResolved = cancelOnNonResolved;
@@ -58,10 +59,15 @@ namespace Proto.Promises
         /// Otherwise, the <paramref name="groupCancelationToken"/> will be canceled when any promise is resolved.</param>
         public static PromiseRaceGroup New(CancelationToken sourceCancelationToken, out CancelationToken groupCancelationToken, bool cancelOnNonResolved = true)
         {
-            var cancelationRef = Internal.CancelationRef.GetOrCreate();
-            cancelationRef.MaybeLinkToken(sourceCancelationToken);
-            groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseRaceGroup(cancelationRef, null, 0, 0, cancelOnNonResolved, false);
+            var groupCancelationRef = Internal.CancelationRef.GetOrCreate();
+            Internal.CancelationRef sourceCancelationRef = null;
+            if (sourceCancelationToken.TryRetain())
+            {
+                sourceCancelationRef = sourceCancelationToken._ref;
+                groupCancelationRef.LinkTokenUnsafe(sourceCancelationToken);
+            }
+            groupCancelationToken = new CancelationToken(groupCancelationRef, groupCancelationRef.TokenId);
+            return new PromiseRaceGroup(sourceCancelationRef, groupCancelationRef, null, 0, 0, cancelOnNonResolved, false);
         }
 
         /// <summary>
@@ -73,12 +79,12 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
             Internal.ValidateArgument(promise, nameof(promise), 1);
 #endif
-            var cancelationRef = _cancelationRef;
+            var groupCancelationRef = _groupCancelationRef;
             var group = _group;
             var count = _count;
             var cancelOnNonResolved = _cancelOnNonResolved;
             var isResolved = _isResolved;
-            if (cancelationRef == null)
+            if (groupCancelationRef == null)
             {
                 Internal.ThrowInvalidRaceGroup(1);
             }
@@ -100,57 +106,59 @@ namespace Proto.Promises
                     isResolved = true;
                     group.SetResolved();
                 }
-                return new PromiseRaceGroup(cancelationRef, group, count, group.Id, cancelOnNonResolved, isResolved);
+                return new PromiseRaceGroup(_sourceCancelationRef, groupCancelationRef, group, count, group.Id, cancelOnNonResolved, isResolved);
             }
 
-            if (!cancelationRef.TryIncrementSourceId(_cancelationId))
+            if (!groupCancelationRef.TryIncrementSourceId(_cancelationId))
             {
                 Internal.ThrowInvalidAllGroup(1);
             }
 
             if (promise._ref != null)
             {
-                group = Internal.GetOrCreateRacePromiseGroup(cancelationRef, cancelOnNonResolved);
+                group = Internal.GetOrCreateRacePromiseGroup(_sourceCancelationRef, groupCancelationRef, cancelOnNonResolved);
                 if (isResolved)
                 {
                     group.SetResolved();
                 }
                 group.AddPromise(promise);
-                return new PromiseRaceGroup(cancelationRef, group, 1, group.Id, cancelOnNonResolved, isResolved);
+                return new PromiseRaceGroup(_sourceCancelationRef, groupCancelationRef, group, 1, group.Id, cancelOnNonResolved, isResolved);
             }
 
             // The promise is already resolved, we need to cancel the group token,
             // and catch any exceptions to propagate them out of WaitAsync().
             try
             {
-                _cancelationRef.CancelUnsafe();
+                groupCancelationRef.CancelUnsafe();
             }
             catch (Exception e)
             {
                 // We already canceled the group token, no need to cancel it again if a promise is non-resolved.
-                group = Internal.GetOrCreateRacePromiseGroup(cancelationRef, false);
+                group = Internal.GetOrCreateRacePromiseGroup(_sourceCancelationRef, groupCancelationRef, false);
                 group.RecordException(e);
                 group._cancelationOrCleanupThrew = true;
-                return new PromiseRaceGroup(cancelationRef, group, 0, group.Id, false, isResolved);
+                return new PromiseRaceGroup(_sourceCancelationRef, groupCancelationRef, group, 0, group.Id, false, isResolved);
             }
 
-            return new PromiseRaceGroup(cancelationRef, group, 0, _groupId, false, true);
+            return new PromiseRaceGroup(_sourceCancelationRef, groupCancelationRef, group, 0, _groupId, false, true);
         }
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If any promise is resolved, the returned promise will be resolved.
-        /// If no promises are resolved and any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if all promises are canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If the group is not canceled and any promise is resolved, the returned promise will be resolved.
+        /// Otherwise, if any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// Otherwise, the returned promise will be canceled.
+        /// </remarks>
         public Promise WaitAsync()
         {
-            var cancelationRef = _cancelationRef;
+            var groupCancelationRef = _groupCancelationRef;
             var group = _group;
             var count = _count;
-            if (cancelationRef == null | (group == null & !_isResolved))
+            if (groupCancelationRef == null | (group == null & !_isResolved))
             {
-                if (cancelationRef == null)
+                if (groupCancelationRef == null)
                 {
                     Internal.ThrowInvalidRaceGroup(1);
                 }
@@ -159,10 +167,22 @@ namespace Proto.Promises
 
             if (group == null)
             {
-                if (!cancelationRef.TryDispose(_cancelationId))
+                if (!groupCancelationRef.TryDispose(_cancelationId))
                 {
                     Internal.ThrowInvalidAllGroup(1);
                 }
+
+                var sourceCancelationRef = _sourceCancelationRef;
+                if (sourceCancelationRef != null)
+                {
+                    bool canceled = sourceCancelationRef.IsCanceledUnsafe();
+                    sourceCancelationRef.ReleaseUserUnsafe();
+                    if (canceled)
+                    {
+                        return Promise.Canceled();
+                    }
+                }
+
                 return Promise.Resolved();
             }
 
@@ -183,25 +203,27 @@ namespace Proto.Promises
 #endif
     public readonly struct PromiseRaceGroup<T>
     {
-        private readonly Internal.CancelationRef _cancelationRef;
+        private readonly Internal.CancelationRef _sourceCancelationRef;
+        private readonly Internal.CancelationRef _groupCancelationRef;
         private readonly Internal.PromiseRefBase.RacePromiseGroup<T> _group;
         private readonly Internal.RaceCleanupCallback<T> _cleanupCallback;
         private readonly T _result;
-        private readonly int _cancelationId;
+        private readonly int _groupCancelationId;
         private readonly uint _count;
         private readonly short _groupId;
         private readonly bool _cancelOnNonResolved;
         private readonly bool _isResolved;
 
         [MethodImpl(Internal.InlineOption)]
-        private PromiseRaceGroup(Internal.CancelationRef cancelationRef, Internal.PromiseRefBase.RacePromiseGroup<T> group, Internal.RaceCleanupCallback<T> cleanupCallback,
+        private PromiseRaceGroup(Internal.CancelationRef sourceCancelationRef, Internal.CancelationRef groupCancelationRef, Internal.PromiseRefBase.RacePromiseGroup<T> group, Internal.RaceCleanupCallback<T> cleanupCallback,
             in T result, uint count, short groupId, bool cancelOnNonResolved, bool isResolved)
         {
-            _cancelationRef = cancelationRef;
+            _sourceCancelationRef = sourceCancelationRef;
+            _groupCancelationRef = groupCancelationRef;
             _group = group;
             _cleanupCallback = cleanupCallback;
             _result = result;
-            _cancelationId = cancelationRef.SourceId;
+            _groupCancelationId = groupCancelationRef.SourceId;
             _count = count;
             _groupId = groupId;
             _cancelOnNonResolved = cancelOnNonResolved;
@@ -210,10 +232,15 @@ namespace Proto.Promises
 
         private static PromiseRaceGroup<T> New(CancelationToken sourceCancelationToken, out CancelationToken groupCancelationToken, bool cancelOnNonResolved, Internal.RaceCleanupCallback<T> cleanupCallback)
         {
-            var cancelationRef = Internal.CancelationRef.GetOrCreate();
-            cancelationRef.MaybeLinkToken(sourceCancelationToken);
-            groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseRaceGroup<T>(cancelationRef, null, cleanupCallback, default, 0, 0, cancelOnNonResolved, false);
+            var groupCancelationRef = Internal.CancelationRef.GetOrCreate();
+            Internal.CancelationRef sourceCancelationRef = null;
+            if (sourceCancelationToken.TryRetain())
+            {
+                sourceCancelationRef = sourceCancelationToken._ref;
+                groupCancelationRef.LinkTokenUnsafe(sourceCancelationToken);
+            }
+            groupCancelationToken = new CancelationToken(groupCancelationRef, groupCancelationRef.TokenId);
+            return new PromiseRaceGroup<T>(sourceCancelationRef, groupCancelationRef, null, cleanupCallback, default, 0, 0, cancelOnNonResolved, false);
         }
 
         /// <summary>
@@ -340,12 +367,12 @@ namespace Proto.Promises
 #if PROMISE_DEBUG
             Internal.ValidateArgument(promise, nameof(promise), 1);
 #endif
-            var cancelationRef = _cancelationRef;
+            var groupCancelationRef = _groupCancelationRef;
             var group = _group;
             var count = _count;
             var cancelOnNonResolved = _cancelOnNonResolved;
             var isResolved = _isResolved;
-            if (cancelationRef == null)
+            if (groupCancelationRef == null)
             {
                 Internal.ThrowInvalidRaceGroup(1);
             }
@@ -372,36 +399,36 @@ namespace Proto.Promises
                 {
                     MaybeInvokeCleanup(ref count, promise._result, group);
                 }
-                return new PromiseRaceGroup<T>(cancelationRef, group, _cleanupCallback, default, count, group.Id, cancelOnNonResolved, isResolved);
+                return new PromiseRaceGroup<T>(_sourceCancelationRef, groupCancelationRef, group, _cleanupCallback, default, count, group.Id, cancelOnNonResolved, isResolved);
             }
 
-            if (!cancelationRef.TryIncrementSourceId(_cancelationId))
+            if (!groupCancelationRef.TryIncrementSourceId(_groupCancelationId))
             {
                 Internal.ThrowInvalidRaceGroup(1);
             }
 
             if (promise._ref != null)
             {
-                group = Internal.GetOrCreateRacePromiseGroup(cancelationRef, cancelOnNonResolved, _cleanupCallback);
+                group = Internal.GetOrCreateRacePromiseGroup(_sourceCancelationRef, groupCancelationRef, cancelOnNonResolved, _cleanupCallback);
                 if (isResolved)
                 {
                     group.SetResolved(_result);
                 }
                 group.AddPromise(promise);
                 // Add 2 counts, 1 for the promise and 1 for the cleanup.
-                return new PromiseRaceGroup<T>(cancelationRef, group, _cleanupCallback, default, 2, group.Id, cancelOnNonResolved, isResolved);
+                return new PromiseRaceGroup<T>(_sourceCancelationRef, groupCancelationRef, group, _cleanupCallback, default, 2, group.Id, cancelOnNonResolved, isResolved);
             }
 
             // The promise is already resolved, we need to cancel the group token,
             // and catch any exceptions to propagate them out of WaitAsync().
             try
             {
-                _cancelationRef.CancelUnsafe();
+                groupCancelationRef.CancelUnsafe();
             }
             catch (Exception e)
             {
                 // We already canceled the group token, no need to cancel it again if a promise is non-resolved.
-                group = Internal.GetOrCreateRacePromiseGroup(cancelationRef, false, _cleanupCallback);
+                group = Internal.GetOrCreateRacePromiseGroup(_sourceCancelationRef, groupCancelationRef, false, _cleanupCallback);
                 if (isResolved)
                 {
                     group.SetResolved(_result);
@@ -409,30 +436,56 @@ namespace Proto.Promises
                 group.RecordException(e);
                 group._cancelationOrCleanupThrew = true;
                 MaybeInvokeCleanup(ref count, promise._result, group);
-                return new PromiseRaceGroup<T>(cancelationRef, group, _cleanupCallback, default, count, group.Id, false, isResolved);
+                return new PromiseRaceGroup<T>(_sourceCancelationRef, groupCancelationRef, group, _cleanupCallback, default, count, group.Id, false, isResolved);
             }
 
             if (!isResolved)
             {
-                return new PromiseRaceGroup<T>(cancelationRef, group, _cleanupCallback, promise._result, 0, _groupId, false, true);
+                return new PromiseRaceGroup<T>(_sourceCancelationRef, groupCancelationRef, group, _cleanupCallback, promise._result, 0, _groupId, false, true);
             }
 
             var cleanupCallback = _cleanupCallback;
             if (cleanupCallback == null)
             {
-                return new PromiseRaceGroup<T>(cancelationRef, group, _cleanupCallback, _result, 0, _groupId, false, true);
+                return new PromiseRaceGroup<T>(_sourceCancelationRef, groupCancelationRef, group, _cleanupCallback, _result, 0, _groupId, false, true);
             }
 
             var cleanupPromise = cleanupCallback.Invoke(promise._result);
             if (cleanupPromise._ref == null)
             {
-                return new PromiseRaceGroup<T>(cancelationRef, group, _cleanupCallback, _result, 0, _groupId, false, true);
+                return new PromiseRaceGroup<T>(_sourceCancelationRef, groupCancelationRef, group, _cleanupCallback, _result, 0, _groupId, false, true);
             }
 
-            group = Internal.GetOrCreateRacePromiseGroup(cancelationRef, false, cleanupCallback);
+            group = Internal.GetOrCreateRacePromiseGroup(_sourceCancelationRef, groupCancelationRef, false, cleanupCallback);
             group.SetResolved(_result);
             group.HookupCleanupPromise(cleanupPromise);
-            return new PromiseRaceGroup<T>(cancelationRef, group, cleanupCallback, default, 1, group.Id, false, isResolved);
+            return new PromiseRaceGroup<T>(_sourceCancelationRef, groupCancelationRef, group, cleanupCallback, default, 1, group.Id, false, isResolved);
+        }
+
+        internal PromiseRaceGroup<T> Validate(Promise promise)
+        {
+#if PROMISE_DEBUG
+            Internal.ValidateArgument(promise, nameof(promise), 1);
+#endif
+            var groupCancelationRef = _groupCancelationRef;
+            var group = _group;
+            if (groupCancelationRef == null)
+            {
+                Internal.ThrowInvalidRaceGroup(1);
+            }
+            if (group != null)
+            {
+                if (!group.TryIncrementId(_groupId))
+                {
+                    Internal.ThrowInvalidRaceGroup(1);
+                }
+                return new PromiseRaceGroup<T>(_sourceCancelationRef, groupCancelationRef, group, _cleanupCallback, _result, _count, group.Id, _cancelOnNonResolved, _isResolved);
+            }
+            if (!groupCancelationRef.TryIncrementSourceId(_groupCancelationId))
+            {
+                Internal.ThrowInvalidRaceGroup(1);
+            }
+            return new PromiseRaceGroup<T>(_sourceCancelationRef, groupCancelationRef, group, _cleanupCallback, _result, _count, _groupId, _cancelOnNonResolved, _isResolved);
         }
 
         private void MaybeInvokeCleanup(ref uint count, in T arg, Internal.PromiseRefBase.RacePromiseGroup<T> group)
@@ -455,16 +508,19 @@ namespace Proto.Promises
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If any promise is resolved, the returned promise will be resolved with the value of the promise that resolved first.
-        /// If no promises are resolved and any promise is rejected, or if any cleanup delegate threw, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if all promises are canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If the group is not canceled and any promise is resolved, the returned promise will be resolved with the value of the promise that resolved first.
+        /// Otherwise, if any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// Otherwise, the returned promise will be canceled.
+        /// </remarks>
         public Promise<T> WaitAsync()
         {
-            var cancelationRef = _cancelationRef;
+            var cancelationRef = _groupCancelationRef;
             var group = _group;
             var count = _count;
-            if (cancelationRef == null | (group == null & !_isResolved))
+            var isResolved = _isResolved;
+            if (cancelationRef == null | (group == null & !isResolved))
             {
                 if (cancelationRef == null)
                 {
@@ -475,11 +531,34 @@ namespace Proto.Promises
 
             if (group == null)
             {
-                if (!cancelationRef.TryDispose(_cancelationId))
+                if (!cancelationRef.TryDispose(_groupCancelationId))
                 {
                     Internal.ThrowInvalidRaceGroup(1);
                 }
-                _cleanupCallback?.Dispose();
+
+                var cleanupCallback = _cleanupCallback;
+                var sourceCancelationRef = _sourceCancelationRef;
+                if (sourceCancelationRef != null)
+                {
+                    bool canceled = sourceCancelationRef.IsCanceledUnsafe();
+                    sourceCancelationRef.ReleaseUserUnsafe();
+                    if (canceled)
+                    {
+                        if (cleanupCallback == null | !isResolved)
+                        {
+                            cleanupCallback?.Dispose();
+                            return Promise<T>.Canceled();
+                        }
+
+                        // Cleanup, and cancel if the cleanup callback does not throw.
+                        var cleanupPromise = cleanupCallback.Invoke(_result);
+                        cleanupCallback.Dispose();
+                        return cleanupPromise
+                            .Then(() => Promise<T>.Canceled());
+                    }
+                }
+
+                cleanupCallback?.Dispose();
                 return Promise.Resolved(_result);
             }
 

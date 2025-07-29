@@ -57,7 +57,7 @@ namespace Proto.Promises
         /// <summary>
         /// Get a new <see cref="PromiseMergeGroup"/> and the <see cref="CancelationToken"/> tied to it.
         /// </summary>
-        /// <param name="groupCancelationToken">The token that will be canceled if any of the promises in the group are rejected or canceled.</param>
+        /// <param name="groupCancelationToken">The token that will be canceled if the group is rejected or canceled.</param>
         public static PromiseMergeGroup New(out CancelationToken groupCancelationToken)
             => New(CancelationToken.None, out groupCancelationToken);
 
@@ -65,13 +65,12 @@ namespace Proto.Promises
         /// Get a new <see cref="PromiseMergeGroup"/> that will be canceled when the <paramref name="sourceCancelationToken"/> is canceled, and the <see cref="CancelationToken"/> tied to it.
         /// </summary>
         /// <param name="sourceCancelationToken">The token used to cancel the group early.</param>
-        /// <param name="groupCancelationToken">The token that will be canceled if <paramref name="sourceCancelationToken"/> is canceled or any of the promises in the group are rejected or canceled.</param>
+        /// <param name="groupCancelationToken">The token that will be canceled if the group is rejected or canceled.</param>
         public static PromiseMergeGroup New(CancelationToken sourceCancelationToken, out CancelationToken groupCancelationToken)
         {
-            var cancelationRef = Internal.CancelationRef.GetOrCreate();
-            cancelationRef.MaybeLinkToken(sourceCancelationToken);
-            groupCancelationToken = new CancelationToken(cancelationRef, cancelationRef.TokenId);
-            return new PromiseMergeGroup(cancelationRef, new Internal.ValueLinkedStack<Internal.MergeCleanupCallback>(), 0, false);
+            var groupCancelationSource = CancelationSource.New(sourceCancelationToken);
+            groupCancelationToken = groupCancelationSource.Token;
+            return new PromiseMergeGroup(groupCancelationSource._ref, new Internal.ValueLinkedStack<Internal.MergeCleanupCallback>(), 0, false);
         }
 
         /// <summary>
@@ -170,10 +169,12 @@ namespace Proto.Promises
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If all promises are resolved, the returned promise will be resolved.
-        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if any promise is canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// If the group is canceled, the returned promise will be canceled.
+        /// Otherwise, the returned promise will be resolved.
+        /// </remarks>
         public Promise WaitAsync()
         {
             var cancelationRef = _cancelationRef;
@@ -186,11 +187,12 @@ namespace Proto.Promises
 
             if (group == null)
             {
+                bool canceled = _cancelationRef.IsCanceledUnsafe();
                 if (!cancelationRef.TryDispose(_cancelationId))
                 {
                     Internal.ThrowInvalidMergeGroup(1);
                 }
-                return Promise.Resolved();
+                return canceled ? Promise.Canceled() : Promise.Resolved();
             }
 
             if (!group.TryIncrementId(_groupId))
@@ -201,7 +203,6 @@ namespace Proto.Promises
             return new Promise(group, group.Id);
         }
 
-        [MethodImpl(Internal.InlineOption)]
         internal void DisposeCancelationOrThrow()
         {
             if (!_cancelationRef.TryDispose(_cancelationId))
@@ -213,6 +214,39 @@ namespace Proto.Promises
             {
                 cleanupCallbacks.Pop().Dispose();
             }
+        }
+
+        internal Promise<T> CleanupAndGetImmediatePromise<T>(in T value)
+        {
+            bool canceled = _cancelationRef.IsCanceledUnsafe();
+            if (!_cancelationRef.TryDispose(_cancelationId))
+            {
+                Internal.ThrowInvalidMergeGroup(2);
+            }
+
+            var cleanupCallbacks = _cleanupCallbacks;
+            if (canceled)
+            {
+                if (cleanupCallbacks.IsEmpty)
+                {
+                    return Promise<T>.Canceled();
+                }
+
+                // Cleanup, and cancel if none of the cleanup callbacks throw.
+                var cleanupGroup = New(out var _);
+                do
+                {
+                    cleanupGroup = cleanupGroup.Add(cleanupCallbacks.Pop().InvokeAndDisposeImmediate());
+                } while (cleanupCallbacks.IsNotEmpty);
+                return cleanupGroup.WaitAsync()
+                    .Then(() => Promise<T>.Canceled());
+            }
+
+            while (cleanupCallbacks.IsNotEmpty)
+            {
+                cleanupCallbacks.Pop().Dispose();
+            }
+            return Promise.Resolved(value);
         }
 
         internal PromiseMergeGroup Merge(Promise promise, int index)
@@ -392,10 +426,12 @@ namespace Proto.Promises
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If all promises are resolved, the returned promise will be resolved with the resolved value.
-        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if any promise is canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// If the group is canceled, the returned promise will be canceled.
+        /// Otherwise, the returned promise will be resolved the resolved value.
+        /// </remarks>
         public Promise<T1> WaitAsync()
         {
             var mergeGroup = _mergeGroup;
@@ -407,7 +443,32 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup.DisposeCancelationOrThrow();
+                // Equivalent to mergeGroup.CleanupAndGetImmediatePromise(_value), but more efficient since we know there can be max 1 cleanup callback here.
+                bool canceled = mergeGroup._cancelationRef.IsCanceledUnsafe();
+                if (!mergeGroup._cancelationRef.TryDispose(mergeGroup._cancelationId))
+                {
+                    Internal.ThrowInvalidMergeGroup(1);
+                }
+
+                var cleanupCallbacks = mergeGroup._cleanupCallbacks;
+                if (canceled)
+                {
+                    if (cleanupCallbacks.IsEmpty)
+                    {
+                        return Promise<T1>.Canceled();
+                    }
+
+                    // Cleanup, and cancel if the cleanup callback does not throw.
+                    // We know there can only be 1 cleanup callback here.
+                    return cleanupCallbacks.Pop().InvokeAndDisposeImmediate()
+                        .Then(() => Promise<T1>.Canceled());
+                }
+
+                // We know there can only be max 1 cleanup callback here.
+                if (cleanupCallbacks.IsNotEmpty)
+                {
+                    cleanupCallbacks.Pop().Dispose();
+                }
                 return Promise.Resolved(_value);
             }
 
@@ -492,10 +553,12 @@ namespace Proto.Promises
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If all promises are resolved, the returned promise will be resolved with a tuple containing each of their resolved values.
-        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if any promise is canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// If the group is canceled, the returned promise will be canceled.
+        /// Otherwise, the returned promise will be resolved with a tuple containing the resolved values of each of the promises.
+        /// </remarks>
         public Promise<(T1, T2)> WaitAsync()
         {
             var mergeGroup = _mergeGroup;
@@ -507,8 +570,7 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup.DisposeCancelationOrThrow();
-                return Promise.Resolved(_value);
+                return mergeGroup.CleanupAndGetImmediatePromise(_value);
             }
 
             if (!group.TryIncrementId(mergeGroup._groupId))
@@ -592,10 +654,12 @@ namespace Proto.Promises
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If all promises are resolved, the returned promise will be resolved with a tuple containing each of their resolved values.
-        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if any promise is canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// If the group is canceled, the returned promise will be canceled.
+        /// Otherwise, the returned promise will be resolved with a tuple containing the resolved values of each of the promises.
+        /// </remarks>
         public Promise<(T1, T2, T3)> WaitAsync()
         {
             var mergeGroup = _mergeGroup;
@@ -607,8 +671,7 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup.DisposeCancelationOrThrow();
-                return Promise.Resolved(_value);
+                return mergeGroup.CleanupAndGetImmediatePromise(_value);
             }
 
             if (!group.TryIncrementId(mergeGroup._groupId))
@@ -692,10 +755,12 @@ namespace Proto.Promises
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If all promises are resolved, the returned promise will be resolved with a tuple containing each of their resolved values.
-        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if any promise is canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// If the group is canceled, the returned promise will be canceled.
+        /// Otherwise, the returned promise will be resolved with a tuple containing the resolved values of each of the promises.
+        /// </remarks>
         public Promise<(T1, T2, T3, T4)> WaitAsync()
         {
             var mergeGroup = _mergeGroup;
@@ -707,8 +772,7 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup.DisposeCancelationOrThrow();
-                return Promise.Resolved(_value);
+                return mergeGroup.CleanupAndGetImmediatePromise(_value);
             }
 
             if (!group.TryIncrementId(mergeGroup._groupId))
@@ -792,10 +856,12 @@ namespace Proto.Promises
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If all promises are resolved, the returned promise will be resolved with a tuple containing each of their resolved values.
-        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if any promise is canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// If the group is canceled, the returned promise will be canceled.
+        /// Otherwise, the returned promise will be resolved with a tuple containing the resolved values of each of the promises.
+        /// </remarks>
         public Promise<(T1, T2, T3, T4, T5)> WaitAsync()
         {
             var mergeGroup = _mergeGroup;
@@ -807,8 +873,7 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup.DisposeCancelationOrThrow();
-                return Promise.Resolved(_value);
+                return mergeGroup.CleanupAndGetImmediatePromise(_value);
             }
 
             if (!group.TryIncrementId(mergeGroup._groupId))
@@ -892,10 +957,12 @@ namespace Proto.Promises
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If all promises are resolved, the returned promise will be resolved with a tuple containing each of their resolved values.
-        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if any promise is canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// If the group is canceled, the returned promise will be canceled.
+        /// Otherwise, the returned promise will be resolved with a tuple containing the resolved values of each of the promises.
+        /// </remarks>
         public Promise<(T1, T2, T3, T4, T5, T6)> WaitAsync()
         {
             var mergeGroup = _mergeGroup;
@@ -907,8 +974,7 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup.DisposeCancelationOrThrow();
-                return Promise.Resolved(_value);
+                return mergeGroup.CleanupAndGetImmediatePromise(_value);
             }
 
             if (!group.TryIncrementId(mergeGroup._groupId))
@@ -1015,10 +1081,12 @@ namespace Proto.Promises
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
-        /// If all promises are resolved, the returned promise will be resolved with a tuple containing each of their resolved values.
-        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
-        /// Otherwise, if any promise is canceled, the returned promise will be canceled.
         /// </summary>
+        /// <remarks>
+        /// If any promise is rejected, the returned promise will be rejected with an <see cref="AggregateException"/> containing all of the rejections.
+        /// If the group is canceled, the returned promise will be canceled.
+        /// Otherwise, the returned promise will be resolved with a tuple containing the resolved values of each of the promises.
+        /// </remarks>
         public Promise<(T1, T2, T3, T4, T5, T6, T7)> WaitAsync()
         {
             var mergeGroup = _mergeGroup;
@@ -1030,8 +1098,7 @@ namespace Proto.Promises
             var group = mergeGroup._group;
             if (group == null)
             {
-                mergeGroup.DisposeCancelationOrThrow();
-                return Promise.Resolved(_value);
+                return mergeGroup.CleanupAndGetImmediatePromise(_value);
             }
 
             if (!group.TryIncrementId(mergeGroup._groupId))

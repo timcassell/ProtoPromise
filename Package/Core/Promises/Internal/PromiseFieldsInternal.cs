@@ -534,7 +534,6 @@ namespace Proto.Promises
                 protected CancelationRef _cancelationRef; // Store the reference directly instead of CancelationSource struct to reduce memory.
                 private int _cancelationId;
                 protected int _waitCount; // int for Interlocked since it doesn't support uint on older runtimes.
-                protected Promise.State _completeState;
             }
 
             partial class MergePromiseGroupBase<TResult> : PromiseGroupBase<TResult>
@@ -576,6 +575,7 @@ namespace Proto.Promises
 
             partial class RacePromiseGroupBase<TResult> : PromiseGroupBase<TResult>
             {
+                protected CancelationRef _sourceCancelationRef; // Store the reference directly instead of CancelationToken struct to reduce memory.
                 protected int _isResolved; // Flag used to indicate that the promise has already been resolved. int for Interlocked.
                 protected bool _cancelOnNonResolved;
                 internal bool _cancelationOrCleanupThrew;
@@ -588,14 +588,6 @@ namespace Proto.Promises
             partial class RacePromiseGroup<TResult> : RacePromiseGroupBase<TResult>
             {
                 private RaceCleanupCallback<TResult> _cleanupCallback;
-            }
-
-            partial class RacePromiseWithIndexGroupVoid : RacePromiseGroupBase<int>
-            {
-            }
-
-            partial class RacePromiseWithIndexGroup<TResult> : RacePromiseGroupBase<(int, TResult)>
-            {
             }
             #endregion
 
