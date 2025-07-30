@@ -18,6 +18,9 @@ namespace Proto.Promises.Linq.Sources
     /// <summary>
     /// A static class containg helper methods used to facilitate <see cref="AsyncEnumerable{T}"/> extension implementations.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode, StackTraceHidden]
+#endif
     public static class AsyncEnumerableSourceHelpers
     {
         /// <summary>

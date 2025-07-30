@@ -60,6 +60,9 @@ namespace Proto.Promises.Linq
             return DefaultIfEmptyHelper.DefaultIfEmpty(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, defaultValueRetriever));
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         private static class DefaultIfEmptyHelper
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE

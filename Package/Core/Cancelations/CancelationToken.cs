@@ -305,6 +305,9 @@ namespace Proto.Promises
         /// A helper type that facilitates retaining and releasing <see cref="CancelationToken"/>s with a using statement.
         /// This is intended to be used instead of <see cref="TryRetain"/> and <see cref="Release"/> to reduce boilerplate code.
         /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         public readonly struct Retainer : IDisposable
         {
             /// <summary>

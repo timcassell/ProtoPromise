@@ -17,6 +17,9 @@ namespace Proto.Promises
 {
     partial class Internal
     {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal static class IntrospectiveSortUtilities
         {
             // This is the threshold where Introspective sort switches to Insertion sort.
@@ -36,6 +39,9 @@ namespace Proto.Promises
             }
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal static class ArraySortHelper<T>
         {
             public static void Sort<TComparer>(Span<T> keys, TComparer comparer) where TComparer : IComparer<T>

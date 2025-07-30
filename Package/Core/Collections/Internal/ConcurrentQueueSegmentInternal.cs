@@ -369,9 +369,6 @@ namespace Proto.Promises.Collections
     }
 
     /// <summary>Padded head and tail indices, to avoid false sharing between producers and consumers.</summary>
-#if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode, StackTraceHidden]
-#endif
     [StructLayout(LayoutKind.Explicit, Size = 3 * CACHE_LINE_SIZE)] // padding before/between/after fields
     internal struct PaddedHeadAndTail
     {

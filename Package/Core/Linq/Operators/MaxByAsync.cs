@@ -7,6 +7,7 @@
 using Proto.Promises.CompilerServices;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace Proto.Promises.Linq
 {
@@ -372,6 +373,9 @@ namespace Proto.Promises.Linq
             return MaxByHelper<TKey>.MaxByAwaitAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         private static class MaxByHelper<TKey>
         {
             internal static async Promise<TSource> MaxByAsync<TSource, TKeySelector, TComparer>(AsyncEnumerator<TSource> asyncEnumerator, TKeySelector keySelector, TComparer comparer)

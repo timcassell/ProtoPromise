@@ -52,7 +52,10 @@ namespace System
 {
     // xxHash32 is used for the hash code.
     // https://github.com/Cyan4973/xxHash
-
+    
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode, StackTraceHidden]
+#endif
     internal struct HashCode
     {
         private int hashCode;

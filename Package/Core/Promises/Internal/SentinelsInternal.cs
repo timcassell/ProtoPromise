@@ -116,6 +116,9 @@ namespace Proto.Promises
                 internal override void MaybeMarkAwaitedAndDispose(short promiseId) => throw new System.InvalidOperationException();
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             internal sealed partial class CanceledPromiseSentinel<TResult> : PromiseRef<TResult>
             {
                 // A singleton instance indicating that a promise is already canceled.
@@ -181,6 +184,9 @@ namespace Proto.Promises
             } // CanceledPromiseSentinel
         } // PromiseRefBase
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal class BackgroundSynchronizationContextSentinel : SynchronizationContext
         {
             internal static readonly BackgroundSynchronizationContextSentinel s_instance = new BackgroundSynchronizationContextSentinel();

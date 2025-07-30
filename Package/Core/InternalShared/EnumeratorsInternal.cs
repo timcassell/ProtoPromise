@@ -59,6 +59,9 @@ namespace Proto.Promises
             void IEnumerator.Reset() => throw new NotImplementedException();
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal readonly struct TwoItems<T> : IReadonlyIndexableCollection<T>
         {
             private readonly T _item1;
@@ -84,6 +87,9 @@ namespace Proto.Promises
             }
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal readonly struct ThreeItems<T> : IReadonlyIndexableCollection<T>
         {
             private readonly T _item1;
@@ -119,6 +125,9 @@ namespace Proto.Promises
             }
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal readonly struct FourItems<T> : IReadonlyIndexableCollection<T>
         {
             private readonly T _item1;
