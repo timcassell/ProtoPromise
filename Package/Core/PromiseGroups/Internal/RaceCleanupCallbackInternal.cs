@@ -60,6 +60,9 @@ namespace Proto.Promises
         }
 
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         private static class Helper<TArg>
         {
             [MethodImpl(Internal.InlineOption)]

@@ -10,6 +10,9 @@ using System.Runtime.CompilerServices;
 
 namespace System
 {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode, StackTraceHidden]
+#endif
     internal readonly ref struct Span<T>
     {
         // We only use it as a view over an array, not using pointers.
@@ -74,7 +77,10 @@ namespace System
         internal static Span<T> Empty => default;
 
         public Enumerator GetEnumerator() => new Enumerator(this);
-
+        
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         public ref struct Enumerator
         {
             private readonly Span<T> _span;

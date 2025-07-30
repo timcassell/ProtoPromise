@@ -6,6 +6,7 @@
 
 #pragma warning disable IDE0090 // Use 'new(...)'
 
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -67,6 +68,9 @@ namespace Proto.Promises
 #if !PROMISE_DEBUG
     partial class Internal
     {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal sealed class AsyncEnumerableRepeat<T> : PromiseRefBase.AsyncEnumerableBase<T>
         {
             private int _count;

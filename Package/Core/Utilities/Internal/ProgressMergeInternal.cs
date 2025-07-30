@@ -155,6 +155,9 @@ namespace Proto.Promises
             // MergeToken only calls the other Report overload.
             internal override void Report(double value, int id) { throw new System.InvalidOperationException(); }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             private sealed class MergeToken : ProgressBase
             {
                 private ProgressMerger _target;

@@ -8,6 +8,9 @@ using System.Runtime.CompilerServices;
 
 namespace System.Buffers
 {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode, StackTraceHidden]
+#endif
     internal static class Utilities
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

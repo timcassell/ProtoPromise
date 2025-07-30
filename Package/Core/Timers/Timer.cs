@@ -6,6 +6,7 @@
 
 using Proto.Promises;
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -16,6 +17,9 @@ namespace Proto.Timers
     /// <summary>
     /// Represents a timer that can have its due time and period changed.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode, StackTraceHidden]
+#endif
     public readonly partial struct Timer : IEquatable<Timer>
     {
         internal readonly ITimerSource _timerSource;

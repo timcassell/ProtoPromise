@@ -5,6 +5,7 @@
 // Hooks up to Promise.Manager.ClearObjectPool() event instead of using Gen2GC callbacks.
 #if UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
 
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -20,6 +21,9 @@ namespace System.Buffers
     /// checking its processor number, because multiple threads could interleave on the same core, and because
     /// a thread is allowed to check other core's buckets if its core's bucket is empty/full.
     /// </remarks>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode, StackTraceHidden]
+#endif
     internal sealed partial class SharedArrayPool<T> : ArrayPool<T>
     {
         /// <summary>The number of buckets (array sizes) in the pool, one for each array length, starting from length 16.</summary>

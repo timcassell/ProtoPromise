@@ -22,6 +22,9 @@ namespace Proto.Promises
 {
     partial class Internal
     {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal abstract class CancelationLinkedListNode : HandleablePromiseBase
         {
             // _next and _previous are unsafe cast to CancelationLinkedListNode or CancelationCallbackNodeBase
@@ -1010,6 +1013,9 @@ namespace Proto.Promises
                 void Invoke();
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             private struct UserNodeCreator<TCancelable> : INodeCreator
                 where TCancelable : ICancelable
             {
@@ -1036,6 +1042,9 @@ namespace Proto.Promises
                     => _cancelable.Cancel();
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             private struct UserNodeCreatorNoInvoke<TCancelable> : INodeCreator
                 where TCancelable : ICancelable
             {
@@ -1064,6 +1073,9 @@ namespace Proto.Promises
                     => _isCanceled = true;
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             private struct LinkedNodeCreator : INodeCreator
             {
                 internal LinkedCancelationNode _node;
@@ -1086,6 +1098,9 @@ namespace Proto.Promises
             }
         } // class CancelationRef
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal abstract class CancelationCallbackNodeBase : CancelationLinkedListNode
         {
             internal abstract void Invoke();
@@ -1098,6 +1113,9 @@ namespace Proto.Promises
             }
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal abstract class CancelationCallbackNode : CancelationCallbackNodeBase
         {
             protected int _nodeId = 1; // Start with id 1 instead of 0 to reduce risk of false positives.
@@ -1289,6 +1307,9 @@ namespace Proto.Promises
         partial class CancelationRef
         {
             // A separate class so that static data won't need to be created if it is never used.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             internal static class CancelationConverter
             {
                 private static readonly bool s_canExtractSource = GetCanExtractSource();

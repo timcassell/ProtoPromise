@@ -106,6 +106,9 @@ namespace Proto.Promises
             return Helper<TArg>.GetOrCreateWithIndex(DelegateWrapper.Create(capturedValue, onCleanup));
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         private static class Helper<TArg>
         {
             [MethodImpl(Internal.InlineOption)]

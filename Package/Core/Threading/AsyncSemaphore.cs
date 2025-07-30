@@ -211,6 +211,9 @@ namespace Proto.Promises.Threading
         /// <summary>
         /// Simple disposable wrapper around <see cref="Release()"/>. This is used to facilitate the <see langword="using"></see> keyword to treat the <see cref="AsyncSemaphore"/> as a "multi-lock".
         /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         public readonly struct Scope : IDisposable
         {
             private readonly AsyncSemaphore _target;

@@ -181,6 +181,9 @@ namespace Proto.Promises
 #if !NETCOREAPP
         // Override AwaitOnCompleted implementation to prevent boxing in Unity.
 #if UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER // Even though CIL has always had function pointers, Unity did not properly support the CIL instructions until C# 9/ .Net Standard 2.1 support was added.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal unsafe static class AwaitOverrider<TAwaiter> where TAwaiter : INotifyCompletion
         {
             internal static delegate*<ref TAwaiter, PromiseRefBase, Action, void> s_awaitFunc = &DefaultAwaitOnCompleted;
@@ -194,7 +197,10 @@ namespace Proto.Promises
                 // We call the function without a branch. If the awaiter is not a known awaiter type, the default function will be called.
                 => s_awaitFunc(ref awaiter, asyncPromiseRef, continuation);
         }
-
+        
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal unsafe static class CriticalAwaitOverrider<TAwaiter> where TAwaiter : ICriticalNotifyCompletion
         {
             internal static delegate*<ref TAwaiter, PromiseRefBase, Action, void> s_awaitFunc = &DefaultAwaitOnCompleted;
@@ -208,7 +214,10 @@ namespace Proto.Promises
                 // We call the function without a branch. If the awaiter is not a known awaiter type, the default function will be called.
                 => s_awaitFunc(ref awaiter, asyncPromiseRef, continuation);
         }
-
+        
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal unsafe static class AwaitOverriderImpl<TAwaiter> where TAwaiter : struct, ICriticalNotifyCompletion, IPromiseAwareAwaiter
         {
             [MethodImpl(InlineOption)]
@@ -224,6 +233,9 @@ namespace Proto.Promises
                 => awaiter.AwaitOnCompletedInternal(asyncPromiseRef);
         }
 #else // UNITY_2021_2_OR_NEWER || NETSTANDARD2_1_OR_GREATER
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal abstract class AwaitOverrider<TAwaiter> where TAwaiter : INotifyCompletion
         {
             internal static AwaitOverrider<TAwaiter> s_awaitOverrider;
@@ -244,6 +256,9 @@ namespace Proto.Promises
             internal abstract void AwaitOnCompletedVirt(ref TAwaiter awaiter, PromiseRefBase asyncPromiseRef);
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal static class CriticalAwaitOverrider<TAwaiter> where TAwaiter : ICriticalNotifyCompletion
         {
             [MethodImpl(InlineOption)]
@@ -259,7 +274,10 @@ namespace Proto.Promises
                 }
             }
         }
-
+        
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal sealed class AwaitOverriderImpl<TAwaiter> : AwaitOverrider<TAwaiter> where TAwaiter : struct, ICriticalNotifyCompletion, IPromiseAwareAwaiter
         {
             [MethodImpl(InlineOption)]

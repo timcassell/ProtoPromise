@@ -360,6 +360,9 @@ namespace Proto.Promises
             }
 
             // Using abstract class instead of interface, because virtual calls are 2x faster.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             private abstract class InstructionProcessorBase
             {
                 internal abstract void Process();
