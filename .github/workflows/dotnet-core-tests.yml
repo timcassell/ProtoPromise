@@ -9,7 +9,7 @@ concurrency:
 jobs:
   dotnet-core-tests:
     name: ${{ matrix.config }}-${{ matrix.objectPooling.name }}-${{ matrix.devMode.name }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     
     strategy:
       fail-fast: false
