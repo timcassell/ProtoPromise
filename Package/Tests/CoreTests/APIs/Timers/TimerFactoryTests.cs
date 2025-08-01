@@ -92,7 +92,7 @@ namespace ProtoPromise.Tests.APIs.Timers
                 TimeSpan.FromMilliseconds(state.Period), TimeSpan.FromMilliseconds(state.Period));
             }
 
-            System.Threading.SpinWait.SpinUntil(() => state.Timer == default, TimeSpan.FromSeconds(8));
+            TestHelper.SpinUntil(() => state.Timer == default, TimeSpan.FromSeconds(8));
             state.DisposePromise.WaitWithTimeout(TimeSpan.FromSeconds(2));
 
             Assert.AreEqual(4, state.Counter);
