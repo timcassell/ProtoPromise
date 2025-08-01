@@ -156,6 +156,9 @@ namespace System.Buffers
         /// <summary>
         /// Stores a set of stacks of arrays, with one stack per core.
         /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         private sealed class PerCoreLockedStacks
         {
             /// <summary>The stacks.</summary>
@@ -218,6 +221,9 @@ namespace System.Buffers
         }
 
         /// <summary>Provides a simple stack of arrays, protected by a lock.</summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         private sealed class LockedStack
         {
             private readonly T[][] _arrays = new T[MaxBuffersPerArraySizePerCore][];

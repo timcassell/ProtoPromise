@@ -46,15 +46,20 @@ namespace ProtoPromise.Tests.Annotations
 
             foreach (var type in GetAllTypes(assembly))
             {
-                // Only check classes and structs (not interfaces, enums, delegates, etc.), excluding custom attributes.
+                // Only check classes and structs (not interfaces, enums, delegates, etc.), excluding delegates and custom attributes.
                 if (!(type.IsClass || (type.IsValueType && !type.IsEnum))
+                    || typeof(Delegate).IsAssignableFrom(type)
                     || typeof(Attribute).IsAssignableFrom(type))
+                {
                     continue;
+                }
 
                 // Skip compiler-generated types (e.g. display classes, state machines, types with compiler-generated naming patterns)
                 if (type.FullName.Contains("<>")
                     || type.GetCustomAttributes(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute), false).Any())
+                {
                     continue;
+                }
 
                 // Only check types that contain executable code: at least one method, property, or constructor (excluding compiler-generated and implicit struct constructors)
                 bool hasUserDefinedConstructor =
