@@ -44,6 +44,7 @@ https://raw.githubusercontent.com/Cyan4973/xxHash/5c174cfa4e45a42f94082dc0d4539b
 
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 #pragma warning disable CA1066 // Implement IEquatable when overriding Object.Equals
