@@ -713,7 +713,7 @@ namespace ProtoPromise.Tests.APIs
                 {
                     cancelationSource.CancelAfter(TimeSpan.FromMilliseconds(afterMilliseconds));
                 }
-                Assert.True(SpinWait.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1)));
+                TestHelper.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1));
                 cancelationSource.Dispose();
             }
 
@@ -739,7 +739,7 @@ namespace ProtoPromise.Tests.APIs
                 }
                 Thread.Sleep(2);
                 linkedCancelationSource.Cancel();
-                Assert.True(SpinWait.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1)));
+                TestHelper.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1));
                 cancelationSource.Dispose();
                 linkedCancelationSource.Dispose();
             }
@@ -772,7 +772,7 @@ namespace ProtoPromise.Tests.APIs
                 Thread.Sleep(2);
                 linkedCancelationSource1.Cancel();
                 linkedCancelationSource2.Cancel();
-                Assert.True(SpinWait.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1)));
+                TestHelper.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1));
                 cancelationSource.Dispose();
                 linkedCancelationSource1.Dispose();
                 linkedCancelationSource2.Dispose();
@@ -812,7 +812,7 @@ namespace ProtoPromise.Tests.APIs
                 linkedCancelationSource1.Cancel();
                 linkedCancelationSource2.Cancel();
                 linkedCancelationSource3.Cancel();
-                Assert.True(SpinWait.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1)));
+                TestHelper.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1));
                 cancelationSource.Dispose();
                 linkedCancelationSource1.Dispose();
                 linkedCancelationSource2.Dispose();
@@ -840,7 +840,7 @@ namespace ProtoPromise.Tests.APIs
                     cancelationSource.CancelAfter(TimeSpan.FromMilliseconds(afterMilliseconds));
                 }
                 fakeFactory.Invoke();
-                Assert.True(SpinWait.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1)));
+                TestHelper.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1));
                 cancelationSource.Dispose();
             }
 
@@ -873,7 +873,7 @@ namespace ProtoPromise.Tests.APIs
                 Thread.Sleep(2);
                 fakeFactory.Invoke();
                 linkedCancelationSource.Cancel();
-                Assert.True(SpinWait.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1)));
+                TestHelper.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1));
                 cancelationSource.Dispose();
                 linkedCancelationSource.Dispose();
             }
@@ -913,7 +913,7 @@ namespace ProtoPromise.Tests.APIs
                 fakeFactory.Invoke();
                 linkedCancelationSource1.Cancel();
                 linkedCancelationSource2.Cancel();
-                Assert.True(SpinWait.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1)));
+                TestHelper.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1));
                 cancelationSource.Dispose();
                 linkedCancelationSource1.Dispose();
                 linkedCancelationSource2.Dispose();
@@ -960,7 +960,7 @@ namespace ProtoPromise.Tests.APIs
                 linkedCancelationSource1.Cancel();
                 linkedCancelationSource2.Cancel();
                 linkedCancelationSource3.Cancel();
-                Assert.True(SpinWait.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1)));
+                TestHelper.SpinUntil(() => cancelationSource.IsCancelationRequested, TimeSpan.FromSeconds(1));
                 cancelationSource.Dispose();
                 linkedCancelationSource1.Dispose();
                 linkedCancelationSource2.Dispose();

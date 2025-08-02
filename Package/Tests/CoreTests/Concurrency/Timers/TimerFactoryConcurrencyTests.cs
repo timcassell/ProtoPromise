@@ -65,7 +65,7 @@ namespace ProtoPromise.Tests.Concurrency.Timers
                     Assert.AreEqual(state, s);
                     if ((Interlocked.Increment(ref periodCounter) - 1) == numPeriods1)
                     {
-                        SpinWait.SpinUntil(() => timer != default);
+                        TestHelper.SpinUntil(() => timer != default, TimeSpan.FromSeconds(1));
                         disposePromises.Add(timer.DisposeAsync());
 
                         int periodCounter2 = 0;
@@ -77,7 +77,7 @@ namespace ProtoPromise.Tests.Concurrency.Timers
                             Assert.AreEqual(state2, s2);
                             if ((Interlocked.Increment(ref periodCounter2) - 1) == numPeriods2)
                             {
-                                SpinWait.SpinUntil(() => timer2 != default);
+                                TestHelper.SpinUntil(() => timer2 != default, TimeSpan.FromSeconds(1));
                                 disposePromises.Add(timer2.DisposeAsync());
 
                                 Interlocked.Decrement(ref timersRunningCounter);
@@ -88,7 +88,7 @@ namespace ProtoPromise.Tests.Concurrency.Timers
             });
 
             int expectedInvokes = ThreadHelper.multiExecutionCount * (numPeriods1 + numPeriods2 + 2);
-            SpinWait.SpinUntil(() => timersRunningCounter == 0, TimeSpan.FromSeconds(expectedInvokes));
+            TestHelper.SpinUntil(() => timersRunningCounter == 0, TimeSpan.FromSeconds(expectedInvokes));
             Promise.All(disposePromises).WaitWithTimeout(TimeSpan.FromSeconds(1));
             if ((numPeriods1 + numPeriods2) == 0)
             {

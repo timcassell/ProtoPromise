@@ -325,7 +325,17 @@ namespace Proto.Promises
             // Wait a bit of time for it to settle before asserting.
             if (spinForThreadPool)
             {
-                System.Threading.SpinWait.SpinUntil(() => s_inUseObjects.Count == 0, TimeSpan.FromSeconds(1));
+                // Don't use SpinWait.SpinUntil. https://github.com/dotnet/runtime/issues/115989#issuecomment-2920674169
+                var spinner = new System.Threading.SpinWait();
+                var timestamp = TimeProvider.System.GetTimestamp();
+                while (s_inUseObjects.Count != 0)
+                {
+                    if (TimeProvider.System.GetElapsedTime(timestamp) >= TimeSpan.FromSeconds(1))
+                    {
+                        break;
+                    }
+                    spinner.SpinOnce(sleep1Threshold: -1);
+                }
             }
             lock (s_pooledObjects)
             {
