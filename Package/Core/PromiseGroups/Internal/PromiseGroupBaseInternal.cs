@@ -19,6 +19,22 @@ namespace Proto.Promises
     {
         partial class PromiseRefBase
         {
+            partial class SingleAwaitPromise<TResult>
+            {
+                internal void RecordException(Exception e)
+                {
+                    lock (this)
+                    {
+                        var rejectContainer = RejectContainer;
+                        if (rejectContainer == null)
+                        {
+                            RejectContainer = rejectContainer = new AggregateRejectionContainer(this);
+                        }
+                        rejectContainer.UnsafeAs<AggregateRejectionContainer>().Add(e);
+                    }
+                }
+            }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
@@ -104,14 +120,6 @@ namespace Proto.Promises
                     catch (Exception e)
                     {
                         RecordException(e);
-                    }
-                }
-
-                internal void RecordException(Exception e)
-                {
-                    lock (this)
-                    {
-                        Internal.RecordException(e, ref _exceptions);
                     }
                 }
             }

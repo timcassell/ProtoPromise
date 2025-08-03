@@ -134,21 +134,14 @@ namespace Proto.Promises
                     if (TryComplete())
                     {
                         // All promises are complete.
-                        HandleNextInternal(CompleteAndGetState());
+                        HandleNextInternal(GetCompleteState());
                     }
                 }
 
-                private Promise.State CompleteAndGetState()
-                {
-                    if (_exceptions == null)
-                    {
-                        return _cancelationRef.IsCanceledUnsafe() ? Promise.State.Canceled : Promise.State.Resolved;
-                    }
-
-                    RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
-                    _exceptions = null;
-                    return Promise.State.Rejected;
-                }
+                private Promise.State GetCompleteState()
+                    => RejectContainer != null ? Promise.State.Rejected
+                        : _cancelationRef.IsCanceledUnsafe() ? Promise.State.Canceled
+                        : Promise.State.Resolved;
 
                 internal override void Handle(PromisePassThroughForMergeGroup passthrough, PromiseRefBase handler, Promise.State state)
                 {
@@ -166,7 +159,7 @@ namespace Proto.Promises
                         // All promises are complete.
                         // We just pass the state here and don't do anything about the exceptions,
                         // because the attached promise will handle the actual completion logic.
-                        HandleNextInternal(_cancelationRef.IsCanceledUnsafe() ? Promise.State.Canceled : Promise.State.Resolved);
+                        HandleNextInternal(GetCompleteState());
                     }
                 }
 
@@ -177,7 +170,7 @@ namespace Proto.Promises
                     {
                         // All promises already completed.
                         _next = PromiseCompletionSentinel.s_instance;
-                        SetCompletionState(CompleteAndGetState());
+                        SetCompletionState(GetCompleteState());
                     }
                 }
             }
@@ -225,6 +218,8 @@ namespace Proto.Promises
 
                 internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
+                    ThrowIfInPool(this);
+
                     handler.SetCompletionState(state);
 
                     if (_isCleaning)
@@ -232,7 +227,9 @@ namespace Proto.Promises
                         HandleCleanupPromise(handler, state);
                         return;
                     }
-                    
+
+                    RejectContainer = handler.RejectContainer;
+
                     // The cleanup stack is possibly shared between multiple extended merge groups.
                     // Only prepare the count of cleanups for this promise, not the entire stack.
                     var cleanupCallback = _cleanupCallbacks.Peek();
@@ -244,6 +241,7 @@ namespace Proto.Promises
 
                     var group = handler.UnsafeAs<MergePromiseGroupVoid>();
                     var passthroughs = group._completedPassThroughs.TakeAndClear();
+                    group.MaybeDispose();
                     while (passthroughs.IsNotEmpty)
                     {
                         var passthrough = passthroughs.Pop();
@@ -252,23 +250,11 @@ namespace Proto.Promises
                         s_getResult.Invoke(owner, index, ref _result);
                         if (owner.State == Promise.State.Rejected)
                         {
-                            RecordRejection(group, owner, index);
+                            state = Promise.State.Rejected;
+                            RecordRejection(owner, index);
                         }
                         passthrough.Dispose();
                     }
-
-                    if (group._exceptions != null)
-                    {
-                        state = Promise.State.Rejected;
-                        RejectContainer = CreateRejectContainer(new AggregateException(group._exceptions), int.MinValue, null, this);
-                        group._exceptions = null;
-                    }
-                    else
-                    {
-                        // The group may have been completed by a void promise, in which case it already converted its exceptions to a reject container.
-                        RejectContainer = handler.RejectContainer;
-                    }
-                    group.MaybeDispose();
 
                     if (_isFinal & _cleanupCallbacks.IsNotEmpty)
                     {
@@ -281,22 +267,28 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(MethodImplOptions.NoInlining)]
-                private void RecordRejection(MergePromiseGroupVoid group, PromiseRefBase owner, int index)
+                private void RecordRejection(PromiseRefBase owner, int index)
                 {
-                    var exception = owner.RejectContainer.GetValueAsException();
-                    if (_isExtended & index == 0)
+                    var rejectContainer = owner.RejectContainer;
+                    if (!_isExtended | index != 0)
                     {
-                        // If this is an extended merge group, we need to extract the inner exceptions of the first cluster to make a flattened AggregateException.
-                        // We only do this for 1 layer instead of using the Flatten method of the AggregateException, because we only want to flatten the exceptions from the group,
-                        // and not any nested AggregateExceptions from the actual async work.
-                        foreach (var ex in exception.UnsafeAs<AggregateException>().InnerExceptions)
-                        {
-                            group.RecordException(ex);
-                        }
+                        RecordException(rejectContainer.GetValueAsException());
+                        return;
                     }
-                    else
+
+                    // If this is an extended merge group, we need to take the reject container of the first cluster, then flatten any exceptions from the current reject container.
+                    // We only do this for 1 layer instead of using the Flatten method of the AggregateException, because we only want to flatten the exceptions from the group,
+                    // and not any nested AggregateExceptions from the actual async work.
+                    IRejectContainer previousRejectContainer;
+                    lock (this)
                     {
-                        group.RecordException(exception);
+                        previousRejectContainer = RejectContainer;
+                        RejectContainer = rejectContainer;
+
+                        if (previousRejectContainer != null)
+                        {
+                            rejectContainer.UnsafeAs<AggregateRejectionContainer>().Exceptions.AddRange(previousRejectContainer.UnsafeAs<AggregateRejectionContainer>().Exceptions);
+                        }
                     }
                 }
 
@@ -306,25 +298,11 @@ namespace Proto.Promises
                     RemoveForCircularAwaitDetection(handler);
                     if (state == Promise.State.Rejected)
                     {
-                        RecordCleanupException(handler.RejectContainer.GetValueAsException());
+                        RecordException(handler.RejectContainer.GetValueAsException());
                     }
                     handler.MaybeDispose();
 
                     MaybeHandleNextAfterCleanup();
-                }
-
-                private void RecordCleanupException(Exception exception)
-                {
-                    lock (this)
-                    {
-                        // Extract the previous exceptions to append the new exception if another promise hasn't already done so.
-                        if (RejectContainer != null)
-                        {
-                            _exceptions = new List<Exception>(RejectContainer.GetValueAsException().UnsafeAs<AggregateException>().InnerExceptions);
-                            RejectContainer = null;
-                        }
-                        RecordException(exception, ref _exceptions);
-                    }
                 }
 
                 private void Cleanup(Promise.State state)
@@ -362,7 +340,7 @@ namespace Proto.Promises
                         {
                             Interlocked.Decrement(ref _cleanupCount);
                             RemoveForCircularAwaitDetection(cleanupPromise._ref);
-                            RecordCleanupException(e is InvalidReturnException ? e : new InvalidReturnException("onCleanup returned an invalid promise.", string.Empty));
+                            RecordException(e is InvalidReturnException ? e : new InvalidReturnException("onCleanup returned an invalid promise.", string.Empty));
                         }
                     } while (cleanupCallbacks.IsNotEmpty);
 
@@ -371,17 +349,10 @@ namespace Proto.Promises
 
                 private void MaybeHandleNextAfterCleanup()
                 {
-                    if (InterlockedAddWithUnsignedOverflowCheck(ref _cleanupCount, -1) != 0)
+                    if (InterlockedAddWithUnsignedOverflowCheck(ref _cleanupCount, -1) == 0)
                     {
-                        return;
+                        HandleNextInternal(RejectContainer == null ? Promise.State.Canceled : Promise.State.Rejected);
                     }
-
-                    if (_exceptions != null)
-                    {
-                        RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
-                        _exceptions = null;
-                    }
-                    HandleNextInternal(RejectContainer == null ? Promise.State.Canceled : Promise.State.Rejected);
                 }
 
                 partial void AddForCircularAwaitDetection(PromiseRefBase pendingPromise);

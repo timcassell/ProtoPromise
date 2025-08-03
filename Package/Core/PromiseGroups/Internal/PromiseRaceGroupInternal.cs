@@ -26,12 +26,10 @@ namespace Proto.Promises
 
                     // Race promise group ignores rejections and cancelations if any promise was resolved,
                     // unless the source cancelation token was canceled, or a cancelation token or cleanup callback threw.
-                    if (state != Promise.State.Resolved & _exceptions != null)
+                    if (state != Promise.State.Resolved & RejectContainer != null)
                     {
                         state = Promise.State.Rejected;
-                        RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
                     }
-                    _exceptions = null;
                     HandleNextInternal(state);
                 }
 
@@ -405,10 +403,7 @@ namespace Proto.Promises
 #endif
                         _cancelationOrCleanupThrew = true;
                         RecordException(e is InvalidReturnException ? e : new InvalidReturnException("onCleanup returned an invalid promise.", string.Empty));
-                        if (TryComplete())
-                        {
-                            CompleteAndCleanup();
-                        }
+                        Complete(Promise.State.Rejected);
                     }
                 }
             }
