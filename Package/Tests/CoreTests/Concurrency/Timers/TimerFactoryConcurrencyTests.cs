@@ -53,43 +53,48 @@ namespace ProtoPromise.Tests.Concurrency.Timers
             int timersRunningCounter = ThreadHelper.multiExecutionCount;
 
             var disposePromises = new ConcurrentBag<Promise>();
+            var allDisposedDeferred = Promise.NewDeferred();
 
             new ThreadHelper().ExecuteMultiActionParallel(() =>
             {
                 int periodCounter = 0;
                 int state = Interlocked.Increment(ref stateChecker);
-                Proto.Timers.Timer timer = default;
-                timer = provider.CreateTimer(s =>
+                var deferred = Promise.NewDeferred<Proto.Timers.Timer>();
+                var timer = provider.CreateTimer(s =>
                 {
                     Interlocked.Increment(ref invokedCounter);
                     Assert.AreEqual(state, s);
                     if ((Interlocked.Increment(ref periodCounter) - 1) == numPeriods1)
                     {
-                        TestHelper.SpinUntil(() => timer != default, TimeSpan.FromSeconds(1));
-                        disposePromises.Add(timer.DisposeAsync());
+                        disposePromises.Add(deferred.Promise.Then(t => t.DisposeAsync()));
 
                         int periodCounter2 = 0;
                         int state2 = Interlocked.Increment(ref stateChecker);
-                        Proto.Timers.Timer timer2 = default;
-                        timer2 = provider.CreateTimer(s2 =>
+                        var deferred2 = Promise.NewDeferred<Proto.Timers.Timer>();
+                        var timer2 = provider.CreateTimer(s2 =>
                         {
                             Interlocked.Increment(ref invokedCounter);
                             Assert.AreEqual(state2, s2);
                             if ((Interlocked.Increment(ref periodCounter2) - 1) == numPeriods2)
                             {
-                                TestHelper.SpinUntil(() => timer2 != default, TimeSpan.FromSeconds(1));
-                                disposePromises.Add(timer2.DisposeAsync());
+                                disposePromises.Add(deferred2.Promise.Then(t => t.DisposeAsync()));
 
-                                Interlocked.Decrement(ref timersRunningCounter);
+                                if (Interlocked.Decrement(ref timersRunningCounter) == 0)
+                                {
+                                    allDisposedDeferred.Resolve();
+                                }
                             }
                         }, state2, TimeSpan.FromMilliseconds(1), numPeriods2 == 0 ? Timeout.InfiniteTimeSpan : TimeSpan.FromMilliseconds(1));
+                        deferred2.Resolve(timer2);
                     }
                 }, state, TimeSpan.FromMilliseconds(1), numPeriods1 == 0 ? Timeout.InfiniteTimeSpan : TimeSpan.FromMilliseconds(1));
+                deferred.Resolve(timer);
             });
 
             int expectedInvokes = ThreadHelper.multiExecutionCount * (numPeriods1 + numPeriods2 + 2);
-            TestHelper.SpinUntil(() => timersRunningCounter == 0, TimeSpan.FromSeconds(expectedInvokes));
-            Promise.All(disposePromises).WaitWithTimeout(TimeSpan.FromSeconds(1));
+            allDisposedDeferred.Promise
+                .Then(() => Promise.All(disposePromises))
+                .WaitWithTimeout(TimeSpan.FromSeconds(expectedInvokes));
             if ((numPeriods1 + numPeriods2) == 0)
             {
                 Assert.AreEqual(expectedInvokes, invokedCounter);
