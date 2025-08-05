@@ -4,8 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
-// IL2CPP has a bug in newer Unity versions where system timers leak, causing the test to take too long and timeout.
-#if !UNITY_WEBGL && !(UNITY_2021_2_OR_NEWER && ENABLE_IL2CPP)
+#if !UNITY_WEBGL
 
 using NUnit.Framework;
 using Proto.Promises;
