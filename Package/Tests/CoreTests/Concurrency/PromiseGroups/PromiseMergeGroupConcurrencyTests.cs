@@ -75,10 +75,10 @@ namespace ProtoPromise.Tests.Concurrency.PromiseGroups
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 withCleanup
-                    ? () => group
+                    ? (Func<Promise<int>>) (() => group
                         .Add(promise1, onCleanup)
                         .Add(promise2)
-                        .WaitAsync()
+                        .WaitAsync())
                     : () => group
                         .Add(promise1)
                         .Add(promise2)
@@ -195,12 +195,12 @@ namespace ProtoPromise.Tests.Concurrency.PromiseGroups
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 withCleanup
-                    ? () => group
+                    ? (Func<Promise<(int, int)>>) (() => group
                         .Add(promise1)
                         .Add(promise2, onCleanup)
                         .Add(promise3)
                         .Add(promise4, onCleanup)
-                        .WaitAsync()
+                        .WaitAsync())
                     : () => group
                         .Add(promise1)
                         .Add(promise2)
