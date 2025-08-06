@@ -168,7 +168,7 @@ namespace Proto.Promises
                             var rejectContainer = _queue.DequeueHead().RejectContainer;
                             if (rejectContainer != null)
                             {
-                                RecordException(rejectContainer.GetValueAsException(), ref exceptions);
+                                Internal.RecordException(rejectContainer.GetValueAsException(), ref exceptions);
                             }
                         }
                     }

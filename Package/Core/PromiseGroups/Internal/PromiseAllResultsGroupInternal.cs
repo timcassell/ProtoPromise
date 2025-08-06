@@ -63,16 +63,6 @@ namespace Proto.Promises
 
                 private Promise.State CompleteAndGetState()
                 {
-                    // If any of the promises in the group completed unsuccessfully, the group state was set to canceled.
-                    // We ignore that and set it to always resolved, because we're yielding ResultContainers.
-                    var state = Promise.State.Resolved;
-                    if (_exceptions != null)
-                    {
-                        state = Promise.State.Rejected;
-                        RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
-                        _exceptions = null;
-                    }
-
                     var passthroughs = _completedPassThroughs.TakeAndClear();
                     while (passthroughs.IsNotEmpty)
                     {
@@ -82,7 +72,9 @@ namespace Proto.Promises
                         passthrough.Dispose();
                     }
 
-                    return state;
+                    // If any of the promises in the group completed unsuccessfully, the group state was set to canceled.
+                    // We ignore that and set it to always resolved, because we're yielding ResultContainers, unless a cancelation token callback threw.
+                    return RejectContainer == null ? Promise.State.Resolved : Promise.State.Rejected;
                 }
 
                 internal void MarkReady(int totalPromises)
@@ -145,16 +137,6 @@ namespace Proto.Promises
 
                 private Promise.State CompleteAndGetState()
                 {
-                    // If any of the promises in the group completed unsuccessfully, the group state was set to canceled.
-                    // We ignore that and set it to always resolved, because we're yielding ResultContainers.
-                    var state = Promise.State.Resolved;
-                    if (_exceptions != null)
-                    {
-                        state = Promise.State.Rejected;
-                        RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
-                        _exceptions = null;
-                    }
-
                     var passthroughs = _completedPassThroughs.TakeAndClear();
                     while (passthroughs.IsNotEmpty)
                     {
@@ -164,7 +146,9 @@ namespace Proto.Promises
                         passthrough.Dispose();
                     }
 
-                    return state;
+                    // If any of the promises in the group completed unsuccessfully, the group state was set to canceled.
+                    // We ignore that and set it to always resolved, because we're yielding ResultContainers, unless a cancelation token callback threw.
+                    return RejectContainer == null ? Promise.State.Resolved : Promise.State.Rejected;
                 }
 
                 internal void MarkReady(int totalPromises)

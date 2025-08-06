@@ -57,23 +57,10 @@ namespace Proto.Promises
                         RecordException(handler.RejectContainer.GetValueAsException());
                     }
                     handler.MaybeDispose();
-                    if (!TryComplete())
+                    if (TryComplete())
                     {
-                        return;
+                        HandleNextInternal(RejectContainer != null ? Promise.State.Rejected : Promise.State.Canceled);
                     }
-
-                    if (_exceptions == null)
-                    {
-                        state = _cancelationRef.IsCanceledUnsafe() ? Promise.State.Canceled : Promise.State.Resolved;
-                    }
-                    else
-                    {
-                        state = Promise.State.Rejected;
-                        RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
-                        _exceptions = null;
-                    }
-
-                    HandleNextInternal(state);
                 }
 
                 internal override void Handle(PromisePassThroughForMergeGroup passthrough, PromiseRefBase handler, Promise.State state)
@@ -172,18 +159,9 @@ namespace Proto.Promises
                         }
                     }
 
-                    Promise.State state;
-                    if (_exceptions == null)
-                    {
-                        state = canceled ? Promise.State.Canceled : Promise.State.Resolved;
-                    }
-                    else
-                    {
-                        state = Promise.State.Rejected;
-                        RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
-                        _exceptions = null;
-                    }
-
+                    var state = RejectContainer != null ? Promise.State.Rejected
+                        : canceled ? Promise.State.Canceled
+                        : Promise.State.Resolved;
                     HandleNextInternal(state);
                 }
 

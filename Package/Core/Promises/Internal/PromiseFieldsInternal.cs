@@ -530,7 +530,6 @@ namespace Proto.Promises
 
             partial class PromiseGroupBase<TResult> : SingleAwaitPromise<TResult>
             {
-                internal List<Exception> _exceptions;
                 protected CancelationRef _cancelationRef; // Store the reference directly instead of CancelationSource struct to reduce memory.
                 private int _cancelationId;
                 protected int _waitCount; // int for Interlocked since it doesn't support uint on older runtimes.
@@ -547,7 +546,6 @@ namespace Proto.Promises
 
             partial class MergePromiseGroup<TResult> : SingleAwaitPromise<TResult>
             {
-                private List<Exception> _exceptions;
                 private ValueLinkedStack<MergeCleanupCallback> _cleanupCallbacks;
                 private int _cleanupCount;
                 private bool _isExtended;
