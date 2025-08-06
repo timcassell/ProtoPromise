@@ -390,14 +390,13 @@ namespace Proto.Promises
                     checked { count += 2; }
                     group.AddPromise(promise);
                 }
-                else if (!isResolved)
-                {
-                    isResolved = true;
-                    group.MaybeSetResolved(promise._result);
-                }
                 else
                 {
-                    MaybeInvokeCleanup(ref count, promise._result, group);
+                    if (isResolved || !group.TrySetResolved(promise._result))
+                    {
+                        MaybeInvokeCleanup(ref count, promise._result, group);
+                    }
+                    isResolved = true;
                 }
                 return new PromiseRaceGroup<T>(_sourceCancelationRef, groupCancelationRef, group, _cleanupCallback, default, count, group.Id, cancelOnNonResolved, isResolved);
             }

@@ -31,7 +31,8 @@ namespace ProtoPromise.Tests.Concurrency
     public abstract class ParallelCombineTestHelper
     {
         internal CombineType _combineType;
-        public bool Success { get; protected set; }
+        public Promise.State State { get; protected set; }
+        public bool Success => State != Promise.State.Pending;
 
         public abstract void MaybeAddParallelAction(List<Action> parallelActions);
         public abstract void Setup();
@@ -71,7 +72,7 @@ namespace ProtoPromise.Tests.Concurrency
 
             public override void Setup()
             {
-                Success = false;
+                State = Promise.State.Pending;
                 if (_combineType == CombineType.InSetup)
                 {
                     _combinedPromise = _combiner();
@@ -80,7 +81,7 @@ namespace ProtoPromise.Tests.Concurrency
 
             public override void Teardown()
             {
-                _combinedPromise.ContinueWith(r => Success = true).Forget();
+                _combinedPromise.ContinueWith(r => State = r.State).Forget();
                 _combinedPromise = default(Promise);
             }
         }
@@ -101,7 +102,7 @@ namespace ProtoPromise.Tests.Concurrency
 
             public override void Setup()
             {
-                Success = false;
+                State = Promise.State.Pending;
                 if (_combineType == CombineType.InSetup)
                 {
                     _combinedPromise = _combiner();
@@ -124,7 +125,7 @@ namespace ProtoPromise.Tests.Concurrency
                                 Assert.AreEqual(_expectedResolveValue, r.Value);
                             }
                         }
-                        Success = true;
+                        State = r.State;
                     })
                     .Forget();
                 _combinedPromise = default(Promise<T>);

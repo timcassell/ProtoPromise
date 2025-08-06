@@ -56,7 +56,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal void MaybeSetResolved(in TResult result)
+                internal bool TrySetResolved(in TResult result)
                 {
                     ThrowIfInPool(this);
 
@@ -64,7 +64,9 @@ namespace Proto.Promises
                     {
                         _result = result;
                         CancelGroup();
+                        return true;
                     }
+                    return false;
                 }
 
                 new protected void CancelGroup()
