@@ -35,7 +35,9 @@ namespace Proto.Promises
 
                 new protected void CancelGroup()
                 {
-                    // This may be called multiple times. It's fine because it checks internally if it's already canceled.
+                    // This may be called multiple times. We set _cancelOnNonResolved to false here to avoid extra unnecessary calls to this.
+                    // It's not a thread-safe prevention, and doesn't need to be, because CancelationRef has an internal thread-safe check for if it's already canceled.
+                    _cancelOnNonResolved = false;
                     try
                     {
                         _cancelationRef.CancelUnsafe();
