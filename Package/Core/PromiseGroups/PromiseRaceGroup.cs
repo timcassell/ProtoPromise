@@ -116,11 +116,7 @@ namespace Proto.Promises
 
             if (promise._ref != null)
             {
-                group = Internal.GetOrCreateRacePromiseGroup(_sourceCancelationRef, groupCancelationRef, cancelOnNonResolved);
-                if (isResolved)
-                {
-                    group.SetResolved();
-                }
+                group = Internal.GetOrCreateRacePromiseGroup(_sourceCancelationRef, groupCancelationRef, cancelOnNonResolved, isResolved);
                 group.AddPromise(promise);
                 return new PromiseRaceGroup(_sourceCancelationRef, groupCancelationRef, group, 1, group.Id, cancelOnNonResolved, isResolved);
             }
@@ -133,14 +129,13 @@ namespace Proto.Promises
             }
             catch (Exception e)
             {
-                // We already canceled the group token, no need to cancel it again if a promise is non-resolved.
-                group = Internal.GetOrCreateRacePromiseGroup(_sourceCancelationRef, groupCancelationRef, false);
-                group.RecordException(e);
+                group = Internal.GetOrCreateRacePromiseGroup(_sourceCancelationRef, groupCancelationRef, cancelOnNonResolved, true);
                 group._cancelationOrCleanupThrew = true;
-                return new PromiseRaceGroup(_sourceCancelationRef, groupCancelationRef, group, 0, group.Id, false, isResolved);
+                group.RecordException(e);
+                return new PromiseRaceGroup(_sourceCancelationRef, groupCancelationRef, group, 0, group.Id, cancelOnNonResolved, true);
             }
 
-            return new PromiseRaceGroup(_sourceCancelationRef, groupCancelationRef, group, 0, _groupId, false, true);
+            return new PromiseRaceGroup(_sourceCancelationRef, groupCancelationRef, group, 0, _groupId, cancelOnNonResolved, true);
         }
 
         /// <summary>
@@ -392,11 +387,8 @@ namespace Proto.Promises
                 }
                 else
                 {
-                    if (isResolved || !group.TrySetResolved(promise._result))
-                    {
-                        MaybeInvokeCleanup(ref count, promise._result, group);
-                    }
                     isResolved = true;
+                    group.MaybeSetResolvedOrCleanup(promise._result, ref count);
                 }
                 return new PromiseRaceGroup<T>(_sourceCancelationRef, groupCancelationRef, group, _cleanupCallback, default, count, group.Id, cancelOnNonResolved, isResolved);
             }
@@ -408,11 +400,7 @@ namespace Proto.Promises
 
             if (promise._ref != null)
             {
-                group = Internal.GetOrCreateRacePromiseGroup(_sourceCancelationRef, groupCancelationRef, cancelOnNonResolved, _cleanupCallback);
-                if (isResolved)
-                {
-                    group.SetResolved(_result);
-                }
+                group = Internal.GetOrCreateRacePromiseGroup(_sourceCancelationRef, groupCancelationRef, cancelOnNonResolved, isResolved, _result, _cleanupCallback);
                 group.AddPromise(promise);
                 // Add 2 counts, 1 for the promise and 1 for the cleanup.
                 return new PromiseRaceGroup<T>(_sourceCancelationRef, groupCancelationRef, group, _cleanupCallback, default, 2, group.Id, cancelOnNonResolved, isResolved);
@@ -426,16 +414,10 @@ namespace Proto.Promises
             }
             catch (Exception e)
             {
-                // We already canceled the group token, no need to cancel it again if a promise is non-resolved.
-                group = Internal.GetOrCreateRacePromiseGroup(_sourceCancelationRef, groupCancelationRef, false, _cleanupCallback);
-                if (isResolved)
-                {
-                    group.SetResolved(_result);
-                }
-                group.RecordException(e);
+                group = Internal.GetOrCreateRacePromiseGroup(_sourceCancelationRef, groupCancelationRef, cancelOnNonResolved, true, promise._result, _cleanupCallback);
                 group._cancelationOrCleanupThrew = true;
-                MaybeInvokeCleanup(ref count, promise._result, group);
-                return new PromiseRaceGroup<T>(_sourceCancelationRef, groupCancelationRef, group, _cleanupCallback, default, count, group.Id, false, isResolved);
+                group.RecordException(e);
+                return new PromiseRaceGroup<T>(_sourceCancelationRef, groupCancelationRef, group, _cleanupCallback, default, count, group.Id, cancelOnNonResolved, true);
             }
 
             if (!isResolved)
@@ -455,8 +437,7 @@ namespace Proto.Promises
                 return new PromiseRaceGroup<T>(_sourceCancelationRef, groupCancelationRef, group, _cleanupCallback, _result, 0, _groupId, false, true);
             }
 
-            group = Internal.GetOrCreateRacePromiseGroup(_sourceCancelationRef, groupCancelationRef, false, cleanupCallback);
-            group.SetResolved(_result);
+            group = Internal.GetOrCreateRacePromiseGroup(_sourceCancelationRef, groupCancelationRef, cancelOnNonResolved, true, _result, cleanupCallback);
             group.HookupCleanupPromise(cleanupPromise);
             return new PromiseRaceGroup<T>(_sourceCancelationRef, groupCancelationRef, group, cleanupCallback, default, 1, group.Id, false, isResolved);
         }
@@ -485,24 +466,6 @@ namespace Proto.Promises
                 Internal.ThrowInvalidRaceGroup(1);
             }
             return new PromiseRaceGroup<T>(_sourceCancelationRef, groupCancelationRef, group, _cleanupCallback, _result, _count, _groupId, _cancelOnNonResolved, _isResolved);
-        }
-
-        private void MaybeInvokeCleanup(ref uint count, in T arg, Internal.PromiseRefBase.RacePromiseGroup<T> group)
-        {
-            var cleanupCallback = _cleanupCallback;
-            if (cleanupCallback == null)
-            {
-                return;
-            }
-
-            var cleanupPromise = cleanupCallback.Invoke(arg);
-            if (cleanupPromise._ref == null)
-            {
-                return;
-            }
-
-            checked { ++count; }
-            group.HookupCleanupPromise(cleanupPromise);
         }
 
         /// <summary>
