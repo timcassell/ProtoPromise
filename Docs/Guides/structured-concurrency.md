@@ -17,6 +17,20 @@ foreach (var link in pages.SelectMany(page => ExtractAllLinks(page)))
 }
 ```
 
+If you are loading disposable resources, you can pass an onCleanup delegate to the group to automatically dispose the results if the group is rejected or canceled.
+
+```cs
+var resources = await PromiseAllGroup<IDisposable>.New(cancelationToken, out var groupCancelationToken, resource => resource.Dispose())
+    .Add(LoadResource("resource1", groupCancelationToken, resource => resource.Dispose()))
+    .Add(LoadResource("resource2", groupCancelationToken, resource => resource.Dispose()))
+    .WaitAsync();
+// ...
+foreach (var resource in resources)
+{
+    resource.Dispose();
+}
+```
+
 ## PromiseMergeGroup
 
 `PromiseMergeGroup` combines multiple async operations of one or more types. The group's `WaitAsync()` method either returns a void `Promise` if only void promises were added to it, or a `Promies<T>` that yields a `ValueTuple<>` containing the type of each promise in the order it was added. When all promises have completed successfully, the group will be resolved with the appropriate value. If any promise is rejected, the group will be rejected with an `AggregateException` containing all of the rejections.
@@ -34,6 +48,18 @@ foreach (var link in ExtractAllLinks(page2))
 {
     Console.WriteLine(link);
 }
+```
+
+If you are loading disposable resources, you can pass an onCleanup delegate to the `Add` method to automatically dispose the result if the group is rejected or canceled.
+
+```cs
+var (resource1, resource2) = await PromiseMergeGroup.New(cancelationToken, out var groupCancelationToken)
+    .Add(LoadResource("resource1", groupCancelationToken, resource => resource.Dispose()))
+    .Add(LoadResource("resource2", groupCancelationToken, resource => resource.Dispose()))
+    .WaitAsync();
+// ...
+resource1.Dispose();
+resource2.Dispose();
 ```
 
 ## PromiseAllResultsGroup and PromiseMergeResultsGroup
@@ -64,6 +90,8 @@ else if (imageResult.State == Promise.State.Rejected)
 }
 ```
 
+These group types do not support onCleanup delegates, because the results contain all of the information necessary to do any custom cleanup logic.
+
 ## PromiseRaceGroup
 
 `PromiseRaceGroup` races multiple async operations of a single type. If any promise is resolved, the group will be resolved with the result of the promise that resolved first. If no promises are resolved and any promise is rejected, the group will be rejected with an `AggregateException` containing all of the rejections.
@@ -74,6 +102,12 @@ var page = await PromiseRaceGroup<string>.New(cancelationToken, out var groupCan
     .Add(Download("http://www.bing.com", groupCancelationToken))
     .WaitAsync();
 Console.WriteLine(page); // Print the page that was downloaded first.
+```
+
+If you are loading disposable resources, you can pass an onCleanup delegate to the group to automatically dispose the results if more than 1 result is obtained, or if the group is rejected or canceled.
+
+```cs
+var resources = await PromiseRaceGroup<IDisposable>.New(cancelationToken, out var groupCancelationToken, resource => resource.Dispose())
 ```
 
 ## PromiseEachGroup
