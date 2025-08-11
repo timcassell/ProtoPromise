@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -57,6 +58,9 @@ namespace Proto.Promises
     /// <summary>
     /// Provides options that control the behavior of promise continuation execution.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode, StackTraceHidden]
+#endif
     public readonly struct ContinuationOptions
     {
         // Matches SynchronizationOption, plus an extra Explicit option.

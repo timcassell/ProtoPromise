@@ -30,7 +30,7 @@ This library was built to work in all C#/.Net ecosystems, including Unity, Mono,
 - ProtoPromise v3 supports .Net Standard 2.0 or newer (Unity 2018.3 or newer).
 - ProtoPromise v2 supports .Net 3.5 or newer (Unity 5.5 or newer).
 
-See [Guides](https://github.com/timcassell/ProtoPromise/tree/master/Docs/Guides) for information on how to install and use this library.
+See [Guides](https://github.com/timcassell/ProtoPromise/tree/master/Docs/Guides) for information on how to install and use this library.  
 See [ChangeLog](https://github.com/timcassell/ProtoPromise/tree/master/Docs/Changelog) for the history of changes.
 
 ## Benchmarks

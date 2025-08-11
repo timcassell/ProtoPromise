@@ -10,7 +10,9 @@ using NUnit.Framework;
 using Proto.Promises;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 
 namespace ProtoPromise.Tests.Concurrency.PromiseGroups
 {
@@ -116,6 +118,7 @@ namespace ProtoPromise.Tests.Concurrency.PromiseGroups
         [Test]
         public void DeferredsMayBeCompletedWhileTheirPromisesArePassedToPromiseRaceGroup_AndCancelationTriggeredConcurrently_3_T(
             [Values] bool withCancelation,
+            [Values] bool withCleanup,
             [Values] CombineType combineType,
             [Values] CompleteType completeType1,
             [Values] bool alreadyComplete1,
@@ -153,6 +156,15 @@ namespace ProtoPromise.Tests.Concurrency.PromiseGroups
                 parallelActions.Add(() => cancelationSource.Cancel());
             }
 
+            int resolveCount = 0;
+            int cleanupCount = 0;
+            long completedFlag = 0;
+            Action<int> onCleanup = _ =>
+            {
+                Assert.AreEqual(0, Interlocked.Read(ref completedFlag));
+                Interlocked.Increment(ref cleanupCount);
+            };
+
             var helper = ParallelCombineTestHelper.Create(
                 combineType,
                 () => group
@@ -171,15 +183,28 @@ namespace ProtoPromise.Tests.Concurrency.PromiseGroups
                     if (withCancelation)
                     {
                         cancelationSource = CancelationSource.New();
-                        group = PromiseRaceGroup<int>.New(cancelationSource.Token, out groupCancelationToken);
+                        group = withCleanup
+                            ? PromiseRaceGroup<int>.New(cancelationSource.Token, out groupCancelationToken, onCleanup)
+                            : PromiseRaceGroup<int>.New(cancelationSource.Token, out groupCancelationToken);
                     }
                     else
                     {
-                        group = PromiseRaceGroup<int>.New(out groupCancelationToken);
+                        group = withCleanup
+                            ? PromiseRaceGroup<int>.New(out groupCancelationToken, onCleanup)
+                            : PromiseRaceGroup<int>.New(out groupCancelationToken);
                     }
                     promise1 = TestHelper.BuildPromise(completeType1, alreadyComplete1, 1, rejectValue, groupCancelationToken, out tryCompleter1);
                     promise2 = TestHelper.BuildPromise(completeType2, alreadyComplete2, 2, rejectValue, groupCancelationToken, out tryCompleter2);
                     promise3 = TestHelper.BuildPromise(completeType3, alreadyComplete3, 3, rejectValue, groupCancelationToken, out tryCompleter3);
+                    completedFlag = 0;
+                    if (withCleanup)
+                    {
+                        resolveCount = 0;
+                        cleanupCount = 0;
+                        promise1 = promise1.Then(v => { Interlocked.Increment(ref resolveCount); return v; });
+                        promise2 = promise2.Then(v => { Interlocked.Increment(ref resolveCount); return v; });
+                        promise3 = promise3.Then(v => { Interlocked.Increment(ref resolveCount); return v; });
+                    }
                     helper.Setup();
                 },
                 // teardown
@@ -191,6 +216,13 @@ namespace ProtoPromise.Tests.Concurrency.PromiseGroups
                         cancelationSource.Dispose();
                     }
                     Assert.IsTrue(helper.Success);
+                    if (withCleanup)
+                    {
+                        if (helper.State != Promise.State.Resolved)
+                            Assert.AreEqual(resolveCount, cleanupCount);
+                        else
+                            Assert.AreEqual(resolveCount - 1, cleanupCount);
+                    }
                 },
                 parallelActions
             );

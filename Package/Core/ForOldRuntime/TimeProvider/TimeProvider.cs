@@ -12,6 +12,9 @@ using System.Threading.Tasks;
 namespace System
 {
     /// <summary>Provides an abstraction for time.</summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode, StackTraceHidden]
+#endif
     public abstract class TimeProvider
     {
         /// <summary>
@@ -164,6 +167,9 @@ namespace System
         }
 
         /// <summary>Thin wrapper for a <see cref="Timer"/>.</summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         private sealed class SystemTimeProviderTimer : ITimer
         {
             private readonly Timer _timer;
@@ -180,7 +186,10 @@ namespace System
                     ts.Callback(ts.State);
                 }, timerState, dueTime, period);
             }
-
+            
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             private sealed class TimerState
             {
                 public TimerCallback Callback { get; }
@@ -221,6 +230,9 @@ namespace System
         /// Used to create a <see cref="TimeProvider"/> instance returned from <see cref="System"/> and uses the default implementation
         /// provided by <see cref="TimeProvider"/> which uses <see cref="DateTimeOffset.UtcNow"/>, <see cref="TimeZoneInfo.Local"/>, <see cref="Stopwatch"/>, and <see cref="Timer"/>.
         /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         private sealed class SystemTimeProvider : TimeProvider
         {
             /// <summary>Initializes the instance.</summary>

@@ -7,6 +7,7 @@
 using Proto.Promises.CompilerServices;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace Proto.Promises.Linq
 {
@@ -267,6 +268,9 @@ namespace Proto.Promises.Linq
                 comparer);
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         private static class ToDictionaryHelper<TKey>
         {
             internal static async Promise<Dictionary<TKey, TSource>> ToDictionaryAsyncCore<TSource, TKeySelector>(
@@ -1272,6 +1276,9 @@ namespace Proto.Promises.Linq
                 comparer);
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         private static class ToDictionaryHelper<TKey, TElement>
         {
             internal static async Promise<Dictionary<TKey, TElement>> ToDictionaryAsyncCore<TSource, TKeySelector, TElementSelector>(

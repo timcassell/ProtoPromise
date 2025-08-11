@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 #pragma warning disable IDE0063 // Use simple 'using' statement
@@ -54,6 +55,9 @@ namespace Proto.Promises.Linq
             return AsyncEnumerable<T>.Create(new EnumeratorIterator<T, TEnumerator>(source));
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         private readonly struct EnumeratorIterator<TSource, TEnumerator> : IAsyncIterator<TSource>
             where TEnumerator : IEnumerator<TSource>
         {

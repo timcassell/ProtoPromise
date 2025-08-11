@@ -5,6 +5,7 @@
 // Hooks up to Promise.Manager.ClearObjectPool() event instead of using Gen2GC callbacks.
 #if UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
 
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -20,6 +21,9 @@ namespace System.Buffers
     /// checking its processor number, because multiple threads could interleave on the same core, and because
     /// a thread is allowed to check other core's buckets if its core's bucket is empty/full.
     /// </remarks>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode, StackTraceHidden]
+#endif
     internal sealed partial class SharedArrayPool<T> : ArrayPool<T>
     {
         /// <summary>The number of buckets (array sizes) in the pool, one for each array length, starting from length 16.</summary>
@@ -152,6 +156,9 @@ namespace System.Buffers
         /// <summary>
         /// Stores a set of stacks of arrays, with one stack per core.
         /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         private sealed class PerCoreLockedStacks
         {
             /// <summary>The stacks.</summary>
@@ -214,6 +221,9 @@ namespace System.Buffers
         }
 
         /// <summary>Provides a simple stack of arrays, protected by a lock.</summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         private sealed class LockedStack
         {
             private readonly T[][] _arrays = new T[MaxBuffersPerArraySizePerCore][];

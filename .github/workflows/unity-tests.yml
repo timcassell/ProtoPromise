@@ -126,7 +126,7 @@ jobs:
           projectPath: ProtoPromise_Unity
           testMode: ${{ matrix.testMode.value }}
           unityVersion: ${{ matrix.unity.version }}
-        timeout-minutes: 180
+        timeout-minutes: 240
 
       - uses: dorny/test-reporter@v2
         if: always()

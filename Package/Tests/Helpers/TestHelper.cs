@@ -50,6 +50,15 @@ namespace ProtoPromise.Tests
         Immediate
     }
 
+    public enum CleanupType
+    {
+        None,
+        Sync,
+        SyncCapture,
+        Async,
+        AsyncCapture
+    }
+
     public delegate void TestAction<T>(ref T value);
     public delegate void TestAction<T1, T2>(ref T1 value1, T2 value2);
 
@@ -497,32 +506,47 @@ namespace ProtoPromise.Tests
 
         public static void SpinUntil(Func<bool> condition, TimeSpan timeout, string message = null)
         {
-            if (!SpinWait.SpinUntil(condition, timeout))
+            // Don't use SpinWait.SpinUntil. https://github.com/dotnet/runtime/issues/115989#issuecomment-2920674169
+            var spinner = new System.Threading.SpinWait();
+            var timestamp = TimeProvider.System.GetTimestamp();
+            do
             {
-                var msg = $"SpinUntil timed out after {timeout}";
-                if (message != null)
+                if (condition())
                 {
-                    msg += $"; {message}";
+                    return;
                 }
-                throw new TimeoutException(msg);
+                spinner.SpinOnce(sleep1Threshold: -1);
+            } while (timeout < TimeSpan.Zero || TimeProvider.System.GetElapsedTime(timestamp) < timeout);
+
+            var msg = $"SpinUntil timed out after {timeout}";
+            if (message != null)
+            {
+                msg += $"; {message}";
             }
+            throw new TimeoutException(msg);
         }
 
         public static void SpinUntilWhileExecutingForegroundContext(Func<bool> condition, TimeSpan timeout, string message = null)
         {
-            if (!SpinWait.SpinUntil(() =>
+            // Don't use SpinWait.SpinUntil. https://github.com/dotnet/runtime/issues/115989#issuecomment-2920674169
+            var spinner = new System.Threading.SpinWait();
+            var timestamp = TimeProvider.System.GetTimestamp();
+            do
             {
                 ExecuteForegroundCallbacks();
-                return condition();
-            }, timeout))
-            {
-                var msg = $"SpinUntilWhileExecutingForegroundContext timed out after {timeout}";
-                if (message != null)
+                if (condition())
                 {
-                    msg += $"; {message}";
+                    return;
                 }
-                throw new TimeoutException(msg);
+                spinner.SpinOnce(sleep1Threshold: -1);
+            } while (timeout < TimeSpan.Zero || TimeProvider.System.GetElapsedTime(timestamp) < timeout);
+
+            var msg = $"SpinUntilWhileExecutingForegroundContext timed out after {timeout}";
+            if (message != null)
+            {
+                msg += $"; {message}";
             }
+            throw new TimeoutException(msg);
         }
 
         public static void AssertCallbackContext(SynchronizationType expectedContext, SynchronizationType invokeContext, Thread foregroundThread)

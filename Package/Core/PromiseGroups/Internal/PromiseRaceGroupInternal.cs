@@ -20,82 +20,147 @@ namespace Proto.Promises
 #endif
             internal abstract partial class RacePromiseGroupBase<TResult> : PromiseGroupBase<TResult>
             {
-                protected void Complete()
+                protected void Complete(Promise.State state)
                 {
-                    HandleNextInternal(CompleteAndGetState());
-                }
+                    ThrowIfInPool(this);
 
-                private Promise.State CompleteAndGetState()
-                {
-                    var state = _completeState;
-                    // Race promise group ignores rejections if any promise was resolved,
-                    // unless a cancelation token callback threw.
-                    if ((state != Promise.State.Resolved | _cancelationThrew) & _exceptions != null)
+                    // Race promise group ignores rejections and cancelations if any promise was resolved,
+                    // unless the source cancelation token was canceled, or a cancelation token or cleanup callback threw.
+                    if (state != Promise.State.Resolved & RejectContainer != null)
                     {
                         state = Promise.State.Rejected;
-                        RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
                     }
-                    _exceptions = null;
-                    return state;
-                }
-
-                [MethodImpl(InlineOption)]
-                internal void SetResolved()
-                {
-                    // We don't need to branch for VoidResult.
-                    _isResolved = 1;
-                    _completeState = Promise.State.Resolved;
-                    CancelGroup();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal void SetResolved(in TResult result)
-                {
-                    if (Interlocked.Exchange(ref _isResolved, 1) == 0)
-                    {
-                        _completeState = Promise.State.Resolved;
-                        _result = result;
-                    }
-                    CancelGroup();
+                    HandleNextInternal(state);
                 }
 
                 new protected void CancelGroup()
                 {
-                    // This may be called multiple times. It's fine because it checks internally if it's already canceled.
+                    // This may be called multiple times. We set _cancelOnNonResolved to false here to avoid extra unnecessary calls to this.
+                    // It's not a thread-safe prevention, and doesn't need to be, because CancelationRef has an internal thread-safe check for if it's already canceled.
+                    _cancelOnNonResolved = false;
                     try
                     {
                         _cancelationRef.CancelUnsafe();
                     }
                     catch (Exception e)
                     {
-                        _cancelationThrew = true;
+                        _cancelationOrCleanupThrew = true;
                         RecordException(e);
                     }
                 }
 
                 [MethodImpl(InlineOption)]
-                internal void MarkReady(uint totalPromises)
-                    => MarkReady(unchecked((int) totalPromises));
-
-                internal void MarkReady(int totalPromises)
+                protected void Reset(CancelationRef sourceCancelationRef, CancelationRef groupCancelationRef, bool cancelOnNonResolved, bool isResolved)
                 {
-                    // This method is called after all promises have been hooked up to this.
-                    if (MarkReadyAndGetIsComplete(totalPromises))
+                    _sourceCancelationRef = sourceCancelationRef;
+                    _isResolved = isResolved ? 1 : 0;
+                    _cancelOnNonResolved = cancelOnNonResolved;
+                    _cancelationOrCleanupThrew = false;
+                    Reset(groupCancelationRef);
+                    if (isResolved)
                     {
-                        // All promises already completed.
-                        _next = PromiseCompletionSentinel.s_instance;
-                        SetCompletionState(CompleteAndGetState());
+                        CancelGroup();
                     }
+                }
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal sealed partial class RacePromiseGroupVoid : RacePromiseGroupBase<VoidResult>
+            {
+                [MethodImpl(InlineOption)]
+                private static RacePromiseGroupVoid GetOrCreate()
+                {
+                    var obj = ObjectPool.TryTakeOrInvalid<RacePromiseGroupVoid>();
+                    return obj == InvalidAwaitSentinel.s_instance
+                        ? new RacePromiseGroupVoid()
+                        : obj.UnsafeAs<RacePromiseGroupVoid>();
                 }
 
                 [MethodImpl(InlineOption)]
-                protected void Reset(CancelationRef cancelationSource, bool cancelOnNonResolved)
+                internal static RacePromiseGroupVoid GetOrCreate(CancelationRef sourceCancelationRef, CancelationRef groupCancelationRef, bool cancelOnNonResolved, bool isResolved)
                 {
-                    Reset(cancelationSource);
-                    _completeState = Promise.State.Canceled; // Default to Canceled state. If the promise is actually resolved or rejected, the state will be overwritten.
-                    _isResolved = 0;
-                    _cancelOnNonResolved = cancelOnNonResolved;
-                    _cancelationThrew = false;
+                    var promise = GetOrCreate();
+                    promise.Reset(sourceCancelationRef, groupCancelationRef, cancelOnNonResolved, isResolved);
+                    return promise;
+                }
+
+                internal override void MaybeDispose()
+                {
+                    Dispose();
+                    ObjectPool.MaybeRepool(this);
+                }
+
+                [MethodImpl(InlineOption)]
+                internal void SetResolved()
+                {
+                    ThrowIfInPool(this);
+
+                    // We don't need to branch for VoidResult.
+                    _isResolved = 1;
+                    CancelGroup();
+                }
+
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                {
+                    ThrowIfInPool(this);
+
+                    RemovePromiseAndSetCompletionState(handler, state);
+                    if (state == Promise.State.Resolved)
+                    {
+                        if (Interlocked.Exchange(ref _isResolved, 1) == 0)
+                        {
+                            CancelGroup();
+                        }
+                    }
+                    else
+                    {
+                        if (state == Promise.State.Rejected)
+                        {
+                            RecordException(handler.RejectContainer.GetValueAsException());
+                        }
+                        if (_cancelOnNonResolved & _isResolved == 0)
+                        {
+                            CancelGroup();
+                        }
+                    }
+                    handler.MaybeDispose();
+                    if (TryComplete())
+                    {
+                        // All promises are complete.
+                        Complete();
+                    }
+                }
+
+                private void Complete()
+                {
+                    var state = _isResolved == 1 & !_cancelationOrCleanupThrew ? Promise.State.Resolved : Promise.State.Canceled;
+                    var sourceCancelationRef = _sourceCancelationRef;
+                    if (sourceCancelationRef != null)
+                    {
+                        _sourceCancelationRef = null;
+                        // If the source cancelation token was canceled before this is complete, it's canceled.
+                        if (sourceCancelationRef.IsCanceledUnsafe())
+                        {
+                            state = Promise.State.Canceled;
+                        }
+                        sourceCancelationRef.ReleaseUserUnsafe();
+                    }
+
+                    Complete(state);
+                }
+
+                internal void MarkReady(uint totalPromises)
+                {
+                    ThrowIfInPool(this);
+
+                    // This method is called after all promises have been hooked up to this.
+                    if (MarkReadyAndGetIsComplete(unchecked((int) totalPromises)))
+                    {
+                        // All promises already completed.
+                        Complete();
+                    }
                 }
             }
 
@@ -114,10 +179,13 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static RacePromiseGroup<TResult> GetOrCreate(CancelationRef cancelationSource, bool cancelOnNonResolved)
+                internal static RacePromiseGroup<TResult> GetOrCreate(CancelationRef sourceCancelationRef, CancelationRef groupCancelationRef, bool cancelOnNonResolved,
+                    bool isResolved, in TResult result, RaceCleanupCallback<TResult> cleanupCallback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset(cancelationSource, cancelOnNonResolved);
+                    promise.Reset(sourceCancelationRef, groupCancelationRef, cancelOnNonResolved, isResolved);
+                    promise._result = result;
+                    promise._cleanupCallback = cleanupCallback;
                     return promise;
                 }
 
@@ -125,172 +193,241 @@ namespace Proto.Promises
                 {
                     Dispose();
                     ObjectPool.MaybeRepool(this);
+                }
+
+                [MethodImpl(InlineOption)]
+                private bool TryComplete(int releaseCount)
+                {
+                    Debug.Assert(releaseCount < 0);
+                    // We don't do an overflow check here, because it starts at zero
+                    // and a promise may complete and decrement it before MarkReady() is called.
+                    return Interlocked.Add(ref _waitCount, releaseCount) == 0;
+                }
+
+                internal void MaybeSetResolvedOrCleanup(in TResult result, ref uint count)
+                {
+                    ThrowIfInPool(this);
+
+                    if (Interlocked.Exchange(ref _isResolved, 1) == 0)
+                    {
+                        _result = result;
+                        CancelGroup();
+                        return;
+                    }
+
+                    var cleanupCallback = _cleanupCallback;
+                    if (cleanupCallback == null)
+                    {
+                        return;
+                    }
+
+                    var cleanupPromise = cleanupCallback.Invoke(result);
+                    if (cleanupPromise._ref == null)
+                    {
+                        return;
+                    }
+
+                    checked { ++count; }
+                    HookupCleanupPromise(cleanupPromise);
                 }
 
                 internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
+                    ThrowIfInPool(this);
+
                     RemovePromiseAndSetCompletionState(handler, state);
+                    int releaseCount = -1;
                     if (state == Promise.State.Resolved)
                     {
                         if (Interlocked.Exchange(ref _isResolved, 1) == 0)
                         {
-                            _completeState = Promise.State.Resolved;
+                            releaseCount = -2;
                             _result = handler.GetResult<TResult>();
+                            CancelGroup();
                         }
-                        CancelGroup();
+                        else
+                        {
+                            MaybeInvokeCleanupCallback(ref releaseCount, handler.GetResult<TResult>());
+                        }
                     }
                     else
                     {
+                        releaseCount = -2;
                         if (state == Promise.State.Rejected)
                         {
                             RecordException(handler.RejectContainer.GetValueAsException());
                         }
-                        if (_cancelOnNonResolved)
+                        if (_cancelOnNonResolved & _isResolved == 0)
                         {
                             CancelGroup();
                         }
                     }
                     handler.MaybeDispose();
-                    if (TryComplete())
+                    if (TryComplete(releaseCount))
                     {
                         // All promises are complete.
-                        Complete();
+                        CompleteAndCleanup();
                     }
                 }
-            }
 
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
+                private void MaybeInvokeCleanupCallback(ref int releaseCount, in TResult arg)
+                {
+                    var cleanupCallback = _cleanupCallback;
+                    if (cleanupCallback == null)
+                    {
+                        releaseCount = -2;
+                        return;
+                    }
+
+                    var cleanupPromise = cleanupCallback.Invoke(arg);
+                    if (cleanupPromise._ref == null)
+                    {
+                        releaseCount = -2;
+                        return;
+                    }
+
+                    HookupCleanupPromise(cleanupPromise);
+                }
+
+                internal void HookupCleanupPromise(Promise cleanupPromise)
+                {
+                    ThrowIfInPool(this);
+
+                    try
+                    {
+                        ValidateReturn(cleanupPromise);
+#if PROMISE_DEBUG
+                        AddForCircularAwaitDetection(cleanupPromise._ref);
+                        cleanupPromise
+                            .ContinueWith((this, cleanupPromise._ref), (cv, result) =>
+                            {
+                                var (_this, cleanupRef) = cv;
+                                RemoveForCircularAwaitDetection(cleanupRef);
+#else
+                        cleanupPromise
+                            .ContinueWith(this, (_this, result) =>
+                            {
 #endif
-            internal sealed partial class RacePromiseWithIndexGroupVoid : RacePromiseGroupBase<int>
-            {
-                [MethodImpl(InlineOption)]
-                private static RacePromiseWithIndexGroupVoid GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<RacePromiseWithIndexGroupVoid>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new RacePromiseWithIndexGroupVoid()
-                        : obj.UnsafeAs<RacePromiseWithIndexGroupVoid>();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static RacePromiseWithIndexGroupVoid GetOrCreate(CancelationRef cancelationSource, bool cancelOnNonResolved)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset(cancelationSource, cancelOnNonResolved);
-                    return promise;
-                }
-
-                internal override void MaybeDispose()
-                {
-                    Dispose();
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
-                {
-                    RemovePromiseAndSetCompletionState(handler, state);
-                    if (state == Promise.State.Resolved)
-                    {
-                        if (Interlocked.Exchange(ref _isResolved, 1) == 0)
-                        {
-                            _completeState = Promise.State.Resolved;
-                            _result = index;
-                        }
-                        CancelGroup();
+                                if (result.State == Promise.State.Rejected)
+                                {
+                                    _this._cancelationOrCleanupThrew = true;
+                                    _this.RecordException(result._target._rejectContainer.GetValueAsException());
+                                }
+                                if (_this.TryComplete())
+                                {
+                                    _this.CompleteAndCleanup();
+                                }
+                            })
+                            .Forget();
                     }
-                    else
+                    catch (Exception e)
                     {
-                        if (state == Promise.State.Rejected)
-                        {
-                            RecordException(handler.RejectContainer.GetValueAsException());
-                        }
-                        if (_cancelOnNonResolved)
-                        {
-                            CancelGroup();
-                        }
-                    }
-                    handler.MaybeDispose();
-                    if (TryComplete())
-                    {
-                        // All promises are complete.
-                        Complete();
-                    }
-                }
-            }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
+#if PROMISE_DEBUG
+                        RemoveForCircularAwaitDetection(cleanupPromise._ref);
 #endif
-            internal sealed partial class RacePromiseWithIndexGroup<TResult> : RacePromiseGroupBase<(int, TResult)>
-            {
-                [MethodImpl(InlineOption)]
-                private static RacePromiseWithIndexGroup<TResult> GetOrCreate()
-                {
-                    var obj = ObjectPool.TryTakeOrInvalid<RacePromiseWithIndexGroup<TResult>>();
-                    return obj == InvalidAwaitSentinel.s_instance
-                        ? new RacePromiseWithIndexGroup<TResult>()
-                        : obj.UnsafeAs<RacePromiseWithIndexGroup<TResult>>();
-                }
-
-                [MethodImpl(InlineOption)]
-                internal static RacePromiseWithIndexGroup<TResult> GetOrCreate(CancelationRef cancelationSource, bool cancelOnNonResolved)
-                {
-                    var promise = GetOrCreate();
-                    promise.Reset(cancelationSource, cancelOnNonResolved);
-                    return promise;
-                }
-
-                internal override void MaybeDispose()
-                {
-                    Dispose();
-                    ObjectPool.MaybeRepool(this);
-                }
-
-                internal override void Handle(PromiseRefBase handler, Promise.State state, int index)
-                {
-                    RemovePromiseAndSetCompletionState(handler, state);
-                    if (state == Promise.State.Resolved)
-                    {
-                        if (Interlocked.Exchange(ref _isResolved, 1) == 0)
+                        _cancelationOrCleanupThrew = true;
+                        RecordException(e is InvalidReturnException ? e : new InvalidReturnException("onCleanup returned an invalid promise.", string.Empty));
+                        if (TryComplete())
                         {
-                            _completeState = Promise.State.Resolved;
-                            _result = (index, handler.GetResult<TResult>());
-                        }
-                        CancelGroup();
-                    }
-                    else
-                    {
-                        if (state == Promise.State.Rejected)
-                        {
-                            RecordException(handler.RejectContainer.GetValueAsException());
-                        }
-                        if (_cancelOnNonResolved)
-                        {
-                            CancelGroup();
+                            CompleteAndCleanup();
                         }
                     }
-                    handler.MaybeDispose();
-                    if (TryComplete())
+                }
+
+                internal void MarkReady(uint totalPromises)
+                {
+                    ThrowIfInPool(this);
+
+                    // This method is called after all promises have been hooked up to this.
+                    if (MarkReadyAndGetIsComplete(unchecked((int) totalPromises)))
                     {
-                        // All promises are complete.
-                        Complete();
+                        // All promises already completed.
+                        CompleteAndCleanup();
+                    }
+                }
+
+                private void CompleteAndCleanup()
+                {
+                    ThrowIfInPool(this);
+
+                    // If the source cancelation token is canceled, or a cancelation or cleanup callback threw,
+                    // and this was otherwise resolved, we need to cleanup the resolved value.
+                    var cleanupCallback = _cleanupCallback;
+                    _cleanupCallback = null;
+                    bool wasResolved = _isResolved == 1;
+                    var state = wasResolved & !_cancelationOrCleanupThrew ? Promise.State.Resolved : Promise.State.Canceled;
+                    var sourceCancelationRef = _sourceCancelationRef;
+                    if (sourceCancelationRef != null)
+                    {
+                        _sourceCancelationRef = null;
+                        // If the source cancelation token was canceled before this is complete, it's canceled.
+                        if (sourceCancelationRef.IsCanceledUnsafe())
+                        {
+                            state = Promise.State.Canceled;
+                        }
+                        sourceCancelationRef.ReleaseUserUnsafe();
+                    }
+
+                    if (state == Promise.State.Resolved | !wasResolved | cleanupCallback == null)
+                    {
+                        cleanupCallback?.Dispose();
+                        Complete(state);
+                        return;
+                    }
+
+                    var cleanupPromise = cleanupCallback.Invoke(_result);
+                    cleanupCallback.Dispose();
+                    if (cleanupPromise._ref == null)
+                    {
+                        Complete(state);
+                        return;
+                    }
+
+                    try
+                    {
+                        ValidateReturn(cleanupPromise);
+#if PROMISE_DEBUG
+                        AddForCircularAwaitDetection(cleanupPromise._ref);
+                        cleanupPromise
+                            .ContinueWith((this, cleanupPromise._ref), (cv, result) =>
+                            {
+                                var (_this, cleanupRef) = cv;
+                                RemoveForCircularAwaitDetection(cleanupRef);
+#else
+                        cleanupPromise
+                            .ContinueWith(this, (_this, result) =>
+                            {
+#endif
+                                if (result.State == Promise.State.Rejected)
+                                {
+                                    _this._cancelationOrCleanupThrew = true;
+                                    _this.RecordException(result._target._rejectContainer.GetValueAsException());
+                                }
+                                _this.Complete(Promise.State.Canceled);
+                            })
+                            .Forget();
+                    }
+                    catch (Exception e)
+                    {
+#if PROMISE_DEBUG
+                        RemoveForCircularAwaitDetection(cleanupPromise._ref);
+#endif
+                        _cancelationOrCleanupThrew = true;
+                        RecordException(e is InvalidReturnException ? e : new InvalidReturnException("onCleanup returned an invalid promise.", string.Empty));
+                        Complete(Promise.State.Rejected);
                     }
                 }
             }
         } // class PromiseRefBase
 
         [MethodImpl(InlineOption)]
-        internal static PromiseRefBase.RacePromiseGroup<T> GetOrCreateRacePromiseGroup<T>(CancelationRef cancelationSource, bool cancelOnNonResolved)
-            => PromiseRefBase.RacePromiseGroup<T>.GetOrCreate(cancelationSource, cancelOnNonResolved);
+        internal static PromiseRefBase.RacePromiseGroupVoid GetOrCreateRacePromiseGroup(CancelationRef sourceCancelationRef, CancelationRef groupCancelationRef, bool cancelOnNonResolved, bool isResolved)
+            => PromiseRefBase.RacePromiseGroupVoid.GetOrCreate(sourceCancelationRef, groupCancelationRef, cancelOnNonResolved, isResolved);
 
         [MethodImpl(InlineOption)]
-        internal static PromiseRefBase.RacePromiseWithIndexGroupVoid GetOrCreateRacePromiseWithIndexGroupVoid(CancelationRef cancelationSource, bool cancelOnNonResolved)
-            => PromiseRefBase.RacePromiseWithIndexGroupVoid.GetOrCreate(cancelationSource, cancelOnNonResolved);
-
-        [MethodImpl(InlineOption)]
-        internal static PromiseRefBase.RacePromiseWithIndexGroup<T> GetOrCreateRacePromiseWithIndexGroup<T>(CancelationRef cancelationSource, bool cancelOnNonResolved)
-            => PromiseRefBase.RacePromiseWithIndexGroup<T>.GetOrCreate(cancelationSource, cancelOnNonResolved);
+        internal static PromiseRefBase.RacePromiseGroup<T> GetOrCreateRacePromiseGroup<T>(CancelationRef sourceCancelationRef, CancelationRef groupCancelationRef, bool cancelOnNonResolved, bool isResolved,
+            in T result, RaceCleanupCallback<T> cleanupCallback)
+            => PromiseRefBase.RacePromiseGroup<T>.GetOrCreate(sourceCancelationRef, groupCancelationRef, cancelOnNonResolved, isResolved, result, cleanupCallback);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void ThrowInvalidRaceGroup(int skipFrames)

@@ -4,7 +4,12 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0028 // Collection initialization can be simplified
+#pragma warning disable IDE0090 // Use 'new(...)'
+#pragma warning disable IDE0306 // Collection initialization can be simplified
+
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -15,7 +20,7 @@ namespace Proto.Promises
     {
         partial class HandleablePromiseBase
         {
-            internal virtual void Handle(PromiseRefBase.PromisePassThroughForMergeGroup passthrough, PromiseRefBase handler, Promise.State state) { throw new System.InvalidOperationException(); }
+            internal virtual void Handle(PromiseRefBase.PromisePassThroughForMergeGroup passthrough, PromiseRefBase handler, Promise.State state) => throw new System.InvalidOperationException();
         }
 
         partial class PromiseRefBase
@@ -83,12 +88,6 @@ namespace Proto.Promises
 #endif
             internal abstract partial class MergePromiseGroupBase<TResult> : PromiseGroupBase<TResult>
             {
-                [MethodImpl(InlineOption)]
-                new protected void CancelGroup()
-                {
-                    _completeState = Promise.State.Canceled;
-                    base.CancelGroup();
-                }
             }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -109,7 +108,6 @@ namespace Proto.Promises
                 internal static MergePromiseGroupVoid GetOrCreate(CancelationRef cancelationSource)
                 {
                     var promise = GetOrCreate();
-                    promise._completeState = Promise.State.Resolved; // Default to Resolved state. If the promise is actually canceled or rejected, the state will be overwritten.
                     promise.Reset(cancelationSource);
                     return promise;
                 }
@@ -136,21 +134,14 @@ namespace Proto.Promises
                     if (TryComplete())
                     {
                         // All promises are complete.
-                        HandleNextInternal(CompleteAndGetState());
+                        HandleNextInternal(GetCompleteState());
                     }
                 }
 
-                private Promise.State CompleteAndGetState()
-                {
-                    if (_exceptions == null)
-                    {
-                        return _completeState;
-                    }
-
-                    RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
-                    _exceptions = null;
-                    return Promise.State.Rejected;
-                }
+                private Promise.State GetCompleteState()
+                    => RejectContainer != null ? Promise.State.Rejected
+                        : _cancelationRef.IsCanceledUnsafe() ? Promise.State.Canceled
+                        : Promise.State.Resolved;
 
                 internal override void Handle(PromisePassThroughForMergeGroup passthrough, PromiseRefBase handler, Promise.State state)
                 {
@@ -168,7 +159,7 @@ namespace Proto.Promises
                         // All promises are complete.
                         // We just pass the state here and don't do anything about the exceptions,
                         // because the attached promise will handle the actual completion logic.
-                        HandleNextInternal(_completeState);
+                        HandleNextInternal(GetCompleteState());
                     }
                 }
 
@@ -179,7 +170,7 @@ namespace Proto.Promises
                     {
                         // All promises already completed.
                         _next = PromiseCompletionSentinel.s_instance;
-                        SetCompletionState(CompleteAndGetState());
+                        SetCompletionState(GetCompleteState());
                     }
                 }
             }
@@ -201,13 +192,18 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> New(MergePromiseGroupVoid group, in TResult value, GetResultDelegate<TResult> getResultFunc, bool isExtended)
+                internal static Promise<TResult> New(MergePromiseGroupVoid group, in TResult value, GetResultDelegate<TResult> getResultFunc, bool isExtended, bool isFinal,
+                    ValueLinkedStack<MergeCleanupCallback> cleanupCallbacks, int cleanupCount)
                 {
                     s_getResult = getResultFunc;
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._result = value;
                     promise._isExtended = isExtended;
+                    promise._isFinal = isFinal;
+                    promise._cleanupCallbacks = cleanupCallbacks;
+                    promise._cleanupCount = cleanupCount;
+                    promise._isCleaning = false;
                     promise.SetPrevious(group);
                     group.HookupNewWaiter(group.Id, promise);
                     return new Promise<TResult>(promise);
@@ -215,16 +211,37 @@ namespace Proto.Promises
 
                 internal override void MaybeDispose()
                 {
+                    ValidateNoPending();
                     Dispose();
                     ObjectPool.MaybeRepool(this);
                 }
 
                 internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
+                    ThrowIfInPool(this);
+
                     handler.SetCompletionState(state);
+
+                    if (_isCleaning)
+                    {
+                        HandleCleanupPromise(handler, state);
+                        return;
+                    }
+
+                    RejectContainer = handler.RejectContainer;
+
+                    // The cleanup stack is possibly shared between multiple extended merge groups.
+                    // Only prepare the count of cleanups for this promise, not the entire stack.
+                    var cleanupCallback = _cleanupCallbacks.Peek();
+                    for (var i = _cleanupCount; i > 0; --i)
+                    {
+                        cleanupCallback.Prepare();
+                        cleanupCallback = cleanupCallback._next.UnsafeAs<MergeCleanupCallback>();
+                    }
 
                     var group = handler.UnsafeAs<MergePromiseGroupVoid>();
                     var passthroughs = group._completedPassThroughs.TakeAndClear();
+                    group.MaybeDispose();
                     while (passthroughs.IsNotEmpty)
                     {
                         var passthrough = passthroughs.Pop();
@@ -233,41 +250,160 @@ namespace Proto.Promises
                         s_getResult.Invoke(owner, index, ref _result);
                         if (owner.State == Promise.State.Rejected)
                         {
-                            var exception = owner.RejectContainer.GetValueAsException();
-                            if (_isExtended & index == 0)
-                            {
-                                // If this is an extended merge group, we need to extract the inner exceptions of the first cluster to make a flattened AggregateException.
-                                // We only do this for 1 layer instead of using the Flatten method of the AggregateException, because we only want to flatten the exceptions from the group,
-                                // and not any nested AggregateExceptions from the actual async work.
-                                foreach (var ex in exception.UnsafeAs<AggregateException>().InnerExceptions)
-                                {
-                                    group.RecordException(ex);
-                                }
-                            }
-                            else
-                            {
-                                group.RecordException(exception);
-                            }
+                            state = Promise.State.Rejected;
+                            RecordRejection(owner, index);
                         }
                         passthrough.Dispose();
                     }
 
-                    if (group._exceptions != null)
+                    if (_isFinal & _cleanupCallbacks.IsNotEmpty)
                     {
-                        state = Promise.State.Rejected;
-                        RejectContainer = CreateRejectContainer(new AggregateException(group._exceptions), int.MinValue, null, this);
-                        group._exceptions = null;
+                        Cleanup(state);
                     }
                     else
                     {
-                        // The group may have been completed by a void promise, in which case it already converted its exceptions to a reject container.
-                        RejectContainer = handler.RejectContainer;
+                        HandleNextInternal(state);
                     }
-                    group.MaybeDispose();
+                }
 
-                    HandleNextInternal(state);
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private void RecordRejection(PromiseRefBase owner, int index)
+                {
+                    var rejectContainer = owner.RejectContainer;
+                    if (!_isExtended | index != 0)
+                    {
+                        RecordException(rejectContainer.GetValueAsException());
+                        return;
+                    }
+
+                    // If this is an extended merge group, we need to take the reject container of the first cluster, then flatten any exceptions from the current reject container.
+                    // We only do this for 1 layer instead of using the Flatten method of the AggregateException, because we only want to flatten the exceptions from the group,
+                    // and not any nested AggregateExceptions from the actual async work.
+                    IRejectContainer previousRejectContainer;
+                    lock (this)
+                    {
+                        previousRejectContainer = RejectContainer;
+                        RejectContainer = rejectContainer;
+
+                        if (previousRejectContainer != null)
+                        {
+                            rejectContainer.UnsafeAs<AggregateRejectionContainer>().Exceptions.AddRange(previousRejectContainer.UnsafeAs<AggregateRejectionContainer>().Exceptions);
+                        }
+                    }
+                }
+
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private void HandleCleanupPromise(PromiseRefBase handler, Promise.State state)
+                {
+                    RemoveForCircularAwaitDetection(handler);
+                    if (state == Promise.State.Rejected)
+                    {
+                        RecordException(handler.RejectContainer.GetValueAsException());
+                    }
+                    handler.MaybeDispose();
+
+                    MaybeHandleNextAfterCleanup();
+                }
+
+                private void Cleanup(Promise.State state)
+                {
+                    var cleanupCallbacks = _cleanupCallbacks.TakeAndClear();
+                    if (state == Promise.State.Resolved)
+                    {
+                        do
+                        {
+                            cleanupCallbacks.Pop().Dispose();
+                        } while (cleanupCallbacks.IsNotEmpty);
+
+                        HandleNextInternal(Promise.State.Resolved);
+                        return;
+                    }
+
+                    // We reuse the _cleanupCount as an interlocked counter to know when all cleanup promises are complete.
+                    _cleanupCount = 1;
+                    _isCleaning = true;
+                    do
+                    {
+                        var cleanupPromise = cleanupCallbacks.Pop().InvokeAndDispose();
+                        if (cleanupPromise._ref == null)
+                        {
+                            continue;
+                        }
+                        try
+                        {
+                            Interlocked.Increment(ref _cleanupCount);
+                            ValidateReturn(cleanupPromise);
+                            AddForCircularAwaitDetection(cleanupPromise._ref);
+                            cleanupPromise._ref.HookupExistingWaiter(cleanupPromise._id, this);
+                        }
+                        catch (Exception e)
+                        {
+                            Interlocked.Decrement(ref _cleanupCount);
+                            RemoveForCircularAwaitDetection(cleanupPromise._ref);
+                            RecordException(e is InvalidReturnException ? e : new InvalidReturnException("onCleanup returned an invalid promise.", string.Empty));
+                        }
+                    } while (cleanupCallbacks.IsNotEmpty);
+
+                    MaybeHandleNextAfterCleanup();
+                }
+
+                private void MaybeHandleNextAfterCleanup()
+                {
+                    if (InterlockedAddWithUnsignedOverflowCheck(ref _cleanupCount, -1) == 0)
+                    {
+                        HandleNextInternal(RejectContainer == null ? Promise.State.Canceled : Promise.State.Rejected);
+                    }
+                }
+
+                partial void AddForCircularAwaitDetection(PromiseRefBase pendingPromise);
+                partial void RemoveForCircularAwaitDetection(PromiseRefBase completePromise);
+                partial void ValidateNoPending();
+            } // class MergePromiseGroup<TResult>
+
+#if PROMISE_DEBUG
+            partial class MergePromiseGroup<TResult>
+            {
+                private readonly HashSet<PromiseRefBase> _pendingPromises = new HashSet<PromiseRefBase>();
+
+                protected override void BorrowPreviousPromises(Stack<PromiseRefBase> borrower)
+                {
+                    lock (_pendingPromises)
+                    {
+                        foreach (var promiseRef in _pendingPromises)
+                        {
+                            borrower.Push(promiseRef);
+                        }
+                    }
+                }
+
+                partial void ValidateNoPending()
+                {
+                    lock (_pendingPromises)
+                    {
+                        if (_pendingPromises.Count != 0)
+                        {
+                            throw new System.InvalidOperationException("MergePromiseGroup disposed with pending promises.");
+                        }
+                    }
+                }
+
+                partial void AddForCircularAwaitDetection(PromiseRefBase pendingPromise)
+                {
+                    lock (_pendingPromises)
+                    {
+                        _pendingPromises.Add(pendingPromise);
+                    }
+                }
+
+                partial void RemoveForCircularAwaitDetection(PromiseRefBase completePromise)
+                {
+                    lock (_pendingPromises)
+                    {
+                        _pendingPromises.Remove(completePromise);
+                    }
                 }
             }
+#endif
         } // class PromiseRefBase
 
         [MethodImpl(InlineOption)]
@@ -276,8 +412,8 @@ namespace Proto.Promises
 
         [MethodImpl(InlineOption)]
         internal static Promise<TResult> NewMergePromiseGroup<TResult>(
-            PromiseRefBase.MergePromiseGroupVoid group, in TResult value, GetResultDelegate<TResult> getResultFunc, bool isExtended)
-            => PromiseRefBase.MergePromiseGroup<TResult>.New(group, value, getResultFunc, isExtended);
+            PromiseRefBase.MergePromiseGroupVoid group, in TResult value, GetResultDelegate<TResult> getResultFunc, bool isExtended, bool isFinal, ValueLinkedStack<MergeCleanupCallback> cleanupCallbacks, int cleanupCount)
+            => PromiseRefBase.MergePromiseGroup<TResult>.New(group, value, getResultFunc, isExtended, isFinal, cleanupCallbacks, cleanupCount);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void ThrowInvalidMergeGroup(int skipFrames)

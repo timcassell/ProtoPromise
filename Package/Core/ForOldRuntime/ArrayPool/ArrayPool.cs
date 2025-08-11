@@ -5,6 +5,8 @@
 // ArrayPool was added in netstandard2.1, so we only need this in Unity versions older than 2021.2.
 #if UNITY_2018_3_OR_NEWER && !UNITY_2021_2_OR_NEWER
 
+using System.Diagnostics;
+
 namespace System.Buffers
 {
     /// <summary>
@@ -20,6 +22,9 @@ namespace System.Buffers
     /// This class is thread-safe.  All members may be used by multiple threads concurrently.
     /// </para>
     /// </remarks>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode, StackTraceHidden]
+#endif
     internal abstract class ArrayPool<T>
     {
         // Store the shared ArrayPool in a field of its derived sealed type so the Jit can "see" the exact type

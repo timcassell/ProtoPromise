@@ -122,7 +122,7 @@ namespace ProtoPromise.Tests.Concurrency
         public void ExecuteSingleAction(Action action)
         {
             AddParallelAction(action);
-            ExecutePendingParallelActions(TimeSpan.FromMilliseconds(-1)); // Infinite timeout
+            ExecutePendingParallelActions(Timeout.InfiniteTimeSpan);
         }
 
         public void ExecuteSynchronousOrOnThread(Action action, bool synchronous)
@@ -165,7 +165,7 @@ namespace ProtoPromise.Tests.Concurrency
 
         /// <summary>
         /// Runs the pending actions in parallel, attempting to run them in lock-step.
-        /// Throws a <see cref="TimeoutException"/> if <paramref name="timeoutPerAction"/> times the number of actions is exceeded (default 1).
+        /// Throws a <see cref="TimeoutException"/> if <paramref name="timeoutPerAction"/> times the number of actions is exceeded (default 1s).
         /// </summary>
         public void ExecutePendingParallelActions(TimeSpan timeoutPerAction = default(TimeSpan))
         {
@@ -181,8 +181,22 @@ namespace ProtoPromise.Tests.Concurrency
             }
             int numActions = merger._currentParticipants;
             merger._barrier.SignalAndWait();
+
             TimeSpan timeout = TimeSpan.FromTicks(timeoutPerAction.Ticks * numActions);
-            bool timedOut = !SpinWait.SpinUntil(() => merger._currentParticipants <= 0 || merger._executionExceptionInfo != null, timeout);
+            // Don't use SpinWait.SpinUntil. https://github.com/dotnet/runtime/issues/115989#issuecomment-2920674169
+            bool timedOut = true;
+            var spinner = new System.Threading.SpinWait();
+            var timestamp = TimeProvider.System.GetTimestamp();
+            do
+            {
+                if (merger._currentParticipants <= 0 || merger._executionExceptionInfo != null)
+                {
+                    timedOut = false;
+                    break;
+                }
+                spinner.SpinOnce(sleep1Threshold: -1);
+            } while (timeout < TimeSpan.Zero || TimeProvider.System.GetElapsedTime(timestamp) < timeout);
+
             merger._executionExceptionInfo?.Throw();
             if (timedOut)
             {

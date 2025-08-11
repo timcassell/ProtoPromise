@@ -4,10 +4,13 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0028 // Simplify collection initialization
 #pragma warning disable IDE0054 // Use compound assignment
 #pragma warning disable IDE0090 // Use 'new(...)'
+#pragma warning disable IDE0300 // Simplify collection initialization
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
@@ -129,7 +132,7 @@ namespace Proto.Promises
                 => this;
 
             void ICantHandleException.ReportUnhandled(ITraceable traceable)
-                => ReportUnhandledException(ToException());
+                => ReportUnhandled();
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -208,10 +211,77 @@ namespace Proto.Promises
                 => this;
 
             void ICantHandleException.ReportUnhandled(ITraceable traceable)
-                => ReportUnhandledException(ToException());
+                => ReportUnhandled();
 
             public override Exception GetValueAsException()
                 => _capturedInfo.SourceException;
+        }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal sealed partial class AggregateRejectionContainer : RejectContainer, IRejectionToContainer, ICantHandleException
+        {
+            private List<Exception> _exceptions = new List<Exception>();
+            private ExceptionDispatchInfo _dispatchInfo;
+
+            internal List<Exception> Exceptions => _exceptions;
+
+            partial void SetTrace(ITraceable traceable);
+#if PROMISE_DEBUG
+            private CausalityTrace _stackTraces;
+
+            partial void SetTrace(ITraceable traceable)
+                => _stackTraces = traceable.Trace;
+#endif
+
+            private ExceptionDispatchInfo DispatchInfo
+            {
+                get
+                {
+                    if (_dispatchInfo == null)
+                    {
+                        _dispatchInfo = ExceptionDispatchInfo.Capture(new AggregateException(_exceptions));
+                        _exceptions = null;
+                    }
+                    return _dispatchInfo;
+                }
+            }
+
+            public override object Value => DispatchInfo.SourceException;
+
+            internal AggregateRejectionContainer(ITraceable traceable)
+            {
+                SetCreatedStacktrace(this, 1);
+                SetTrace(traceable);
+            }
+
+            internal void Add(Exception e)
+                => _exceptions.Add(e);
+
+            public override void ReportUnhandled()
+                => ReportUnhandledException(ToException());
+
+            private UnhandledException ToException()
+            {
+#if PROMISE_DEBUG
+                return new UnhandledExceptionInternal(Value, "An exception was not handled." + CausalityTraceMessage, _stackTraces.ToString(), null);
+#else
+                return new UnhandledExceptionInternal(Value, "An exception was not handled." + CausalityTraceMessage, null, null);
+#endif
+            }
+
+            public override ExceptionDispatchInfo GetExceptionDispatchInfo()
+                => DispatchInfo;
+
+            IRejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
+                => this;
+
+            void ICantHandleException.ReportUnhandled(ITraceable traceable)
+                => ReportUnhandled();
+
+            public override Exception GetValueAsException()
+                => DispatchInfo.SourceException;
         }
     }
 }

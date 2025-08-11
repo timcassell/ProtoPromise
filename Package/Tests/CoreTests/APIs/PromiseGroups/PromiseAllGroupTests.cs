@@ -59,7 +59,7 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
         }
 
         [Test]
-        public void PromiseAllGroupIsResolvedWhenNoPromisesAreAdded(
+        public void PromiseAllGroupIsResolvedOrCanceledWhenNoPromisesAreAdded(
             [Values] CancelationType cancelationType,
             [Values] bool provideList)
         {
@@ -70,22 +70,26 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
                     : cancelationType == CancelationType.Deferred ? PromiseAllGroup<int>.New(cancelationSource.Token, out _, list)
                     : PromiseAllGroup<int>.New(CancelationToken.Canceled(), out _, list);
 
-                bool resolved = false;
+                Promise.State state = Promise.State.Pending;
 
                 allGroup
                     .WaitAsync()
-                    .Then(values =>
+                    .ContinueWith(resultContainer =>
                     {
-                        resolved = true;
-                        Assert.Zero(values.Count);
-                        if (provideList)
+                        state = resultContainer.State;
+                        if (state == Promise.State.Resolved)
                         {
-                            Assert.AreSame(list, values);
+                            Assert.Zero(resultContainer.Value.Count);
+                            if (provideList)
+                            {
+                                Assert.AreSame(list, resultContainer.Value);
+                            }
                         }
                     })
                     .Forget();
 
-                Assert.True(resolved);
+                var expectedState = cancelationType == CancelationType.Immediate ? Promise.State.Canceled : Promise.State.Resolved;
+                Assert.AreEqual(expectedState, state);
             }
         }
 
@@ -107,6 +111,9 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
 
                 int value1 = 1;
                 bool completed = false;
+                Promise.State expectedState = cancelationType != CancelationType.Immediate ? (Promise.State) completeType
+                    : completeType == CompleteType.Reject ? Promise.State.Rejected
+                    : Promise.State.Canceled;
 
                 allGroup
                     .Add(TestHelper.BuildPromise(completeType, alreadyComplete, value1, expectedException, out var tryCompleter))
@@ -115,13 +122,13 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
                     {
                         completed = true;
 
-                        Assert.AreEqual(completeType, (CompleteType) result.State);
-                        if (completeType == CompleteType.Reject)
+                        Assert.AreEqual(expectedState, result.State);
+                        if (expectedState == Promise.State.Rejected)
                         {
                             Assert.IsAssignableFrom<AggregateException>(result.Reason);
                             Assert.AreEqual(expectedException, result.Reason.UnsafeAs<AggregateException>().InnerExceptions[0]);
                         }
-                        else if (completeType == CompleteType.Resolve)
+                        else if (expectedState == Promise.State.Resolved)
                         {
                             CollectionAssert.AreEqual(new[] { value1 }, result.Value);
                             if (provideList)
@@ -160,6 +167,12 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
                 int value1 = 1;
                 int value2 = 2;
                 bool completed = false;
+                Promise.State expectedPromiseState = completeType1 == CompleteType.Reject || completeType2 == CompleteType.Reject ? Promise.State.Rejected
+                    : completeType1 == CompleteType.Cancel || completeType2 == CompleteType.Cancel ? Promise.State.Canceled
+                    : Promise.State.Resolved;
+                Promise.State expectedFinalState = cancelationType != CancelationType.Immediate ? expectedPromiseState
+                    : expectedPromiseState == Promise.State.Rejected ? Promise.State.Rejected
+                    : Promise.State.Canceled;
 
                 allGroup
                     .Add(TestHelper.BuildPromise(completeType1, alreadyComplete1, value1, expectedException, out var tryCompleter1))
@@ -169,19 +182,14 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
                     {
                         completed = true;
 
-                        if (completeType1 == CompleteType.Reject || completeType2 == CompleteType.Reject)
+                        Assert.AreEqual(expectedFinalState, result.State);
+                        if (expectedFinalState == Promise.State.Rejected)
                         {
-                            Assert.AreEqual(Promise.State.Rejected, result.State);
                             Assert.IsAssignableFrom<AggregateException>(result.Reason);
                             Assert.AreEqual(expectedException, result.Reason.UnsafeAs<AggregateException>().InnerExceptions[0]);
                         }
-                        else if (completeType1 == CompleteType.Cancel || completeType2 == CompleteType.Cancel)
+                        else if (expectedFinalState == Promise.State.Resolved)
                         {
-                            Assert.AreEqual(Promise.State.Canceled, result.State);
-                        }
-                        else
-                        {
-                            Assert.AreEqual(Promise.State.Resolved, result.State);
                             CollectionAssert.AreEqual(new[] { value1, value2 }, result.Value);
                             if (provideList)
                             {
@@ -412,6 +420,404 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
                 tryCompleter2();
                 Assert.IsTrue(completed);
             }
+        }
+
+        [Test]
+        public void PromiseAllGroup_OnCleanupIsInvokedCorrectly_1(
+            [Values] CancelationType cancelationType,
+            [Values] CompleteType completeType1,
+            [Values] bool alreadyComplete1,
+            [Values] bool alreadyComplete2)
+        {
+            using (var cancelationSource = CancelationSource.New())
+            {
+                int expectedValue1 = 1;
+                int expectedValue2 = 2;
+                int invokeCount = 0;
+
+                void OnCleanup(int value)
+                {
+                    ++invokeCount;
+                    Assert.True(value == expectedValue1 || value == expectedValue2);
+                }
+
+                Promise.State expectedState = cancelationType != CancelationType.Immediate ? (Promise.State) completeType1
+                    : completeType1 == CompleteType.Reject ? Promise.State.Rejected
+                    : Promise.State.Canceled;
+
+                var allGroup = cancelationType == CancelationType.None ? PromiseAllGroup<int>.New(out _, v => OnCleanup(v))
+                    : cancelationType == CancelationType.Deferred ? PromiseAllGroup<int>.New(cancelationSource.Token, out _, v => OnCleanup(v))
+                    : PromiseAllGroup<int>.New(CancelationToken.Canceled(), out _, v => OnCleanup(v));
+
+                bool completed = false;
+                allGroup
+                    .Add(TestHelper.BuildPromise(completeType1, alreadyComplete1, expectedValue1, new System.InvalidOperationException("Bang!"), out var tryCompleter1))
+                    .Add(TestHelper.BuildPromise(CompleteType.Resolve, alreadyComplete2, expectedValue2, new System.InvalidOperationException("Bang!"), out var tryCompleter2))
+                    .WaitAsync()
+                    .ContinueWith(result =>
+                    {
+                        completed = true;
+                        Assert.AreEqual(expectedState, result.State);
+                        if (expectedState == Promise.State.Resolved)
+                        {
+                            CollectionAssert.AreEqual(new[] { 1, 2 }, result.Value);
+                        }
+                        else if (expectedState == Promise.State.Rejected)
+                        {
+                            Assert.IsInstanceOf<AggregateException>(result.Reason);
+                            Assert.AreEqual(1, result.Reason.UnsafeAs<AggregateException>().InnerExceptions.Count);
+                        }
+                    })
+                    .Forget();
+
+                Assert.AreEqual(alreadyComplete1 && alreadyComplete2, completed);
+
+                tryCompleter1();
+                Assert.AreEqual(alreadyComplete2, completed);
+
+                tryCompleter2();
+                Assert.True(completed);
+
+                int expectedInvokeCount = expectedState == Promise.State.Resolved ? 0
+                    : completeType1 == CompleteType.Resolve ? 2
+                    : 1;
+                Assert.AreEqual(expectedInvokeCount, invokeCount);
+            }
+        }
+
+        private static IEnumerable<TestCaseData> GetOnCleanupIsInvokedCorrectlyArgs()
+        {
+            // Don't test captures for every combination to reduce number of tests.
+            var cleanupTypes = new[] { CleanupType.Sync, CleanupType.Async };
+            var cancelationTypes = new[] { CancelationType.None, CancelationType.Deferred, CancelationType.Immediate };
+            var completeTypes = new[] { CompleteType.Resolve, CompleteType.Reject, CompleteType.Cancel };
+            var bools = new[] { true, false };
+            var falseOnly = new[] { false };
+            var trueOnly = new[] { true };
+
+            foreach (CleanupType cleanupType in cleanupTypes)
+            {
+                foreach (CompleteType completeType1 in completeTypes)
+                foreach (var alreadyComplete1 in bools)
+                foreach (CompleteType completeType2 in completeTypes)
+                foreach (var alreadyComplete2 in bools)
+                {
+                    bool[] cleanupAlreadyCompletes = cleanupType < CleanupType.Async ? trueOnly : bools;
+                    foreach (CompleteType cleanupCompleteType1 in completeTypes)
+                    foreach (var cleanupAlreadyComplete1 in cleanupAlreadyCompletes)
+                    foreach (CompleteType cleanupCompleteType2 in completeTypes)
+                    foreach (var cleanupAlreadyComplete2 in cleanupAlreadyCompletes)
+                    {
+                        yield return new TestCaseData(cleanupType, completeType1, alreadyComplete1, completeType2, alreadyComplete2,
+                            cleanupCompleteType1, cleanupAlreadyComplete1, cleanupCompleteType2, cleanupAlreadyComplete2);
+                    }
+                }
+            }
+
+            // Just test a few cases for captures.
+            yield return new TestCaseData(CleanupType.SyncCapture, CompleteType.Resolve, true, CompleteType.Resolve, true, CompleteType.Resolve, true, CompleteType.Resolve, true);
+            yield return new TestCaseData(CleanupType.AsyncCapture, CompleteType.Resolve, true, CompleteType.Resolve, true, CompleteType.Resolve, true, CompleteType.Resolve, true);
+        }
+
+        [Test, TestCaseSource(nameof(GetOnCleanupIsInvokedCorrectlyArgs))]
+        public void PromiseAllGroup_OnCleanupIsInvokedCorrectly_2(
+            CleanupType cleanupType,
+            CompleteType completeType1,
+            bool alreadyComplete1,
+            CompleteType completeType2,
+            bool alreadyComplete2,
+            CompleteType cleanupCompleteType1,
+            bool cleanupAlreadyComplete1,
+            CompleteType cleanupCompleteType2,
+            bool cleanupAlreadyComplete2)
+        {
+            bool didInvoke1 = false;
+            bool didInvoke2 = false;
+
+            void OnCleanup(int value)
+            {
+                switch (value)
+                {
+                    case 1:
+                        didInvoke1 = true;
+                        break;
+                    case 2:
+                        didInvoke2 = true;
+                        break;
+                    default:
+                        throw new System.Exception("Unexpected value: " + value);
+                }
+            }
+
+            void MaybeThrow(int value)
+            {
+                CompleteType cleanupCompleteType;
+                switch (value)
+                {
+                    case 1:
+                        cleanupCompleteType = cleanupCompleteType1;
+                        break;
+                    case 2:
+                        cleanupCompleteType = cleanupCompleteType2;
+                        break;
+                    default:
+                        throw new System.Exception("Unexpected value: " + value);
+                }
+                if (cleanupCompleteType == CompleteType.Cancel)
+                    throw Promise.CancelException();
+                if (cleanupCompleteType == CompleteType.Reject)
+                    throw new System.InvalidOperationException("Bang!");
+            }
+
+            var cleanupPromise1 = TestHelper.BuildPromise(cleanupCompleteType1, cleanupAlreadyComplete1, new System.InvalidOperationException("Bang!"), out var cleanupTryCompleter1);
+            var cleanupPromise2 = TestHelper.BuildPromise(cleanupCompleteType2, cleanupAlreadyComplete2, new System.InvalidOperationException("Bang!"), out var cleanupTryCompleter2);
+
+            Promise GetCleanupPromise(int value)
+            {
+                switch (value)
+                {
+                    case 1:
+                        return cleanupPromise1;
+                    case 2:
+                        return cleanupPromise2;
+                    default:
+                        throw new System.Exception("Unexpected value: " + value);
+                }
+            }
+
+            const string captureValue = "CaptureValue";
+            var mergeGroup = cleanupType == CleanupType.Sync ? PromiseAllGroup<int>.New(out _, v => { OnCleanup(v); MaybeThrow(v); })
+                : cleanupType == CleanupType.SyncCapture ? PromiseAllGroup<int>.New(out _, captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); OnCleanup(v); MaybeThrow(v); })
+                : cleanupType == CleanupType.Async ? PromiseAllGroup<int>.New(out _, v => { OnCleanup(v); return GetCleanupPromise(v); })
+                : PromiseAllGroup<int>.New(out _, captureValue, (cv, v) => { Assert.AreEqual(captureValue, cv); OnCleanup(v); return GetCleanupPromise(v); });
+
+            bool expectedInvoke1 = completeType1 == CompleteType.Resolve && completeType2 != CompleteType.Resolve;
+            bool expectedInvoke2 = completeType2 == CompleteType.Resolve && completeType1 != CompleteType.Resolve;
+            Promise.State expectedState = completeType1 == CompleteType.Resolve && completeType2 == CompleteType.Resolve
+                ? Promise.State.Resolved
+                : completeType1 == CompleteType.Reject || completeType2 == CompleteType.Reject
+                    || (expectedInvoke1 && cleanupCompleteType1 == CompleteType.Reject)
+                    || (expectedInvoke2 && cleanupCompleteType2 == CompleteType.Reject)
+                ? Promise.State.Rejected : Promise.State.Canceled;
+
+            bool completed = false;
+
+            if (!expectedInvoke1 || cleanupType < CleanupType.Async)
+            {
+                cleanupAlreadyComplete1 = true;
+                cleanupPromise1.Catch(() => { }).Forget();
+            }
+            if (!expectedInvoke2 || cleanupType < CleanupType.Async)
+            {
+                cleanupAlreadyComplete2 = true;
+                cleanupPromise2.Catch(() => { }).Forget();
+            }
+
+            mergeGroup
+                .Add(TestHelper.BuildPromise(completeType1, alreadyComplete1, 1, new System.InvalidOperationException("Bang!"), out var tryCompleter1))
+                .Add(TestHelper.BuildPromise(completeType2, alreadyComplete2, 2, new System.InvalidOperationException("Bang!"), out var tryCompleter2))
+                .WaitAsync()
+                .ContinueWith(result =>
+                {
+                    completed = true;
+                    Assert.AreEqual(expectedState, result.State);
+                    if (expectedState == Promise.State.Resolved)
+                    {
+                        CollectionAssert.AreEqual(new[] { 1, 2 }, result.Value);
+                        return;
+                    }
+
+                    if (expectedState == Promise.State.Canceled)
+                    {
+                        return;
+                    }
+
+                    int expectedExceptionCount = 0;
+                    if (completeType1 == CompleteType.Reject
+                        || (expectedInvoke1 && cleanupCompleteType1 == CompleteType.Reject))
+                    {
+                        ++expectedExceptionCount;
+                    }
+                    if (completeType2 == CompleteType.Reject
+                        || (expectedInvoke2 && cleanupCompleteType2 == CompleteType.Reject))
+                    {
+                        ++expectedExceptionCount;
+                    }
+
+                    Assert.Greater(expectedExceptionCount, 0);
+
+                    Assert.IsInstanceOf<AggregateException>(result.Reason);
+                    Assert.AreEqual(expectedExceptionCount, result.Reason.UnsafeAs<AggregateException>().InnerExceptions.Count);
+                })
+                .Forget();
+
+            Assert.AreEqual(alreadyComplete1 && alreadyComplete2 && cleanupAlreadyComplete1 && cleanupAlreadyComplete2, completed);
+
+            tryCompleter1();
+            Assert.AreEqual(alreadyComplete2 && cleanupAlreadyComplete1 && cleanupAlreadyComplete2, completed);
+
+            tryCompleter2();
+            Assert.AreEqual(cleanupAlreadyComplete1 && cleanupAlreadyComplete2, completed);
+
+            Assert.AreEqual(expectedInvoke1, didInvoke1);
+            Assert.AreEqual(expectedInvoke2, didInvoke2);
+
+            cleanupTryCompleter1();
+            Assert.AreEqual(cleanupAlreadyComplete2, completed);
+
+            cleanupTryCompleter2();
+            Assert.IsTrue(completed);
+        }
+
+        [Test, TestCaseSource(nameof(GetOnCleanupIsInvokedCorrectlyArgs))]
+        public void PromiseAllGroup_OnCleanupWithIndexIsInvokedCorrectly_2(
+            CleanupType cleanupType,
+            CompleteType completeType1,
+            bool alreadyComplete1,
+            CompleteType completeType2,
+            bool alreadyComplete2,
+            CompleteType cleanupCompleteType1,
+            bool cleanupAlreadyComplete1,
+            CompleteType cleanupCompleteType2,
+            bool cleanupAlreadyComplete2)
+        {
+            bool didInvoke1 = false;
+            bool didInvoke2 = false;
+
+            void OnCleanup(int value, int index)
+            {
+                Assert.AreEqual(value - 1, index);
+                switch (value)
+                {
+                    case 1:
+                        didInvoke1 = true;
+                        break;
+                    case 2:
+                        didInvoke2 = true;
+                        break;
+                    default:
+                        throw new System.Exception("Unexpected value: " + value);
+                }
+            }
+
+            void MaybeThrow(int value)
+            {
+                CompleteType cleanupCompleteType;
+                switch (value)
+                {
+                    case 1:
+                        cleanupCompleteType = cleanupCompleteType1;
+                        break;
+                    case 2:
+                        cleanupCompleteType = cleanupCompleteType2;
+                        break;
+                    default:
+                        throw new System.Exception("Unexpected value: " + value);
+                }
+                if (cleanupCompleteType == CompleteType.Cancel)
+                    throw Promise.CancelException();
+                if (cleanupCompleteType == CompleteType.Reject)
+                    throw new System.InvalidOperationException("Bang!");
+            }
+
+            var cleanupPromise1 = TestHelper.BuildPromise(cleanupCompleteType1, cleanupAlreadyComplete1, new System.InvalidOperationException("Bang!"), out var cleanupTryCompleter1);
+            var cleanupPromise2 = TestHelper.BuildPromise(cleanupCompleteType2, cleanupAlreadyComplete2, new System.InvalidOperationException("Bang!"), out var cleanupTryCompleter2);
+
+            Promise GetCleanupPromise(int value)
+            {
+                switch (value)
+                {
+                    case 1:
+                        return cleanupPromise1;
+                    case 2:
+                        return cleanupPromise2;
+                    default:
+                        throw new System.Exception("Unexpected value: " + value);
+                }
+            }
+
+            const string captureValue = "CaptureValue";
+            var mergeGroup = cleanupType == CleanupType.Sync ? PromiseAllGroup<int>.New(out _, (v, i) => { OnCleanup(v, i); MaybeThrow(v); })
+                : cleanupType == CleanupType.SyncCapture ? PromiseAllGroup<int>.New(out _, captureValue, (cv, v, i) => { Assert.AreEqual(captureValue, cv); OnCleanup(v, i); MaybeThrow(v); })
+                : cleanupType == CleanupType.Async ? PromiseAllGroup<int>.New(out _, (v, i) => { OnCleanup(v, i); return GetCleanupPromise(v); })
+                : PromiseAllGroup<int>.New(out _, captureValue, (cv, v, i) => { Assert.AreEqual(captureValue, cv); OnCleanup(v, i); return GetCleanupPromise(v); });
+
+            bool expectedInvoke1 = completeType1 == CompleteType.Resolve && completeType2 != CompleteType.Resolve;
+            bool expectedInvoke2 = completeType2 == CompleteType.Resolve && completeType1 != CompleteType.Resolve;
+            Promise.State expectedState = completeType1 == CompleteType.Resolve && completeType2 == CompleteType.Resolve
+                ? Promise.State.Resolved
+                : completeType1 == CompleteType.Reject || completeType2 == CompleteType.Reject
+                    || (expectedInvoke1 && cleanupCompleteType1 == CompleteType.Reject)
+                    || (expectedInvoke2 && cleanupCompleteType2 == CompleteType.Reject)
+                ? Promise.State.Rejected : Promise.State.Canceled;
+
+            bool completed = false;
+
+            if (!expectedInvoke1 || cleanupType < CleanupType.Async)
+            {
+                cleanupAlreadyComplete1 = true;
+                cleanupPromise1.Catch(() => { }).Forget();
+            }
+            if (!expectedInvoke2 || cleanupType < CleanupType.Async)
+            {
+                cleanupAlreadyComplete2 = true;
+                cleanupPromise2.Catch(() => { }).Forget();
+            }
+
+            mergeGroup
+                .Add(TestHelper.BuildPromise(completeType1, alreadyComplete1, 1, new System.InvalidOperationException("Bang!"), out var tryCompleter1))
+                .Add(TestHelper.BuildPromise(completeType2, alreadyComplete2, 2, new System.InvalidOperationException("Bang!"), out var tryCompleter2))
+                .WaitAsync()
+                .ContinueWith(result =>
+                {
+                    completed = true;
+                    Assert.AreEqual(expectedState, result.State);
+                    if (expectedState == Promise.State.Resolved)
+                    {
+                        CollectionAssert.AreEqual(new[] { 1, 2 }, result.Value);
+                        return;
+                    }
+
+                    if (expectedState == Promise.State.Canceled)
+                    {
+                        return;
+                    }
+
+                    int expectedExceptionCount = 0;
+                    if (completeType1 == CompleteType.Reject
+                        || (expectedInvoke1 && cleanupCompleteType1 == CompleteType.Reject))
+                    {
+                        ++expectedExceptionCount;
+                    }
+                    if (completeType2 == CompleteType.Reject
+                        || (expectedInvoke2 && cleanupCompleteType2 == CompleteType.Reject))
+                    {
+                        ++expectedExceptionCount;
+                    }
+
+                    Assert.Greater(expectedExceptionCount, 0);
+
+                    Assert.IsInstanceOf<AggregateException>(result.Reason);
+                    Assert.AreEqual(expectedExceptionCount, result.Reason.UnsafeAs<AggregateException>().InnerExceptions.Count);
+                })
+                .Forget();
+
+            Assert.AreEqual(alreadyComplete1 && alreadyComplete2 && cleanupAlreadyComplete1 && cleanupAlreadyComplete2, completed);
+
+            tryCompleter1();
+            Assert.AreEqual(alreadyComplete2 && cleanupAlreadyComplete1 && cleanupAlreadyComplete2, completed);
+
+            tryCompleter2();
+            Assert.AreEqual(cleanupAlreadyComplete1 && cleanupAlreadyComplete2, completed);
+
+            Assert.AreEqual(expectedInvoke1, didInvoke1);
+            Assert.AreEqual(expectedInvoke2, didInvoke2);
+
+            cleanupTryCompleter1();
+            Assert.AreEqual(cleanupAlreadyComplete2, completed);
+
+            cleanupTryCompleter2();
+            Assert.IsTrue(completed);
         }
     }
 }

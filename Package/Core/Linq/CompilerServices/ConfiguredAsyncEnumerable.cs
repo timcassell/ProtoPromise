@@ -1,5 +1,6 @@
 using Proto.Promises.Linq;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -11,6 +12,9 @@ namespace Proto.Promises.CompilerServices
     /// Provides an awaitable async enumerable that enables cancelable iteration and configured awaits.
     /// </summary>
     /// <typeparam name="T">The type of values to enumerate.</typeparam>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode, StackTraceHidden]
+#endif
     public readonly struct ConfiguredAsyncEnumerable<T>
     {
         internal readonly AsyncEnumerable<T> _enumerable;
@@ -91,6 +95,9 @@ namespace Proto.Promises.CompilerServices
         /// <summary>
         /// Provides an awaitable async enumerator that enables cancelable iteration and configured awaits.
         /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         public readonly struct Enumerator
         {
             internal readonly AsyncEnumerator<T> _enumerator;

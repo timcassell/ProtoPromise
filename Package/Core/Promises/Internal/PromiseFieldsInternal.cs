@@ -530,11 +530,9 @@ namespace Proto.Promises
 
             partial class PromiseGroupBase<TResult> : SingleAwaitPromise<TResult>
             {
-                internal List<Exception> _exceptions;
                 protected CancelationRef _cancelationRef; // Store the reference directly instead of CancelationSource struct to reduce memory.
                 private int _cancelationId;
-                private int _waitCount; // int for Interlocked since it doesn't support uint on older runtimes.
-                protected Promise.State _completeState;
+                protected int _waitCount; // int for Interlocked since it doesn't support uint on older runtimes.
             }
 
             partial class MergePromiseGroupBase<TResult> : PromiseGroupBase<TResult>
@@ -548,7 +546,11 @@ namespace Proto.Promises
 
             partial class MergePromiseGroup<TResult> : SingleAwaitPromise<TResult>
             {
+                private ValueLinkedStack<MergeCleanupCallback> _cleanupCallbacks;
+                private int _cleanupCount;
                 private bool _isExtended;
+                private bool _isFinal;
+                private bool _isCleaning;
             }
 
             partial class MergePromiseResultsGroup<TResult> : SingleAwaitPromise<TResult>
@@ -558,6 +560,7 @@ namespace Proto.Promises
 
             partial class AllPromiseGroup<T> : MergePromiseGroupBase<IList<T>>
             {
+                private AllCleanupCallback<T> _cleanupCallback;
             }
 
             partial class AllPromiseResultsGroupVoid : MergePromiseGroupBase<IList<Promise.ResultContainer>>
@@ -570,21 +573,19 @@ namespace Proto.Promises
 
             partial class RacePromiseGroupBase<TResult> : PromiseGroupBase<TResult>
             {
+                protected CancelationRef _sourceCancelationRef; // Store the reference directly instead of CancelationToken struct to reduce memory.
                 protected int _isResolved; // Flag used to indicate that the promise has already been resolved. int for Interlocked.
                 protected bool _cancelOnNonResolved;
-                internal bool _cancelationThrew;
+                internal bool _cancelationOrCleanupThrew;
+            }
+
+            partial class RacePromiseGroupVoid : RacePromiseGroupBase<VoidResult>
+            {
             }
 
             partial class RacePromiseGroup<TResult> : RacePromiseGroupBase<TResult>
             {
-            }
-
-            partial class RacePromiseWithIndexGroupVoid : RacePromiseGroupBase<int>
-            {
-            }
-
-            partial class RacePromiseWithIndexGroup<TResult> : RacePromiseGroupBase<(int, TResult)>
-            {
+                private RaceCleanupCallback<TResult> _cleanupCallback;
             }
             #endregion
 

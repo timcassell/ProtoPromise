@@ -22,7 +22,7 @@ namespace Proto.Promises
 #endif
     public readonly struct CancelationSource : ICancelable, IDisposable, IEquatable<CancelationSource>
     {
-        private readonly Internal.CancelationRef _ref;
+        internal readonly Internal.CancelationRef _ref;
         private readonly int _sourceId;
         private readonly int _tokenId;
 

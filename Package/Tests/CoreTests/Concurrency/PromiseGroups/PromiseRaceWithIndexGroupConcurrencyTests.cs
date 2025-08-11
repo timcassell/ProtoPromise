@@ -14,6 +14,7 @@ using System.Linq;
 
 namespace ProtoPromise.Tests.Concurrency.PromiseGroups
 {
+#pragma warning disable CS0618 // Type or member is obsolete
     public class PromiseRaceWithIndexGroupConcurrencyTests
     {
         const string rejectValue = "Fail";

@@ -7,6 +7,7 @@
 using Proto.Promises.Collections;
 using Proto.Promises.Linq.Sources;
 using System;
+using System.Diagnostics;
 
 namespace Proto.Promises.Linq
 {
@@ -25,6 +26,9 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<TSource> Shuffle<TSource>(this AsyncEnumerable<TSource> source)
             => AsyncEnumerable<TSource>.Create(new ShuffleIterator<TSource>(source.GetAsyncEnumerator()));
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         private readonly struct ShuffleIterator<TSource> : IAsyncIterator<TSource>
         {
             private readonly AsyncEnumerator<TSource> _asyncEnumerator;

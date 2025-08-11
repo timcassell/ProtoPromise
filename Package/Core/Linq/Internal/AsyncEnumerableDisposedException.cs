@@ -1,10 +1,14 @@
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 #pragma warning disable IDE0090 // Use 'new(...)'
 
 namespace Proto.Promises.CompilerServices
 {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode]
+#endif
     internal sealed class AsyncEnumerableDisposedException : Exception
     {
         // Unity runtimes have a bug where stack traces are continually appended to the exception, causing a memory leak and runtime slowdowns.

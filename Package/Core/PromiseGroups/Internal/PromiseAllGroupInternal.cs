@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Proto.Promises
 {
@@ -30,12 +31,12 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static AllPromiseGroup<T> GetOrCreate(CancelationRef cancelationSource, IList<T> value)
+                internal static AllPromiseGroup<T> GetOrCreate(CancelationRef cancelationRef, IList<T> result, AllCleanupCallback<T> cleanupCallback)
                 {
                     var promise = GetOrCreate();
-                    promise._result = value;
-                    promise._completeState = Promise.State.Resolved; // Default to Resolved state. If the promise is actually canceled or rejected, the state will be overwritten.
-                    promise.Reset(cancelationSource);
+                    promise._result = result;
+                    promise._cleanupCallback = cleanupCallback;
+                    promise.Reset(cancelationRef);
                     return promise;
                 }
 
@@ -45,8 +46,27 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                {
+                    // This is called from cleanup promises.
+                    ThrowIfInPool(this);
+
+                    RemovePromiseAndSetCompletionState(handler, state);
+                    if (state == Promise.State.Rejected)
+                    {
+                        RecordException(handler.RejectContainer.GetValueAsException());
+                    }
+                    handler.MaybeDispose();
+                    if (TryComplete())
+                    {
+                        HandleNextInternal(RejectContainer != null ? Promise.State.Rejected : Promise.State.Canceled);
+                    }
+                }
+
                 internal override void Handle(PromisePassThroughForMergeGroup passthrough, PromiseRefBase handler, Promise.State state)
                 {
+                    ThrowIfInPool(this);
+
                     // We store the passthrough until all promises are complete,
                     // so that items won't be written to the list while it's being expanded on another thread.
                     RemovePromiseAndSetCompletionState(handler, state);
@@ -58,34 +78,117 @@ namespace Proto.Promises
                     if (TryComplete())
                     {
                         // All promises are complete.
-                        HandleNextInternal(CompleteAndGetState());
+                        CompleteAndCleanup();
                     }
                 }
 
-                private Promise.State CompleteAndGetState()
+                private void CompleteAndCleanup()
                 {
-                    var state = _completeState;
                     var passthroughs = _completedPassThroughs.TakeAndClear();
+                    var resolvedPassThroughs = new ValueLinkedStack<PromisePassThroughForMergeGroup>();
                     while (passthroughs.IsNotEmpty)
                     {
                         var passthrough = passthroughs.Pop();
                         var owner = passthrough.Owner;
                         _result[passthrough.Index] = owner.GetResult<T>();
-                        if (owner.State == Promise.State.Rejected)
+                        if (owner.State == Promise.State.Resolved)
                         {
-                            RecordException(owner.RejectContainer.GetValueAsException());
+                            resolvedPassThroughs.Push(passthrough);
                         }
-                        passthrough.Dispose();
+                        else
+                        {
+                            if (owner.State == Promise.State.Rejected)
+                            {
+                                RecordException(owner.RejectContainer.GetValueAsException());
+                            }
+                            passthrough.Dispose();
+                        }
                     }
 
-                    if (_exceptions != null)
+                    var cleanupCallback = _cleanupCallback;
+                    _cleanupCallback = null;
+                    bool canceled = _cancelationRef.IsCanceledUnsafe();
+                    if (resolvedPassThroughs.IsNotEmpty)
                     {
-                        state = Promise.State.Rejected;
-                        RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
-                        _exceptions = null;
+                        if (!canceled | cleanupCallback == null)
+                        {
+                            do
+                            {
+                                resolvedPassThroughs.Pop().Dispose();
+                            } while (resolvedPassThroughs.IsNotEmpty);
+                            cleanupCallback?.Dispose();
+                        }
+                        else
+                        {
+                            // We reuse the _waitCount to know when all cleanup promises are complete.
+                            _waitCount = 1;
+                            do
+                            {
+                                var passThrough = resolvedPassThroughs.Pop();
+                                T arg = passThrough.Owner.GetResult<T>();
+                                int index = passThrough.Index;
+                                passThrough.Dispose();
+                                InvokeAndWaitForCleanup(cleanupCallback, arg, index);
+                            } while (resolvedPassThroughs.IsNotEmpty);
+
+                            foreach (var index in cleanupCallback.ResolvedIndices)
+                            {
+                                InvokeAndWaitForCleanup(cleanupCallback, _result[index], index);
+                            }
+
+                            cleanupCallback.Dispose();
+                            if (!TryComplete())
+                            {
+                                return;
+                            }
+                        }
+                    }
+                    else if (cleanupCallback != null)
+                    {
+                        // We reuse the _waitCount to know when all cleanup promises are complete.
+                        _waitCount = 1;
+                        foreach (var index in cleanupCallback.ResolvedIndices)
+                        {
+                            InvokeAndWaitForCleanup(cleanupCallback, _result[index], index);
+                        }
+
+                        cleanupCallback.Dispose();
+                        if (!TryComplete())
+                        {
+                            return;
+                        }
                     }
 
-                    return state;
+                    var state = RejectContainer != null ? Promise.State.Rejected
+                        : canceled ? Promise.State.Canceled
+                        : Promise.State.Resolved;
+                    HandleNextInternal(state);
+                }
+
+                private void InvokeAndWaitForCleanup(AllCleanupCallback<T> cleanupCallback, in T arg, int index)
+                {
+                    var cleanupPromise = cleanupCallback.Invoke(arg, index);
+                    if (cleanupPromise._ref == null)
+                    {
+                        return;
+                    }
+                    try
+                    {
+                        Interlocked.Increment(ref _waitCount);
+                        ValidateReturn(cleanupPromise);
+#if PROMISE_DEBUG
+                        AddForCircularAwaitDetection(cleanupPromise._ref);
+#endif
+                        cleanupPromise._ref.HookupExistingWaiter(cleanupPromise._id, this);
+                    }
+                    catch (Exception e)
+                    {
+                        Interlocked.Decrement(ref _waitCount);
+#if PROMISE_DEBUG
+                        RemoveForCircularAwaitDetection(cleanupPromise._ref);
+#endif
+                        RecordException(e is InvalidReturnException ? e : new InvalidReturnException("onCleanup returned an invalid promise.", string.Empty));
+                    }
                 }
 
                 internal void MarkReady(int totalPromises)
@@ -94,16 +197,15 @@ namespace Proto.Promises
                     if (MarkReadyAndGetIsComplete(totalPromises))
                     {
                         // All promises already completed.
-                        _next = PromiseCompletionSentinel.s_instance;
-                        SetCompletionState(CompleteAndGetState());
+                        CompleteAndCleanup();
                     }
                 }
             }
         } // class PromiseRefBase
 
         [MethodImpl(InlineOption)]
-        internal static PromiseRefBase.AllPromiseGroup<T> GetOrCreateAllPromiseGroup<T>(CancelationRef cancelationSource, IList<T> value)
-            => PromiseRefBase.AllPromiseGroup<T>.GetOrCreate(cancelationSource, value);
+        internal static PromiseRefBase.AllPromiseGroup<T> GetOrCreateAllPromiseGroup<T>(CancelationRef groupCancelationRef, IList<T> result, AllCleanupCallback<T> cleanupCallback)
+            => PromiseRefBase.AllPromiseGroup<T>.GetOrCreate(groupCancelationRef, result, cleanupCallback);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void ThrowInvalidAllGroup(int skipFrames)

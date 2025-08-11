@@ -12,6 +12,7 @@ using System.Linq;
 
 namespace ProtoPromise.Tests.APIs.PromiseGroups
 {
+#pragma warning disable CS0618 // Type or member is obsolete
     public class PromiseRaceWithIndexGroupTests
     {
         [SetUp]
@@ -74,19 +75,6 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
             }
         }
 
-        private static Promise.State GetExpectedState(CompleteType completeType1, CompleteType completeType2)
-        {
-            if (completeType1 == CompleteType.Resolve || completeType2 == CompleteType.Resolve)
-            {
-                return Promise.State.Resolved;
-            }
-            if (completeType1 == CompleteType.Reject || completeType2 == CompleteType.Reject)
-            {
-                return Promise.State.Rejected;
-            }
-            return Promise.State.Canceled;
-        }
-
         [Test]
         public void PromiseRaceWithIndexGroupAdoptsTheStateOfTheFirstCompletedPromise_1_void(
             [Values] CancelationType cancelationType,
@@ -101,6 +89,9 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
                     : PromiseRaceWithIndexGroup.New(CancelationToken.Canceled(), out _, cancelOnNonResolved);
 
                 Exception expectedException = new Exception("Bang!");
+                Promise.State expectedState = cancelationType != CancelationType.Immediate ? (Promise.State) completeType
+                    : completeType == CompleteType.Reject ? Promise.State.Rejected
+                    : Promise.State.Canceled;
 
                 bool completed = false;
 
@@ -111,13 +102,13 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
                     {
                         completed = true;
 
-                        Assert.AreEqual((Promise.State) completeType, result.State);
-                        if (completeType == CompleteType.Reject)
+                        Assert.AreEqual(expectedState, result.State);
+                        if (expectedState == Promise.State.Rejected)
                         {
                             Assert.IsAssignableFrom<AggregateException>(result.Reason);
                             Assert.AreEqual(expectedException, result.Reason.UnsafeAs<AggregateException>().InnerExceptions[0]);
                         }
-                        else if (completeType == CompleteType.Resolve)
+                        else if (expectedState == Promise.State.Resolved)
                         {
                             Assert.AreEqual(0, result.Value);
                         }
@@ -179,7 +170,7 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
                     {
                         completed = true;
 
-                        var expectedState = GetExpectedState(completeType1, completeType2);
+                        var expectedState = PromiseRaceGroupTests.GetExpectedState(cancelationType, completeType1, completeType2);
                         Assert.AreEqual(expectedState, result.State);
                         if (expectedState == Promise.State.Rejected)
                         {
@@ -291,7 +282,7 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
                 return (Promise.State) completeType1;
             }
 
-            return GetExpectedState(completeType1, completeType2);
+            return PromiseRaceGroupTests.GetExpectedState(cancelationType, completeType1, completeType2);
         }
 
         [Test, TestCaseSource(nameof(GetArgs))]
@@ -514,6 +505,9 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
                     : PromiseRaceWithIndexGroup<int>.New(CancelationToken.Canceled(), out _, cancelOnNonResolved);
 
                 Exception expectedException = new Exception("Bang!");
+                Promise.State expectedState = cancelationType != CancelationType.Immediate ? (Promise.State) completeType
+                    : completeType == CompleteType.Reject ? Promise.State.Rejected
+                    : Promise.State.Canceled;
 
                 int value1 = 1;
                 bool completed = false;
@@ -525,13 +519,13 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
                     {
                         completed = true;
 
-                        Assert.AreEqual((Promise.State) completeType, result.State);
-                        if (completeType == CompleteType.Reject)
+                        Assert.AreEqual(expectedState, result.State);
+                        if (expectedState == Promise.State.Rejected)
                         {
                             Assert.IsAssignableFrom<AggregateException>(result.Reason);
                             Assert.AreEqual(expectedException, result.Reason.UnsafeAs<AggregateException>().InnerExceptions[0]);
                         }
-                        else if (completeType == CompleteType.Resolve)
+                        else if (expectedState == Promise.State.Resolved)
                         {
                             Assert.AreEqual((0, value1), result.Value);
                         }
@@ -607,7 +601,7 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
                     {
                         completed = true;
 
-                        var expectedState = GetExpectedState(completeType1, completeType2);
+                        var expectedState = PromiseRaceGroupTests.GetExpectedState(cancelationType, completeType1, completeType2);
                         Assert.AreEqual(expectedState, result.State);
                         if (expectedState == Promise.State.Rejected)
                         {

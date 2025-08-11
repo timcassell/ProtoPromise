@@ -14,6 +14,9 @@ using System.Runtime.CompilerServices;
 namespace Proto.Promises.Collections
 {
     // Double-ended queue, backed by ArrayPool.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode, StackTraceHidden]
+#endif
     internal struct PoolBackedDeque<T> : IDisposable
     {
         private T[] _array;     // Pooled array

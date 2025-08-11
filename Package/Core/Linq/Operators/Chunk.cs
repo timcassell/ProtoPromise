@@ -68,6 +68,9 @@ namespace Proto.Promises.Linq
                 : ChunkHelper.ChunkFull(source.GetAsyncEnumerator(), size);
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         private static class ChunkHelper
         {
 #if !PROTO_PROMISE_DEVELOPER_MODE

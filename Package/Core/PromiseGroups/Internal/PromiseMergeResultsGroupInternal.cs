@@ -31,7 +31,7 @@ namespace Proto.Promises
                 }
 
                 [MethodImpl(InlineOption)]
-                internal static Promise<TResult> New(PromiseRefBase.MergePromiseGroupVoid group, in TResult value, GetResultDelegate<TResult> getResultFunc, bool isExtended)
+                internal static Promise<TResult> New(MergePromiseGroupVoid group, in TResult value, GetResultDelegate<TResult> getResultFunc, bool isExtended)
                 {
                     s_getResult = getResultFunc;
                     var promise = GetOrCreate();
@@ -51,13 +51,14 @@ namespace Proto.Promises
 
                 internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
+                    ThrowIfInPool(this);
+
                     handler.SetCompletionState(state);
 
-                    // If any of the promises in the group completed unsuccessfully, the group state was set to canceled.
-                    // We ignore that and set it to always resolved, because we're yielding a ValueTuple of ResultContainers.
-                    state = Promise.State.Resolved;
+                    RejectContainer = handler.RejectContainer;
                     var group = handler.UnsafeAs<MergePromiseGroupVoid>();
                     var passthroughs = group._completedPassThroughs.TakeAndClear();
+                    group.MaybeDispose();
                     while (passthroughs.IsNotEmpty)
                     {
                         var passthrough = passthroughs.Pop();
@@ -73,22 +74,9 @@ namespace Proto.Promises
                         passthrough.Dispose();
                     }
 
-                    if (group._exceptions != null)
-                    {
-                        // In case any cancelation token callbacks threw, we propagate them out of this promise instead of resolving this and ignoring the exceptions.
-                        state = Promise.State.Rejected;
-                        RejectContainer = CreateRejectContainer(new AggregateException(group._exceptions), int.MinValue, null, this);
-                        group._exceptions = null;
-                    }
-                    else if (handler.RejectContainer != null)
-                    {
-                        // The group may have been already completed, in which case it already converted its exceptions to a reject container.
-                        state = Promise.State.Rejected;
-                        RejectContainer = handler.RejectContainer;
-                    }
-                    group.MaybeDispose();
-
-                    HandleNextInternal(state);
+                    // If any of the promises in the group completed unsuccessfully, the group was canceled.
+                    // We ignore that and set it to always resolved, because we're yielding a ValueTuple of ResultContainers, unless a cancelation token callback threw.
+                    HandleNextInternal(RejectContainer == null ? Promise.State.Resolved : state);
                 }
             }
         } // class PromiseRefBase

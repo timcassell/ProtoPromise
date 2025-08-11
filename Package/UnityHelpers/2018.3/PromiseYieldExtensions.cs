@@ -56,6 +56,9 @@ namespace Proto.Promises
         /// <summary>
         /// Awaiter facilitating the `await` keyword on await instructions.
         /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         public struct AwaitInstructionAwaiter<TAwaitInstruction> : InternalHelper.IYieldInstruction, IAwaiter<AwaitInstructionAwaiter<TAwaitInstruction>>
             where TAwaitInstruction : IAwaitInstruction
         {

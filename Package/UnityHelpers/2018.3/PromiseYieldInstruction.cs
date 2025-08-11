@@ -17,6 +17,9 @@ namespace Proto.Promises
     /// <summary>
     /// Extensions to convert Promises to Yield Instructions for Coroutines.
     /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode, StackTraceHidden]
+#endif
     public static class UnityHelperExtensions
     {
         /// <summary>

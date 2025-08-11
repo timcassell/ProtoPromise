@@ -12,6 +12,9 @@ namespace Proto.Promises
     partial class Internal
     {
         // Idea from https://www.meziantou.net/how-to-measure-elapsed-time-without-allocating-a-stopwatch.htm
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal readonly struct ValueStopwatch
         {
             private static readonly double s_timestampToTicks = TimeSpan.TicksPerSecond / (double) Stopwatch.Frequency;

@@ -4,10 +4,12 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0028 // Simplify collection initialization
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0251 // Make member 'readonly'
 #pragma warning disable IDE0270 // Use coalesce expression
 #pragma warning disable IDE0290 // Use primary constructor
+#pragma warning disable CA1513 // Use ObjectDisposedException throw helper
 
 using System;
 using System.Collections.Generic;
@@ -20,6 +22,9 @@ namespace Proto.Promises
 {
     partial class Internal
     {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal abstract class CancelationLinkedListNode : HandleablePromiseBase
         {
             // _next and _previous are unsafe cast to CancelationLinkedListNode or CancelationCallbackNodeBase
@@ -68,7 +73,7 @@ namespace Proto.Promises
                     ReportRejection(new UnreleasedObjectException(message), this);
                 }
                 // We don't check the disposed state if this was linked to a System.Threading.CancellationToken.
-                if (!_linkedToBclToken & !HasState(States.Disposed))
+                if (!_linkedToBclToken & !IsDisposededUnsafe())
                 {
                     // CancelationSource wasn't disposed.
                     ReportRejection(new UnreleasedObjectException("CancelationSource's resources were garbage collected without being disposed."), this);
@@ -151,8 +156,12 @@ namespace Proto.Promises
             }
 
             [MethodImpl(InlineOption)]
-            internal bool HasState(States state)
-                => HasState(_states, state);
+            internal bool IsCanceledUnsafe()
+                => HasState(_states, States.Canceled);
+
+            [MethodImpl(InlineOption)]
+            internal bool IsDisposededUnsafe()
+                => HasState(_states, States.Disposed);
 
             [MethodImpl(InlineOption)]
             private bool IsPending()
@@ -243,7 +252,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal bool IsSourceCanceled(int sourceId)
                 // Volatile read the state before the id.
-                => HasState(States.Canceled) & sourceId == SourceId;
+                => IsCanceledUnsafe() & sourceId == SourceId;
 
             [MethodImpl(InlineOption)]
             internal bool CanTokenBeCanceled(int tokenId)
@@ -267,24 +276,21 @@ namespace Proto.Promises
             internal void MaybeLinkToken(CancelationToken token)
             {
                 // If the token is not cancelable, or if this is already canceled, don't hook it up.
-                if (token._ref == null | HasState(States.Canceled))
+                if (token._ref != null & !IsCanceledUnsafe())
                 {
-                    return;
-                }
-
-                var linkedNode = token._ref.LinkOrNull(this, token._id);
-                if (linkedNode != null)
-                {
-                    _links.Push(linkedNode);
+                    LinkTokenUnsafe(token);
                 }
             }
 
-            [MethodImpl(InlineOption)]
-            private LinkedCancelationNode LinkOrNull(CancelationRef other, int tokenId)
+            // Internal method to link the token. The caller must ensure that the token is cancelable.
+            internal void LinkTokenUnsafe(CancelationToken token)
             {
-                var nodeCreator = new LinkedNodeCreator(other);
-                TryRegister(ref nodeCreator, tokenId);
-                return nodeCreator._node;
+                var nodeCreator = new LinkedNodeCreator(this);
+                token._ref.TryRegister(ref nodeCreator, token._id);
+                if (nodeCreator._node != null)
+                {
+                    _links.Push(nodeCreator._node);
+                }
             }
 
             [MethodImpl(InlineOption)]
@@ -556,18 +562,6 @@ namespace Proto.Promises
                 }
             }
 
-            private void OnTimerCallback()
-            {
-                // Due to object pooling, this is not a fool-proof check. But it's good enough to protect against accidental non-compliant timer implementations,
-                // as object pooling is disabled in DEBUG mode, and it's still possible to catch the improper call while this is in the pool.
-                if (_timer == default)
-                {
-                    throw new InvalidOperationException("Timer callback may not be invoked after its DisposeAsync Promise has completed.", GetFormattedStacktrace(1));
-                }
-
-                CancelUnsafe();
-            }
-
             // Internal Cancel method skipping the disposed check.
             internal void CancelUnsafe()
             {
@@ -628,7 +622,7 @@ namespace Proto.Promises
             internal bool TryDispose(int sourceId)
             {
                 _smallFields._locker.Enter();
-                if (HasState(States.Disposed) || !TryIncrementSourceId(sourceId))
+                if (IsDisposededUnsafe() || !TryIncrementSourceId(sourceId))
                 {
                     _smallFields._locker.Exit();
                     return false;
@@ -768,6 +762,25 @@ namespace Proto.Promises
                 }
                 _smallFields._locker.Exit();
                 return true;
+            }
+
+            // Internal ReleaseUser method skipping the id check.
+            internal void ReleaseUserUnsafe()
+            {
+                _smallFields._locker.Enter();
+                checked
+                {
+                    if ((_userRetainCounter -= _userRetainIncrement) == 0 & _internalRetainCounter == 0)
+                    {
+                        unchecked
+                        {
+                            ++_tokenId;
+                        }
+                        ResetAndRepoolAlreadyLocked();
+                        return;
+                    }
+                }
+                _smallFields._locker.Exit();
             }
 
             private void MaybeResetAndRepool()
@@ -1000,6 +1013,9 @@ namespace Proto.Promises
                 void Invoke();
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             private struct UserNodeCreator<TCancelable> : INodeCreator
                 where TCancelable : ICancelable
             {
@@ -1026,6 +1042,9 @@ namespace Proto.Promises
                     => _cancelable.Cancel();
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             private struct UserNodeCreatorNoInvoke<TCancelable> : INodeCreator
                 where TCancelable : ICancelable
             {
@@ -1054,6 +1073,9 @@ namespace Proto.Promises
                     => _isCanceled = true;
             }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             private struct LinkedNodeCreator : INodeCreator
             {
                 internal LinkedCancelationNode _node;
@@ -1076,6 +1098,9 @@ namespace Proto.Promises
             }
         } // class CancelationRef
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal abstract class CancelationCallbackNodeBase : CancelationLinkedListNode
         {
             internal abstract void Invoke();
@@ -1088,6 +1113,9 @@ namespace Proto.Promises
             }
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal abstract class CancelationCallbackNode : CancelationCallbackNodeBase
         {
             protected int _nodeId = 1; // Start with id 1 instead of 0 to reduce risk of false positives.
@@ -1137,7 +1165,7 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             private bool GetIsRegisteredAndIsCanceled(CancelationRef parent, int nodeId, int tokenId, out bool isCanceled)
             {
-                bool canceled = parent.HasState(CancelationRef.States.Canceled);
+                bool canceled = parent.IsCanceledUnsafe();
                 // We read state volatile, so we don't need to read anything else volatile.
                 bool tokenIdMatches = parent.TokenId == tokenId & parent._smallFields._instanceId == _parentId;
                 bool isRegistered = tokenIdMatches & _nodeId == nodeId & _previous != null;
@@ -1279,6 +1307,9 @@ namespace Proto.Promises
         partial class CancelationRef
         {
             // A separate class so that static data won't need to be created if it is never used.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
             internal static class CancelationConverter
             {
                 private static readonly bool s_canExtractSource = GetCanExtractSource();
@@ -1430,7 +1461,7 @@ namespace Proto.Promises
                     {
                         return default;
                     }
-                    if (HasState(States.Canceled))
+                    if (IsCanceledUnsafe())
                     {
                         return new CancellationToken(true);
                     }

@@ -19,6 +19,9 @@ namespace Proto.Promises
     {
         // If C#9 is available, we use function pointers instead of delegates.
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal readonly unsafe struct GetResultDelegate<TResult>
         {
             private readonly delegate*<PromiseRefBase, int, ref TResult, void> _ptr;
@@ -33,6 +36,9 @@ namespace Proto.Promises
         internal delegate void GetResultDelegate<TResult>(PromiseRefBase handler, int index, ref TResult result);
 #endif
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal ref struct MergePreparer<TResult>
         {
             private PromiseRefBase.MergePromise<TResult> _promise;
@@ -123,6 +129,9 @@ namespace Proto.Promises
             }
         }
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal ref struct MergeSettledPreparer<TResult>
         {
             private PromiseRefBase.MergeSettledPromise<TResult> _promise;

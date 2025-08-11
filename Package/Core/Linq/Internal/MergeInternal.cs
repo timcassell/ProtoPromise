@@ -103,7 +103,7 @@ namespace Proto.Promises
                 }
             }
 
-            protected void RecordException(Exception e)
+            new protected void RecordException(Exception e)
             {
                 lock (this)
                 {

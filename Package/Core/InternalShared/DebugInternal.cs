@@ -72,6 +72,9 @@ namespace Proto.Promises
         }
 
 #if PROMISE_DEBUG
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         private sealed class SyncTrace : ITraceable
         {
             CausalityTrace ITraceable.Trace { get; set; }

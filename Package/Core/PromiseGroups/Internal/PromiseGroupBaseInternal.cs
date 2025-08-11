@@ -19,6 +19,22 @@ namespace Proto.Promises
     {
         partial class PromiseRefBase
         {
+            partial class SingleAwaitPromise<TResult>
+            {
+                internal void RecordException(Exception e)
+                {
+                    lock (this)
+                    {
+                        var rejectContainer = RejectContainer;
+                        if (rejectContainer == null)
+                        {
+                            RejectContainer = rejectContainer = new AggregateRejectionContainer(this);
+                        }
+                        rejectContainer.UnsafeAs<AggregateRejectionContainer>().Add(e);
+                    }
+                }
+            }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
@@ -28,13 +44,13 @@ namespace Proto.Promises
                 partial void RemoveComplete(PromiseRefBase completePromise);
                 partial void ValidateNoPending();
 
-                internal override void Handle(PromiseRefBase handler, Promise.State state) { throw new System.InvalidOperationException(); }
+                internal override void Handle(PromiseRefBase handler, Promise.State state) => throw new System.InvalidOperationException();
 
                 [MethodImpl(InlineOption)]
-                protected void Reset(CancelationRef cancelationSource)
+                protected void Reset(CancelationRef cancelationRef)
                 {
-                    _cancelationRef = cancelationSource;
-                    _cancelationId = cancelationSource.SourceId;
+                    _cancelationRef = cancelationRef;
+                    _cancelationId = cancelationRef.SourceId;
                     Reset();
                 }
 
@@ -57,14 +73,6 @@ namespace Proto.Promises
                 {
                     RemoveComplete(completePromise);
                     completePromise.SetCompletionState(state);
-                }
-
-                [MethodImpl(InlineOption)]
-                internal void AddPromiseWithIndex(Promise promise, int index)
-                {
-                    AddPending(promise._ref);
-                    var passthrough = PromisePassThrough.GetOrCreate(promise._ref, this, index);
-                    promise._ref.HookupNewWaiter(promise._id, passthrough);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -114,14 +122,6 @@ namespace Proto.Promises
                         RecordException(e);
                     }
                 }
-
-                internal void RecordException(Exception e)
-                {
-                    lock (this)
-                    {
-                        Internal.RecordException(e, ref _exceptions);
-                    }
-                }
             }
 
 #if PROMISE_DEBUG
@@ -166,6 +166,12 @@ namespace Proto.Promises
                         _pendingPromises.Remove(completePromise);
                     }
                 }
+
+                protected void AddForCircularAwaitDetection(PromiseRefBase pendingPromise)
+                    => AddPending(pendingPromise);
+
+                protected void RemoveForCircularAwaitDetection(PromiseRefBase pendingPromise)
+                    => RemoveComplete(pendingPromise);
             }
 #endif
         } // class PromiseRefBase

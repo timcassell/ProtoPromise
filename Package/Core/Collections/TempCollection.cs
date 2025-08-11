@@ -157,6 +157,9 @@ namespace Proto.Promises.Collections
         /// <summary>
         /// Provides an enumerator for iterating over the items in the <see cref="TempCollection{T}"/>.
         /// </summary>
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         public struct Enumerator : IEnumerator<T>
         {
             private readonly TempCollection<T> _target;
@@ -206,6 +209,9 @@ namespace Proto.Promises.Collections
     }
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode, StackTraceHidden]
+#endif
     internal sealed class TempCollectionDisposedChecker : Internal.ITraceable
     {
 #if PROMISE_DEBUG
@@ -230,6 +236,9 @@ namespace Proto.Promises.Collections
     }
 #endif // PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
 
+#if !PROTO_PROMISE_DEVELOPER_MODE
+    [DebuggerNonUserCode, StackTraceHidden]
+#endif
     internal struct TempCollectionBuilder<T> : IDisposable
     {
         internal T[] _items;
