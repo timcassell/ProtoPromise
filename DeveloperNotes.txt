@@ -1,6 +1,6 @@
 ﻿For each new release:
 
-Update the version in `ProtoPromise.csproj`, `ProtoPromise.UnityHelpers/**.csproj`s, and `package.json`.
+Update the version in `Directory.Build.props` and `Package/package.json`.
 
 
 To create the UnityPackage for releases:
@@ -33,9 +33,8 @@ For the ProtoPromise.Analyzer package, if changes were made:
 - Open Unity in 2020.2 and add the label `RoslynAnalyzer` to the dll
 - Create a unitypackage from the dll and name it `ProtoPromise.Analyzer.unitypackage`
 - Upload `ProtoPromise.Analyzer.unitypackage` with the release on GitHub
-- Run the `Publish analyzer nuget package` workflow on GitHub with the new version.
 
 
 For debugging internal library code:
 
-By default, ProtoPromise types are marked with the `[DebuggerNonUserCode]` and `[StackTraceHidden]`, making the debugger skip over the library code instead of stepping into it. To disable this behavior and to get more detailed stack traces, define the compiler symbol `PROTO_PROMISE_DEVELOPER_MODE` in Unity, or change `<DeveloperMode>` to `true` in Directory.Build.props.
+By default, ProtoPromise types are marked with the `[DebuggerNonUserCode]` and `[StackTraceHidden]`, making the debugger skip over the library code instead of stepping into it. To disable this behavior and to get more detailed stack traces, define the compiler symbol `PROTO_PROMISE_DEVELOPER_MODE` in Unity, or change `<DeveloperMode>` to `true` in `Directory.Build.props`.

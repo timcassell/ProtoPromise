@@ -67,7 +67,7 @@ You may also `Dispose` the registration to unregister the callback, or wait for 
 
 Promise implementations usually do not allow cancelations, but it has proven to be invaluable to asynchronous libraries, and ProtoPromise is no exception.
 
-Promises can be canceled 3 ways: passing a `CancelationToken` into `Promise.{Then, Catch, ContinueWith}`, calling `Promise.Deferred.Cancel()`, or by throwing a [Cancelation Exception](special-exceptions.md). When a promise is canceled, all promises that have been chained from it will be canceled, until a `CatchCancelation`.
+Promises can be canceled 3 ways: passing a `CancelationToken` into `Promise.WaitAsync`, calling `Promise.Deferred.Cancel()`, or by throwing a [Cancelation Exception](special-exceptions.md). When a promise is canceled, all promises that have been chained from it will be canceled, until a `CatchCancelation`.
 
 ```cs
 CancelationSource cancelationSource = CancelationSource.New();
