@@ -72,11 +72,12 @@ Promises can be canceled 3 ways: passing a `CancelationToken` into `Promise.Wait
 ```cs
 CancelationSource cancelationSource = CancelationSource.New();
 
-Download("http://www.google.com");                                  // <---- This will run to completion if no errors occur.
-    .Then(html => Console.Log(html), cancelationSource.Token).      // <---- This will be canceled before the download completes and will not run.
-    .Then(() => Download("http://www.bing.com"))                    // <---- This will also be canceled and will not run.
-    .Then(html => Console.Log(html))                                // <---- This will also be canceled and will not run.
-    .Finally(cancelationSource.Dispose)                             // Remember to always dispose of the cancelation source when it's no longer needed.
+Download("http://www.google.com")                  // <---- This will run to completion if no errors occur.
+    .WaitAsync(cancelationSource.Token)            // <---- Canceled immediately when the cancelation token is canceled.
+    .Then(html => Console.Log(html)).              // <---- This will be canceled before the download completes and will not run.
+    .Then(() => Download("http://www.bing.com"))   // <---- This will also be canceled and will not run.
+    .Then(html => Console.Log(html))               // <---- This will also be canceled and will not run.
+    .Finally(cancelationSource.Dispose)            // Remember to always dispose of the cancelation source when it's no longer needed.
     .Forget();
     
 // ... later, before the first download is complete
@@ -110,29 +111,34 @@ Cancelations always propagate downwards, and never upwards:
 ```cs
 CancelationSource cancelationSource = CancelationSource.New();
 
-Download("http://www.google.com")                                           // <---- This will *not* be canceled and will run to completion
-    .Then(html => Console.Log(html))                                        // <---- This will *not* be canceled and will run
-    .Then(() => Download("http://www.bing.com"), cancelationSource.Token)   // <---- This will be canceled before the download starts and will not run.
-    .Then(html => Console.Log(html))                                        // <---- This will be canceled and will not run.
-    .Finally(cancelationSource.Dispose)                                     // Remember to always dispose of the cancelation source when it's no longer needed.
+Download("http://www.google.com")                  // <---- This will *not* be canceled and will run to completion
+    .Then(html => Console.Log(html))               // <---- This will *not* be canceled and will run
+    .WaitAsync(cancelationSource.Token)            // <---- Canceled immediately when the cancelation token is canceled.
+    .Then(() => Download("http://www.bing.com"))   // <---- This will be canceled before the download starts and will not run.
+    .Then(html => Console.Log(html))               // <---- This will be canceled and will not run.
+    .Finally(cancelationSource.Dispose)            // Remember to always dispose of the cancelation source when it's no longer needed.
     .Forget();
     
 // ... later, before the first download is complete
 cancelationSource.Cancel();
 ```
 
-In an `async` function, you can use the `token.ThrowIfCancelationRequested` API.
+In an `async` function, you can use the `cancelationToken.ThrowIfCancelationRequested` API.
 
 ```cs
-async Promise Func(CancelationToken token)
+async Promise Func(CancelationToken cancelationToken)
 {
     string html = await Download("http://www.google.com");      // <---- This will *not* be canceled and will run to completion
     Console.Log(html);                                          // <---- This will *not* be canceled and will run
-    token.ThrowIfCancelationRequested();                        // <---- This will throw a CanceledException and cancel the `async Promise`
+    cancelationToken.ThrowIfCancelationRequested();             // <---- This will throw a CanceledException and cancel the `async Promise`
     html = await Download("http://www.bing.com");               // <---- This will not run
     Console.Log(html);                                          // <---- This will not run
 }
 ```
+
+Note that, unlike `WaitAsync`, this code does not cancel immediately.
+
+See also [More Examples](more-examples.md).
 
 ## Unhandled Cancelations
 
