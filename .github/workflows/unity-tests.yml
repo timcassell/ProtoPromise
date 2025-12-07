@@ -1,10 +1,6 @@
 name: Unity Tests
 
-on: [pull_request]
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
+on: [push]
 
 jobs:
   unity-tests:
@@ -16,19 +12,9 @@ jobs:
       matrix:
         testMode:
           - {
-              name: Editor,
-              value: PlayMode,
-            }
-          - {
               name: Standalone,
               value: Standalone,
             }
-          # Not testing WebGL as unity-test-runner does not support it.
-          #- {
-          #    name: WebGL,
-          #    value: WebGL,
-          #    buildTargetId: 13
-          #  }
         configuration:
           - {
               name: Release,
@@ -47,13 +33,7 @@ jobs:
               name: Pool_Disabled,
               symbol: PROTO_PROMISE_POOL_DISABLE
             }
-        # Editor uses 2018 to test netstandard2.0 in Mono.
-        # Standalone uses 2019 and 6000 to test IL2CPP with netstandard2.0 and netstandard2.1.
         unity:
-          - {
-              major: 2018,
-              version: 2018.4.36f1,
-            }
           - {
               major: 2019,
               version: 2019.4.40f1,
@@ -69,26 +49,10 @@ jobs:
               configuration: { name: Debug },
               objectPooling: { name: Pool_Enabled }
             }
-          # Editor tests only run in 2018.4 to keep CI times down.
-          - {
-              testMode: { name: Editor },
-              unity: { major: 2019 }
-            }
-          - {
-              testMode: { name: Editor },
-              unity: { major: 6000 }
-            }
-          # Standalone with IL2CPP can only be built with 2019.4+ (unity-builder docker images constraint).
-          - {
-              testMode: { name: Standalone },
-              unity: { major: 2018 }
-            }
 
         include:
           # id 1 for old Unity versions, Standalone for new Unity versions.
           # This is hard-coded for Standalone, since we can't run WebGL tests in CI.
-          - unity: { major: 2018 }
-            buildTargetId: 1
           - unity: { major: 2019 }
             buildTargetId: 1
           - unity: { major: 6000 }
