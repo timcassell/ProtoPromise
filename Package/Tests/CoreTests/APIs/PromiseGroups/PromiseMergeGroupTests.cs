@@ -1980,5 +1980,279 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
             Assert.AreEqual(count, invokedCount);
         }
+
+        [Test]
+        public void PromiseMergeGroup_ResolvedValuesAreCorrectWithCleanupCallbacks_1(
+            [Values] bool alreadyComplete)
+        {
+            var deferred1 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var promise1 = alreadyComplete ? Promise.Resolved(1) : deferred1.Promise;
+
+            bool completed = false;
+            PromiseMergeGroup.New(out _)
+                .Add(promise1, v => { })
+                .WaitAsync()
+                .ContinueWith(result =>
+                {
+                    completed = true;
+                    Assert.AreEqual(Promise.State.Resolved, result.State);
+                    Assert.AreEqual(1, result.Value);
+                })
+                .Forget();
+
+            if (!alreadyComplete)
+            {
+                Assert.IsFalse(completed);
+                deferred1.Resolve(1);
+            }
+            Assert.IsTrue(completed);
+        }
+
+        [Test]
+        public void PromiseMergeGroup_ResolvedValuesAreCorrectWithCleanupCallbacks_2(
+            [Values] bool alreadyComplete)
+        {
+            var deferred1 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred2 = alreadyComplete ? default : Promise.NewDeferred<string>();
+            var promise1 = alreadyComplete ? Promise.Resolved(1) : deferred1.Promise;
+            var promise2 = alreadyComplete ? Promise.Resolved("two") : deferred2.Promise;
+
+            bool completed = false;
+            PromiseMergeGroup.New(out _)
+                .Add(promise1, v => { })
+                .Add(promise2, v => { })
+                .WaitAsync()
+                .ContinueWith(result =>
+                {
+                    completed = true;
+                    Assert.AreEqual(Promise.State.Resolved, result.State);
+                    Assert.AreEqual((1, "two"), result.Value);
+                })
+                .Forget();
+
+            if (!alreadyComplete)
+            {
+                Assert.IsFalse(completed);
+                deferred1.Resolve(1);
+                deferred2.Resolve("two");
+            }
+            Assert.IsTrue(completed);
+        }
+
+        [Test]
+        public void PromiseMergeGroup_ResolvedValuesAreCorrectWithCleanupCallbacks_3(
+            [Values] bool alreadyComplete)
+        {
+            var deferred1 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred2 = alreadyComplete ? default : Promise.NewDeferred<string>();
+            var deferred3 = alreadyComplete ? default : Promise.NewDeferred<bool>();
+            var promise1 = alreadyComplete ? Promise.Resolved(1) : deferred1.Promise;
+            var promise2 = alreadyComplete ? Promise.Resolved("two") : deferred2.Promise;
+            var promise3 = alreadyComplete ? Promise.Resolved(true) : deferred3.Promise;
+
+            bool completed = false;
+            PromiseMergeGroup.New(out _)
+                .Add(promise1, v => { })
+                .Add(promise2, v => { })
+                .Add(promise3, v => { })
+                .WaitAsync()
+                .ContinueWith(result =>
+                {
+                    completed = true;
+                    Assert.AreEqual(Promise.State.Resolved, result.State);
+                    Assert.AreEqual((1, "two", true), result.Value);
+                })
+                .Forget();
+
+            if (!alreadyComplete)
+            {
+                Assert.IsFalse(completed);
+                deferred1.Resolve(1);
+                deferred2.Resolve("two");
+                deferred3.Resolve(true);
+            }
+            Assert.IsTrue(completed);
+        }
+
+        [Test]
+        public void PromiseMergeGroup_ResolvedValuesAreCorrectWithCleanupCallbacks_7(
+            [Values] bool alreadyComplete)
+        {
+            var deferred1 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred2 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred3 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred4 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred5 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred6 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred7 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var promise1 = alreadyComplete ? Promise.Resolved(1) : deferred1.Promise;
+            var promise2 = alreadyComplete ? Promise.Resolved(2) : deferred2.Promise;
+            var promise3 = alreadyComplete ? Promise.Resolved(3) : deferred3.Promise;
+            var promise4 = alreadyComplete ? Promise.Resolved(4) : deferred4.Promise;
+            var promise5 = alreadyComplete ? Promise.Resolved(5) : deferred5.Promise;
+            var promise6 = alreadyComplete ? Promise.Resolved(6) : deferred6.Promise;
+            var promise7 = alreadyComplete ? Promise.Resolved(7) : deferred7.Promise;
+
+            bool completed = false;
+            PromiseMergeGroup.New(out _)
+                .Add(promise1, v => { })
+                .Add(promise2, v => { })
+                .Add(promise3, v => { })
+                .Add(promise4, v => { })
+                .Add(promise5, v => { })
+                .Add(promise6, v => { })
+                .Add(promise7, v => { })
+                .WaitAsync()
+                .ContinueWith(result =>
+                {
+                    completed = true;
+                    Assert.AreEqual(Promise.State.Resolved, result.State);
+                    Assert.AreEqual((1, 2, 3, 4, 5, 6, 7), result.Value);
+                })
+                .Forget();
+
+            if (!alreadyComplete)
+            {
+                Assert.IsFalse(completed);
+                deferred1.Resolve(1);
+                deferred2.Resolve(2);
+                deferred3.Resolve(3);
+                deferred4.Resolve(4);
+                deferred5.Resolve(5);
+                deferred6.Resolve(6);
+                deferred7.Resolve(7);
+            }
+            Assert.IsTrue(completed);
+        }
+
+        [Test]
+        public void PromiseMergeGroup_ResolvedValuesAreCorrectWithCleanupCallbacks_8(
+            [Values] bool alreadyComplete)
+        {
+            var deferred1 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred2 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred3 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred4 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred5 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred6 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred7 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred8 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var promise1 = alreadyComplete ? Promise.Resolved(1) : deferred1.Promise;
+            var promise2 = alreadyComplete ? Promise.Resolved(2) : deferred2.Promise;
+            var promise3 = alreadyComplete ? Promise.Resolved(3) : deferred3.Promise;
+            var promise4 = alreadyComplete ? Promise.Resolved(4) : deferred4.Promise;
+            var promise5 = alreadyComplete ? Promise.Resolved(5) : deferred5.Promise;
+            var promise6 = alreadyComplete ? Promise.Resolved(6) : deferred6.Promise;
+            var promise7 = alreadyComplete ? Promise.Resolved(7) : deferred7.Promise;
+            var promise8 = alreadyComplete ? Promise.Resolved(8) : deferred8.Promise;
+
+            bool completed = false;
+            PromiseMergeGroup.New(out _)
+                .Add(promise1, v => { })
+                .Add(promise2, v => { })
+                .Add(promise3, v => { })
+                .Add(promise4, v => { })
+                .Add(promise5, v => { })
+                .Add(promise6, v => { })
+                .Add(promise7, v => { })
+                .Add(promise8, v => { })
+                .WaitAsync()
+                .ContinueWith(result =>
+                {
+                    completed = true;
+                    Assert.AreEqual(Promise.State.Resolved, result.State);
+                    Assert.AreEqual(((1, 2, 3, 4, 5, 6, 7), 8), result.Value);
+                })
+                .Forget();
+
+            if (!alreadyComplete)
+            {
+                Assert.IsFalse(completed);
+                deferred1.Resolve(1);
+                deferred2.Resolve(2);
+                deferred3.Resolve(3);
+                deferred4.Resolve(4);
+                deferred5.Resolve(5);
+                deferred6.Resolve(6);
+                deferred7.Resolve(7);
+                deferred8.Resolve(8);
+            }
+            Assert.IsTrue(completed);
+        }
+
+        [Test]
+        public void PromiseMergeGroup_ResolvedValuesAreCorrectWithCleanupCallbacks_13(
+            [Values] bool alreadyComplete)
+        {
+            var deferred1 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred2 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred3 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred4 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred5 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred6 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred7 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred8 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred9 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred10 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred11 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred12 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var deferred13 = alreadyComplete ? default : Promise.NewDeferred<int>();
+            var promise1 = alreadyComplete ? Promise.Resolved(1) : deferred1.Promise;
+            var promise2 = alreadyComplete ? Promise.Resolved(2) : deferred2.Promise;
+            var promise3 = alreadyComplete ? Promise.Resolved(3) : deferred3.Promise;
+            var promise4 = alreadyComplete ? Promise.Resolved(4) : deferred4.Promise;
+            var promise5 = alreadyComplete ? Promise.Resolved(5) : deferred5.Promise;
+            var promise6 = alreadyComplete ? Promise.Resolved(6) : deferred6.Promise;
+            var promise7 = alreadyComplete ? Promise.Resolved(7) : deferred7.Promise;
+            var promise8 = alreadyComplete ? Promise.Resolved(8) : deferred8.Promise;
+            var promise9 = alreadyComplete ? Promise.Resolved(9) : deferred9.Promise;
+            var promise10 = alreadyComplete ? Promise.Resolved(10) : deferred10.Promise;
+            var promise11 = alreadyComplete ? Promise.Resolved(11) : deferred11.Promise;
+            var promise12 = alreadyComplete ? Promise.Resolved(12) : deferred12.Promise;
+            var promise13 = alreadyComplete ? Promise.Resolved(13) : deferred13.Promise;
+
+            bool completed = false;
+            PromiseMergeGroup.New(out _)
+                .Add(promise1, v => { })
+                .Add(promise2, v => { })
+                .Add(promise3, v => { })
+                .Add(promise4, v => { })
+                .Add(promise5, v => { })
+                .Add(promise6, v => { })
+                .Add(promise7, v => { })
+                .Add(promise8, v => { })
+                .Add(promise9, v => { })
+                .Add(promise10, v => { })
+                .Add(promise11, v => { })
+                .Add(promise12, v => { })
+                .Add(promise13, v => { })
+                .WaitAsync()
+                .ContinueWith(result =>
+                {
+                    completed = true;
+                    Assert.AreEqual(Promise.State.Resolved, result.State);
+                    Assert.AreEqual(((1, 2, 3, 4, 5, 6, 7), 8, 9, 10, 11, 12, 13), result.Value);
+                })
+                .Forget();
+
+            if (!alreadyComplete)
+            {
+                Assert.IsFalse(completed);
+                deferred1.Resolve(1);
+                deferred2.Resolve(2);
+                deferred3.Resolve(3);
+                deferred4.Resolve(4);
+                deferred5.Resolve(5);
+                deferred6.Resolve(6);
+                deferred7.Resolve(7);
+                deferred8.Resolve(8);
+                deferred9.Resolve(9);
+                deferred10.Resolve(10);
+                deferred11.Resolve(11);
+                deferred12.Resolve(12);
+                deferred13.Resolve(13);
+            }
+            Assert.IsTrue(completed);
+        }
     }
 }
