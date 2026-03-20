@@ -549,7 +549,7 @@ namespace Proto.Promises
 
         [MethodImpl(Internal.InlineOption)]
         private PromiseMergeGroup<T1, T2, T3> Add<T3>(in Promise<T3> promise, Internal.MergeCleanupCallback cleanupCallback)
-            => new PromiseMergeGroup<T1, T2, T3>(_mergeGroup.Merge(promise, 1, cleanupCallback), (_value.Item1, _value.Item2, promise._result));
+            => new PromiseMergeGroup<T1, T2, T3>(_mergeGroup.Merge(promise, 2, cleanupCallback), (_value.Item1, _value.Item2, promise._result));
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
@@ -650,7 +650,7 @@ namespace Proto.Promises
 
         [MethodImpl(Internal.InlineOption)]
         private PromiseMergeGroup<T1, T2, T3, T4> Add<T4>(in Promise<T4> promise, Internal.MergeCleanupCallback cleanupCallback)
-            => new PromiseMergeGroup<T1, T2, T3, T4>(_mergeGroup.Merge(promise, 1, cleanupCallback), (_value.Item1, _value.Item2, _value.Item3, promise._result));
+            => new PromiseMergeGroup<T1, T2, T3, T4>(_mergeGroup.Merge(promise, 3, cleanupCallback), (_value.Item1, _value.Item2, _value.Item3, promise._result));
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
@@ -751,7 +751,7 @@ namespace Proto.Promises
 
         [MethodImpl(Internal.InlineOption)]
         private PromiseMergeGroup<T1, T2, T3, T4, T5> Add<T5>(in Promise<T5> promise, Internal.MergeCleanupCallback cleanupCallback)
-            => new PromiseMergeGroup<T1, T2, T3, T4, T5>(_mergeGroup.Merge(promise, 1, cleanupCallback), (_value.Item1, _value.Item2, _value.Item3, _value.Item4, promise._result));
+            => new PromiseMergeGroup<T1, T2, T3, T4, T5>(_mergeGroup.Merge(promise, 4, cleanupCallback), (_value.Item1, _value.Item2, _value.Item3, _value.Item4, promise._result));
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
@@ -852,7 +852,7 @@ namespace Proto.Promises
 
         [MethodImpl(Internal.InlineOption)]
         private PromiseMergeGroup<T1, T2, T3, T4, T5, T6> Add<T6>(in Promise<T6> promise, Internal.MergeCleanupCallback cleanupCallback)
-            => new PromiseMergeGroup<T1, T2, T3, T4, T5, T6>(_mergeGroup.Merge(promise, 1, cleanupCallback), (_value.Item1, _value.Item2, _value.Item3, _value.Item4, _value.Item5, promise._result));
+            => new PromiseMergeGroup<T1, T2, T3, T4, T5, T6>(_mergeGroup.Merge(promise, 5, cleanupCallback), (_value.Item1, _value.Item2, _value.Item3, _value.Item4, _value.Item5, promise._result));
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
@@ -953,7 +953,7 @@ namespace Proto.Promises
 
         [MethodImpl(Internal.InlineOption)]
         private PromiseMergeGroup<T1, T2, T3, T4, T5, T6, T7> Add<T7>(in Promise<T7> promise, Internal.MergeCleanupCallback cleanupCallback)
-            => new PromiseMergeGroup<T1, T2, T3, T4, T5, T6, T7>(_mergeGroup.Merge(promise, 1, cleanupCallback), (_value.Item1, _value.Item2, _value.Item3, _value.Item4, _value.Item5, _value.Item6, promise._result));
+            => new PromiseMergeGroup<T1, T2, T3, T4, T5, T6, T7>(_mergeGroup.Merge(promise, 6, cleanupCallback), (_value.Item1, _value.Item2, _value.Item3, _value.Item4, _value.Item5, _value.Item6, promise._result));
 
         /// <summary>
         /// Waits asynchronously for all of the promises in this group to complete.
