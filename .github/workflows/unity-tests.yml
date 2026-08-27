@@ -1,6 +1,6 @@
 name: Unity Tests
 
-on: [pull_request]
+on: [pull_request, push]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -117,7 +117,7 @@ jobs:
 
       - name: Run tests
         id: tests
-        uses: game-ci/unity-test-runner@v4
+        uses: game-ci/unity-test-runner@v5.0.0-beta.1
         env:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
