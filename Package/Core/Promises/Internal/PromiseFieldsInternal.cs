@@ -499,6 +499,8 @@ namespace Proto.Promises
 
             partial class MergePromise<TResult> : MergePromiseBase<TResult>
             {
+                // Per instance, not static: different getters can produce the same TResult (#579).
+                private GetResultDelegate<TResult> _getResult;
             }
 
             partial class MergeSettledPromise<TResult> : MergePromiseBase<TResult>
@@ -546,6 +548,8 @@ namespace Proto.Promises
 
             partial class MergePromiseGroup<TResult> : SingleAwaitPromise<TResult>
             {
+                // Per instance, not static: different getters can produce the same TResult (#579).
+                private GetResultDelegate<TResult> _getResult;
                 private ValueLinkedStack<MergeCleanupCallback> _cleanupCallbacks;
                 private int _cleanupCount;
                 private bool _isExtended;

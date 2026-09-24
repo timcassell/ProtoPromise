@@ -180,8 +180,6 @@ namespace Proto.Promises
 #endif
             internal sealed partial class MergePromiseGroup<TResult> : SingleAwaitPromise<TResult>
             {
-                private static GetResultDelegate<TResult> s_getResult;
-
                 [MethodImpl(InlineOption)]
                 private static MergePromiseGroup<TResult> GetOrCreate()
                 {
@@ -195,10 +193,10 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(MergePromiseGroupVoid group, in TResult value, GetResultDelegate<TResult> getResultFunc, bool isExtended, bool isFinal,
                     ValueLinkedStack<MergeCleanupCallback> cleanupCallbacks, int cleanupCount)
                 {
-                    s_getResult = getResultFunc;
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._result = value;
+                    promise._getResult = getResultFunc;
                     promise._isExtended = isExtended;
                     promise._isFinal = isFinal;
                     promise._cleanupCallbacks = cleanupCallbacks;
@@ -247,7 +245,7 @@ namespace Proto.Promises
                         var passthrough = passthroughs.Pop();
                         var owner = passthrough.Owner;
                         var index = passthrough.Index;
-                        s_getResult.Invoke(owner, index, ref _result);
+                        _getResult.Invoke(owner, index, ref _result);
                         if (owner.State == Promise.State.Rejected)
                         {
                             state = Promise.State.Rejected;

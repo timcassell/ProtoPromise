@@ -412,8 +412,6 @@ namespace Proto.Promises
 #endif
             internal sealed partial class MergePromise<TResult> : MergePromiseBase<TResult>
             {
-                private static GetResultDelegate<TResult> s_getResult;
-
                 [MethodImpl(InlineOption)]
                 private static MergePromise<TResult> GetOrCreate()
                 {
@@ -426,10 +424,10 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static MergePromise<TResult> GetOrCreate(in TResult value, GetResultDelegate<TResult> getResultFunc)
                 {
-                    s_getResult = getResultFunc;
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._result = value;
+                    promise._getResult = getResultFunc;
                     return promise;
                 }
 
@@ -448,10 +446,10 @@ namespace Proto.Promises
                     ValueLinkedStack<PromisePassThroughForAll> passthroughs,
                     int waitCount)
                 {
-                    s_getResult = getResultFunc;
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._result = value;
+                    promise._getResult = getResultFunc;
                     promise._waitCount = waitCount;
                     unchecked { promise._retainCounter = waitCount + 1; }
                     do
@@ -476,7 +474,7 @@ namespace Proto.Promises
                     bool isComplete;
                     if (state == Promise.State.Resolved)
                     {
-                        s_getResult.Invoke(handler, index, ref _result);
+                        _getResult.Invoke(handler, index, ref _result);
                         isComplete = RemoveWaiterAndGetIsComplete(handler);
                     }
                     else
