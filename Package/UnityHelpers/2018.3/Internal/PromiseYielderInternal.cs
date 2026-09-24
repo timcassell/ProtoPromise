@@ -190,7 +190,8 @@ namespace Proto.Promises
                 {
                     current[i].Invoke();
                 }
-                Array.Clear(current, 0, max);
+                // The queues could have been resized while processing (see WaitForNext), in which case the current queue is a copy of the local, so we clear that one instead.
+                Array.Clear(_currentQueue, 0, max);
             }
 
             internal void Clear()
@@ -294,7 +295,8 @@ namespace Proto.Promises
                 {
                     current[i].Invoke();
                 }
-                Array.Clear(current, 0, max);
+                // The queues could have been resized while processing (see WaitForNext), in which case the current queue is a copy of the local, so we clear that one instead.
+                Array.Clear(_currentQueue, 0, max);
             }
 
             internal void Clear()
@@ -407,10 +409,7 @@ namespace Proto.Promises
                         capacity = _followingQueue.Length;
                         if (_followingCount >= capacity)
                         {
-                            int newCapcity = capacity * 2;
-                            Array.Resize(ref _currentQueue, newCapcity);
-                            Array.Resize(ref _nextQueue, newCapcity);
-                            Array.Resize(ref _followingQueue, newCapcity);
+                            Resize(capacity * 2);
                         }
 
                         _followingQueue[_followingCount] = instruction;
@@ -427,10 +426,7 @@ namespace Proto.Promises
                     capacity = _nextQueue.Length;
                     if (potentialFutureCount >= capacity)
                     {
-                        int newCapcity = capacity * 2;
-                        Array.Resize(ref _currentQueue, newCapcity);
-                        Array.Resize(ref _nextQueue, newCapcity);
-                        Array.Resize(ref _followingQueue, newCapcity);
+                        Resize(capacity * 2);
                     }
 
                     _nextQueue[_nextCount] = instruction;
@@ -438,8 +434,24 @@ namespace Proto.Promises
                     ++_nextCount;
                 }
 
+                private void Resize(int newCapacity)
+                {
+                    Array.Resize(ref _currentQueue, newCapacity);
+                    Array.Resize(ref _nextQueue, newCapacity);
+                    Array.Resize(ref _followingQueue, newCapacity);
+                }
+
                 internal override void Process()
                 {
+                    // The following queue becomes the next queue, and incomplete instructions from the current queue are re-added to it without a bounds check,
+                    // so we need to make sure the queue has enough space for both in case none of the current instructions have finished (see WaitFor).
+                    int requiredCapacity = _nextCount + _followingCount;
+                    int capacity = _nextQueue.Length;
+                    if (requiredCapacity > capacity)
+                    {
+                        Resize(Math.Max(capacity * 2, requiredCapacity));
+                    }
+
                     // Store the next in a local for iteration, and rotate queues.
                     var current = _nextQueue;
                     _nextQueue = _followingQueue;
@@ -470,7 +482,8 @@ namespace Proto.Promises
                         }
                         --_currentCount;
                     }
-                    Internal.ClearReferences(current, 0, max);
+                    // The queues could have been resized while processing (see WaitFor), in which case the current queue is a copy of the local, so we clear that one instead.
+                    Internal.ClearReferences(_currentQueue, 0, max);
                 }
 
                 internal override void Reset()
