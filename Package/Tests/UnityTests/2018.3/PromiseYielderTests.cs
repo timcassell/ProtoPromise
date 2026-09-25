@@ -754,6 +754,66 @@ namespace ProtoPromise.Tests.Unity
             }
         }
 
+        private class UpdateCallbackBehaviour : MonoBehaviour
+        {
+            public Action onUpdate;
+
+            private void Update()
+                => onUpdate?.Invoke();
+        }
+
+        private class WaitState
+        {
+            public bool isComplete;
+        }
+
+        [UnityTest]
+        public IEnumerator PromiseYielder_ManyEarlyWaitUntilsInConsecutiveFrames()
+        {
+            // Waits that are started early (before the PromiseYielder processes the queues) are processed in the same update as incomplete waits from the previous frame.
+            // This makes sure the internal queue grows to fit both (https://github.com/timcassell/ProtoPromise/issues/577).
+            // Testing implementation detail of the internal array size. Initial size is 64, so we need more than 64 in total, but not more than 64 per frame.
+            const int waitCountPerFrame = 40;
+            const int frameCount = 3;
+
+            // Use a unique capture type so that the internal queue is not the same queue used by other tests.
+            var waitState = new WaitState();
+            var promises = new System.Collections.Generic.List<Promise>();
+            int updatedFrameCount = 0;
+            var testBehaviour = behaviour.gameObject.AddComponent<UpdateCallbackBehaviour>();
+            testBehaviour.onUpdate = () =>
+            {
+                for (int i = 0; i < waitCountPerFrame; i++)
+                {
+                    promises.Add(PromiseYielder.WaitUntil(waitState, ws => ws.isComplete).ToPromise());
+                }
+                if (++updatedFrameCount == frameCount)
+                {
+                    testBehaviour.onUpdate = null;
+                }
+            };
+            try
+            {
+                while (updatedFrameCount < frameCount)
+                {
+                    yield return null;
+                }
+                // Wait an extra frame to make sure the last batch was processed.
+                yield return null;
+
+                waitState.isComplete = true;
+                using (var yieldInstruction = Promise.All(promises).ToYieldInstruction())
+                {
+                    yield return yieldInstruction;
+                    yieldInstruction.GetResult();
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.Destroy(testBehaviour);
+            }
+        }
+
         [UnityTest]
         public IEnumerator PromiseYielderWaitForFramesWithProgress_ReportsProgress()
         {
