@@ -6,6 +6,7 @@
 
 using NUnit.Framework;
 using Proto.Promises;
+using System.Collections.Generic;
 
 namespace ProtoPromise.Tests.APIs
 {
@@ -266,6 +267,123 @@ namespace ProtoPromise.Tests.APIs
             deferred.Resolve(0);
 
             Assert.IsTrue(canceled);
+        }
+
+        [Test]
+        public void PendingMergesWithTheSameResultTypeResolveIndependently(
+            [Values] bool twoValueMergeFirst)
+        {
+            // Both merges resolve to (int, int), but assemble it differently: one from two int
+            // promises, the other from a single (int, int) promise and a void promise.
+            var deferredLeft = Promise.NewDeferred<int>();
+            var deferredRight = Promise.NewDeferred<int>();
+            var deferredPair = Promise.NewDeferred<(int, int)>();
+            var deferredVoid = Promise.NewDeferred();
+
+            bool twoValueMergeCompleted = false;
+            bool pairMergeCompleted = false;
+
+            void MergeTwoValues()
+            {
+                Promise.Merge(deferredLeft.Promise, deferredRight.Promise)
+                    .ContinueWith(result =>
+                    {
+                        twoValueMergeCompleted = true;
+                        Assert.AreEqual(Promise.State.Resolved, result.State);
+                        Assert.AreEqual((1, 2), result.Value);
+                    })
+                    .Forget();
+            }
+
+            void MergePair()
+            {
+                Promise.Merge(deferredPair.Promise, deferredVoid.Promise)
+                    .ContinueWith(result =>
+                    {
+                        pairMergeCompleted = true;
+                        Assert.AreEqual(Promise.State.Resolved, result.State);
+                        Assert.AreEqual((3, 4), result.Value);
+                    })
+                    .Forget();
+            }
+
+            if (twoValueMergeFirst)
+            {
+                MergeTwoValues();
+                MergePair();
+            }
+            else
+            {
+                MergePair();
+                MergeTwoValues();
+            }
+
+            deferredLeft.Resolve(1);
+            deferredRight.Resolve(2);
+            deferredPair.Resolve((3, 4));
+            deferredVoid.Resolve();
+
+            Assert.IsTrue(twoValueMergeCompleted);
+            Assert.IsTrue(pairMergeCompleted);
+        }
+
+        [Test]
+        public void PendingMergeAndAllWithTheSameResultTypeResolveIndependently(
+            [Values] bool allFirst)
+        {
+            // Both resolve to IList<int>: All builds the list from two int promises, while Merge
+            // passes through a single IList<int> promise alongside a void promise.
+            var deferred1 = Promise.NewDeferred<int>();
+            var deferred2 = Promise.NewDeferred<int>();
+            var deferredList = Promise.NewDeferred<IList<int>>();
+            var deferredVoid = Promise.NewDeferred();
+            var list = new List<int> { 3, 4 };
+
+            bool allCompleted = false;
+            bool mergeCompleted = false;
+
+            void WaitAll()
+            {
+                Promise<int>.All(deferred1.Promise, deferred2.Promise)
+                    .ContinueWith(result =>
+                    {
+                        allCompleted = true;
+                        Assert.AreEqual(Promise.State.Resolved, result.State);
+                        CollectionAssert.AreEqual(new[] { 1, 2 }, result.Value);
+                    })
+                    .Forget();
+            }
+
+            void WaitMerge()
+            {
+                Promise.Merge(deferredList.Promise, deferredVoid.Promise)
+                    .ContinueWith(result =>
+                    {
+                        mergeCompleted = true;
+                        Assert.AreEqual(Promise.State.Resolved, result.State);
+                        Assert.AreSame(list, result.Value);
+                    })
+                    .Forget();
+            }
+
+            if (allFirst)
+            {
+                WaitAll();
+                WaitMerge();
+            }
+            else
+            {
+                WaitMerge();
+                WaitAll();
+            }
+
+            deferred1.Resolve(1);
+            deferred2.Resolve(2);
+            deferredList.Resolve(list);
+            deferredVoid.Resolve();
+
+            Assert.IsTrue(allCompleted);
+            Assert.IsTrue(mergeCompleted);
         }
     }
 }

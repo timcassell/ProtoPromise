@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFrameworks>net8.0;net48</TargetFrameworks>
     <LangVersion>9</LangVersion>
+    <RunSettingsFilePath>$(MSBuildProjectDirectory)\UnitTestRunsettings.runsettings</RunSettingsFilePath>
   </PropertyGroup>
 
   <ItemGroup>
