@@ -445,11 +445,11 @@ namespace Proto.Promises
                 {
                     // The following queue becomes the next queue, and incomplete instructions from the current queue are re-added to it without a bounds check,
                     // so we need to make sure the queue has enough space for both in case none of the current instructions have finished (see WaitFor).
-                    int requiredCapacity = _nextCount + _followingCount;
+                    // Each count is never larger than the capacity, so doubling it is always enough.
                     int capacity = _nextQueue.Length;
-                    if (requiredCapacity > capacity)
+                    if (_nextCount + _followingCount > capacity)
                     {
-                        Resize(Math.Max(capacity * 2, requiredCapacity));
+                        Resize(capacity * 2);
                     }
 
                     // Store the next in a local for iteration, and rotate queues.
