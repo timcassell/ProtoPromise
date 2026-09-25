@@ -126,6 +126,8 @@ jobs:
           projectPath: ProtoPromise_Unity
           testMode: ${{ matrix.testMode.value }}
           unityVersion: ${{ matrix.unity.version }}
+          # Don't create game-ci's check run (always neutral), dorny/test-reporter reports the results instead.
+          githubToken: ''
         timeout-minutes: 240
 
       - uses: dorny/test-reporter@v2
