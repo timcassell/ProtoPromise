@@ -2254,5 +2254,68 @@ namespace ProtoPromise.Tests.APIs.PromiseGroups
             }
             Assert.IsTrue(completed);
         }
+
+        [Test]
+        public void PromiseMergeGroup_PendingGroupsWithTheSameResultTypeResolveIndependently(
+            [Values] bool twoValueGroupFirst)
+        {
+            // Both groups resolve to (int, int), but assemble it differently: one from two int
+            // promises, the other from a void promise and a single (int, int) promise. Both are
+            // pending at once, so each must use its own way of assembling the result.
+            var deferredLeft = Promise.NewDeferred<int>();
+            var deferredRight = Promise.NewDeferred<int>();
+            var deferredPair = Promise.NewDeferred<(int, int)>();
+
+            bool twoValueGroupCompleted = false;
+            bool pairGroupCompleted = false;
+
+            void WaitTwoValueGroup()
+            {
+                PromiseMergeGroup.New(out _)
+                    .Add(deferredLeft.Promise)
+                    .Add(deferredRight.Promise)
+                    .WaitAsync()
+                    .ContinueWith(result =>
+                    {
+                        twoValueGroupCompleted = true;
+                        Assert.AreEqual(Promise.State.Resolved, result.State);
+                        Assert.AreEqual((1, 2), result.Value);
+                    })
+                    .Forget();
+            }
+
+            void WaitPairGroup()
+            {
+                PromiseMergeGroup.New(out _)
+                    .Add(Promise.Resolved())
+                    .Add(deferredPair.Promise)
+                    .WaitAsync()
+                    .ContinueWith(result =>
+                    {
+                        pairGroupCompleted = true;
+                        Assert.AreEqual(Promise.State.Resolved, result.State);
+                        Assert.AreEqual((3, 4), result.Value);
+                    })
+                    .Forget();
+            }
+
+            if (twoValueGroupFirst)
+            {
+                WaitTwoValueGroup();
+                WaitPairGroup();
+            }
+            else
+            {
+                WaitPairGroup();
+                WaitTwoValueGroup();
+            }
+
+            deferredLeft.Resolve(1);
+            deferredRight.Resolve(2);
+            deferredPair.Resolve((3, 4));
+
+            Assert.IsTrue(twoValueGroupCompleted);
+            Assert.IsTrue(pairGroupCompleted);
+        }
     }
 }
