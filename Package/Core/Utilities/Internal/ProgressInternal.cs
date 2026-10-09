@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Diagnostics;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -61,12 +62,8 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal abstract class ProgressBase : HandleablePromiseBase, ITraceable
+        internal abstract class ProgressBase : HandleablePromiseBase
         {
-#if PROMISE_DEBUG
-            CausalityTrace ITraceable.Trace { get; set; }
-#endif
-
             // Start with Id 1 instead of 0 to reduce risk of false positives.
             // Must not be readonly.
             internal ProgressSmallFields _smallFields = new ProgressSmallFields(1);
@@ -146,7 +143,7 @@ namespace Proto.Promises
                 instance._canceled = false;
                 instance._disposed = false;
 
-                SetCreatedStacktrace(instance, 2);
+                SetCreatedStacktrace(instance);
                 // Hook up the cancelation last.
                 instance._cancelationRegistration = cancelationToken.Register<ICancelable>(instance);
                 return instance;
@@ -247,7 +244,7 @@ namespace Proto.Promises
 
             private void InvokeAndCatch(double value)
             {
-                SetCurrentInvoker(this);
+                var scope = CausalityTrace.EnterScopeIfNotNull(GetTrace(this));
                 try
                 {
                     _progress.Report(value);
@@ -256,7 +253,10 @@ namespace Proto.Promises
                 {
                     ReportRejection(e, this);
                 }
-                ClearCurrentInvoker();
+                finally
+                {
+                    scope.Dispose();
+                }
             }
 
             private void AfterInvoke()

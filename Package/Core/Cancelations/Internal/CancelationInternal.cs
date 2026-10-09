@@ -11,6 +11,7 @@
 #pragma warning disable IDE0290 // Use primary constructor
 #pragma warning disable CA1513 // Use ObjectDisposedException throw helper
 
+using Proto.Diagnostics;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -38,13 +39,9 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed partial class CancelationRef : CancelationLinkedListNode, ITraceable
+        internal sealed partial class CancelationRef : CancelationLinkedListNode
         {
             internal static readonly CancelationRef s_canceledSentinel;
-
-#if PROMISE_DEBUG
-            CausalityTrace ITraceable.Trace { get; set; }
-#endif
 
             static CancelationRef()
             {
@@ -192,7 +189,7 @@ namespace Proto.Promises
                 _userRetainIncrement = userRetainIncrement;
                 _linkedToBclToken = linkedToBclToken;
                 _states = States.Pending;
-                SetCreatedStacktrace(this, 2);
+                SetCreatedStacktrace(this);
             }
 
             [MethodImpl(InlineOption)]
@@ -842,13 +839,9 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed class CallbackNodeImpl<TCancelable> : CancelationCallbackNode, ITraceable
+            private sealed class CallbackNodeImpl<TCancelable> : CancelationCallbackNode
                 where TCancelable : ICancelable
             {
-#if PROMISE_DEBUG
-                CausalityTrace ITraceable.Trace { get; set; }
-#endif
-
                 private TCancelable _cancelable;
 
                 private CallbackNodeImpl() { }
@@ -868,14 +861,14 @@ namespace Proto.Promises
                     var node = GetOrCreate();
                     node._parentId = parent._smallFields._instanceId;
                     node._cancelable = cancelable;
-                    SetCreatedStacktrace(node, 2);
+                    SetCreatedStacktrace(node);
                     return node;
                 }
 
                 internal override void Invoke()
                 {
                     ThrowIfInPool(this);
-                    SetCurrentInvoker(this);
+                    var scope = CausalityTrace.EnterScopeIfNotNull(GetTrace(this));
                     try
                     {
                         _cancelable.Cancel();
@@ -883,7 +876,7 @@ namespace Proto.Promises
                     finally
                     {
                         Dispose();
-                        ClearCurrentInvoker();
+                        scope.Dispose();
                     }
                 }
 

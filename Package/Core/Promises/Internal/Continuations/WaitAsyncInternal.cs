@@ -170,7 +170,7 @@ namespace Proto.Promises
                         return;
                     }
                  
-                    RejectContainer = CreateRejectContainer(exception, int.MinValue, null, this);
+                    RejectContainer = CreateRejectContainer(exception, false, this);
                     handler.MaybeReportUnhandledAndDispose(state);
                     HandleNextInternal(Promise.State.Rejected);
                 }
@@ -200,12 +200,12 @@ namespace Proto.Promises
                     if (previousState == WaitAsyncState.Waiting
                         && !TryDisposeTimer(out var exception))
                     {
-                        RejectContainer = CreateRejectContainer(exception, int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(exception, false, this);
                         HandleNextInternal(Promise.State.Rejected);
                         return;
                     }
 
-                    RejectContainer = CreateRejectContainer(new TimeoutException(), int.MinValue, null, this);
+                    RejectContainer = CreateRejectContainer(new TimeoutException(), false, this);
                     HandleNextInternal(Promise.State.Rejected);
                 }
 
@@ -335,7 +335,7 @@ namespace Proto.Promises
                         return;
                     }
 
-                    RejectContainer = CreateRejectContainer(exception, int.MinValue, null, this);
+                    RejectContainer = CreateRejectContainer(exception, false, this);
                     handler.MaybeReportUnhandledAndDispose(state);
                     HandleNextInternal(Promise.State.Rejected);
                 }
@@ -367,13 +367,13 @@ namespace Proto.Promises
                         _cancelationRegistration.Dispose();
                         if (!TryDisposeTimer(out var exception))
                         {
-                            RejectContainer = CreateRejectContainer(exception, int.MinValue, null, this);
+                            RejectContainer = CreateRejectContainer(exception, false, this);
                             HandleNextInternal(Promise.State.Rejected);
                             return;
                         }
                     }
 
-                    RejectContainer = CreateRejectContainer(new TimeoutException(), int.MinValue, null, this);
+                    RejectContainer = CreateRejectContainer(new TimeoutException(), false, this);
                     HandleNextInternal(Promise.State.Rejected);
                 }
 
@@ -394,7 +394,7 @@ namespace Proto.Promises
                     if (previousState == WaitAsyncState.Waiting
                         && !TryDisposeTimer(out var exception))
                     {
-                        RejectContainer = CreateRejectContainer(exception, int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(exception, false, this);
                         HandleNextInternal(Promise.State.Rejected);
                         return;
                     }

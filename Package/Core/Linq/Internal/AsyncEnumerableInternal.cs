@@ -282,7 +282,7 @@ namespace Proto.Promises
                     if (Interlocked.CompareExchange(ref _enumerableId, _iteratorCompleteId, _iteratorCompleteExpectedId) != _iteratorCompleteExpectedId)
                     {
                         handler.MaybeReportUnhandledAndDispose(state);
-                        RejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create async iterator completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create async iterator completed invalidly. Did you YieldAsync without await?"), false, this);
                         state = Promise.State.Rejected;
                     }
                     else
@@ -300,7 +300,7 @@ namespace Proto.Promises
                     Promise.State state = Promise.State.Resolved;
                     if (Interlocked.CompareExchange(ref _enumerableId, _iteratorCompleteId, _iteratorCompleteExpectedId) != _iteratorCompleteExpectedId)
                     {
-                        RejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create async iterator completed invalidly. Did you YieldAsync without await?"), int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(new InvalidOperationException("AsyncEnumerable.Create async iterator completed invalidly. Did you YieldAsync without await?"), false, this);
                         state = Promise.State.Rejected;
                     }
                     HandleNextInternal(state);

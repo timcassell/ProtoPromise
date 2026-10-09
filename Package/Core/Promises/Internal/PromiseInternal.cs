@@ -35,7 +35,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal abstract partial class PromiseRefBase : PromiseRefBaseWithStructField, ITraceable
+        internal abstract partial class PromiseRefBase : PromiseRefBaseWithStructField
         {
             internal void HandleSelfWithoutResult(PromiseRefBase handler, Promise.State state)
             {
@@ -138,7 +138,68 @@ namespace Proto.Promises
             protected void Reset()
             {
                 ResetWithoutStacktrace();
-                SetCreatedStacktrace(this, 3);
+                SetCreatedStacktrace(this);
+            }
+
+            internal Diagnostics.CausalityTrace Trace
+            {
+                [MethodImpl(InlineOption)]
+                get => GetTrace(this);
+            }
+
+            // Used instead of Reset by promise types that store s_tracedSentinel when they're traced (async, deferred, and callback promises).
+            // Those types must not store anything else in the ContinuationContext field before they enter the trace's scope.
+            [MethodImpl(InlineOption)]
+            protected void ResetWithSentinel()
+            {
+                ResetWithoutStacktrace();
+                if (Diagnostics.CausalityTrace.IsEnabled)
+                {
+                    SetTraceAndSentinel();
+                }
+            }
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private void SetTraceAndSentinel()
+            {
+                SetTrace(this, Diagnostics.CausalityTrace.Capture());
+                ContinuationContext = s_tracedSentinel;
+            }
+
+            // For promise types that use ResetWithSentinel. The field is only non-null at this point if the promise is traced,
+            // so the common case is a null check, and a scope that does nothing when it's disposed.
+            [MethodImpl(InlineOption)]
+            protected Diagnostics.CausalityTrace.Scope EnterScopeIfTraced()
+                => ContinuationContext == null ? default : EnterTracedScope();
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private Diagnostics.CausalityTrace.Scope EnterTracedScope()
+                // The trace may be null if causality traces were disabled after this was traced.
+                => Diagnostics.CausalityTrace.EnterScopeIfNotNull(Trace);
+
+            // For callback promises, which only need the sentinel until their callback is invoked.
+            // The field is shared with RejectContainer, so the sentinel is cleared when the scope is entered.
+            [MethodImpl(InlineOption)]
+            protected Diagnostics.CausalityTrace.Scope EnterCallbackScope()
+                => ContinuationContext == null ? default : EnterTracedScopeAndClearSentinel();
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private Diagnostics.CausalityTrace.Scope EnterTracedScopeAndClearSentinel()
+                => Diagnostics.CausalityTrace.EnterScopeIfNotNull(TakeTracedTrace());
+
+            // For callback promises that need to overwrite the field before they enter the scope of their callback.
+            // Returns null if the promise is not traced.
+            [MethodImpl(InlineOption)]
+            protected Diagnostics.CausalityTrace TakeCallbackTrace()
+                => ContinuationContext == null ? null : TakeTracedTrace();
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private Diagnostics.CausalityTrace TakeTracedTrace()
+            {
+                var trace = Trace;
+                // The field is shared with RejectContainer, so the sentinel is cleared when the trace is taken.
+                ContinuationContext = null;
+                return trace;
             }
 
             [MethodImpl(InlineOption)]
@@ -692,6 +753,12 @@ namespace Proto.Promises
                 protected new void Reset()
                 {
                     base.Reset();
+                    _firstContinue = true;
+                }
+
+                protected new void ResetWithSentinel()
+                {
+                    base.ResetWithSentinel();
                     _firstContinue = true;
                 }
             }

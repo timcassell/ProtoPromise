@@ -25,10 +25,8 @@ namespace Proto.Promises.Threading
         public AsyncManualResetEvent(bool initialState)
         {
             _isSet = initialState;
-            SetCreatedStacktrace();
+            Internal.SetCreatedStacktrace(this);
         }
-
-        partial void SetCreatedStacktrace();
 
         /// <summary>
         /// Creates an async-compatible manual-reset event that is initially unset.

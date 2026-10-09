@@ -42,7 +42,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(in TDelegate callback, SynchronizationContext context)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._callback = callback;
                     ScheduleContextCallback(context, promise,
                         obj => obj.UnsafeAs<RunPromise<TResult, TDelegate>>().Run(),
@@ -88,7 +88,7 @@ namespace Proto.Promises
                 internal static Promise New(in TDelegate callback, SynchronizationContext context)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._callback = callback;
                     ScheduleContextCallback(context, promise,
                         obj => obj.UnsafeAs<RunWaitPromise<TDelegate>>().Run(),
@@ -143,7 +143,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(in TDelegate callback, SynchronizationContext context)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._callback = callback;
                     ScheduleContextCallback(context, promise,
                         obj => obj.UnsafeAs<RunWaitPromise<TResult, TDelegate>>().Run(),

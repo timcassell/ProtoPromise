@@ -5,6 +5,7 @@
 #endif
 
 #pragma warning disable IDE0090 // Use 'new(...)'
+#pragma warning disable CA1513 // Use ObjectDisposedException throw helper
 
 using Proto.Promises.Threading;
 using System;
@@ -295,25 +296,31 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed class DisposedChecker : IDisposable, ITraceable
+            private sealed class DisposedChecker : IDisposable
+#if PROMISE_DEBUG
+                , ITraceable
+#endif
             {
-                public CausalityTrace Trace { get; set; }
+#if PROMISE_DEBUG
+                // In DEBUG mode, causality traces are stored in fields (see ITraceable).
+                Diagnostics.CausalityTrace ITraceable.Trace { get; set; }
 
+#endif
                 internal readonly AsyncReaderWriterLock _owner;
                 private int _isDisposedFlag;
                 private readonly AsyncReaderWriterLockType _keyType;
 
-                internal DisposedChecker(AsyncReaderWriterLock owner, AsyncReaderWriterLockType keyType, ITraceable traceable)
+                internal DisposedChecker(AsyncReaderWriterLock owner, AsyncReaderWriterLockType keyType, object traceable)
                 {
                     _owner = owner;
                     _keyType = keyType;
                     if (traceable == null)
                     {
-                        SetCreatedStacktrace(this, 3);
+                        SetCreatedStacktrace(this);
                     }
                     else
                     {
-                        Trace = traceable.Trace;
+                        CopyTrace(traceable, this);
                     }
                 }
 
@@ -341,7 +348,7 @@ namespace Proto.Promises
             internal readonly long _key;
             private readonly DisposedChecker _disposedChecker;
 
-            internal AsyncReaderWriterLockKey(AsyncReaderWriterLock owner, long key, AsyncReaderWriterLockType lockType, ITraceable traceable)
+            internal AsyncReaderWriterLockKey(AsyncReaderWriterLock owner, long key, AsyncReaderWriterLockType lockType, object traceable)
             {
                 _owner = owner;
                 _key = key;
@@ -432,7 +439,7 @@ namespace Proto.Promises
 
             [MethodImpl(InlineOption)]
 #pragma warning disable IDE0060 // Remove unused parameter
-            internal AsyncReaderWriterLockKey(AsyncReaderWriterLock owner, long key, AsyncReaderWriterLockType lockType, ITraceable traceable)
+            internal AsyncReaderWriterLockKey(AsyncReaderWriterLock owner, long key, AsyncReaderWriterLockType lockType, object traceable)
 #pragma warning restore IDE0060 // Remove unused parameter
             {
                 _owner = owner;
@@ -1801,7 +1808,7 @@ namespace Proto.Promises
                 }
             }
 
-            internal void NotifyAbandoned(string abandonedMessage, Internal.ITraceable traceable)
+            internal void NotifyAbandoned(string abandonedMessage, object traceable)
             {
                 Internal.ValueLinkedQueue<Internal.AsyncReaderLockPromise> readers;
                 Internal.ValueLinkedQueue<Internal.AsyncWriterLockPromise> writers;
@@ -1825,7 +1832,7 @@ namespace Proto.Promises
                 }
                 _smallFields._locker.Exit();
 
-                var rejectContainer = Internal.CreateRejectContainer(new AbandonedLockException(abandonedMessage), int.MinValue, null, traceable);
+                var rejectContainer = Internal.CreateRejectContainer(new AbandonedLockException(abandonedMessage), false, traceable);
 
                 if (readers.IsNotEmpty)
                 {
@@ -1862,7 +1869,7 @@ namespace Proto.Promises
                 internal readonly Internal.AsyncReaderWriterLockKey _impl;
 
                 [MethodImpl(Internal.InlineOption)]
-                internal ReaderKey(AsyncReaderWriterLock owner, long key, Internal.ITraceable traceable)
+                internal ReaderKey(AsyncReaderWriterLock owner, long key, object traceable)
                 {
                     _impl = new Internal.AsyncReaderWriterLockKey(owner, key, AsyncReaderWriterLockType.Reader, traceable);
                 }
@@ -1879,7 +1886,7 @@ namespace Proto.Promises
                 internal readonly Internal.AsyncReaderWriterLockKey _impl;
 
                 [MethodImpl(Internal.InlineOption)]
-                internal WriterKey(AsyncReaderWriterLock owner, long key, Internal.ITraceable traceable)
+                internal WriterKey(AsyncReaderWriterLock owner, long key, object traceable)
                 {
                     _impl = new Internal.AsyncReaderWriterLockKey(owner, key, AsyncReaderWriterLockType.Writer, traceable);
                 }
@@ -1896,7 +1903,7 @@ namespace Proto.Promises
                 internal readonly Internal.AsyncReaderWriterLockKey _impl;
 
                 [MethodImpl(Internal.InlineOption)]
-                internal UpgradeableReaderKey(AsyncReaderWriterLock owner, long key, Internal.ITraceable traceable)
+                internal UpgradeableReaderKey(AsyncReaderWriterLock owner, long key, object traceable)
                 {
                     _impl = new Internal.AsyncReaderWriterLockKey(owner, key, AsyncReaderWriterLockType.Upgradeable, traceable);
                 }
@@ -1913,7 +1920,7 @@ namespace Proto.Promises
                 internal readonly Internal.AsyncReaderWriterLockKey _impl;
 
                 [MethodImpl(Internal.InlineOption)]
-                internal UpgradedWriterKey(AsyncReaderWriterLock owner, long key, Internal.ITraceable traceable)
+                internal UpgradedWriterKey(AsyncReaderWriterLock owner, long key, object traceable)
                 {
                     _impl = new Internal.AsyncReaderWriterLockKey(owner, key, AsyncReaderWriterLockType.Writer, traceable);
                 }

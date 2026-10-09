@@ -8,6 +8,7 @@
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0290 // Use primary constructor
 
+using Proto.Diagnostics;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -113,10 +114,11 @@ namespace Proto.Promises
                 => _callback.Invoke(_capturedValue, new Promise<TResult>.Deferred(owner, owner.Id, owner.DeferredId));
         }
 
-        internal interface IDeferredPromise : ITraceable
+        internal interface IDeferredPromise
         {
             int DeferredId { get; }
             bool TryIncrementDeferredId(int deferredId);
+            void Reject(object reason);
             void RejectDirect(IRejectContainer reasonContainer);
             void CancelDirect();
         }
@@ -153,6 +155,33 @@ namespace Proto.Promises
                     return success;
                 }
 
+                // Completing the deferred enters the scope of its trace, so that the rejection's trace and any continuations
+                // that are invoked synchronously include it.
+                public void Reject(object reason)
+                {
+                    // The field is null while the deferred is pending, unless it's traced (see s_tracedSentinel).
+                    if (ContinuationContext == null)
+                    {
+                        RejectDirect(CreateRejectContainer(reason, true, this));
+                        return;
+                    }
+                    RejectTraced(reason);
+                }
+
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private void RejectTraced(object reason)
+                {
+                    var scope = CausalityTrace.EnterScopeIfNeeded(Trace);
+                    try
+                    {
+                        RejectDirect(CreateRejectContainer(reason, true, this));
+                    }
+                    finally
+                    {
+                        scope.Dispose();
+                    }
+                }
+
                 public void RejectDirect(IRejectContainer reasonContainer)
                 {
                     RejectContainer = reasonContainer;
@@ -163,7 +192,36 @@ namespace Proto.Promises
                 public void CancelDirect()
                 {
                     ThrowIfInPool(this);
-                    HandleNextInternal(Promise.State.Canceled);
+                    HandleNextInScope(Promise.State.Canceled);
+                }
+
+                [MethodImpl(InlineOption)]
+                protected void HandleNextInScope(Promise.State state)
+                {
+                    // The field is null while the deferred is pending, unless it's traced (see s_tracedSentinel).
+                    if (ContinuationContext == null)
+                    {
+                        HandleNextInternal(state);
+                        return;
+                    }
+                    HandleNextTraced(state);
+                }
+
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private void HandleNextTraced(Promise.State state)
+                {
+                    var trace = Trace;
+                    // The field is shared with RejectContainer, so clear the sentinel before completing.
+                    ContinuationContext = null;
+                    var scope = CausalityTrace.EnterScopeIfNeeded(trace);
+                    try
+                    {
+                        HandleNextInternal(state);
+                    }
+                    finally
+                    {
+                        scope.Dispose();
+                    }
                 }
             }
 
@@ -194,7 +252,7 @@ namespace Proto.Promises
                 internal static DeferredPromise<TResult> GetOrCreate()
                 {
                     var promise = GetFromPoolOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     return promise;
                 }
 
@@ -203,14 +261,14 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     _result = value;
-                    HandleNextInternal(Promise.State.Resolved);
+                    HandleNextInScope(Promise.State.Resolved);
                 }
 
                 [MethodImpl(InlineOption)]
                 internal void ResolveDirectVoid()
                 {
                     ThrowIfInPool(this);
-                    HandleNextInternal(Promise.State.Resolved);
+                    HandleNextInScope(Promise.State.Resolved);
                 }
             }
 
@@ -247,7 +305,7 @@ namespace Proto.Promises
                 internal static DeferredNewPromise<TResult, TDelegate> GetOrCreate(TDelegate runner)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._disposeCounter = 2;
                     promise._runner = runner;
                     return promise;
@@ -276,7 +334,7 @@ namespace Proto.Promises
                     var runner = _runner;
                     _runner = default;
 
-                    SetCurrentInvoker(this);
+                    var scope = EnterScopeIfTraced();
                     try
                     {
                         runner.Invoke(this);
@@ -293,7 +351,7 @@ namespace Proto.Promises
                     {
                         if (TryIncrementDeferredId(deferredId))
                         {
-                            RejectDirect(CreateRejectContainer(e, int.MinValue, null, this));
+                            RejectDirect(CreateRejectContainer(e, false, this));
                         }
                         else
                         {
@@ -301,7 +359,10 @@ namespace Proto.Promises
                             ReportRejection(e, this);
                         }
                     }
-                    ClearCurrentInvoker();
+                    finally
+                    {
+                        scope.Dispose();
+                    }
                     MaybeDispose();
                 }
             }

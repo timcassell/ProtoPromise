@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 #pragma warning disable IDE0090 // Use 'new(...)'
+#pragma warning disable CA1513 // Use ObjectDisposedException throw helper
 
 namespace Proto.Promises
 {
@@ -466,7 +467,7 @@ namespace Proto.Promises
                         return false;
                     }
 
-                    var rejection = CreateRejectContainer(reason, 1, null, this);
+                    var rejection = CreateRejectContainer(reason, true, this);
                     _closedReason = rejection;
                     var readers = _readers.TakeElements();
                     var writers = _writers.TakeElements();
@@ -644,7 +645,7 @@ namespace Proto.Promises
 
                 if (readers.IsNotEmpty | writers.IsNotEmpty | waitToReaders.IsNotEmpty | waitToWriters.IsNotEmpty)
                 {
-                    var rejection = CreateRejectContainer(new System.ObjectDisposedException(nameof(Channel<T>)), 3, null, this);
+                    var rejection = CreateRejectContainer(new System.ObjectDisposedException(nameof(Channel<T>)), true, this);
                     if (readers.IsNotEmpty)
                     {
                         var stack = readers.MoveElementsToStackUnsafe();

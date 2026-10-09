@@ -6,6 +6,7 @@
 
 #pragma warning disable IDE0251 // Make member 'readonly'
 
+using Proto.Diagnostics;
 using Proto.Promises.Threading;
 using System;
 using System.Collections.Generic;
@@ -334,7 +335,7 @@ namespace Proto.Promises
 
                 private void ExecuteWorker(bool launchNext)
                 {
-                    SetCurrentInvoker(this);
+                    var scope = CausalityTrace.EnterScopeIfNotNull(Trace);
                     try
                     {
                         WorkerBody(launchNext);
@@ -351,7 +352,10 @@ namespace Proto.Promises
                         RecordException(e);
                         CancelWorkersAndMaybeComplete();
                     }
-                    ClearCurrentInvoker();
+                    finally
+                    {
+                        scope.Dispose();
+                    }
                 }
 
                 private void WorkerBody(bool launchNext)
@@ -474,7 +478,7 @@ namespace Proto.Promises
                     // This must be the very last thing done.
                     if (_exceptions != null)
                     {
-                        RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), false, this);
                         _exceptions = null;
                         HandleNextInternal(Promise.State.Rejected);
                     }

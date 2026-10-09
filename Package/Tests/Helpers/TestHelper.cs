@@ -115,7 +115,7 @@ namespace ProtoPromise.Tests
 #else
                 Promise.Config.ObjectPoolingEnabled = true;
 #endif
-                Promise.Config.DebugCausalityTracer = Promise.TraceLevel.None; // Disabled because it makes the tests slow.
+                Proto.Diagnostics.CausalityTrace.IsEnabled = false; // Disabled because it makes the tests slow.
 
                 _stopwatch = Stopwatch.StartNew();
             }

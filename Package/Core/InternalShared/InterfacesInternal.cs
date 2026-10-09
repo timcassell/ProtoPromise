@@ -5,21 +5,20 @@ namespace Proto.Promises
 {
     partial class Internal
     {
-        internal partial interface ITraceable { }
-
         internal interface ILinked<T> where T : class, ILinked<T>
         {
             T Next { get; set; }
         }
 
+        // traceable is the object whose causality trace is used (see GetTrace).
         internal interface IRejectionToContainer
         {
-            IRejectContainer ToContainer(ITraceable traceable);
+            IRejectContainer ToContainer(object traceable);
         }
 
         internal interface ICantHandleException
         {
-            void ReportUnhandled(ITraceable traceable);
+            void ReportUnhandled(object traceable);
         }
 
         internal interface IRejectContainer

@@ -31,10 +31,8 @@ namespace Proto.Promises.Threading
 
             _initialCount = initialCount;
             _currentCount = initialCount;
-            SetCreatedStacktrace();
+            Internal.SetCreatedStacktrace(this);
         }
-
-        partial void SetCreatedStacktrace();
 
         /// <summary>
         /// Gets the number of remaining signals required to set the event.

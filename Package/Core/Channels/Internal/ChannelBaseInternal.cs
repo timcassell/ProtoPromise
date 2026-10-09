@@ -32,12 +32,8 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal abstract class ChannelBase : HandleablePromiseBase, ITraceable
+        internal abstract class ChannelBase : HandleablePromiseBase
         {
-#if PROMISE_DEBUG
-            CausalityTrace ITraceable.Trace { get; set; }
-#endif
-
             ~ChannelBase()
             {
                 if (_closedReason != ChannelSmallFields.DisposedReason)
@@ -61,7 +57,7 @@ namespace Proto.Promises
             {
                 _next = null;
                 _closedReason = null;
-                SetCreatedStacktrace(this, 3);
+                SetCreatedStacktrace(this);
             }
 
             internal bool TryRemoveWaiter(ChannelWaitToReadPromise promise)
@@ -78,7 +74,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal abstract class ChannelBase<T> : ChannelBase, ITraceable
+        internal abstract class ChannelBase<T> : ChannelBase
         {
             // This must not be readonly.
             protected ValueLinkedQueue<ChannelReadPromise<T>> _readers = new ValueLinkedQueue<ChannelReadPromise<T>>();
@@ -113,6 +109,60 @@ namespace Proto.Promises
             internal abstract bool TryCancel(int id);
             internal abstract bool TryClose(int id);
             internal abstract void Dispose(int id);
+
+            // Closing the channel enters the scope of its trace, so that the rejection's trace and any continuations
+            // that are invoked synchronously include it.
+            internal bool TryRejectInScope(object reason, int id)
+            {
+                var scope = Diagnostics.CausalityTrace.EnterScopeIfNeeded(GetTrace(this));
+                try
+                {
+                    return TryReject(reason, id);
+                }
+                finally
+                {
+                    scope.Dispose();
+                }
+            }
+
+            internal bool TryCancelInScope(int id)
+            {
+                var scope = Diagnostics.CausalityTrace.EnterScopeIfNeeded(GetTrace(this));
+                try
+                {
+                    return TryCancel(id);
+                }
+                finally
+                {
+                    scope.Dispose();
+                }
+            }
+
+            internal bool TryCloseInScope(int id)
+            {
+                var scope = Diagnostics.CausalityTrace.EnterScopeIfNeeded(GetTrace(this));
+                try
+                {
+                    return TryClose(id);
+                }
+                finally
+                {
+                    scope.Dispose();
+                }
+            }
+
+            internal void DisposeInScope(int id)
+            {
+                var scope = Diagnostics.CausalityTrace.EnterScopeIfNeeded(GetTrace(this));
+                try
+                {
+                    Dispose(id);
+                }
+                finally
+                {
+                    scope.Dispose();
+                }
+            }
         }
     }
 }

@@ -5,6 +5,7 @@
 #endif
 
 #pragma warning disable IDE0090 // Use 'new(...)'
+#pragma warning disable CA1513 // Use ObjectDisposedException throw helper
 
 using Proto.Promises.Threading;
 using System;
@@ -18,7 +19,7 @@ namespace Proto.Promises
     // Removed the code without removing the namespace to prevent Unity complaining.
     partial class Internal
     {
-        internal interface IAsyncLockPromise : ILinked<IAsyncLockPromise>, ITraceable
+        internal interface IAsyncLockPromise : ILinked<IAsyncLockPromise>
         {
             void Resolve(ref long currentKey);
 #if PROMISE_DEBUG
@@ -641,7 +642,7 @@ namespace Proto.Promises
                 }
             }
 
-            internal void NotifyAbandoned(string abandonedMessage, Internal.ITraceable traceable)
+            internal void NotifyAbandoned(string abandonedMessage, object traceable)
             {
                 Internal.ValueLinkedQueue<Internal.IAsyncLockPromise> queue;
                 _locker.Enter();
@@ -653,7 +654,7 @@ namespace Proto.Promises
                         return;
                     }
                     _abandonedMessage = abandonedMessage;
-                    _abandonedRejection = Internal.CreateRejectContainer(new AbandonedLockException(abandonedMessage), int.MinValue, null, traceable);
+                    _abandonedRejection = Internal.CreateRejectContainer(new AbandonedLockException(abandonedMessage), false, traceable);
                     queue = _queue.TakeElements();
                 }
                 _locker.Exit();
@@ -698,24 +699,30 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
                 [DebuggerNonUserCode, StackTraceHidden]
 #endif
-                private sealed class DisposedChecker : IDisposable, Internal.ITraceable
+                private sealed class DisposedChecker : IDisposable
+#if PROMISE_DEBUG
+                    , Internal.ITraceable
+#endif
                 {
-                    public Internal.CausalityTrace Trace { get; set; }
+#if PROMISE_DEBUG
+                    // In DEBUG mode, causality traces are stored in fields (see Internal.ITraceable).
+                    Diagnostics.CausalityTrace Internal.ITraceable.Trace { get; set; }
 
+#endif
                     internal readonly AsyncLock _owner;
                     private int _isDisposedFlag;
                     private Internal.PromiseRefBase _waitPromise;
 
-                    internal DisposedChecker(AsyncLock owner, Internal.ITraceable traceable)
+                    internal DisposedChecker(AsyncLock owner, object traceable)
                     {
                         _owner = owner;
                         if (traceable == null)
                         {
-                            Internal.SetCreatedStacktraceInternal(this, 3);
+                            Internal.SetCreatedStacktrace(this);
                         }
                         else
                         {
-                            Trace = traceable.Trace;
+                            Internal.CopyTrace(traceable, this);
                         }
                     }
 
@@ -759,7 +766,7 @@ namespace Proto.Promises
                 private readonly long _key;
                 private readonly DisposedChecker _disposedChecker;
 
-                internal Key(AsyncLock owner, long key, Internal.ITraceable traceable)
+                internal Key(AsyncLock owner, long key, object traceable)
                 {
                     _owner = owner;
                     _key = key;
@@ -865,7 +872,7 @@ namespace Proto.Promises
 
                 [MethodImpl(Internal.InlineOption)]
 #pragma warning disable IDE0060 // Remove unused parameter
-                internal Key(AsyncLock owner, long key, Internal.ITraceable traceable)
+                internal Key(AsyncLock owner, long key, object traceable)
 #pragma warning restore IDE0060 // Remove unused parameter
                 {
                     _owner = owner;

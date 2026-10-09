@@ -5,8 +5,10 @@
 #endif
 
 #pragma warning disable IDE0074 // Use compound assignment
+#pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0290 // Use primary constructor
 
+using Proto.Diagnostics;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -39,7 +41,7 @@ namespace Proto.Promises
                     catch (Exception e)
                     {
                         // This should never happen.
-                        ReportRejection(e, state as ITraceable);
+                        ReportRejection(e, state);
                     }
                 }, null);
             }
@@ -55,7 +57,7 @@ namespace Proto.Promises
                     catch (Exception e)
                     {
                         // This should never happen.
-                        ReportRejection(e, state as ITraceable);
+                        ReportRejection(e, state);
                     }
                 }, null);
             }
@@ -71,10 +73,7 @@ namespace Proto.Promises
 #endif
         }
 
-        internal static IRejectContainer CreateRejectContainer(object reason, int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable)
-            => RejectContainer.Create(reason, rejectSkipFrames + 1, exceptionWithStacktrace, traceable);
-
-        internal static void ReportRejection(object unhandledValue, ITraceable traceable)
+        internal static void ReportRejection(object unhandledValue, object traceable)
         {
             if (unhandledValue is ICantHandleException ex)
             {
@@ -88,17 +87,18 @@ namespace Proto.Promises
                 unhandledValue = new NullReferenceException();
             }
 
-            Type type = unhandledValue.GetType();
             Exception innerException = unhandledValue as Exception;
-            string message = innerException != null ? "An exception was not handled." : "A rejected value was not handled, type: " + type + ", value: " + unhandledValue.ToString();
+            string message = innerException != null
+                ? "An exception was not handled."
+                : $"A rejected value was not handled, type: {unhandledValue.GetType()}, value: {unhandledValue}";
 
-            ReportUnhandledException(new UnhandledExceptionInternal(unhandledValue, message + CausalityTraceMessage, GetFormattedStacktrace(traceable), innerException));
+            ReportUnhandledException(new UnhandledException(unhandledValue, message, GetTrace(traceable), innerException));
         }
 
         internal static void ReportUnhandledException(UnhandledException exception)
         {
 #if PROTO_PROMISE_DEVELOPER_MODE
-            exception = new UnhandledExceptionInternal(exception.Value, "Unhandled Exception added at (stacktrace in this exception)", new StackTrace(1, true).ToString(), exception);
+            exception = new UnhandledException(exception.Value, "Unhandled Exception added at (stacktrace in this exception)", new Proto.Diagnostics.CausalityTrace(1), exception);
 #endif
             // Send to the handler if it exists.
             Action<UnhandledException> handler = Promise.Config.UncaughtRejectionHandler;

@@ -7,8 +7,10 @@
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
+using Proto.Diagnostics;
 using System;
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 
 namespace Proto.Promises
 {
@@ -150,20 +152,57 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
 #endif
-    public abstract class UnhandledException : Exception
+    public class UnhandledException : Exception, Internal.IRejectContainer, Internal.IRejectionToContainer, Internal.ICantHandleException
     {
         private readonly object _value;
-        private readonly string _stackTrace;
+        private readonly CausalityTrace _causalityTrace;
 
-        internal UnhandledException(object value, string message, string stackTrace, Exception innerException) : base(message, innerException)
+        internal UnhandledException(object value, string message, CausalityTrace causalityTrace, Exception innerException)
+            : base(GetMessage(message, causalityTrace), innerException)
         {
             _value = value;
-            _stackTrace = stackTrace;
+            _causalityTrace = causalityTrace;
         }
 
-        public override string StackTrace => _stackTrace;
+        private static string GetMessage(string message, CausalityTrace causalityTrace)
+        {
+            if (causalityTrace != null)
+            {
+                return $"{message} -- This exception's Stacktrace contains the causality trace of all async continuations.";
+            }
+            if (!CausalityTrace.IsEnabled)
+            {
+                return $"{message} -- Set Proto.Diagnostics.CausalityTrace.IsEnabled = true to get a causality trace.";
+            }
+            // Causality traces are enabled, but this rejection has no trace.
+#if PROMISE_DEBUG
+            return $"{message} -- No causality trace was captured. CausalityTrace.IsEnabled may have been set after the operation was started.";
+#else
+            return $"{message} -- No causality trace was found. Causality traces are not always available in RELEASE mode (for example, objects reported from finalizers on some runtimes). Enable DEBUG mode for reliable causality traces.";
+#endif
+        }
+
+
+        public override string StackTrace => _causalityTrace?.ToString();
 
         public object Value => _value;
+
+        public CausalityTrace CausalityTrace => _causalityTrace;
+
+        void Internal.ICantHandleException.ReportUnhandled(object traceable)
+            => Internal.ReportUnhandledException(this);
+
+        void Internal.IRejectContainer.ReportUnhandled()
+            => Internal.ReportUnhandledException(this);
+
+        ExceptionDispatchInfo Internal.IRejectContainer.GetExceptionDispatchInfo()
+            => ExceptionDispatchInfo.Capture(Value as Exception ?? this);
+
+        Internal.IRejectContainer Internal.IRejectionToContainer.ToContainer(object traceable)
+            => this;
+
+        Exception Internal.IRejectContainer.GetValueAsException()
+            => Value as Exception ?? this;
     }
 
     /// <summary>
@@ -199,15 +238,15 @@ namespace Proto.Promises
 
         protected RethrowException() { }
 
-        Internal.IRejectContainer Internal.IRejectionToContainer.ToContainer(Internal.ITraceable traceable)
+        Internal.IRejectContainer Internal.IRejectionToContainer.ToContainer(object traceable)
         {
 #if PROMISE_DEBUG
-            string stacktrace = Internal.FormatStackTrace(new StackTrace[1] { new StackTrace(this, true) });
+            string stacktrace = CausalityTrace.FormatStackTrace(new StackTrace(this, true));
 #else
             string stacktrace = new StackTrace(this, true).ToString();
 #endif
             Exception exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
-            return Internal.RejectionContainerException.Create(exception, int.MinValue, null, traceable);
+            return Internal.ExceptionRejectionContainer.Create(exception, false, traceable);
         }
     }
 

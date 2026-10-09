@@ -7,6 +7,7 @@
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0290 // Use primary constructor
 
+using Proto.Diagnostics;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -221,7 +222,7 @@ namespace Proto.Promises
                     where TDelegate : IFunc<TArg, TResult>
                 {
                     Promise.State state;
-                    SetCurrentInvoker(this);
+                    var scope = EnterCallbackScope();
                     try
                     {
                         // JIT removes this check so we will get more optimal assembly if the result is void.
@@ -241,12 +242,12 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(e, false, this);
                         state = Promise.State.Rejected;
                     }
                     finally
                     {
-                        ClearCurrentInvoker();
+                        scope.Dispose();
                     }
 
                     // We handle next last, so that if the runtime wants to, it can tail-call optimize.
@@ -270,7 +271,7 @@ namespace Proto.Promises
                 }
 
                 var exception = new InvalidReturnException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", string.Empty);
-                RejectContainer = CreateRejectContainer(exception, int.MinValue, null, this);
+                RejectContainer = CreateRejectContainer(exception, false, this);
                 return Promise.State.Rejected;
             }
 
@@ -279,7 +280,7 @@ namespace Proto.Promises
                 where TDelegate : IFunc<TArg, Promise>
             {
                 Promise.State state;
-                SetCurrentInvoker(this);
+                var scope = EnterCallbackScope();
                 try
                 {
                     var result = callback.Invoke(arg);
@@ -306,12 +307,12 @@ namespace Proto.Promises
                 }
                 catch (Exception e)
                 {
-                    RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                    RejectContainer = CreateRejectContainer(e, false, this);
                     state = Promise.State.Rejected;
                 }
                 finally
                 {
-                    ClearCurrentInvoker();
+                    scope.Dispose();
                 }
 
                 // We handle next last, so that if the runtime wants to, it can tail-call optimize.
@@ -337,7 +338,7 @@ namespace Proto.Promises
                     }
 
                     var exception = new InvalidReturnException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", string.Empty);
-                    RejectContainer = CreateRejectContainer(exception, int.MinValue, null, this);
+                    RejectContainer = CreateRejectContainer(exception, false, this);
                     return Promise.State.Rejected;
                 }
 
@@ -346,7 +347,7 @@ namespace Proto.Promises
                     where TDelegate : IFunc<TArg, Promise<TResult>>
                 {
                     Promise.State state;
-                    SetCurrentInvoker(this);
+                    var scope = EnterCallbackScope();
                     try
                     {
                         var result = callback.Invoke(arg);
@@ -378,12 +379,12 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(e, false, this);
                         state = Promise.State.Rejected;
                     }
                     finally
                     {
-                        ClearCurrentInvoker();
+                        scope.Dispose();
                     }
 
                     // We handle next last, so that if the runtime wants to, it can tail-call optimize.
@@ -418,7 +419,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise.SetPrevious(previous._ref);
                     promise._callback = callback;
                     previous._ref.HookupNewWaiter(previous._id, promise);
@@ -467,7 +468,7 @@ namespace Proto.Promises
                 internal static Promise New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise.SetPrevious(previous._ref);
                     promise._callback = callback;
                     previous._ref.HookupNewWaiter(previous._id, promise);
@@ -524,7 +525,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise.SetPrevious(previous._ref);
                     promise._callback = callback;
                     previous._ref.HookupNewWaiter(previous._id, promise);
@@ -581,7 +582,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise.SetPrevious(previous._ref);
                     promise._callback = callback;
                     previous._ref.HookupNewWaiter(previous._id, promise);
@@ -631,7 +632,7 @@ namespace Proto.Promises
                 internal static Promise New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise.SetPrevious(previous._ref);
                     promise._callback = callback;
                     previous._ref.HookupNewWaiter(previous._id, promise);
@@ -689,7 +690,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise.SetPrevious(previous._ref);
                     promise._callback = callback;
                     previous._ref.HookupNewWaiter(previous._id, promise);
@@ -747,7 +748,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(Promise previous, in TDelegate callback, CancelationToken cancelationToken)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise.SetPrevious(previous._ref);
                     promise._callback = callback;
                     promise._cancelationHelper.Reset();
@@ -803,6 +804,8 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     if (_cancelationHelper.TrySetCompleted())
                     {
+                        // The field is shared with RejectContainer, so clear the sentinel before completing.
+                        ContinuationContext = null;
                         HandleNextInternal(Promise.State.Canceled);
                     }
                 }
@@ -829,7 +832,7 @@ namespace Proto.Promises
                 internal static Promise New(Promise previous, in TDelegate callback, CancelationToken cancelationToken)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise.SetPrevious(previous._ref);
                     promise._callback = callback;
                     promise._cancelationHelper.Reset();
@@ -892,6 +895,8 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     if (_cancelationHelper.TrySetCompleted())
                     {
+                        // The field is shared with RejectContainer, so clear the sentinel before completing.
+                        ContinuationContext = null;
                         HandleNextInternal(Promise.State.Canceled);
                     }
                 }
@@ -918,7 +923,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(Promise previous, in TDelegate callback, CancelationToken cancelationToken)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise.SetPrevious(previous._ref);
                     promise._callback = callback;
                     promise._cancelationHelper.Reset();
@@ -981,6 +986,8 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     if (_cancelationHelper.TrySetCompleted())
                     {
+                        // The field is shared with RejectContainer, so clear the sentinel before completing.
+                        ContinuationContext = null;
                         HandleNextInternal(Promise.State.Canceled);
                     }
                 }
@@ -1007,7 +1014,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(Promise previous, in TDelegate callback, CancelationToken cancelationToken)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise.SetPrevious(previous._ref);
                     promise._callback = callback;
                     promise._cancelationHelper.Reset();
@@ -1064,6 +1071,8 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     if (_cancelationHelper.TrySetCompleted())
                     {
+                        // The field is shared with RejectContainer, so clear the sentinel before completing.
+                        ContinuationContext = null;
                         HandleNextInternal(Promise.State.Canceled);
                     }
                 }
@@ -1090,7 +1099,7 @@ namespace Proto.Promises
                 internal static Promise New(Promise previous, in TDelegate callback, CancelationToken cancelationToken)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise.SetPrevious(previous._ref);
                     promise._callback = callback;
                     promise._cancelationHelper.Reset();
@@ -1154,6 +1163,8 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     if (_cancelationHelper.TrySetCompleted())
                     {
+                        // The field is shared with RejectContainer, so clear the sentinel before completing.
+                        ContinuationContext = null;
                         HandleNextInternal(Promise.State.Canceled);
                     }
                 }
@@ -1180,7 +1191,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(Promise previous, in TDelegate callback, CancelationToken cancelationToken)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise.SetPrevious(previous._ref);
                     promise._callback = callback;
                     promise._cancelationHelper.Reset();
@@ -1244,6 +1255,8 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     if (_cancelationHelper.TrySetCompleted())
                     {
+                        // The field is shared with RejectContainer, so clear the sentinel before completing.
+                        ContinuationContext = null;
                         HandleNextInternal(Promise.State.Canceled);
                     }
                 }

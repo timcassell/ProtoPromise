@@ -21,8 +21,15 @@ namespace Proto.Promises.Threading
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public sealed class AsyncConditionVariable : Internal.ITraceable
+    public sealed class AsyncConditionVariable
+#if PROMISE_DEBUG
+        : Internal.ITraceable
+#endif
     {
+#if PROMISE_DEBUG
+        // In DEBUG mode, causality traces are stored in fields (see Internal.ITraceable).
+        Diagnostics.CausalityTrace Internal.ITraceable.Trace { get; set; }
+#endif
         // These must not be readonly.
         internal Internal.ValueLinkedQueue<Internal.IAsyncLockPromise> _queue = new Internal.ValueLinkedQueue<Internal.IAsyncLockPromise>();
         volatile internal AsyncLock _lock;
@@ -30,14 +37,12 @@ namespace Proto.Promises.Threading
         /// <summary>
         /// Creates a new async-compatible condition variable.
         /// </summary>
-#if PROMISE_DEBUG
         public AsyncConditionVariable()
         {
-            Internal.SetCreatedStacktraceInternal(this, 1);
+            Internal.SetCreatedStacktrace(this);
         }
 
-        Internal.CausalityTrace Internal.ITraceable.Trace { get; set; }
-
+#if PROMISE_DEBUG
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
         ~AsyncConditionVariable()
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
@@ -52,7 +57,7 @@ namespace Proto.Promises.Threading
             bool lockWasAbandoned = rejectContainer != null;
             if (!lockWasAbandoned)
             {
-                rejectContainer = Internal.CreateRejectContainer(new AbandonedConditionVariableException("An AsyncConditionVariable was collected with waiters still pending."), int.MinValue, null, this);
+                rejectContainer = Internal.CreateRejectContainer(new AbandonedConditionVariableException("An AsyncConditionVariable was collected with waiters still pending."), false, this);
             }
             Internal.ValueLinkedQueue<Internal.IAsyncLockPromise> queue;
             lock (locker)
@@ -72,9 +77,7 @@ namespace Proto.Promises.Threading
                 rejectContainer.ReportUnhandled();
             }
         }
-#else // PROMISE_DEBUG
-        public AsyncConditionVariable() { }
-#endif
+#endif // PROMISE_DEBUG
 
         /// <summary>
         /// Release the lock and asynchronously wait for a notify signal on the <see cref="AsyncLock"/> associated with the <paramref name="asyncLockKey"/>.

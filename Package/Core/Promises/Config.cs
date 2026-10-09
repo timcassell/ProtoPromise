@@ -20,6 +20,7 @@ namespace Proto.Promises
         /// <summary>
         /// At what granularity should stack traces be captured when a promise is created or rejected. Higher values are more costly, but give more information for debugging purposes.
         /// </summary>
+        [Obsolete("Prefer Proto.Diagnostics.CausalityTrace.IsEnabled", false)]
         public enum TraceLevel : byte
         {
             /// <summary>
@@ -49,6 +50,9 @@ namespace Proto.Promises
             /// <summary>
             /// Should objects be pooled or not. If this is enabled, objects can be reused to reduce GC pressure.
             /// </summary>
+            /// <remarks>
+            /// Objects are not pooled while <see cref="Diagnostics.CausalityTrace.IsEnabled"/> is <see langword="true"/>.
+            /// </remarks>
 #if PROMISE_DEBUG
             // Object pooling disabled in DEBUG mode to prevent thread race conditions when validating for circular awaits.
             public static bool ObjectPoolingEnabled
@@ -63,8 +67,11 @@ namespace Proto.Promises
             {
                 [MethodImpl(Internal.InlineOption)]
                 get => s_objectPoolingEnabled;
-                [MethodImpl(Internal.InlineOption)]
-                set => s_objectPoolingEnabled = value;
+                set
+                {
+                    s_objectPoolingEnabled = value;
+                    Internal.UpdateIsObjectPoolingEnabled();
+                }
             }
             private static bool s_objectPoolingEnabled = true; // Enabled by default.
 #endif
@@ -72,24 +79,12 @@ namespace Proto.Promises
             /// <summary>
             /// Set how causality is traced in DEBUG mode. Causality traces are readable from an UnhandledException's Stacktrace property.
             /// </summary>
-#if PROMISE_DEBUG
+            [Obsolete("Prefer Proto.Diagnostics.CausalityTrace.IsEnabled", false)]
             public static TraceLevel DebugCausalityTracer
             {
-                [MethodImpl(Internal.InlineOption)]
-                get => s_debugCausalityTracer;
-                [MethodImpl(Internal.InlineOption)]
-                set => s_debugCausalityTracer = value;
+                get => Diagnostics.CausalityTrace.IsEnabled ? TraceLevel.All : TraceLevel.None;
+                set => Diagnostics.CausalityTrace.IsEnabled = value == TraceLevel.All;
             }
-            private static TraceLevel s_debugCausalityTracer = TraceLevel.Rejections;
-#else
-            public static TraceLevel DebugCausalityTracer
-            {
-                [MethodImpl(Internal.InlineOption)]
-                get => default;
-                [MethodImpl(Internal.InlineOption)]
-                set { }
-            }
-#endif
 
             /// <summary>
             /// Uncaught rejections get routed through this delegate.

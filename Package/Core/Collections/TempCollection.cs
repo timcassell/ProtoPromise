@@ -212,19 +212,21 @@ namespace Proto.Promises.Collections
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    internal sealed class TempCollectionDisposedChecker : Internal.ITraceable
+    internal sealed class TempCollectionDisposedChecker
+#if PROMISE_DEBUG
+        : Internal.ITraceable
+#endif
     {
 #if PROMISE_DEBUG
-        Internal.CausalityTrace Internal.ITraceable.Trace { get; set; }
-#endif
+        // In DEBUG mode, causality traces are stored in fields (see Internal.ITraceable).
+        Diagnostics.CausalityTrace Internal.ITraceable.Trace { get; set; }
 
+#endif
         internal bool IsDisposed { get; private set; }
 
         internal TempCollectionDisposedChecker()
         {
-#if PROTO_PROMISE_DEVELOPER_MODE
-            Internal.SetCreatedStacktraceInternal(this, 2);
-#endif
+            Internal.SetCreatedStacktrace(this);
             Internal.MarkNotInPool(this);
         }
 

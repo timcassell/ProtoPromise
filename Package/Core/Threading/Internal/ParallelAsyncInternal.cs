@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Diagnostics;
 using Proto.Promises.Linq;
 using Proto.Promises.Threading;
 using System;
@@ -277,7 +278,7 @@ namespace Proto.Promises
 
                 private void ExecuteWorker(bool fromMoveNext)
                 {
-                    SetCurrentInvoker(this);
+                    var scope = CausalityTrace.EnterScopeIfNotNull(Trace);
                     try
                     {
                         WorkerBody(fromMoveNext);
@@ -294,7 +295,10 @@ namespace Proto.Promises
                         RecordException(e);
                         CancelWorkersAndMaybeComplete(1);
                     }
-                    ClearCurrentInvoker();
+                    finally
+                    {
+                        scope.Dispose();
+                    }
                 }
 
                 private void WorkerBody(bool fromMoveNext)
@@ -495,7 +499,7 @@ namespace Proto.Promises
                     // This must be the very last thing done.
                     if (_exceptions != null)
                     {
-                        RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), false, this);
                         _exceptions = null;
                         HandleNextInternal(Promise.State.Rejected);
                     }

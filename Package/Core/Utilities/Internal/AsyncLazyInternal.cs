@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Diagnostics;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -311,7 +312,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 protected void Start(Func<Promise<TResult>> factory)
                 {
-                    SetCurrentInvoker(this);
+                    var scope = CausalityTrace.EnterScopeIfNotNull(Trace);
                     try
                     {
                         var promise = factory.Invoke();
@@ -332,16 +333,19 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(e, false, this);
                         OnComplete(Promise.State.Rejected);
                     }
-                    ClearCurrentInvoker();
+                    finally
+                    {
+                        scope.Dispose();
+                    }
                 }
 
                 [MethodImpl(InlineOption)]
                 protected void Start(Func<ProgressToken, Promise<TResult>> factory, ProgressToken progressToken)
                 {
-                    SetCurrentInvoker(this);
+                    var scope = CausalityTrace.EnterScopeIfNotNull(Trace);
                     try
                     {
                         var promise = factory.Invoke(progressToken);
@@ -362,10 +366,13 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(e, false, this);
                         OnComplete(Promise.State.Rejected);
                     }
-                    ClearCurrentInvoker();
+                    finally
+                    {
+                        scope.Dispose();
+                    }
                 }
 
                 protected abstract void OnComplete(Promise.State state);

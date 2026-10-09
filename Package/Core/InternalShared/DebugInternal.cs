@@ -4,38 +4,27 @@
 #undef PROMISE_DEBUG
 #endif
 
+#pragma warning disable IDE0028 // Simplify collection initialization
+#pragma warning disable IDE0062 // Local function can be made static
 #pragma warning disable IDE0074 // Use compound assignment
 #pragma warning disable IDE0090 // Use 'new(...)'
+#pragma warning disable IDE0290 // Use primary constructor
+#pragma warning disable IDE0300 // Simplify collection initialization
 
+using Proto.Diagnostics;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-#if PROMISE_DEBUG
-using System.Linq;
-#endif
-
 namespace Proto.Promises
 {
     partial class Internal
     {
-        internal static string CausalityTraceMessage
-        {
-            get
-            {
-#if PROMISE_DEBUG
-                return Promise.Config.DebugCausalityTracer == Promise.TraceLevel.All
-                    ? " -- This exception's Stacktrace contains the causality trace of all async callbacks that ran."
-                    : " -- Set Promise.Config.DebugCausalityTracer = Promise.TraceLevel.All to get a causality trace.";
-#else
-                return " -- Enable DEBUG mode and set Promise.Config.DebugCausalityTracer = Promise.TraceLevel.All to get a causality trace.";
-#endif
-            }
-        }
-
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+#if PROTO_PROMISE_DEVELOPER_MODE
         internal const MethodImplOptions InlineOption = MethodImplOptions.NoInlining;
+#elif PROMISE_DEBUG
+        internal const MethodImplOptions InlineOption = 0;
 #else
         internal const MethodImplOptions InlineOption = MethodImplOptions.AggressiveInlining;
 #endif
@@ -56,12 +45,6 @@ namespace Proto.Promises
             partial void ValidateAwait(PromiseRefBase other, short promiseId);
         }
 
-        [MethodImpl(InlineOption)]
-        internal static void SetCreatedStacktraceInternal(ITraceable traceable, int skipFrames)
-        {
-            SetCreatedStacktrace(traceable, skipFrames);
-        }
-
         internal static void RecordException(Exception e, ref List<Exception> exceptions)
         {
             if (exceptions == null)
@@ -72,74 +55,80 @@ namespace Proto.Promises
         }
 
 #if PROMISE_DEBUG
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        private sealed class SyncTrace : ITraceable
+        // In DEBUG mode, causality traces are stored in fields, so they're reliably available when leaked objects are reported from their finalizers.
+        // (Some runtimes, like Unity's Mono and IL2CPP, clear ConditionalWeakTable entries before the key's finalizer runs.)
+        internal interface ITraceable
         {
-            CausalityTrace ITraceable.Trace { get; set; }
-
-            private SyncTrace() { }
-
-            internal static ITraceable GetCurrent(int skipFrames)
-            {
-                if (Promise.Config.DebugCausalityTracer != Promise.TraceLevel.All)
-                {
-                    return null;
-                }
-
-                var syncTrace = new SyncTrace();
-                SetCreatedStacktrace(syncTrace, skipFrames + 1);
-                return syncTrace;
-            }
+            CausalityTrace Trace { get; set; }
         }
 
-        private static ITraceable SynchronousTraceable => SyncTrace.GetCurrent(2);
+        // Returns null if causality traces are disabled, the same as in RELEASE mode.
+        [MethodImpl(InlineOption)]
+        internal static CausalityTrace GetTrace(object obj)
+            => CausalityTrace.IsEnabled ? (obj as ITraceable)?.Trace : null;
+
+        internal static void SetTrace(object obj, CausalityTrace trace)
+            // This throws if a traced type is missing the ITraceable implementation.
+            => ((ITraceable) obj).Trace = trace;
+
+        // Objects are never pooled in DEBUG mode, so their traces are released with them.
+        internal static void ClearTraces() { }
 #else
-        private const ITraceable SynchronousTraceable = null;
+        // In RELEASE mode, causality traces are stored in a table instead of fields to keep objects small, since they are rarely enabled.
+        // Object pooling is disabled while causality traces are enabled, so entries are collected with their objects.
+        // Some runtimes (like Unity's Mono and IL2CPP) clear the entries before the key's finalizer runs,
+        // so leaked objects that are reported from their finalizers may not have a trace. Older runtimes (like Unity 2018's Mono and IL2CPP)
+        // never clear the entries, so traced objects leak while traces are enabled. DEBUG mode stores them in fields instead.
+        // The table is replaced when causality traces are disabled, so that objects that are pooled again don't keep their traces alive.
+        private static ConditionalWeakTable<object, CausalityTrace> s_causalityTraces = new ConditionalWeakTable<object, CausalityTrace>();
+
+        internal static void ClearTraces()
+            => s_causalityTraces = new ConditionalWeakTable<object, CausalityTrace>();
+
+        // Returns null if causality traces are disabled, without accessing the table.
+        [MethodImpl(InlineOption)]
+        internal static CausalityTrace GetTrace(object obj)
+            => CausalityTrace.IsEnabled ? GetTraceFromTable(obj) : null;
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static CausalityTrace GetTraceFromTable(object obj)
+            => obj != null && s_causalityTraces.TryGetValue(obj, out var trace) ? trace : null;
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        internal static void SetTrace(object obj, CausalityTrace trace)
+        {
+            // The object may already have an entry if it was taken from the pool after it was traced previously.
+#if NETCOREAPP || NETSTANDARD2_1_OR_GREATER
+            s_causalityTraces.AddOrUpdate(obj, trace);
+#else
+            // This is only set from the thread that creates the object, so we don't need to lock.
+            s_causalityTraces.Remove(obj);
+            s_causalityTraces.Add(obj, trace);
 #endif
-
-        static partial void SetPrevious(this PromiseRefBase promise, PromiseRefBase previous);
-        static partial void SetCreatedStacktrace(ITraceable traceable, int skipFrames);
-        static partial void SetCurrentInvoker(ITraceable current);
-        static partial void ClearCurrentInvoker();
-
-#if PROMISE_DEBUG
-        // We only set _previous to support circular await detection in DEBUG mode.
-        static partial void SetPrevious(this PromiseRefBase promise, PromiseRefBase previous)
-            => promise._previous = previous;
-
-        static partial void SetCreatedStacktrace(ITraceable traceable, int skipFrames)
-            => SetCreatedStacktraceImpl(traceable, skipFrames);
-
-        internal static void SetCreatedStacktraceImpl(ITraceable traceable, int skipFrames)
-        {
-            StackTrace stackTrace = Promise.Config.DebugCausalityTracer == Promise.TraceLevel.All
-                ? GetStackTrace(skipFrames + 1)
-                : null;
-            traceable.Trace = new CausalityTrace(stackTrace, ts_currentTrace);
         }
+#endif // PROMISE_DEBUG
 
-        [ThreadStatic]
-        private static CausalityTrace ts_currentTrace;
-        [ThreadStatic]
-        private static Stack<CausalityTrace> ts_traces;
-
-        static partial void SetCurrentInvoker(ITraceable current)
+        // Gives target the same trace as source (e.g. a lock key uses the trace of the promise that acquired the lock).
+        [MethodImpl(InlineOption)]
+        internal static void CopyTrace(object source, object target)
         {
-            if (ts_traces == null)
+            var trace = GetTrace(source);
+            if (trace != null)
             {
-                ts_traces = new Stack<CausalityTrace>();
-            }
-            ts_traces.Push(ts_currentTrace);
-            if (current != null)
-            {
-                ts_currentTrace = current.Trace;
+                SetTrace(target, trace);
             }
         }
 
-        static partial void ClearCurrentInvoker()
-            => ts_currentTrace = ts_traces.Pop();
+        // We don't skip frames, because our own frames are hidden when the trace is formatted, and counting frames is unreliable when methods are inlined.
+        // We don't clear the trace when it's disabled, because GetTrace returns null when it's disabled.
+        [MethodImpl(InlineOption)]
+        internal static void SetCreatedStacktrace(object obj)
+        {
+            if (CausalityTrace.IsEnabled)
+            {
+                SetTrace(obj, CausalityTrace.Capture());
+            }
+        }
 
         private static StackTrace GetStackTrace(int skipFrames)
 #if PROTO_PROMISE_DEVELOPER_MODE // Don't skip frames in developer mode.
@@ -150,11 +139,18 @@ namespace Proto.Promises
             => new StackTrace(skipFrames + 1, true);
 #endif
 
-        internal static string GetFormattedStacktrace(ITraceable traceable)
-            => traceable?.Trace.ToString();
+        static partial void SetPrevious(this PromiseRefBase promise, PromiseRefBase previous);
+
+#if PROMISE_DEBUG
+        // We only set _previous to support circular await detection in DEBUG mode.
+        static partial void SetPrevious(this PromiseRefBase promise, PromiseRefBase previous)
+            => promise._previous = previous;
+
+        internal static string GetFormattedStacktrace(object traceable)
+            => GetTrace(traceable)?.ToString();
 
         internal static string GetFormattedStacktrace(int skipFrames)
-            => FormatStackTrace(new StackTrace[1] { GetStackTrace(skipFrames + 1) });
+            => CausalityTrace.FormatStackTrace(GetStackTrace(skipFrames + 1));
 
         internal static void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
         {
@@ -172,86 +168,6 @@ namespace Proto.Promises
                 throw new InvalidArgumentException(argName,
                     "Promise is invalid. Call `GetRetainer()` if you intend to await multiple times.",
                     GetFormattedStacktrace(skipFrames + 1));
-            }
-        }
-
-        internal static string FormatStackTrace(IEnumerable<StackTrace> stackTraces)
-        {
-            const string CausalitySplitMessage = "--- End of stack trace from the previous location where the exception was thrown ---";
-
-            // .Net 6 has built-in [StackTraceHidden], so we don't need to manually filter the stack frames.
-            // And StackFrame.GetMethod produces IL2026 AOT trimmer warning which is not an issue on older runtimes.
-#if NET6_0_OR_GREATER
-            var causalityTrace = stackTraces
-                .Select(stackTrace => stackTrace.ToString());
-#else
-            var causalityTrace = stackTraces
-                .Select(stackTrace => stackTrace.GetFrames()
-                    .Where(frame =>
-                    {
-                        // Ignore DebuggerNonUserCode and DebuggerHidden.
-                        var methodType = frame?.GetMethod();
-                        return methodType != null
-                            && !methodType.IsDefined(typeof(DebuggerHiddenAttribute), false)
-                            && !IsNonUserCode(methodType);
-                    })
-                    // Create a new StackTrace to get proper formatting.
-                    .Select(frame => new StackTrace(frame).ToString())
-                )
-                .Select(stackTrace => string.Join(Environment.NewLine, stackTrace));
-            
-            bool IsNonUserCode(System.Reflection.MemberInfo memberInfo)
-            {
-                if (memberInfo == null)
-                {
-                    return false;
-                }
-                return memberInfo.IsDefined(typeof(DebuggerNonUserCodeAttribute), false)
-                    || IsNonUserCode(memberInfo.DeclaringType);
-            }
-#endif
-
-            return string.Join($"{Environment.NewLine}{CausalitySplitMessage}{Environment.NewLine}", causalityTrace);
-        }
-
-        partial interface ITraceable
-        {
-            CausalityTrace Trace { get; set; }
-        }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
-        internal class CausalityTrace
-        {
-            private readonly StackTrace _stackTrace;
-            private readonly CausalityTrace _next;
-
-            public CausalityTrace(StackTrace stackTrace, CausalityTrace higherStacktrace)
-            {
-                _stackTrace = stackTrace;
-                _next = higherStacktrace;
-            }
-
-            public override string ToString()
-            {
-                if (_stackTrace == null)
-                {
-                    return null;
-                }
-                return FormatStackTrace(GetStackTraces());
-            }
-
-            private IEnumerable<StackTrace> GetStackTraces()
-            {
-                for (CausalityTrace current = this; current != null; current = current._next)
-                {
-                    if (current._stackTrace == null)
-                    {
-                        yield break;
-                    }
-                    yield return current._stackTrace;
-                }
             }
         }
 
@@ -283,7 +199,9 @@ namespace Proto.Promises
                 {
                     // Awaiting or returning an invalid from the callback is not allowed.
                     if (awaited)
+                    {
                         throw new InvalidOperationException("An invalid promise was awaited.", string.Empty);
+                    }
                     throw new InvalidReturnException("An invalid promise was returned.", string.Empty);
                 }
 
@@ -292,7 +210,9 @@ namespace Proto.Promises
                 {
                     other.MaybeMarkAwaitedAndDispose(other.Id);
                     if (awaited)
+                    {
                         throw new InvalidOperationException("A Promise cannot wait on itself.", string.Empty);
+                    }
                     throw new InvalidReturnException("A Promise cannot wait on itself.", string.Empty);
                 }
                 if (other == null)
@@ -311,7 +231,9 @@ namespace Proto.Promises
                             other.MaybeMarkAwaitedAndDispose(other.Id);
                             previouses.Clear();
                             if (awaited)
+                            {
                                 throw new InvalidOperationException("Circular Promise chain detected.", GetFormattedStacktrace(other));
+                            }
                             throw new InvalidReturnException("Circular Promise chain detected.", GetFormattedStacktrace(other));
                         }
                         prev.BorrowPreviousPromises(previouses);
@@ -479,7 +401,7 @@ namespace Proto.Promises
 #else // PROMISE_DEBUG
         internal static string GetFormattedStacktrace(int skipFrames) => null;
 
-        internal static string GetFormattedStacktrace(ITraceable traceable) => null;
+        internal static string GetFormattedStacktrace(object traceable) => null;
 #endif // PROMISE_DEBUG
     } // class Internal
 

@@ -50,10 +50,8 @@ namespace Proto.Promises.Threading
 
             _currentCount = initialCount;
             _maxCount = maxCount;
-            SetCreatedStacktrace();
+            Internal.SetCreatedStacktrace(this);
         }
-
-        partial void SetCreatedStacktrace();
 
         /// <summary>
         /// Get the number of times remaining that this <see cref="AsyncSemaphore"/> can be entered concurrently.

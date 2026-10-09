@@ -41,7 +41,7 @@ namespace Proto.Promises
                 instance._next = null;
                 instance._tokens = new TempCollectionBuilder<ProgressToken>(0);
                 instance._disposed = false;
-                SetCreatedStacktrace(instance, 2);
+                SetCreatedStacktrace(instance);
                 return instance;
             }
 

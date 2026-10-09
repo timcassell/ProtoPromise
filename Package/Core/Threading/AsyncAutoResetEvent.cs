@@ -32,10 +32,8 @@ namespace Proto.Promises.Threading
         public AsyncAutoResetEvent(bool initialState)
         {
             _isSet = initialState;
-            SetCreatedStacktrace();
+            Internal.SetCreatedStacktrace(this);
         }
-
-        partial void SetCreatedStacktrace();
 
         /// <summary>
         /// Whether this event is currently set.

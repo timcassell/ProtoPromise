@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Diagnostics;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -173,11 +174,8 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed class ConfiguredAsyncGenericContinuer : HandleablePromiseBase, ITraceable
+            private sealed class ConfiguredAsyncGenericContinuer : HandleablePromiseBase
             {
-#if PROMISE_DEBUG
-                CausalityTrace ITraceable.Trace { get; set; }
-#endif
                 private Action _continuation;
                 private SynchronizationContext _context;
 
@@ -207,7 +205,7 @@ namespace Proto.Promises
                     continuer._next = null;
                     continuer._continuation = continuation;
                     continuer._context = context;
-                    SetCreatedStacktrace(continuer, 3);
+                    SetCreatedStacktrace(continuer);
                     return continuer;
                 }
 
@@ -234,9 +232,8 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     var callback = _continuation;
-#if PROMISE_DEBUG
-                    SetCurrentInvoker(this);
-#else
+                    var scope = CausalityTrace.EnterScopeIfNotNull(GetTrace(this));
+#if !PROMISE_DEBUG
                     Dispose();
 #endif
                     try
@@ -248,8 +245,11 @@ namespace Proto.Promises
                         // This should never hit if the `await` keyword is used, but a user manually subscribing to OnCompleted could throw.
                         ReportRejection(e, this);
                     }
+                    finally
+                    {
+                        scope.Dispose();
+                    }
 #if PROMISE_DEBUG
-                    ClearCurrentInvoker();
                     Dispose();
 #endif
                 }

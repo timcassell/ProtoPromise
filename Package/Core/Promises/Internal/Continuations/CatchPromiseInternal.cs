@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Diagnostics;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -20,7 +21,7 @@ namespace Proto.Promises
                     where TDelegate : IFunc<TArg, TResult>
                 {
                     Promise.State state;
-                    SetCurrentInvoker(this);
+                    var scope = EnterCallbackScope();
                     try
                     {
                         _result = callback.Invoke(arg);
@@ -37,12 +38,12 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(e, false, this);
                         state = Promise.State.Rejected;
                     }
                     finally
                     {
-                        ClearCurrentInvoker();
+                        scope.Dispose();
                     }
 
                     // We handle next last, so that if the runtime wants to, it can tail-call optimize.
@@ -57,7 +58,7 @@ namespace Proto.Promises
                     where TDelegate : IFunc<TArg, Promise>
                 {
                     Promise.State state;
-                    SetCurrentInvoker(this);
+                    var scope = EnterCallbackScope();
                     try
                     {
                         var result = callback.Invoke(arg);
@@ -89,12 +90,12 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(e, false, this);
                         state = Promise.State.Rejected;
                     }
                     finally
                     {
-                        ClearCurrentInvoker();
+                        scope.Dispose();
                     }
 
                     // We handle next last, so that if the runtime wants to, it can tail-call optimize.
@@ -106,7 +107,7 @@ namespace Proto.Promises
                     where TDelegate : IFunc<TArg, Promise<TResult>>
                 {
                     Promise.State state;
-                    SetCurrentInvoker(this);
+                    var scope = EnterCallbackScope();
                     try
                     {
                         var result = callback.Invoke(arg);
@@ -139,12 +140,12 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(e, false, this);
                         state = Promise.State.Rejected;
                     }
                     finally
                     {
-                        ClearCurrentInvoker();
+                        scope.Dispose();
                     }
 
                     // We handle next last, so that if the runtime wants to, it can tail-call optimize.
@@ -190,7 +191,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._callback = callback;
                     promise.SetPrevious(previous._ref);
                     previous._ref.HookupNewWaiter(previous._id, promise);
@@ -245,7 +246,7 @@ namespace Proto.Promises
                 internal static Promise New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._callback = callback;
                     promise.SetPrevious(previous._ref);
                     previous._ref.HookupNewWaiter(previous._id, promise);
@@ -307,7 +308,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._callback = callback;
                     promise.SetPrevious(previous._ref);
                     previous._ref.HookupNewWaiter(previous._id, promise);
@@ -369,7 +370,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._callback = callback;
                     promise.SetPrevious(previous._ref);
                     previous._ref.HookupNewWaiter(previous._id, promise);
@@ -422,7 +423,7 @@ namespace Proto.Promises
                 internal static Promise New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._callback = callback;
                     promise.SetPrevious(previous._ref);
                     previous._ref.HookupNewWaiter(previous._id, promise);
@@ -482,7 +483,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._callback = callback;
                     promise.SetPrevious(previous._ref);
                     previous._ref.HookupNewWaiter(previous._id, promise);

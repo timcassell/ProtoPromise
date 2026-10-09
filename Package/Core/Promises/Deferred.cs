@@ -7,6 +7,7 @@
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0270 // Use coalesce expression
 
+using Proto.Diagnostics;
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -130,7 +131,7 @@ namespace Proto.Promises
                 {
                     throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace(1));
                 }
-                _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
+                _this.Reject(reason);
             }
 
             /// <summary>
@@ -141,12 +142,12 @@ namespace Proto.Promises
             public bool TryReject<TReject>(TReject reason)
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) == true)
+                if (_this?.TryIncrementDeferredId(_deferredId) != true)
                 {
-                    _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
-                    return true;
+                    return false;
                 }
-                return false;
+                _this.Reject(reason);
+                return true;
             }
 
             /// <summary>
@@ -173,12 +174,12 @@ namespace Proto.Promises
             public bool TryCancel()
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) == true)
+                if (_this?.TryIncrementDeferredId(_deferredId) != true)
                 {
-                    _this.CancelDirect();
-                    return true;
+                    return false;
                 }
-                return false;
+                _this.CancelDirect();
+                return true;
             }
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="DeferredBase"/>.</summary>
@@ -303,12 +304,12 @@ namespace Proto.Promises
             public bool TryResolve()
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) == true)
+                if (_this?.TryIncrementDeferredId(_deferredId) != true)
                 {
-                    _this.ResolveDirectVoid();
-                    return true;
+                    return false;
                 }
-                return false;
+                _this.ResolveDirectVoid();
+                return true;
             }
 
             /// <summary>
@@ -323,7 +324,7 @@ namespace Proto.Promises
                 {
                     throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace(1));
                 }
-                _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
+                _this.Reject(reason);
             }
 
             /// <summary>
@@ -334,12 +335,12 @@ namespace Proto.Promises
             public bool TryReject<TReject>(TReject reason)
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) == true)
+                if (_this?.TryIncrementDeferredId(_deferredId) != true)
                 {
-                    _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
-                    return true;
+                    return false;
                 }
-                return false;
+                _this.Reject(reason);
+                return true;
             }
 
             /// <summary>
@@ -366,12 +367,12 @@ namespace Proto.Promises
             public bool TryCancel()
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) == true)
+                if (_this?.TryIncrementDeferredId(_deferredId) != true)
                 {
-                    _this.CancelDirect();
-                    return true;
+                    return false;
                 }
-                return false;
+                _this.CancelDirect();
+                return true;
             }
 
             /// <summary>
@@ -513,12 +514,12 @@ namespace Proto.Promises
             public bool TryResolve(T value)
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) == true)
+                if (_this?.TryIncrementDeferredId(_deferredId) != true)
                 {
-                    _this.ResolveDirect(value);
-                    return true;
+                    return false;
                 }
-                return false;
+                _this.ResolveDirect(value);
+                return true;
             }
 
             /// <summary>
@@ -533,7 +534,7 @@ namespace Proto.Promises
                 {
                     throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace(1));
                 }
-                _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
+                _this.Reject(reason);
             }
 
             /// <summary>
@@ -544,12 +545,12 @@ namespace Proto.Promises
             public bool TryReject<TReject>(TReject reason)
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) == true)
+                if (_this?.TryIncrementDeferredId(_deferredId) != true)
                 {
-                    _this.RejectDirect(Internal.CreateRejectContainer(reason, 1, null, _this));
-                    return true;
+                    return false;
                 }
-                return false;
+                _this.Reject(reason);
+                return true;
             }
 
             /// <summary>
@@ -576,12 +577,12 @@ namespace Proto.Promises
             public bool TryCancel()
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) == true)
+                if (_this?.TryIncrementDeferredId(_deferredId) != true)
                 {
-                    _this.CancelDirect();
-                    return true;
+                    return false;
                 }
-                return false;
+                _this.CancelDirect();
+                return true;
             }
 
             /// <summary>
