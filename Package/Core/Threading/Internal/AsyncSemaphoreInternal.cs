@@ -205,7 +205,7 @@ namespace Proto.Promises
                     if (_maxCount == current)
                     {
                         _locker.Exit();
-                        throw new SemaphoreFullException(Internal.GetFormattedStacktrace(2));
+                        throw new SemaphoreFullException(Internal.GetFormattedStacktrace());
                     }
 
                     if (_waiters.IsEmpty)
@@ -230,7 +230,7 @@ namespace Proto.Promises
                     if (releaseCount > _maxCount - current)
                     {
                         _locker.Exit();
-                        throw new SemaphoreFullException(Internal.GetFormattedStacktrace(2));
+                        throw new SemaphoreFullException(Internal.GetFormattedStacktrace());
                     }
 
                     waiters = _waiters.MoveElementsToStack(releaseCount, out int waiterCount);

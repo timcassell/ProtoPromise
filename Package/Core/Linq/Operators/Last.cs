@@ -31,7 +31,7 @@ namespace Proto.Promises.Linq
                 {
                     if (!await asyncEnumerator.MoveNextAsync())
                     {
-                        throw new InvalidOperationException("source must contain at least 1 element.", Internal.GetFormattedStacktrace(1));
+                        throw new InvalidOperationException("source must contain at least 1 element.", Internal.GetFormattedStacktrace());
                     }
 
                     TSource last;
@@ -61,7 +61,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="InvalidOperationException"><paramref name="source"/> is empty, or no element satisfies the condition in <paramref name="predicate"/>.</exception>
         public static Promise<TSource> LastAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, bool> predicate, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return LastAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate));
         }
@@ -80,7 +80,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="InvalidOperationException"><paramref name="source"/> is empty, or no element satisfies the condition in <paramref name="predicate"/>.</exception>
         public static Promise<TSource> LastAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, bool> predicate, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return LastAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate));
         }
@@ -112,7 +112,7 @@ namespace Proto.Promises.Linq
                 await asyncEnumerator.DisposeAsync();
             }
 
-            throw new InvalidOperationException("source must contain at least 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+            throw new InvalidOperationException("source must contain at least 1 element that satisfies the condition.", Internal.GetFormattedStacktrace());
         }
 
         /// <summary>
@@ -127,7 +127,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="InvalidOperationException"><paramref name="source"/> is empty, or no element satisfies the condition in <paramref name="predicate"/>.</exception>
         public static Promise<TSource> LastAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<bool>> predicate, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return LastAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate));
         }
@@ -146,7 +146,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="InvalidOperationException"><paramref name="source"/> is empty, or no element satisfies the condition in <paramref name="predicate"/>.</exception>
         public static Promise<TSource> LastAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return LastAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate));
         }
@@ -178,7 +178,7 @@ namespace Proto.Promises.Linq
                 await asyncEnumerator.DisposeAsync();
             }
 
-            throw new InvalidOperationException("source must contain at least 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+            throw new InvalidOperationException("source must contain at least 1 element that satisfies the condition.", Internal.GetFormattedStacktrace());
         }
 
         /// <summary>
@@ -192,7 +192,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="InvalidOperationException"><paramref name="configuredSource"/> is empty, or no element satisfies the condition in <paramref name="predicate"/>.</exception>
         public static Promise<TSource> LastAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, bool> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return LastAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
@@ -210,7 +210,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="InvalidOperationException"><paramref name="configuredSource"/> is empty, or no element satisfies the condition in <paramref name="predicate"/>.</exception>
         public static Promise<TSource> LastAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, bool> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return LastAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
@@ -242,7 +242,7 @@ namespace Proto.Promises.Linq
                 await asyncEnumerator.DisposeAsync();
             }
 
-            throw new InvalidOperationException("source must contain at least 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+            throw new InvalidOperationException("source must contain at least 1 element that satisfies the condition.", Internal.GetFormattedStacktrace());
         }
 
         /// <summary>
@@ -256,7 +256,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="InvalidOperationException"><paramref name="configuredSource"/> is empty, or no element satisfies the condition in <paramref name="predicate"/>.</exception>
         public static Promise<TSource> LastAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<bool>> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return LastAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
@@ -274,7 +274,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="InvalidOperationException"><paramref name="configuredSource"/> is empty, or no element satisfies the condition in <paramref name="predicate"/>.</exception>
         public static Promise<TSource> LastAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return LastAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
@@ -306,7 +306,7 @@ namespace Proto.Promises.Linq
                 await asyncEnumerator.DisposeAsync();
             }
 
-            throw new InvalidOperationException("source must contain at least 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+            throw new InvalidOperationException("source must contain at least 1 element that satisfies the condition.", Internal.GetFormattedStacktrace());
         }
     }
 }

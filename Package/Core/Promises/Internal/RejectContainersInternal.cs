@@ -19,8 +19,9 @@ namespace Proto.Promises
 {
     partial class Internal
     {
-        // captureTrace is true when the rejection site should be captured (e.g. Deferred.Reject),
-        // or false when the traceable's trace already describes it (e.g. an exception thrown in a callback).
+        // captureTrace is true when the rejection site should be captured (e.g. Deferred.Reject, or where an exception was caught after invoking user code,
+        // which shows what invoked the code), or false when the traceable's trace already describes it (e.g. an exception that the library created
+        // outside of user code, or user code that ran synchronously where the traceable was created).
         internal static IRejectContainer CreateRejectContainer(object reason, bool captureTrace, object traceable)
         {
             if (reason is IRejectionToContainer internalRejection)
@@ -43,7 +44,7 @@ namespace Proto.Promises
         {
             protected CausalityTrace _causalityTrace;
 
-            // The operation that completes the promise (e.g. Deferred.Reject) enters the scope of its trace before this,
+            // The operation that completes the promise (e.g. Deferred.Reject, or the callback that threw) enters the scope of its trace before this,
             // so the captured trace already has it as its cause.
             protected void SetCausalityTrace(bool captureTrace, object traceable)
                 => _causalityTrace = CausalityTrace.IsEnabled & captureTrace
@@ -100,32 +101,24 @@ namespace Proto.Promises
 #endif
         internal sealed partial class ExceptionRejectionContainer : RejectContainer, IRejectionToContainer, ICantHandleException
         {
-            // This is used to reconstruct the causality trace when the original exception is rethrown from await in an async function, and the container is lost.
-            private static readonly ConditionalWeakTable<object, CausalityTrace> s_callerTraces = new ConditionalWeakTable<object, CausalityTrace>();
-
             private ExceptionDispatchInfo _capturedInfo;
 
             new private void SetCausalityTrace(bool captureTrace, object traceable)
             {
-                if (s_callerTraces.TryGetValue(Value, out _causalityTrace))
+                // The common case (not traced) doesn't access the table.
+                if (!CausalityTrace.IsEnabled)
+                {
+                    return;
+                }
+                // The exception may have been rethrown from await in an async function, so we use the trace of where it was originally rejected or thrown.
+                if (TryGetExceptionTrace(Value, out _causalityTrace))
                 {
                     return;
                 }
                 base.SetCausalityTrace(captureTrace, traceable);
                 if (_causalityTrace != null)
                 {
-#if NET7_0_OR_GREATER
-                    s_callerTraces.TryAdd(Value, _causalityTrace);
-#else
-                    lock (s_callerTraces)
-                    {
-                        // Handle race condition where multiple containers are created for the same exception on different threads (unlikely, but theoretically possible).
-                        if (!s_callerTraces.TryGetValue(Value, out _))
-                        {
-                            s_callerTraces.Add(Value, _causalityTrace);
-                        }
-                    }
-#endif
+                    AddExceptionTrace(Value, _causalityTrace);
                 }
             }
 

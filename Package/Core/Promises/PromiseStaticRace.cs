@@ -21,8 +21,8 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise Race(Promise promise1, Promise promise2)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
             return Race(Internal.GetEnumerator(promise1, promise2));
         }
 
@@ -35,9 +35,9 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise Race(Promise promise1, Promise promise2, Promise promise3)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
             return Race(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
@@ -50,10 +50,10 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise Race(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
             return Race(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
@@ -66,7 +66,7 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise Race(params Promise[] promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return Race(promises.GetGenericEnumerator());
         }
 
@@ -93,7 +93,7 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise Race(IEnumerable<Promise> promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return Race(promises.GetEnumerator());
         }
 
@@ -106,13 +106,13 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise Race<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
 
             using (promises)
             {
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
+                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace());
                 }
 
                 bool isResolved;
@@ -130,13 +130,13 @@ namespace Proto.Promises
                 return Resolved();
 
             HookupMaybePending:
-                ValidateElement(p, "promises", 1);
+                ValidateElement(p, "promises");
                 var promise = Internal.PromiseRefBase.RacePromise<Internal.VoidResult>.GetOrCreate();
                 promise.AddWaiter(p._ref, p._id);
                 while (promises.MoveNext())
                 {
                     p = promises.Current;
-                    ValidateElement(p, "promises", 1);
+                    ValidateElement(p, "promises");
                     bool resolved = p._ref == null;
                     isResolved |= resolved;
                     if (!resolved)
@@ -164,8 +164,8 @@ namespace Proto.Promises
         public static Promise<int> RaceWithIndex(Promise promise1, Promise promise2)
         {
 
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
             return RaceWithIndex(Internal.GetEnumerator(promise1, promise2));
         }
 
@@ -179,9 +179,9 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> RaceWithIndex(Promise promise1, Promise promise2, Promise promise3)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
             return RaceWithIndex(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
@@ -195,10 +195,10 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> RaceWithIndex(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
             return RaceWithIndex(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
@@ -212,7 +212,7 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> RaceWithIndex(params Promise[] promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return RaceWithIndex(promises.GetGenericEnumerator());
         }
 
@@ -241,7 +241,7 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> RaceWithIndex(IEnumerable<Promise> promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return RaceWithIndex(promises.GetEnumerator());
         }
 
@@ -255,13 +255,13 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> RaceWithIndex<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
 
             using (promises)
             {
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
+                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace());
                 }
 
                 int index = 0;
@@ -281,14 +281,14 @@ namespace Proto.Promises
                 return Resolved(0);
 
             HookupMaybePending:
-                ValidateElement(p, "promises", 1);
+                ValidateElement(p, "promises");
                 var promise = Internal.PromiseRefBase.RacePromiseWithIndexVoid.GetOrCreate();
                 promise.AddWaiterWithIndex(p._ref, p._id, index);
                 while (promises.MoveNext())
                 {
                     checked { ++index; }
                     p = promises.Current;
-                    ValidateElement(p, "promises", 1);
+                    ValidateElement(p, "promises");
                     if (p._ref != null)
                     {
                         promise.AddWaiterWithIndex(p._ref, p._id, index);
@@ -390,8 +390,8 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise First(Promise promise1, Promise promise2)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
             return First(Internal.GetEnumerator(promise1, promise2));
         }
 
@@ -404,9 +404,9 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise First(Promise promise1, Promise promise2, Promise promise3)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
             return First(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
@@ -419,10 +419,10 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise First(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
             return First(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
@@ -435,7 +435,7 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise First(params Promise[] promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return First(promises.GetGenericEnumerator());
         }
 
@@ -462,7 +462,7 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise First(IEnumerable<Promise> promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return First(promises.GetEnumerator());
         }
 
@@ -475,13 +475,13 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise First<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
 
             using (promises)
             {
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
+                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace());
                 }
 
                 bool isResolved;
@@ -499,14 +499,14 @@ namespace Proto.Promises
                 return Resolved();
 
             HookupMaybePending:
-                ValidateElement(p, "promises", 1);
+                ValidateElement(p, "promises");
                 var promise = Internal.PromiseRefBase.FirstPromise<Internal.VoidResult>.GetOrCreate();
                 uint pendingCount = 1;
                 promise.AddWaiter(p._ref, p._id);
                 while (promises.MoveNext())
                 {
                     p = promises.Current;
-                    ValidateElement(p, "promises", 1);
+                    ValidateElement(p, "promises");
                     bool resolved = p._ref == null;
                     isResolved |= resolved;
                     if (!resolved)
@@ -536,8 +536,8 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> FirstWithIndex(Promise promise1, Promise promise2)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
             return FirstWithIndex(Internal.GetEnumerator(promise1, promise2));
         }
 
@@ -548,9 +548,9 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> FirstWithIndex(Promise promise1, Promise promise2, Promise promise3)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
             return FirstWithIndex(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
@@ -564,10 +564,10 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> FirstWithIndex(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
             return FirstWithIndex(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
@@ -581,7 +581,7 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> FirstWithIndex(params Promise[] promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return FirstWithIndex(promises.GetGenericEnumerator());
         }
 
@@ -610,7 +610,7 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> FirstWithIndex(IEnumerable<Promise> promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return FirstWithIndex(promises.GetEnumerator());
         }
 
@@ -624,13 +624,13 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<int>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<int> FirstWithIndex<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
 
             using (promises)
             {
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
+                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace());
                 }
 
                 int index = 0;
@@ -650,7 +650,7 @@ namespace Proto.Promises
                 return Resolved(0);
 
             HookupMaybePending:
-                ValidateElement(p, "promises", 1);
+                ValidateElement(p, "promises");
                 var promise = Internal.PromiseRefBase.FirstPromiseWithIndexVoid.GetOrCreate();
                 uint pendingCount = 1;
                 promise.AddWaiterWithIndex(p._ref, p._id, index);
@@ -658,7 +658,7 @@ namespace Proto.Promises
                 {
                     checked { ++index; }
                     p = promises.Current;
-                    ValidateElement(p, "promises", 1);
+                    ValidateElement(p, "promises");
                     if (p._ref != null)
                     {
                         checked { ++pendingCount; }
@@ -764,8 +764,8 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(Promise<T> promise1, Promise<T> promise2)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
             return RaceWithIndex<T, Internal.Enumerator<Promise<T>, Internal.TwoItems<Promise<T>>>>(Internal.GetEnumerator(promise1, promise2));
         }
 
@@ -779,9 +779,9 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<in(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
             return RaceWithIndex<T, Internal.Enumerator<Promise<T>, Internal.ThreeItems<Promise<T>>>>(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
@@ -795,10 +795,10 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
             return RaceWithIndex<T, Internal.Enumerator<Promise<T>, Internal.FourItems<Promise<T>>>>(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
@@ -812,7 +812,7 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(params Promise<T>[] promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return RaceWithIndex<T, Internal.ArrayEnumerator<Promise<T>>>(promises.GetGenericEnumerator());
         }
 
@@ -841,7 +841,7 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> RaceWithIndex<T>(IEnumerable<Promise<T>> promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return RaceWithIndex<T, IEnumerator<Promise<T>>>(promises.GetEnumerator());
         }
 
@@ -855,13 +855,13 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.Race or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> RaceWithIndex<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
 
             using (promises)
             {
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
+                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace());
                 }
 
                 int index = 0;
@@ -885,14 +885,14 @@ namespace Proto.Promises
                 return Resolved(result);
 
             HookupMaybePending:
-                ValidateElement(p, "promises", 1);
+                ValidateElement(p, "promises");
                 var promise = Internal.PromiseRefBase.RacePromiseWithIndex<T>.GetOrCreate();
                 promise.AddWaiterWithIndex(p._ref, p._id, index);
                 while (promises.MoveNext())
                 {
                     checked { ++index; }
                     p = promises.Current;
-                    ValidateElement(p, "promises", 1);
+                    ValidateElement(p, "promises");
                     if (p._ref != null)
                     {
                         promise.AddWaiterWithIndex(p._ref, p._id, index);
@@ -921,8 +921,8 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(Promise<T> promise1, Promise<T> promise2)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
             return FirstWithIndex<T, Internal.Enumerator<Promise<T>, Internal.TwoItems<Promise<T>>>>(Internal.GetEnumerator(promise1, promise2));
         }
 
@@ -936,9 +936,9 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
             return FirstWithIndex<T, Internal.Enumerator<Promise<T>, Internal.ThreeItems<Promise<T>>>>(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
@@ -952,10 +952,10 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
             return FirstWithIndex<T, Internal.Enumerator<Promise<T>, Internal.FourItems<Promise<T>>>>(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
@@ -969,7 +969,7 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(params Promise<T>[] promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return FirstWithIndex<T, Internal.ArrayEnumerator<Promise<T>>>(promises.GetGenericEnumerator());
         }
 
@@ -998,7 +998,7 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> FirstWithIndex<T>(IEnumerable<Promise<T>> promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return FirstWithIndex<T, IEnumerator<Promise<T>>>(promises.GetEnumerator());
         }
 
@@ -1012,13 +1012,13 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise.First or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> FirstWithIndex<T, TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
 
             using (promises)
             {
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
+                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace());
                 }
 
                 int index = 0;
@@ -1042,7 +1042,7 @@ namespace Proto.Promises
                 return Resolved(result);
 
             HookupMaybePending:
-                ValidateElement(p, "promises", 1);
+                ValidateElement(p, "promises");
                 var promise = Internal.PromiseRefBase.FirstPromiseWithIndex<T>.GetOrCreate();
                 uint pendingCount = 1;
                 promise.AddWaiterWithIndex(p._ref, p._id, index);
@@ -1050,7 +1050,7 @@ namespace Proto.Promises
                 {
                     checked { ++index; }
                     p = promises.Current;
-                    ValidateElement(p, "promises", 1);
+                    ValidateElement(p, "promises");
                     if (p._ref != null)
                     {
                         checked { ++pendingCount; }

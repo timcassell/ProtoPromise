@@ -402,7 +402,7 @@ namespace Proto.Promises
                     if (_currentKey != key)
                     {
                         _locker.Exit();
-                        ThrowInvalidKey(2);
+                        ThrowInvalidKey();
                     }
 
                     // We keep the lock until there are no more waiters.
@@ -426,7 +426,7 @@ namespace Proto.Promises
                 {
                     if (key != _currentKey)
                     {
-                        ThrowInvalidKey(3);
+                        ThrowInvalidKey();
                     }
                     // We set this as the current lock using the condition variable, and validate that it's not currently being used by another lock.
                     // This allows a condition variable to be used by multiple locks, as long as only 1 is using it at a time.
@@ -434,7 +434,7 @@ namespace Proto.Promises
                     if (previousCondVarOwner != null & previousCondVarOwner != this)
                     {
                         _locker.Exit();
-                        ThrowConditionVariableAlreadyInUse(3);
+                        ThrowConditionVariableAlreadyInUse();
                     }
 
                     promise = Internal.PromiseRefBase.AsyncLockWaitPromise.GetOrCreate(condVar, key, continueOnCapturedContext);
@@ -452,7 +452,7 @@ namespace Proto.Promises
                     if (key != _currentKey)
                     {
                         _locker.Exit();
-                        ThrowInvalidKey(3);
+                        ThrowInvalidKey();
                     }
                     // We set this as the current lock using the condition variable, and validate that it's not currently being used by another lock.
                     // This allows a condition variable to be used by multiple locks, as long as only 1 is using it at a time.
@@ -460,7 +460,7 @@ namespace Proto.Promises
                     if (previousCondVarOwner != null & previousCondVarOwner != this)
                     {
                         _locker.Exit();
-                        ThrowConditionVariableAlreadyInUse(3);
+                        ThrowConditionVariableAlreadyInUse();
                     }
 
                     // Quick check to see if the token is already canceled before waiting.
@@ -502,7 +502,7 @@ namespace Proto.Promises
                     if (key != _currentKey)
                     {
                         _locker.Exit();
-                        throw new InvalidOperationException("WaitAsync promise must be awaited while the lock is held.", Internal.GetFormattedStacktrace(5));
+                        throw new InvalidOperationException("WaitAsync promise must be awaited while the lock is held.", Internal.GetFormattedStacktrace());
                     }
 
                     // We keep the lock until there are no more waiters.
@@ -526,7 +526,7 @@ namespace Proto.Promises
                     if (key != _currentKey)
                     {
                         _locker.Exit();
-                        ThrowInvalidKey(3);
+                        ThrowInvalidKey();
                     }
                     // We set this as the current lock using the condition variable, and validate that it's not currently being used by another lock.
                     // This allows a condition variable to be used by multiple locks, as long as only 1 is using it at a time.
@@ -534,7 +534,7 @@ namespace Proto.Promises
                     if (previousCondVarOwner != null & previousCondVarOwner != this)
                     {
                         _locker.Exit();
-                        ThrowConditionVariableAlreadyInUse(3);
+                        ThrowConditionVariableAlreadyInUse();
                     }
 
                     if (condVar._queue.IsEmpty)
@@ -562,7 +562,7 @@ namespace Proto.Promises
                     if (key != _currentKey)
                     {
                         _locker.Exit();
-                        ThrowInvalidKey(3);
+                        ThrowInvalidKey();
                     }
                     // We set this as the current lock using the condition variable, and validate that it's not currently being used by another lock.
                     // This allows a condition variable to be used by multiple locks, as long as only 1 is using it at a time.
@@ -570,7 +570,7 @@ namespace Proto.Promises
                     if (previousCondVarOwner != null & previousCondVarOwner != this)
                     {
                         _locker.Exit();
-                        ThrowConditionVariableAlreadyInUse(3);
+                        ThrowConditionVariableAlreadyInUse();
                     }
                     _queue.TakeAndEnqueueElements(ref condVar._queue);
                     // Remove this association from the condition variable so that another AsyncLock can use it.
@@ -621,12 +621,12 @@ namespace Proto.Promises
             }
 
             [MethodImpl(MethodImplOptions.NoInlining)]
-            internal static void ThrowInvalidKey(int skipFrames)
-                => throw new InvalidOperationException("The AsyncLock.Key is invalid for this operation.", Internal.GetFormattedStacktrace(skipFrames + 1));
+            internal static void ThrowInvalidKey()
+                => throw new InvalidOperationException("The AsyncLock.Key is invalid for this operation.", Internal.GetFormattedStacktrace());
 
             [MethodImpl(MethodImplOptions.NoInlining)]
-            internal static void ThrowConditionVariableAlreadyInUse(int skipFrames)
-                => throw new InvalidOperationException("The AsyncConditionVariable is currently being used by another AsyncLock.", Internal.GetFormattedStacktrace(skipFrames + 1));
+            internal static void ThrowConditionVariableAlreadyInUse()
+                => throw new InvalidOperationException("The AsyncConditionVariable is currently being used by another AsyncLock.", Internal.GetFormattedStacktrace());
 
             partial void ValidateNotAbandoned();
 #if PROMISE_DEBUG
@@ -751,7 +751,7 @@ namespace Proto.Promises
                             }
                             throw new InvalidOperationException(
                                 "This AsyncLock.Key instance has a pending AsyncMonitor.Wait(Async) associated with it. No other operation is permitted on this instance until it is complete.",
-                                Internal.GetFormattedStacktrace(2));
+                                Internal.GetFormattedStacktrace());
                         }
                     }
 
@@ -860,7 +860,7 @@ namespace Proto.Promises
                     var disposedChecker = _disposedChecker;
                     if ((owner == null | disposedChecker == null) || owner != disposedChecker._owner)
                     {
-                        ThrowInvalidKey(2);
+                        ThrowInvalidKey();
                     }
                 }
             }
@@ -915,7 +915,7 @@ namespace Proto.Promises
                     var owner = _owner;
                     if (owner == null)
                     {
-                        ThrowInvalidKey(2);
+                        ThrowInvalidKey();
                     }
                     return owner;
                 }

@@ -80,7 +80,7 @@ namespace Proto.Promises
         public PromiseMergeGroup Add(Promise promise)
         {
 #if PROMISE_DEBUG
-            Internal.ValidateArgument(promise, nameof(promise), 1);
+            Internal.ValidateArgument(promise, nameof(promise));
 #endif
             var cancelationRef = _cancelationRef;
             var group = _group;
@@ -88,14 +88,14 @@ namespace Proto.Promises
             var isExtended = _isExtended;
             if (cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             if (group != null)
             {
                 if (!group.TryIncrementId(_groupId))
                 {
-                    Internal.ThrowInvalidMergeGroup(1);
+                    Internal.ThrowInvalidMergeGroup();
                 }
 
                 // We don't need to do anything if the ref is null.
@@ -109,7 +109,7 @@ namespace Proto.Promises
 
             if (!cancelationRef.TryIncrementSourceId(_cancelationId))
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             if (promise._ref != null)
@@ -182,7 +182,7 @@ namespace Proto.Promises
             var count = _count;
             if (cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             if (group == null)
@@ -190,14 +190,14 @@ namespace Proto.Promises
                 bool canceled = _cancelationRef.IsCanceledUnsafe();
                 if (!cancelationRef.TryDispose(_cancelationId))
                 {
-                    Internal.ThrowInvalidMergeGroup(1);
+                    Internal.ThrowInvalidMergeGroup();
                 }
                 return canceled ? Promise.Canceled() : Promise.Resolved();
             }
 
             if (!group.TryIncrementId(_groupId))
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
             group.MarkReady(count);
             return new Promise(group, group.Id);
@@ -207,7 +207,7 @@ namespace Proto.Promises
         {
             if (!_cancelationRef.TryDispose(_cancelationId))
             {
-                Internal.ThrowInvalidMergeGroup(2);
+                Internal.ThrowInvalidMergeGroup();
             }
             var cleanupCallbacks = _cleanupCallbacks;
             while (cleanupCallbacks.IsNotEmpty)
@@ -221,7 +221,7 @@ namespace Proto.Promises
             bool canceled = _cancelationRef.IsCanceledUnsafe();
             if (!_cancelationRef.TryDispose(_cancelationId))
             {
-                Internal.ThrowInvalidMergeGroup(2);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var cleanupCallbacks = _cleanupCallbacks;
@@ -252,7 +252,7 @@ namespace Proto.Promises
         internal PromiseMergeGroup Merge(Promise promise, int index)
         {
 #if PROMISE_DEBUG
-            Internal.ValidateArgument(promise, nameof(promise), 2);
+            Internal.ValidateArgument(promise, nameof(promise));
 #endif
             var cancelationRef = _cancelationRef;
             var group = _group;
@@ -260,14 +260,14 @@ namespace Proto.Promises
             var isExtended = _isExtended;
             if (cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(2);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             if (group != null)
             {
                 if (!group.TryIncrementId(_groupId))
                 {
-                    Internal.ThrowInvalidMergeGroup(2);
+                    Internal.ThrowInvalidMergeGroup();
                 }
 
                 // We don't need to do anything if the ref is null.
@@ -281,7 +281,7 @@ namespace Proto.Promises
 
             if (!cancelationRef.TryIncrementSourceId(_cancelationId))
             {
-                Internal.ThrowInvalidMergeGroup(2);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             if (promise._ref != null)
@@ -297,7 +297,7 @@ namespace Proto.Promises
         internal PromiseMergeGroup Merge(Promise promise, int index, Internal.MergeCleanupCallback cleanupCallback)
         {
 #if PROMISE_DEBUG
-            Internal.ValidateArgument(promise, nameof(promise), 2);
+            Internal.ValidateArgument(promise, nameof(promise));
 #endif
             var cancelationRef = _cancelationRef;
             var group = _group;
@@ -306,14 +306,14 @@ namespace Proto.Promises
             var isExtended = _isExtended;
             if (cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(2);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             if (group != null)
             {
                 if (!group.TryIncrementId(_groupId))
                 {
-                    Internal.ThrowInvalidMergeGroup(2);
+                    Internal.ThrowInvalidMergeGroup();
                 }
 
                 // We don't need to do anything if the ref is null.
@@ -328,7 +328,7 @@ namespace Proto.Promises
 
             if (!cancelationRef.TryIncrementSourceId(_cancelationId))
             {
-                Internal.ThrowInvalidMergeGroup(2);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             cleanupCallbacks.Push(cleanupCallback);
@@ -437,7 +437,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var group = mergeGroup._group;
@@ -447,7 +447,7 @@ namespace Proto.Promises
                 bool canceled = mergeGroup._cancelationRef.IsCanceledUnsafe();
                 if (!mergeGroup._cancelationRef.TryDispose(mergeGroup._cancelationId))
                 {
-                    Internal.ThrowInvalidMergeGroup(1);
+                    Internal.ThrowInvalidMergeGroup();
                 }
 
                 var cleanupCallbacks = mergeGroup._cleanupCallbacks;
@@ -474,7 +474,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._groupId))
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
             group.MarkReady(mergeGroup._count);
             return Internal.NewMergePromiseGroup(group, _value, Promise.MergeResultFuncs.GetOne<T1>(), false, true, mergeGroup._cleanupCallbacks, mergeGroup._cleanupCount);
@@ -564,7 +564,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var group = mergeGroup._group;
@@ -575,7 +575,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._groupId))
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
             group.MarkReady(mergeGroup._count);
             return Internal.NewMergePromiseGroup(group, _value, Promise.MergeResultFuncs.GetTwo<T1, T2>(), mergeGroup._isExtended, true, mergeGroup._cleanupCallbacks, mergeGroup._cleanupCount);
@@ -665,7 +665,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var group = mergeGroup._group;
@@ -676,7 +676,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._groupId))
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
             group.MarkReady(mergeGroup._count);
             return Internal.NewMergePromiseGroup(group, _value, Promise.MergeResultFuncs.GetThree<T1, T2, T3>(), mergeGroup._isExtended, true, mergeGroup._cleanupCallbacks, mergeGroup._cleanupCount);
@@ -766,7 +766,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var group = mergeGroup._group;
@@ -777,7 +777,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._groupId))
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
             group.MarkReady(mergeGroup._count);
             return Internal.NewMergePromiseGroup(group, _value, Promise.MergeResultFuncs.GetFour<T1, T2, T3, T4>(), mergeGroup._isExtended, true, mergeGroup._cleanupCallbacks, mergeGroup._cleanupCount);
@@ -867,7 +867,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var group = mergeGroup._group;
@@ -878,7 +878,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._groupId))
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
             group.MarkReady(mergeGroup._count);
             return Internal.NewMergePromiseGroup(group, _value, Promise.MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>(), mergeGroup._isExtended, true, mergeGroup._cleanupCallbacks, mergeGroup._cleanupCount);
@@ -968,7 +968,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var group = mergeGroup._group;
@@ -979,7 +979,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._groupId))
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
             group.MarkReady(mergeGroup._count);
             return Internal.NewMergePromiseGroup(group, _value, Promise.MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>(), mergeGroup._isExtended, true, mergeGroup._cleanupCallbacks, mergeGroup._cleanupCount);
@@ -1059,7 +1059,7 @@ namespace Proto.Promises
             // We're wrapping this in another group, so we just increment its SourceId instead of disposing.
             if (mergeGroup._cancelationRef == null || !mergeGroup._cancelationRef.TryIncrementSourceId(mergeGroup._cancelationId))
             {
-                Internal.ThrowInvalidMergeGroup(2);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var group = mergeGroup._group;
@@ -1070,7 +1070,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._groupId))
             {
-                Internal.ThrowInvalidMergeGroup(2);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             group.MarkReady(mergeGroup._count);
@@ -1092,7 +1092,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var group = mergeGroup._group;
@@ -1103,7 +1103,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._groupId))
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
             group.MarkReady(mergeGroup._count);
             return Internal.NewMergePromiseGroup(group, _value, Promise.MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>(), mergeGroup._isExtended, true, mergeGroup._cleanupCallbacks, mergeGroup._cleanupCount);

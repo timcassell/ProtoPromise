@@ -22,7 +22,7 @@ namespace Proto.Promises
         [MethodImpl(Internal.InlineOption), EditorBrowsable(EditorBrowsableState.Never)]
         public PromiseAwaiterVoid GetAwaiter()
         {
-            ValidateOperation(1);
+            ValidateOperation();
             return new PromiseAwaiterVoid(this);
         }
 
@@ -32,7 +32,7 @@ namespace Proto.Promises
         [MethodImpl(Internal.InlineOption)]
         public PromiseNoThrowAwaiterVoid AwaitNoThrow()
         {
-            ValidateOperation(1);
+            ValidateOperation();
             return new PromiseNoThrowAwaiterVoid(this);
         }
     }
@@ -45,7 +45,7 @@ namespace Proto.Promises
         [MethodImpl(Internal.InlineOption), EditorBrowsable(EditorBrowsableState.Never)]
         public PromiseAwaiter<T> GetAwaiter()
         {
-            ValidateOperation(1);
+            ValidateOperation();
             return new PromiseAwaiter<T>(this);
         }
 
@@ -55,7 +55,7 @@ namespace Proto.Promises
         [MethodImpl(Internal.InlineOption)]
         public PromiseNoThrowAwaiter<T> AwaitNoThrow()
         {
-            ValidateOperation(1);
+            ValidateOperation();
             return new PromiseNoThrowAwaiter<T>(this);
         }
     }
@@ -168,7 +168,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public void OnCompleted(Action continuation)
             {
-                ValidateArgument(continuation, nameof(continuation), 1);
+                ValidateArgument(continuation, nameof(continuation));
                 var _ref = _promise._ref;
                 if (_ref == null)
                 {
@@ -192,10 +192,10 @@ namespace Proto.Promises
             void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
                 => asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
 
-            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+            static partial void ValidateArgument<TArg>(TArg arg, string argName);
 #if PROMISE_DEBUG
-            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-                => Internal.ValidateArgument(arg, argName, skipFrames + 1);
+            static partial void ValidateArgument<TArg>(TArg arg, string argName)
+                => Internal.ValidateArgument(arg, argName);
 #endif
         } // struct PromiseAwaiterVoid
 
@@ -256,7 +256,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public void OnCompleted(Action continuation)
             {
-                ValidateArgument(continuation, nameof(continuation), 1);
+                ValidateArgument(continuation, nameof(continuation));
                 var _ref = _promise._ref;
                 if (_ref == null)
                 {
@@ -278,10 +278,10 @@ namespace Proto.Promises
             void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
                 => asyncPromiseRef.HookupAwaiter(_promise._ref, _promise._id);
 
-            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+            static partial void ValidateArgument<TArg>(TArg arg, string argName);
 #if PROMISE_DEBUG
-            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-                => Internal.ValidateArgument(arg, argName, skipFrames + 1);
+            static partial void ValidateArgument<TArg>(TArg arg, string argName)
+                => Internal.ValidateArgument(arg, argName);
 #endif
         } // struct PromiseAwaiter<T>
 
@@ -341,7 +341,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public void OnCompleted(Action continuation)
             {
-                ValidateArgument(continuation, nameof(continuation), 1);
+                ValidateArgument(continuation, nameof(continuation));
                 var _ref = _promise._ref;
                 if (_ref == null)
                 {
@@ -372,10 +372,10 @@ namespace Proto.Promises
             public ConfiguredPromiseNoThrowAwaiterVoid ConfigureAwait(ContinuationOptions continuationOptions)
                 => new ConfiguredPromiseNoThrowAwaiterVoid(_promise, continuationOptions);
 
-            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+            static partial void ValidateArgument<TArg>(TArg arg, string argName);
 #if PROMISE_DEBUG
-            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-                => Internal.ValidateArgument(arg, argName, skipFrames + 1);
+            static partial void ValidateArgument<TArg>(TArg arg, string argName)
+                => Internal.ValidateArgument(arg, argName);
 #endif
         } // struct PromiseNoThrowAwaiterVoid
 
@@ -435,7 +435,7 @@ namespace Proto.Promises
             [MethodImpl(Internal.InlineOption)]
             public void OnCompleted(Action continuation)
             {
-                ValidateArgument(continuation, nameof(continuation), 1);
+                ValidateArgument(continuation, nameof(continuation));
                 var _ref = _promise._ref;
                 if (_ref == null)
                 {
@@ -466,10 +466,10 @@ namespace Proto.Promises
             public ConfiguredPromiseNoThrowAwaiter<T> ConfigureAwait(ContinuationOptions continuationOptions)
                 => new ConfiguredPromiseNoThrowAwaiter<T>(_promise, continuationOptions);
 
-            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+            static partial void ValidateArgument<TArg>(TArg arg, string argName);
 #if PROMISE_DEBUG
-            static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-                => Internal.ValidateArgument(arg, argName, skipFrames + 1);
+            static partial void ValidateArgument<TArg>(TArg arg, string argName)
+                => Internal.ValidateArgument(arg, argName);
 #endif
         } // struct PromiseNoThrowAwaiter<T>
     } // namespace CompilerServices

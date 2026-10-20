@@ -77,7 +77,7 @@ namespace Proto.Promises
         public PromiseRaceGroup Add(Promise promise)
         {
 #if PROMISE_DEBUG
-            Internal.ValidateArgument(promise, nameof(promise), 1);
+            Internal.ValidateArgument(promise, nameof(promise));
 #endif
             var groupCancelationRef = _groupCancelationRef;
             var group = _group;
@@ -86,14 +86,14 @@ namespace Proto.Promises
             var isResolved = _isResolved;
             if (groupCancelationRef == null)
             {
-                Internal.ThrowInvalidRaceGroup(1);
+                Internal.ThrowInvalidRaceGroup();
             }
 
             if (group != null)
             {
                 if (!group.TryIncrementId(_groupId))
                 {
-                    Internal.ThrowInvalidRaceGroup(1);
+                    Internal.ThrowInvalidRaceGroup();
                 }
 
                 if (promise._ref != null)
@@ -111,7 +111,7 @@ namespace Proto.Promises
 
             if (!groupCancelationRef.TryIncrementSourceId(_cancelationId))
             {
-                Internal.ThrowInvalidAllGroup(1);
+                Internal.ThrowInvalidAllGroup();
             }
 
             if (promise._ref != null)
@@ -155,16 +155,16 @@ namespace Proto.Promises
             {
                 if (groupCancelationRef == null)
                 {
-                    Internal.ThrowInvalidRaceGroup(1);
+                    Internal.ThrowInvalidRaceGroup();
                 }
-                Internal.ThrowAtLeastOneRaceGroup(1);
+                Internal.ThrowAtLeastOneRaceGroup();
             }
 
             if (group == null)
             {
                 if (!groupCancelationRef.TryDispose(_cancelationId))
                 {
-                    Internal.ThrowInvalidAllGroup(1);
+                    Internal.ThrowInvalidAllGroup();
                 }
 
                 var sourceCancelationRef = _sourceCancelationRef;
@@ -183,7 +183,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(_groupId))
             {
-                Internal.ThrowInvalidRaceGroup(1);
+                Internal.ThrowInvalidRaceGroup();
             }
             group.MarkReady(count);
             return new Promise(group, group.Id);
@@ -360,7 +360,7 @@ namespace Proto.Promises
         public PromiseRaceGroup<T> Add(Promise<T> promise)
         {
 #if PROMISE_DEBUG
-            Internal.ValidateArgument(promise, nameof(promise), 1);
+            Internal.ValidateArgument(promise, nameof(promise));
 #endif
             var groupCancelationRef = _groupCancelationRef;
             var group = _group;
@@ -369,14 +369,14 @@ namespace Proto.Promises
             var isResolved = _isResolved;
             if (groupCancelationRef == null)
             {
-                Internal.ThrowInvalidRaceGroup(1);
+                Internal.ThrowInvalidRaceGroup();
             }
 
             if (group != null)
             {
                 if (!group.TryIncrementId(_groupId))
                 {
-                    Internal.ThrowInvalidRaceGroup(1);
+                    Internal.ThrowInvalidRaceGroup();
                 }
 
                 if (promise._ref != null)
@@ -395,7 +395,7 @@ namespace Proto.Promises
 
             if (!groupCancelationRef.TryIncrementSourceId(_groupCancelationId))
             {
-                Internal.ThrowInvalidRaceGroup(1);
+                Internal.ThrowInvalidRaceGroup();
             }
 
             if (promise._ref != null)
@@ -445,25 +445,25 @@ namespace Proto.Promises
         internal PromiseRaceGroup<T> Validate(Promise promise)
         {
 #if PROMISE_DEBUG
-            Internal.ValidateArgument(promise, nameof(promise), 1);
+            Internal.ValidateArgument(promise, nameof(promise));
 #endif
             var groupCancelationRef = _groupCancelationRef;
             var group = _group;
             if (groupCancelationRef == null)
             {
-                Internal.ThrowInvalidRaceGroup(1);
+                Internal.ThrowInvalidRaceGroup();
             }
             if (group != null)
             {
                 if (!group.TryIncrementId(_groupId))
                 {
-                    Internal.ThrowInvalidRaceGroup(1);
+                    Internal.ThrowInvalidRaceGroup();
                 }
                 return new PromiseRaceGroup<T>(_sourceCancelationRef, groupCancelationRef, group, _cleanupCallback, _result, _count, group.Id, _cancelOnNonResolved, _isResolved);
             }
             if (!groupCancelationRef.TryIncrementSourceId(_groupCancelationId))
             {
-                Internal.ThrowInvalidRaceGroup(1);
+                Internal.ThrowInvalidRaceGroup();
             }
             return new PromiseRaceGroup<T>(_sourceCancelationRef, groupCancelationRef, group, _cleanupCallback, _result, _count, _groupId, _cancelOnNonResolved, _isResolved);
         }
@@ -486,16 +486,16 @@ namespace Proto.Promises
             {
                 if (cancelationRef == null)
                 {
-                    Internal.ThrowInvalidRaceGroup(1);
+                    Internal.ThrowInvalidRaceGroup();
                 }
-                Internal.ThrowAtLeastOneRaceGroup(1);
+                Internal.ThrowAtLeastOneRaceGroup();
             }
 
             if (group == null)
             {
                 if (!cancelationRef.TryDispose(_groupCancelationId))
                 {
-                    Internal.ThrowInvalidRaceGroup(1);
+                    Internal.ThrowInvalidRaceGroup();
                 }
 
                 var cleanupCallback = _cleanupCallback;
@@ -526,7 +526,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(_groupId))
             {
-                Internal.ThrowInvalidRaceGroup(1);
+                Internal.ThrowInvalidRaceGroup();
             }
             group.MarkReady(count);
             return new Promise<T>(group, group.Id);

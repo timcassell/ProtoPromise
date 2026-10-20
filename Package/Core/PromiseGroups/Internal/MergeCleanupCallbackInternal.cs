@@ -20,7 +20,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return GetOrCreate(promise, DelegateWrapper.Create(onCleanup));
@@ -31,7 +31,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return GetOrCreate(promise, DelegateWrapper.Create(capturedValue, onCleanup));
@@ -42,7 +42,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return GetOrCreate(promise, DelegateWrapper.Create(onCleanup));
@@ -53,7 +53,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return GetOrCreate(promise, DelegateWrapper.Create(capturedValue, onCleanup));

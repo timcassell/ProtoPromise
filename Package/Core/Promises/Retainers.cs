@@ -20,7 +20,7 @@ namespace Proto.Promises
         /// <returns>A <see cref="Retainer"/> that contains the retained <see cref="Promise"/>.</returns>
         public Retainer GetRetainer()
         {
-            ValidateOperation(1);
+            ValidateOperation();
             var promiseRef = _ref;
             if (promiseRef == null)
             {
@@ -84,7 +84,7 @@ namespace Proto.Promises
         /// <returns>A <see cref="Retainer"/> that contains the retained <see cref="Promise{T}"/>.</returns>
         public Retainer GetRetainer()
         {
-            ValidateOperation(1);
+            ValidateOperation();
             var promiseRef = _ref;
             if (promiseRef == null)
             {

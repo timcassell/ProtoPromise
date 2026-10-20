@@ -24,7 +24,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise ToPromise(this Awaitable awaitable)
         {
-            ValidateArgument(awaitable, nameof(awaitable), 1);
+            ValidateArgument(awaitable, nameof(awaitable));
 
             return Core(awaitable);
 
@@ -39,7 +39,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> ToPromise<T>(this Awaitable<T> awaitable)
         {
-            ValidateArgument(awaitable, nameof(awaitable), 1);
+            ValidateArgument(awaitable, nameof(awaitable));
 
             return Core(awaitable);
 
@@ -54,7 +54,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise ToPromise(this Awaitable awaitable, CancelationToken cancelationToken)
         {
-            ValidateArgument(awaitable, nameof(awaitable), 1);
+            ValidateArgument(awaitable, nameof(awaitable));
 
             return Core(awaitable, cancelationToken);
 
@@ -70,7 +70,7 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> ToPromise<T>(this Awaitable<T> awaitable, CancelationToken cancelationToken)
         {
-            ValidateArgument(awaitable, nameof(awaitable), 1);
+            ValidateArgument(awaitable, nameof(awaitable));
 
             return Core(awaitable, cancelationToken);
 
@@ -81,10 +81,10 @@ namespace Proto.Promises
             }
         }
 
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName);
 #if PROMISE_DEBUG
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName)
+            => Internal.ValidateArgument(arg, argName);
 #endif
     }
 }

@@ -42,8 +42,8 @@ namespace Proto.Promises.Linq
             Func<TSource, TKey> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.CountByHelper<TKey>.CountBy(source.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
@@ -82,8 +82,8 @@ namespace Proto.Promises.Linq
             TCapture captureValue, Func<TCapture, TSource, TKey> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.CountByHelper<TKey>.CountBy(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
@@ -118,8 +118,8 @@ namespace Proto.Promises.Linq
             Func<TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.CountByHelper<TKey>.CountByAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
@@ -158,8 +158,8 @@ namespace Proto.Promises.Linq
             TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.CountByHelper<TKey>.CountByAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
@@ -194,8 +194,8 @@ namespace Proto.Promises.Linq
             Func<TSource, TKey> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.CountByHelper<TKey>.CountBy(source.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
@@ -234,8 +234,8 @@ namespace Proto.Promises.Linq
             TCapture captureValue, Func<TCapture, TSource, TKey> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.CountByHelper<TKey>.CountBy(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
@@ -270,8 +270,8 @@ namespace Proto.Promises.Linq
             Func<TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.CountByHelper<TKey>.CountByAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
@@ -310,8 +310,8 @@ namespace Proto.Promises.Linq
             TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.CountByHelper<TKey>.CountByAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }

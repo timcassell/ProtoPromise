@@ -23,7 +23,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return Helper<TArg>.GetOrCreate(DelegateWrapper.Create(onCleanup));
@@ -34,7 +34,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return Helper<TArg>.GetOrCreate(DelegateWrapper.Create(capturedValue, onCleanup));
@@ -45,7 +45,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return Helper<TArg>.GetOrCreate(DelegateWrapper.Create(onCleanup));
@@ -56,7 +56,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return Helper<TArg>.GetOrCreate(DelegateWrapper.Create(capturedValue, onCleanup));
@@ -67,7 +67,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return Helper<TArg>.GetOrCreateWithIndex(DelegateWrapper.Create(onCleanup));
@@ -78,7 +78,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return Helper<TArg>.GetOrCreateWithIndex(DelegateWrapper.Create(capturedValue, onCleanup));
@@ -89,7 +89,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return Helper<TArg>.GetOrCreateWithIndex(DelegateWrapper.Create(onCleanup));
@@ -100,7 +100,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return Helper<TArg>.GetOrCreateWithIndex(DelegateWrapper.Create(capturedValue, onCleanup));

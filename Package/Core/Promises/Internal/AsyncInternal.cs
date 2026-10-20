@@ -109,7 +109,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        RejectContainer = CreateRejectContainer(exception, false, this);
+                        RejectContainer = CreateRejectContainer(exception, true, this);
                         HandleNextInternal(Promise.State.Rejected);
                     }
                 }
@@ -281,7 +281,7 @@ namespace Proto.Promises
                         private void MoveNextInScope()
                         {
                             // An async promise that wasn't traced doesn't enter a scope, the same as the fast path.
-                            var scope = CausalityTrace.EnterScopeIfNotNull(_owner.Trace);
+                            var scope = CausalityTrace.EnterScopeInternal(_owner.Trace);
                             try
                             {
                                 _stateMachine.MoveNext();
@@ -296,11 +296,7 @@ namespace Proto.Promises
                         [MethodImpl(MethodImplOptions.NoInlining)]
                         private void ContinueOnContext(object continuationContext)
                         {
-                            if (continuationContext == s_tracedSentinel)
-                            {
-                                MoveNextInScope();
-                            }
-                            else if (continuationContext is SynchronizationContext synchronizationContext)
+                            if (continuationContext is SynchronizationContext synchronizationContext)
                             {
                                 _owner.ContinuationContext = NoAsyncContinuationContext;
                                 ScheduleContextCallback(synchronizationContext, this,
@@ -316,6 +312,10 @@ namespace Proto.Promises
                                 ScheduleContextCallback(synchronizationContext, this,
                                     obj => obj.UnsafeAs<Continuer<TStateMachine>>().Continue(),
                                     obj => obj.UnsafeAs<Continuer<TStateMachine>>().Continue());
+                            }
+                            else if (continuationContext == s_tracedSentinel)
+                            {
+                                MoveNextInScope();
                             }
                             else
                             {
@@ -440,7 +440,7 @@ namespace Proto.Promises
                     private void MoveNextInScope()
                     {
                         // An async promise that wasn't traced doesn't enter a scope, the same as the fast path.
-                        var scope = CausalityTrace.EnterScopeIfNotNull(Trace);
+                        var scope = CausalityTrace.EnterScopeInternal(Trace);
                         try
                         {
                             _stateMachine.MoveNext();
@@ -462,11 +462,7 @@ namespace Proto.Promises
                     [MethodImpl(MethodImplOptions.NoInlining)]
                     private void ContinueOnContext(object continuationContext)
                     {
-                        if (continuationContext == s_tracedSentinel)
-                        {
-                            MoveNextInScope();
-                        }
-                        else if (continuationContext is SynchronizationContext synchronizationContext)
+                        if (continuationContext is SynchronizationContext synchronizationContext)
                         {
                             ContinuationContext = NoAsyncContinuationContext;
                             ScheduleContextCallback(synchronizationContext, this,
@@ -482,6 +478,10 @@ namespace Proto.Promises
                             ScheduleContextCallback(synchronizationContext, this,
                                 obj => obj.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>().ContinueWithExecutionContext(),
                                 obj => obj.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>().ContinueWithExecutionContext());
+                        }
+                        else if (continuationContext == s_tracedSentinel)
+                        {
+                            MoveNextInScope();
                         }
                         else
                         {

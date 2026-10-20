@@ -167,7 +167,7 @@ namespace Proto.Promises
             }
             else if (maxDegreeOfParallelism < 1)
             {
-                throw new ArgumentOutOfRangeException(nameof(maxDegreeOfParallelism), "maxDegreeOfParallelism must be positive, or -1 for default (Environment.ProcessorCount). Actual: " + maxDegreeOfParallelism, GetFormattedStacktrace(2));
+                throw new ArgumentOutOfRangeException(nameof(maxDegreeOfParallelism), "maxDegreeOfParallelism must be positive, or -1 for default (Environment.ProcessorCount). Actual: " + maxDegreeOfParallelism, GetFormattedStacktrace());
             }
 
             // Just return immediately if from >= to.
@@ -199,7 +199,7 @@ namespace Proto.Promises
             else if (maxDegreeOfParallelism < 1)
             {
                 enumerator.Dispose();
-                throw new ArgumentOutOfRangeException(nameof(maxDegreeOfParallelism), "maxDegreeOfParallelism must be positive, or -1 for default (Environment.ProcessorCount). Actual: " + maxDegreeOfParallelism, GetFormattedStacktrace(2));
+                throw new ArgumentOutOfRangeException(nameof(maxDegreeOfParallelism), "maxDegreeOfParallelism must be positive, or -1 for default (Environment.ProcessorCount). Actual: " + maxDegreeOfParallelism, GetFormattedStacktrace());
             }
 
             // One fast up-front check for cancelation before we start the whole operation.
@@ -290,7 +290,7 @@ namespace Proto.Promises
                         // We add to the wait counter before we run the worker to resolve a race condition where the counter could hit zero prematurely.
                         InterlockedAddWithUnsignedOverflowCheck(ref _waitCounter, 1);
 
-                        ScheduleContextCallback(ContinuationContext.UnsafeAs<SynchronizationContext>(), this,
+                        ScheduleContextCallbackDirect(ContinuationContext.UnsafeAs<SynchronizationContext>(), this,
                             obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorkerAndLaunchNext(),
                             obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorkerAndLaunchNext()
                         );
@@ -335,7 +335,7 @@ namespace Proto.Promises
 
                 private void ExecuteWorker(bool launchNext)
                 {
-                    var scope = CausalityTrace.EnterScopeIfNotNull(Trace);
+                    var scope = CausalityTrace.EnterScopeInternal(Trace);
                     try
                     {
                         WorkerBody(launchNext);

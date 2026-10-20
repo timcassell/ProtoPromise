@@ -44,7 +44,7 @@ namespace Proto.Promises
                     var promise = GetOrCreate();
                     promise.ResetWithSentinel();
                     promise._callback = callback;
-                    ScheduleContextCallback(context, promise,
+                    ScheduleContextCallbackDirect(context, promise,
                         obj => obj.UnsafeAs<RunPromise<TResult, TDelegate>>().Run(),
                         obj => obj.UnsafeAs<RunPromise<TResult, TDelegate>>().Run()
                     );
@@ -90,7 +90,7 @@ namespace Proto.Promises
                     var promise = GetOrCreate();
                     promise.ResetWithSentinel();
                     promise._callback = callback;
-                    ScheduleContextCallback(context, promise,
+                    ScheduleContextCallbackDirect(context, promise,
                         obj => obj.UnsafeAs<RunWaitPromise<TDelegate>>().Run(),
                         obj => obj.UnsafeAs<RunWaitPromise<TDelegate>>().Run()
                     );
@@ -145,7 +145,7 @@ namespace Proto.Promises
                     var promise = GetOrCreate();
                     promise.ResetWithSentinel();
                     promise._callback = callback;
-                    ScheduleContextCallback(context, promise,
+                    ScheduleContextCallbackDirect(context, promise,
                         obj => obj.UnsafeAs<RunWaitPromise<TResult, TDelegate>>().Run(),
                         obj => obj.UnsafeAs<RunWaitPromise<TResult, TDelegate>>().Run()
                     );

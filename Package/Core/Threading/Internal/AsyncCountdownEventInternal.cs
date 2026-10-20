@@ -203,11 +203,11 @@ namespace Proto.Promises
                         _locker.Exit();
                         if (signalCount < 1)
                         {
-                            throw new ArgumentOutOfRangeException(nameof(signalCount), "AsyncCountdownEvent.Signal: signalCount must be greater than or equal to 1.", Internal.GetFormattedStacktrace(2));
+                            throw new ArgumentOutOfRangeException(nameof(signalCount), "AsyncCountdownEvent.Signal: signalCount must be greater than or equal to 1.", Internal.GetFormattedStacktrace());
                         }
                         throw new InvalidOperationException(current == 0
                             ? "AsyncCountdownEvent.Signal: The AsyncCountdownEvent is already set."
-                            : "AsyncCountdownEvent.Signal: signalCount cannot be greater than CurrentCount.", Internal.GetFormattedStacktrace(2));
+                            : "AsyncCountdownEvent.Signal: signalCount cannot be greater than CurrentCount.", Internal.GetFormattedStacktrace());
                     }
 
                     current -= signalCount;
@@ -244,7 +244,7 @@ namespace Proto.Promises
             {
                 if (count < 0)
                 {
-                    throw new ArgumentOutOfRangeException(nameof(count), "AsyncCountdownEvent.Reset: count must be greater than or equal to 0.", Internal.GetFormattedStacktrace(2));
+                    throw new ArgumentOutOfRangeException(nameof(count), "AsyncCountdownEvent.Reset: count must be greater than or equal to 0.", Internal.GetFormattedStacktrace());
                 }
 
                 Internal.ValueLinkedQueue<Internal.AsyncEventPromiseBase> waiters;
@@ -284,9 +284,9 @@ namespace Proto.Promises
                         _locker.Exit();
                         if (signalCount < 1)
                         {
-                            throw new ArgumentOutOfRangeException(nameof(signalCount), "AsyncCountdownEvent.TryAddCount: signalCount must be greater than or equal to 1.", Internal.GetFormattedStacktrace(2));
+                            throw new ArgumentOutOfRangeException(nameof(signalCount), "AsyncCountdownEvent.TryAddCount: signalCount must be greater than or equal to 1.", Internal.GetFormattedStacktrace());
                         }
-                        throw new InvalidOperationException("AsyncCountdownEvent.TryAddCount: signalCount + CurrentCount exceeded int.MaxValue.", Internal.GetFormattedStacktrace(2));
+                        throw new InvalidOperationException("AsyncCountdownEvent.TryAddCount: signalCount + CurrentCount exceeded int.MaxValue.", Internal.GetFormattedStacktrace());
                     }
 
                     if (current == 0)

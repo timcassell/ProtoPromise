@@ -20,14 +20,14 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void GetResultForAwaiterVoid(short promiseId)
             {
-                ValidateId(promiseId, this, 2);
+                ValidateId(promiseId, this);
                 MaybeDispose();
             }
 
             [MethodImpl(MethodImplOptions.NoInlining)]
             internal ExceptionDispatchInfo GetExceptionDispatchInfo(Promise.State state, short promiseId)
             {
-                ValidateId(promiseId, this, 2);
+                ValidateId(promiseId, this);
                 if (state == Promise.State.Canceled)
                 {
                     MaybeDispose();
@@ -40,7 +40,7 @@ namespace Proto.Promises
                     MaybeDispose();
                     return exceptionDispatchInfo;
                 }
-                throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
+                throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace());
             }
 
             [MethodImpl(InlineOption)]
@@ -56,8 +56,8 @@ namespace Proto.Promises
             {
                 if (promiseId != Id | State == Promise.State.Pending)
                 {
-                    ValidateId(promiseId, this, 2);
-                    throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
+                    ValidateId(promiseId, this);
+                    throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace());
                 }
                 return GetResultContainerAndMaybeDispose();
             }
@@ -76,7 +76,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal TResult GetResultForAwaiter(short promiseId)
                 {
-                    ValidateId(promiseId, this, 2);
+                    ValidateId(promiseId, this);
                     return GetResultAndMaybeDispose();
                 }
 
@@ -93,8 +93,8 @@ namespace Proto.Promises
                 {
                     if (promiseId != Id | State == Promise.State.Pending)
                     {
-                        ValidateId(promiseId, this, 2);
-                        throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
+                        ValidateId(promiseId, this);
+                        throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace());
                     }
                     return GetResultContainerAndMaybeDispose();
                 }
@@ -149,10 +149,11 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     handler.SetCompletionState(state);
                     var callback = _continuation;
-                    var scope = CausalityTrace.EnterScopeIfNotNull(GetTrace(this));
+                    var trace = GetTrace(this);
 #if !PROMISE_DEBUG
                     Dispose();
 #endif
+                    var scope = CausalityTrace.EnterScopeInternal(trace);
                     try
                     {
                         callback.Invoke();
@@ -160,7 +161,7 @@ namespace Proto.Promises
                     catch (Exception e)
                     {
                         // This should never hit if the `await` keyword is used, but a user manually subscribing to OnCompleted could throw.
-                        ReportRejection(e, this);
+                        ReportCaughtException(e, this);
                     }
                     finally
                     {
@@ -301,18 +302,18 @@ namespace Proto.Promises
 #endif // !NETCOREAPP
 
         [MethodImpl(InlineOption)]
-        internal static void ValidateId(short promiseId, PromiseRefBase _ref, int skipFrames)
+        internal static void ValidateId(short promiseId, PromiseRefBase _ref)
         {
             if (promiseId != _ref.Id)
             {
-                ThrowInvalidAwait(skipFrames + 1);
+                ThrowInvalidAwait();
             }
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void ThrowInvalidAwait(int skipFrames)
+        private static void ThrowInvalidAwait()
         {
-            throw new InvalidOperationException("Cannot await a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(skipFrames + 1));
+            throw new InvalidOperationException("Cannot await a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace());
         }
     } // class Internal
 } // namespace Proto.Promises

@@ -368,7 +368,7 @@ namespace Proto.Promises
                 var disposedChecker = _disposedChecker;
                 if ((owner == null | disposedChecker == null) || owner != disposedChecker._owner)
                 {
-                    AsyncReaderWriterLock.ThrowInvalidKey(AsyncReaderWriterLockType.Reader, 2);
+                    AsyncReaderWriterLock.ThrowInvalidKey(AsyncReaderWriterLockType.Reader);
                 }
                 lock (disposedChecker)
                 {
@@ -384,7 +384,7 @@ namespace Proto.Promises
                 var disposedChecker = _disposedChecker;
                 if ((owner == null | disposedChecker == null) || owner != disposedChecker._owner)
                 {
-                    AsyncReaderWriterLock.ThrowInvalidKey(AsyncReaderWriterLockType.Writer, 2);
+                    AsyncReaderWriterLock.ThrowInvalidKey(AsyncReaderWriterLockType.Writer);
                 }
                 lock (disposedChecker)
                 {
@@ -400,7 +400,7 @@ namespace Proto.Promises
                 var disposedChecker = _disposedChecker;
                 if ((owner == null | disposedChecker == null) || owner != disposedChecker._owner)
                 {
-                    AsyncReaderWriterLock.ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
+                    AsyncReaderWriterLock.ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable);
                 }
                 lock (disposedChecker)
                 {
@@ -416,7 +416,7 @@ namespace Proto.Promises
                 var disposedChecker = _disposedChecker;
                 if ((owner == null | disposedChecker == null) || owner != disposedChecker._owner)
                 {
-                    AsyncReaderWriterLock.ThrowInvalidKey(AsyncReaderWriterLockType.Writer, 2);
+                    AsyncReaderWriterLock.ThrowInvalidKey(AsyncReaderWriterLockType.Writer);
                 }
                 lock (disposedChecker)
                 {
@@ -474,7 +474,7 @@ namespace Proto.Promises
                 var owner = _owner;
                 if (owner == null)
                 {
-                    AsyncReaderWriterLock.ThrowInvalidKey(lockType, 3);
+                    AsyncReaderWriterLock.ThrowInvalidKey(lockType);
                 }
                 return owner;
             }
@@ -1238,7 +1238,7 @@ namespace Proto.Promises
                     if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
                     {
                         _smallFields._locker.Exit();
-                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
+                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable);
                     }
 
                     DecrementReaderLockCount();
@@ -1280,7 +1280,7 @@ namespace Proto.Promises
                     if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
                     {
                         _smallFields._locker.Exit();
-                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
+                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable);
                     }
 
                     DecrementReaderLockCount();
@@ -1342,7 +1342,7 @@ namespace Proto.Promises
                     if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
                     {
                         _smallFields._locker.Exit();
-                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
+                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable);
                     }
 
                     if (_readerLockCount == 1)
@@ -1375,7 +1375,7 @@ namespace Proto.Promises
                     if (_currentKey != readerKey._impl._key | this != readerKey._impl._owner)
                     {
                         _smallFields._locker.Exit();
-                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable, 2);
+                        ThrowInvalidKey(AsyncReaderWriterLockType.Upgradeable);
                     }
 
                     if (_readerLockCount == 1)
@@ -1438,7 +1438,7 @@ namespace Proto.Promises
                 if (_currentKey != key)
                 {
                     _smallFields._locker.Exit();
-                    ThrowInvalidKey(AsyncReaderWriterLockType.Reader, 2);
+                    ThrowInvalidKey(AsyncReaderWriterLockType.Reader);
                 }
 
                 // We check for underflow, because multiple readers share the same key.
@@ -1499,7 +1499,7 @@ namespace Proto.Promises
                 if (_currentKey != key)
                 {
                     _smallFields._locker.Exit();
-                    ThrowInvalidKey(AsyncReaderWriterLockType.Writer, 2);
+                    ThrowInvalidKey(AsyncReaderWriterLockType.Writer);
                 }
 
                 // If there are any normal readers waiting, we resolve them, even if there are more writer waiters.
@@ -1573,7 +1573,7 @@ namespace Proto.Promises
                     if (_currentKey != key)
                     {
                         _smallFields._locker.Exit();
-                        ThrowInvalidKey(AsyncReaderWriterLockType.Writer | AsyncReaderWriterLockType.Upgradeable, 2);
+                        ThrowInvalidKey(AsyncReaderWriterLockType.Writer | AsyncReaderWriterLockType.Upgradeable);
                     }
 
                     // This reverts the key to the previous reader key so that releasing the UpgradeableReaderKey will work.
@@ -1618,7 +1618,7 @@ namespace Proto.Promises
                 _smallFields._locker.Enter();
                 if (_currentKey != key | _upgradeWaiter != null)
                 {
-                    ThrowInvalidUpgradeableKeyReleased(key, 2);
+                    ThrowInvalidUpgradeableKeyReleased(key);
                 }
 
                 // We check for underflow, because multiple readers share the same key.
@@ -1773,17 +1773,17 @@ namespace Proto.Promises
             }
 
             [MethodImpl(MethodImplOptions.NoInlining)]
-            internal static void ThrowInvalidKey(AsyncReaderWriterLockType keyType, int skipFrames)
-                => throw new InvalidOperationException($"The {GetKeyTypeString(keyType)} is invalid for this operation.", Internal.GetFormattedStacktrace(skipFrames + 1));
+            internal static void ThrowInvalidKey(AsyncReaderWriterLockType keyType)
+                => throw new InvalidOperationException($"The {GetKeyTypeString(keyType)} is invalid for this operation.", Internal.GetFormattedStacktrace());
 
             [MethodImpl(MethodImplOptions.NoInlining)]
-            private void ThrowInvalidUpgradeableKeyReleased(long key, int skipFrames)
+            private void ThrowInvalidUpgradeableKeyReleased(long key)
             {
                 string message = _currentKey != key
                     ? "The AsyncReaderWriterLock.UpgradeableReaderKey is invalid for this operation. Did you dispose it before the upgraded writer key?"
                     : "The AsyncReaderWriterLock.UpgradeableReaderKey cannot be released before the UpgradeToWriterLockAsync promise is complete.";
                 _smallFields._locker.Exit();
-                throw new InvalidOperationException(message, Internal.GetFormattedStacktrace(skipFrames + 1));
+                throw new InvalidOperationException(message, Internal.GetFormattedStacktrace());
             }
 
             internal static string GetKeyTypeString(AsyncReaderWriterLockType keyType)

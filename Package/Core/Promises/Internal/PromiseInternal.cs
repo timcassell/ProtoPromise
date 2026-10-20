@@ -153,10 +153,11 @@ namespace Proto.Promises
             protected void ResetWithSentinel()
             {
                 ResetWithoutStacktrace();
-                if (Diagnostics.CausalityTrace.IsEnabled)
+                if (!Diagnostics.CausalityTrace.IsEnabled)
                 {
-                    SetTraceAndSentinel();
+                    return;
                 }
+                SetTraceAndSentinel();
             }
 
             [MethodImpl(MethodImplOptions.NoInlining)]
@@ -175,7 +176,7 @@ namespace Proto.Promises
             [MethodImpl(MethodImplOptions.NoInlining)]
             private Diagnostics.CausalityTrace.Scope EnterTracedScope()
                 // The trace may be null if causality traces were disabled after this was traced.
-                => Diagnostics.CausalityTrace.EnterScopeIfNotNull(Trace);
+                => Diagnostics.CausalityTrace.EnterScopeInternal(Trace);
 
             // For callback promises, which only need the sentinel until their callback is invoked.
             // The field is shared with RejectContainer, so the sentinel is cleared when the scope is entered.
@@ -185,7 +186,7 @@ namespace Proto.Promises
 
             [MethodImpl(MethodImplOptions.NoInlining)]
             private Diagnostics.CausalityTrace.Scope EnterTracedScopeAndClearSentinel()
-                => Diagnostics.CausalityTrace.EnterScopeIfNotNull(TakeTracedTrace());
+                => Diagnostics.CausalityTrace.EnterScopeInternal(TakeTracedTrace());
 
             // For callback promises that need to overwrite the field before they enter the scope of their callback.
             // Returns null if the promise is not traced.
@@ -281,7 +282,7 @@ namespace Proto.Promises
             {
                 if (!VerifyWaiter(promiseSingleAwait))
                 {
-                    throw new InvalidOperationException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(3));
+                    throw new InvalidOperationException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace());
                 }
                 ThrowIfInPool(this);
 
@@ -388,7 +389,7 @@ namespace Proto.Promises
 
                 internal override bool GetIsCompleted(short promiseId)
                 {
-                    ValidateId(promiseId, this, 2);
+                    ValidateId(promiseId, this);
                     ThrowIfInPool(this);
                     if (CompareExchangeWaiter(InvalidAwaitSentinel.s_instance, PromiseCompletionSentinel.s_instance) == PromiseCompletionSentinel.s_instance)
                     {
@@ -404,7 +405,7 @@ namespace Proto.Promises
                 {
                     if (!GetIsValid(promiseId))
                     {
-                        throw new InvalidOperationException("Cannot await or forget a non-preserved promise more than once.", GetFormattedStacktrace(3));
+                        throw new InvalidOperationException("Cannot await or forget a non-preserved promise more than once.", GetFormattedStacktrace());
                     }
                 }
 
@@ -527,7 +528,7 @@ namespace Proto.Promises
                     {
                         if (!GetIsValid(promiseId))
                         {
-                            throw new InvalidOperationException("Cannot await a forgotten promise.", GetFormattedStacktrace(3));
+                            throw new InvalidOperationException("Cannot await a forgotten promise.", GetFormattedStacktrace());
                         }
                         bool isCompleted = State != Promise.State.Pending;
                         if (isCompleted)
@@ -554,7 +555,7 @@ namespace Proto.Promises
                     {
                         if (!GetIsValid(promiseId))
                         {
-                            throw new InvalidOperationException("Cannot forget a promise more than once.", GetFormattedStacktrace(2));
+                            throw new InvalidOperationException("Cannot forget a promise more than once.", GetFormattedStacktrace());
                         }
                         WasAwaitedOrForgotten = true;
                         MaybeDispose();
@@ -567,7 +568,7 @@ namespace Proto.Promises
                     {
                         if (!GetIsValid(promiseId))
                         {
-                            throw new InvalidOperationException("Cannot await a forgotten promise.", GetFormattedStacktrace(3));
+                            throw new InvalidOperationException("Cannot await a forgotten promise.", GetFormattedStacktrace());
                         }
                     }
                     // We don't need to do any actual work here besides verifying the promise.

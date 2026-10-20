@@ -66,16 +66,11 @@ namespace Proto.Promises.CompilerServices
         [MethodImpl(Internal.InlineOption)]
         public void OnCompleted(Action continuation)
         {
-            ValidateArgument(continuation, nameof(continuation), 1);
-            var context = _context;
-            if (context == null)
-            {
-                ThreadPool.QueueUserWorkItem(state => state.UnsafeAs<Action>().Invoke(), continuation);
-            }
-            else
-            {
-                context.Post(state => state.UnsafeAs<Action>().Invoke(), continuation);
-            }
+            ValidateArgument(continuation, nameof(continuation));
+            // Scheduled the same way as other continuations, so that it's traced the same way.
+            Internal.ScheduleContextCallback(_context ?? Internal.BackgroundSynchronizationContextSentinel.s_instance, continuation,
+                state => state.UnsafeAs<Action>().Invoke(),
+                state => state.UnsafeAs<Action>().Invoke());
         }
 
         /// <summary>Schedules the continuation onto the context.</summary>
@@ -85,10 +80,10 @@ namespace Proto.Promises.CompilerServices
         public void UnsafeOnCompleted(Action continuation)
             => OnCompleted(continuation);
 
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName);
 #if PROMISE_DEBUG
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName)
+            => Internal.ValidateArgument(arg, argName);
 #endif
     } // struct PromiseSwitchToContextAwaiter
 } // namespace Proto.Promises.CompilerServices

@@ -129,7 +129,7 @@ namespace Proto.Promises
                 var _this = _ref;
                 if (!_this.TryIncrementDeferredId(_deferredId))
                 {
-                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace());
                 }
                 _this.Reject(reason);
             }
@@ -161,7 +161,7 @@ namespace Proto.Promises
                 var _this = _ref;
                 if (!_this.TryIncrementDeferredId(_deferredId))
                 {
-                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace());
                 }
                 _this.CancelDirect();
             }
@@ -233,7 +233,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG // If the reference is null, this is invalid. We only check in DEBUG mode for performance.
                     if (_this == null)
                     {
-                        throw new InvalidOperationException("Deferred.Promise: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                        throw new InvalidOperationException("Deferred.Promise: instance is not valid.", Internal.GetFormattedStacktrace());
                     }
 #endif
                     return new Promise(_this, _promiseId);
@@ -291,7 +291,7 @@ namespace Proto.Promises
                 var _this = _ref;
                 if (!_this.TryIncrementDeferredId(_deferredId))
                 {
-                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace());
                 }
                 _this.ResolveDirectVoid();
             }
@@ -322,7 +322,7 @@ namespace Proto.Promises
                 var _this = _ref;
                 if (!_this.TryIncrementDeferredId(_deferredId))
                 {
-                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace());
                 }
                 _this.Reject(reason);
             }
@@ -354,7 +354,7 @@ namespace Proto.Promises
                 var _this = _ref;
                 if (!_this.TryIncrementDeferredId(_deferredId))
                 {
-                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace());
                 }
                 _this.CancelDirect();
             }
@@ -443,7 +443,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG // If the reference is null, this is invalid. We only check in DEBUG mode for performance.
                     if (_this == null)
                     {
-                        throw new InvalidOperationException("Deferred.Promise: instance is not valid.", Internal.GetFormattedStacktrace(1));
+                        throw new InvalidOperationException("Deferred.Promise: instance is not valid.", Internal.GetFormattedStacktrace());
                     }
 #endif
                     return new Promise<T>(_this, _promiseId);
@@ -501,7 +501,7 @@ namespace Proto.Promises
                 var _this = _ref;
                 if (!_this.TryIncrementDeferredId(_deferredId))
                 {
-                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace());
                 }
                 _this.ResolveDirect(value);
             }
@@ -532,7 +532,7 @@ namespace Proto.Promises
                 var _this = _ref;
                 if (!_this.TryIncrementDeferredId(_deferredId))
                 {
-                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace());
                 }
                 _this.Reject(reason);
             }
@@ -564,7 +564,7 @@ namespace Proto.Promises
                 var _this = _ref;
                 if (!_this.TryIncrementDeferredId(_deferredId))
                 {
-                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("The deferred was already completed.", Internal.GetFormattedStacktrace());
                 }
                 _this.CancelDirect();
             }

@@ -125,7 +125,7 @@ namespace Proto.Promises
                         if (promise._timer == default)
                         {
                             Discard(promise);
-                            throw new InvalidReturnException("timerFactory returned a default Timer.", GetFormattedStacktrace(3));
+                            throw new InvalidReturnException("timerFactory returned a default Timer.", GetFormattedStacktrace());
                         }
                     }
                     // In a rare race condition, the timer callback could be invoked before the field is assigned.
@@ -182,7 +182,7 @@ namespace Proto.Promises
                     // It's good enough to protect against accidental non-compliant timer implementations.
                     if (_disposed)
                     {
-                        throw new InvalidOperationException("Timer callback may not be invoked after its DisposeAsync Promise has completed.", GetFormattedStacktrace(1));
+                        throw new InvalidOperationException("Timer callback may not be invoked after its DisposeAsync Promise has completed.", GetFormattedStacktrace());
                     }
 #endif
                     ThrowIfInPool(this);
@@ -278,7 +278,7 @@ namespace Proto.Promises
                         if (promise._timer == default)
                         {
                             Discard(promise);
-                            throw new InvalidReturnException("timerFactory returned a default Timer.", GetFormattedStacktrace(3));
+                            throw new InvalidReturnException("timerFactory returned a default Timer.", GetFormattedStacktrace());
                         }
                     }
                     // IMPORTANT - must register cancelation callback after the timer.
@@ -347,7 +347,7 @@ namespace Proto.Promises
                     // It's good enough to protect against accidental non-compliant timer implementations.
                     if (_disposed)
                     {
-                        throw new InvalidOperationException("Timer callback may not be invoked after its DisposeAsync Promise has completed.", GetFormattedStacktrace(1));
+                        throw new InvalidOperationException("Timer callback may not be invoked after its DisposeAsync Promise has completed.", GetFormattedStacktrace());
                     }
 #endif
                     ThrowIfInPool(this);

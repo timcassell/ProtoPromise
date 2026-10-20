@@ -36,7 +36,7 @@ namespace Proto.Promises.Linq
         public static Promise<bool> SequenceEqualAsync<TSource, TComparer>(this AsyncEnumerable<TSource> first, AsyncEnumerable<TSource> second, TComparer comparer, CancelationToken cancelationToken = default)
             where TComparer : IEqualityComparer<TSource>
         {
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(comparer, nameof(comparer));
 
             return SequenceEqualAsyncCore(first.GetAsyncEnumerator(cancelationToken), second.GetAsyncEnumerator(cancelationToken), comparer);
         }
@@ -90,7 +90,7 @@ namespace Proto.Promises.Linq
         public static Promise<bool> SequenceEqualAsync<TSource, TComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second, TComparer comparer)
             where TComparer : IEqualityComparer<TSource>
         {
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(comparer, nameof(comparer));
 
             return SequenceEqualAsyncCore(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(configuredFirst.CancelationToken), comparer);
         }

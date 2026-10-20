@@ -69,7 +69,7 @@ rejectedPromise
 
 When `Catch` is omitted, or none of the filters apply, an `UnhandledException` is sent to the `Promise.Config.UncaughtRejectionHandler` if it exists. If it does not exist, a `System.AggregateException` (which contains `UnhandledException`s) is thrown on the `Promise.Config.ForegroundContext` if it exists, or `Promise.Config.BackgroundContext` if it does not.
 
-`UnhandledException`s wrap the rejections and can contain the full causality trace so you can more easily debug what caused an error to occur in your async functions. Causality traces are disabled by default for performance reasons. Set `Proto.Diagnostics.CausalityTrace.IsEnabled = true` to capture them (See [Causality Traces](configuration.md#causality-traces)). Exceptions in async functions contain the async stack traces natively.
+`UnhandledException`s wrap the rejections and can contain the full causality trace so you can more easily debug what caused an error to occur in your async functions. Causality traces are disabled by default for performance reasons. Set `Proto.Diagnostics.CausalityTrace.IsEnabled = true` to capture them (See [Causality Traces](causality-traces.md)). Exceptions in async functions contain the async stack traces natively.
 
 ## Suppress Throws
 

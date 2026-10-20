@@ -102,7 +102,7 @@ namespace Proto.Promises
                     {
                         if (oldId == id + 1)
                         {
-                            throw new InvalidOperationException("AsyncEnumerator.DisposeAsync: the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace(2));
+                            throw new InvalidOperationException("AsyncEnumerator.DisposeAsync: the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace());
                         }
                         // IAsyncDisposable.DisposeAsync must not throw if it's called multiple times, according to MSDN documentation.
                         return Promise.Resolved();
@@ -130,7 +130,7 @@ namespace Proto.Promises
                 {
                     if (Interlocked.CompareExchange(ref _enumerableId, id + 1, id) != id)
                     {
-                        throw new InvalidOperationException("AsyncEnumerable.MoveNextAsync: instance is not valid, or the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace(2));
+                        throw new InvalidOperationException("AsyncEnumerable.MoveNextAsync: instance is not valid, or the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace());
                     }
 
                     if (!_isStarted)

@@ -155,6 +155,14 @@ namespace Proto.Promises
                     return success;
                 }
 
+                // For a promise that is rejected as soon as it's created (e.g. Promise.Rejected). Nothing is waiting on it yet,
+                // and its trace was just captured where it was created, so the rejection uses that trace instead of capturing the same frames again.
+                public void RejectCreated(object reason)
+                {
+                    TryIncrementDeferredId(DeferredId);
+                    RejectDirect(CreateRejectContainer(reason, false, this));
+                }
+
                 // Completing the deferred enters the scope of its trace, so that the rejection's trace and any continuations
                 // that are invoked synchronously include it.
                 public void Reject(object reason)
@@ -316,17 +324,19 @@ namespace Proto.Promises
                 {
                     if (invokeOptions.GetShouldContinueImmediately(out var context))
                     {
-                        Run();
+                        Run(false);
                         return;
                     }
 
-                    ScheduleContextCallback(context, this,
-                        obj => obj.UnsafeAs<DeferredNewPromise<TResult, TDelegate>>().Run(),
-                        obj => obj.UnsafeAs<DeferredNewPromise<TResult, TDelegate>>().Run()
+                    ScheduleContextCallbackDirect(context, this,
+                        obj => obj.UnsafeAs<DeferredNewPromise<TResult, TDelegate>>().Run(true),
+                        obj => obj.UnsafeAs<DeferredNewPromise<TResult, TDelegate>>().Run(true)
                     );
                 }
 
-                private void Run()
+                // If the callback runs immediately, it runs inside Promise.New, so the promise's trace already shows what invoked it.
+                // If it was scheduled on a context, an exception's trace is captured where it was caught, which shows what invoked it.
+                private void Run(bool isScheduled)
                 {
                     ThrowIfInPool(this);
 
@@ -351,11 +361,15 @@ namespace Proto.Promises
                     {
                         if (TryIncrementDeferredId(deferredId))
                         {
-                            RejectDirect(CreateRejectContainer(e, false, this));
+                            RejectDirect(CreateRejectContainer(e, isScheduled, this));
+                        }
+                        // If the deferred was already completed, report the exception as unhandled.
+                        else if (isScheduled)
+                        {
+                            ReportCaughtException(e, this);
                         }
                         else
                         {
-                            // If the deferred was already completed, report the exception as unhandled.
                             ReportRejection(e, this);
                         }
                     }

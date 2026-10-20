@@ -26,7 +26,7 @@ namespace Proto.Promises.Threading
         {
             if (initialCount < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(initialCount), "initialCount must be greater than or equal to 0.", Internal.GetFormattedStacktrace(1));
+                throw new ArgumentOutOfRangeException(nameof(initialCount), "initialCount must be greater than or equal to 0.", Internal.GetFormattedStacktrace());
             }
 
             _initialCount = initialCount;
@@ -61,7 +61,7 @@ namespace Proto.Promises.Threading
         {
             if (!TryAddCount())
             {
-                throw new InvalidOperationException("AsyncCountdownEvent.AddCount: The AsyncCountdownEvent is already set.", Internal.GetFormattedStacktrace(1));
+                throw new InvalidOperationException("AsyncCountdownEvent.AddCount: The AsyncCountdownEvent is already set.", Internal.GetFormattedStacktrace());
             }
         }
 
@@ -78,7 +78,7 @@ namespace Proto.Promises.Threading
         {
             if (!TryAddCountImpl(signalCount))
             {
-                throw new InvalidOperationException("AsyncCountdownEvent.AddCount: The AsyncCountdownEvent is already set.", Internal.GetFormattedStacktrace(1));
+                throw new InvalidOperationException("AsyncCountdownEvent.AddCount: The AsyncCountdownEvent is already set.", Internal.GetFormattedStacktrace());
             }
         }
 

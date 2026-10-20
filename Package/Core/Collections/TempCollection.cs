@@ -261,7 +261,7 @@ namespace Proto.Promises.Collections
         {
             if (_disposedChecker == null || _disposedChecker.IsDisposed)
             {
-                throw new InvalidOperationException("TempCollection is invalid.", Internal.GetFormattedStacktrace(2));
+                throw new InvalidOperationException("TempCollection is invalid.", Internal.GetFormattedStacktrace());
             }
         }
 #endif // PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE

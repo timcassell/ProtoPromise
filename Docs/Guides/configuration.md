@@ -14,33 +14,7 @@ You can change whether or not objects will be pooled via `Promise.Config.ObjectP
 
 ## Causality Traces
 
-Set `Proto.Diagnostics.CausalityTrace.IsEnabled = true` to capture causality traces, which record where each async operation was started and how it got there. When a rejection is unhandled, its `UnhandledException.StackTrace` contains the causality trace (also available from its `CausalityTrace` property). See [Unhandled Rejections](error-handling.md#unhandled-rejections).
-
-Causality traces are disabled by default. Capturing them is expensive, so you should only enable them while you are debugging an error that you can't find the source of. Object pooling is disabled while they are enabled. Only operations that are started after they are enabled are traced.
-
-Causality traces are most reliable in DEBUG mode (see [Compiler Options](#compiler-options)). In RELEASE mode, they are not always available (for example, for objects that are reported from finalizers on some runtimes).
-
-A causality trace is printed like an async stack trace: the stack trace of where the trace was captured, followed by the stack trace of the operation that started it, and so on. In addition:
-
-- If a trace was captured while other operations' callbacks were also running (for example, a continuation that was invoked while a deferred was being resolved), those operations are outer causality scopes. They are referred to by letter (`--- [Outer causality scope A, see below] ---`) and printed in their own sections below the main trace. An outer scope's own outer scopes extend its letter (`A/A`, `A/B`, ...).
-- Every stack trace is printed, but parts that repeat (for example, from loops or recursion) are only printed once, between `--- [#1 Begin] ---` and `--- [#1 End] ---`. Other places where that part occurs refer to it with `--- [#1 repeated 3 times] ---`.
-
-`CausalityTrace.MaxDepth` limits how many levels a trace keeps (default 128), where each level is a callback that was running when a trace was captured. When a trace would exceed it, its oldest levels are dropped. This prevents traces from growing without bound when callbacks are recursively scheduled.
-
-You can also capture and use causality traces in your own code, for example to trace callbacks of your own async types:
-
-```cs
-// Capture where the callback was registered (null if causality traces are disabled).
-var trace = CausalityTrace.Capture();
-
-// Later, when the callback is invoked.
-using (CausalityTrace.EnterScope(trace))
-{
-    callback.Invoke();
-}
-```
-
-Traces captured inside the scope (including by promises) will include the entered trace. You can read a trace's frames with `GetFrames()` (library frames are excluded), its earlier traces with `PreviousTraces`, or the full formatted trace with `ToString()`.
+Set `Proto.Diagnostics.CausalityTrace.IsEnabled = true` to capture causality traces, which help you find where an unhandled rejection came from. They are disabled by default, because capturing them is expensive. See [Causality Traces](causality-traces.md).
 
 ## Manager
 

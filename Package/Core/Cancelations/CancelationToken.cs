@@ -100,7 +100,7 @@ namespace Proto.Promises
         [Obsolete("Prefer CanBeCanceled and Register", false)]
         public bool TryRegister(Action callback, out CancelationRegistration cancelationRegistration)
         {
-            ValidateArgument(callback, nameof(callback), 1);
+            ValidateArgument(callback, nameof(callback));
             return Internal.CancelationRef.TryRegister(_ref, _id, DelegateWrapper.Create(callback), out cancelationRegistration);
         }
 
@@ -115,7 +115,7 @@ namespace Proto.Promises
         [Obsolete("Prefer CanBeCanceled and Register", false)]
         public bool TryRegister<TCapture>(TCapture captureValue, Action<TCapture> callback, out CancelationRegistration cancelationRegistration)
         {
-            ValidateArgument(callback, nameof(callback), 1);
+            ValidateArgument(callback, nameof(callback));
             return Internal.CancelationRef.TryRegister(_ref, _id, DelegateWrapper.Create(captureValue, callback), out cancelationRegistration);
         }
 
@@ -129,7 +129,7 @@ namespace Proto.Promises
         [Obsolete("Prefer CanBeCanceled and Register", false)]
         public bool TryRegister<TCancelable>(TCancelable cancelable, out CancelationRegistration cancelationRegistration) where TCancelable : ICancelable
         {
-            ValidateArgument(cancelable, nameof(cancelable), 1);
+            ValidateArgument(cancelable, nameof(cancelable));
             return Internal.CancelationRef.TryRegister(_ref, _id, cancelable, out cancelationRegistration);
         }
 
@@ -144,7 +144,7 @@ namespace Proto.Promises
         [Obsolete("Prefer CanBeCanceled and RegisterWithoutImmediateInvoke", false)]
         public bool TryRegisterWithoutImmediateInvoke<TCancelable>(TCancelable cancelable, out CancelationRegistration cancelationRegistration, out bool alreadyCanceled) where TCancelable : ICancelable
         {
-            ValidateArgument(cancelable, nameof(cancelable), 1);
+            ValidateArgument(cancelable, nameof(cancelable));
             return Internal.CancelationRef.TryRegister(_ref, _id, cancelable, out cancelationRegistration, out alreadyCanceled);
         }
 
@@ -215,7 +215,7 @@ namespace Proto.Promises
         /// <returns>The <see cref="CancelationRegistration"/> instance that can be used to unregister the <paramref name="callback"/>.</returns>
         public CancelationRegistration RegisterWithoutImmediateInvoke(Action callback, out bool alreadyCanceled)
         {
-            ValidateArgument(callback, nameof(callback), 1);
+            ValidateArgument(callback, nameof(callback));
             Internal.CancelationRef.TryRegister(_ref, _id, DelegateWrapper.Create(callback), out var registration, out alreadyCanceled);
             return registration;
         }
@@ -230,7 +230,7 @@ namespace Proto.Promises
         /// <returns>The <see cref="CancelationRegistration"/> instance that can be used to unregister the <paramref name="callback"/>.</returns>
         public CancelationRegistration RegisterWithoutImmediateInvoke<TCapture>(TCapture captureValue, Action<TCapture> callback, out bool alreadyCanceled)
         {
-            ValidateArgument(callback, nameof(callback), 1);
+            ValidateArgument(callback, nameof(callback));
             Internal.CancelationRef.TryRegister(_ref, _id, DelegateWrapper.Create(captureValue, callback), out var registration, out alreadyCanceled);
             return registration;
         }
@@ -255,7 +255,7 @@ namespace Proto.Promises
         {
             if (_ref?.TryReleaseUser(_id) != true)
             {
-                throw new InvalidOperationException("CancelationToken.Release: you must call Retain before you call Release.", Internal.GetFormattedStacktrace(1));
+                throw new InvalidOperationException("CancelationToken.Release: you must call Retain before you call Release.", Internal.GetFormattedStacktrace());
             }
         }
 
@@ -295,10 +295,10 @@ namespace Proto.Promises
             => !(lhs == rhs);
 
         // Calls to this get compiled away in RELEASE mode
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName);
 #if PROMISE_DEBUG
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName)
+            => Internal.ValidateArgument(arg, argName);
 #endif
 
         /// <summary>

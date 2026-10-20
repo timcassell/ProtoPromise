@@ -47,6 +47,8 @@ namespace Proto.Promises
 #endif
         public static class Config
         {
+            // The fields have no initializers, so that the class has no static constructor. Otherwise, IL2CPP checks that the class is initialized
+            // where the fields are accessed, which includes hot paths (e.g. async methods read s_asyncFlowExecutionContextEnabled).
             /// <summary>
             /// Should objects be pooled or not. If this is enabled, objects can be reused to reduce GC pressure.
             /// </summary>
@@ -66,14 +68,15 @@ namespace Proto.Promises
             public static bool ObjectPoolingEnabled
             {
                 [MethodImpl(Internal.InlineOption)]
-                get => s_objectPoolingEnabled;
+                get => !s_objectPoolingDisabled;
                 set
                 {
-                    s_objectPoolingEnabled = value;
+                    s_objectPoolingDisabled = !value;
                     Internal.UpdateIsObjectPoolingEnabled();
                 }
             }
-            private static bool s_objectPoolingEnabled = true; // Enabled by default.
+            // Inverted, so that pooling is enabled by default without an initializer.
+            private static bool s_objectPoolingDisabled;
 #endif
 
             /// <summary>
@@ -82,8 +85,21 @@ namespace Proto.Promises
             [Obsolete("Prefer Proto.Diagnostics.CausalityTrace.IsEnabled", false)]
             public static TraceLevel DebugCausalityTracer
             {
+#if PROMISE_DEBUG
                 get => Diagnostics.CausalityTrace.IsEnabled ? TraceLevel.All : TraceLevel.None;
-                set => Diagnostics.CausalityTrace.IsEnabled = value == TraceLevel.All;
+                set
+                {
+                    // Rejections are always traced while causality traces are enabled, so Rejections leaves it unchanged.
+                    if (value != TraceLevel.Rejections)
+                    {
+                        Diagnostics.CausalityTrace.IsEnabled = value == TraceLevel.All;
+                    }
+                }
+#else
+                // This only applies in DEBUG mode, like it always did, so that it doesn't enable the expensive causality traces in RELEASE builds.
+                get => TraceLevel.None;
+                set { }
+#endif
             }
 
             /// <summary>
@@ -91,6 +107,7 @@ namespace Proto.Promises
             /// </summary>
             /// <remarks>
             /// This must be set to a non-null delegate, otherwise uncaught rejections will be thrown in the <see cref="ForegroundContext"/> or <see cref="BackgroundContext"/>.
+            /// If the delegate throws, its exception is thrown in the <see cref="ForegroundContext"/> or <see cref="BackgroundContext"/> instead.
             /// </remarks>
             public static Action<UnhandledException> UncaughtRejectionHandler
             {
@@ -165,7 +182,7 @@ namespace Proto.Promises
             public static TimerFactory DefaultTimerFactory
             {
                 [MethodImpl(Internal.InlineOption)]
-                get => s_defaultTimeProvider;
+                get => DefaultTimerFactoryHolder.s_value;
                 [MethodImpl(Internal.InlineOption)]
                 set
                 {
@@ -173,10 +190,17 @@ namespace Proto.Promises
                     {
                         ThrowNullTimerFactory();
                     }
-                    s_defaultTimeProvider = value;
+                    DefaultTimerFactoryHolder.s_value = value;
                 }
             }
-            private static TimerFactory s_defaultTimeProvider = TimerFactory.System;
+            // The field is in its own class, so that its initializer doesn't give this class a static constructor.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private static class DefaultTimerFactoryHolder
+            {
+                internal static TimerFactory s_value = TimerFactory.System;
+            }
 
             [MethodImpl(MethodImplOptions.NoInlining)]
             private static void ThrowNullTimerFactory()

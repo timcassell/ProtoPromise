@@ -229,7 +229,7 @@ namespace Proto.Promises
                         if (cancelRef._timer == default)
                         {
                             Discard(cancelRef);
-                            throw new InvalidReturnException("timerFactory returned a default Timer.", GetFormattedStacktrace(2));
+                            throw new InvalidReturnException("timerFactory returned a default Timer.", GetFormattedStacktrace());
                         }
                     }
                 }
@@ -868,15 +868,36 @@ namespace Proto.Promises
                 internal override void Invoke()
                 {
                     ThrowIfInPool(this);
-                    var scope = CausalityTrace.EnterScopeIfNotNull(GetTrace(this));
+                    if (!CausalityTrace.IsEnabled)
+                    {
+                        // Common case: no causality trace.
+                        try
+                        {
+                            _cancelable.Cancel();
+                        }
+                        finally
+                        {
+                            Dispose();
+                        }
+                        return;
+                    }
+                    InvokeInScope();
+                }
+
+                // NoInlining to keep the common case small.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private void InvokeInScope()
+                {
+                    // A node that wasn't traced doesn't enter a scope, the same as the common case.
+                    var scope = CausalityTrace.EnterScopeInternal(GetTrace(this));
                     try
                     {
                         _cancelable.Cancel();
                     }
                     finally
                     {
-                        Dispose();
                         scope.Dispose();
+                        Dispose();
                     }
                 }
 

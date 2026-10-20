@@ -312,7 +312,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 protected void Start(Func<Promise<TResult>> factory)
                 {
-                    var scope = CausalityTrace.EnterScopeIfNotNull(Trace);
+                    var scope = CausalityTrace.EnterScopeInternal(Trace);
                     try
                     {
                         var promise = factory.Invoke();
@@ -333,6 +333,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
+                        // The factory runs when the lazy promise is first requested, so the lazy's trace already shows what invoked it.
                         RejectContainer = CreateRejectContainer(e, false, this);
                         OnComplete(Promise.State.Rejected);
                     }
@@ -345,7 +346,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 protected void Start(Func<ProgressToken, Promise<TResult>> factory, ProgressToken progressToken)
                 {
-                    var scope = CausalityTrace.EnterScopeIfNotNull(Trace);
+                    var scope = CausalityTrace.EnterScopeInternal(Trace);
                     try
                     {
                         var promise = factory.Invoke(progressToken);
@@ -366,6 +367,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
+                        // The factory runs when the lazy promise is first requested, so the lazy's trace already shows what invoked it.
                         RejectContainer = CreateRejectContainer(e, false, this);
                         OnComplete(Promise.State.Rejected);
                     }

@@ -242,7 +242,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        RejectContainer = CreateRejectContainer(e, false, this);
+                        RejectContainer = CreateRejectContainer(e, true, this);
                         state = Promise.State.Rejected;
                     }
                     finally
@@ -307,7 +307,7 @@ namespace Proto.Promises
                 }
                 catch (Exception e)
                 {
-                    RejectContainer = CreateRejectContainer(e, false, this);
+                    RejectContainer = CreateRejectContainer(e, true, this);
                     state = Promise.State.Rejected;
                 }
                 finally
@@ -379,7 +379,7 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        RejectContainer = CreateRejectContainer(e, false, this);
+                        RejectContainer = CreateRejectContainer(e, true, this);
                         state = Promise.State.Rejected;
                     }
                     finally

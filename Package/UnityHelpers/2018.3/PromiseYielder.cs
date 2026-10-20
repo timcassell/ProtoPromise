@@ -131,7 +131,7 @@ namespace Proto.Promises
         [MethodImpl(Internal.InlineOption)]
         public static Instructions.WaitWhileInstruction WaitWhile(Func<bool> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
             return new Instructions.WaitWhileInstruction(predicate);
         }
 
@@ -143,7 +143,7 @@ namespace Proto.Promises
         [MethodImpl(Internal.InlineOption)]
         public static Instructions.WaitWhileInstruction<TCapture> WaitWhile<TCapture>(TCapture captureValue, Func<TCapture, bool> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
             return new Instructions.WaitWhileInstruction<TCapture>(captureValue, predicate);
         }
 
@@ -192,10 +192,10 @@ namespace Proto.Promises
         public static Instructions.WaitForEndOfFrameAwaiter WaitForEndOfFrame()
             => new Instructions.WaitForEndOfFrameAwaiter();
 
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName);
 #if PROMISE_DEBUG
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName)
+            => Internal.ValidateArgument(arg, argName);
 #endif
 
         /// <summary>
@@ -238,9 +238,9 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 public void OnCompleted(Action continuation)
                 {
-                    ValidateArgument(continuation, nameof(continuation), 1);
+                    ValidateArgument(continuation, nameof(continuation));
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE // We don't need to validate in RELEASE because WaitForNext calls Time.frameCount which already has validation.
-                    InternalHelper.ValidateIsOnMainThread(1);
+                    InternalHelper.ValidateIsOnMainThread();
 #endif
                     InternalHelper.PromiseBehaviour.s_waitOneFrameProcessor.WaitForNext(continuation);
                 }
@@ -514,7 +514,7 @@ namespace Proto.Promises
                 /// </summary>
                 public WaitUntilInstruction(Func<bool> predicate)
                 {
-                    ValidateArgument(predicate, nameof(predicate), 1);
+                    ValidateArgument(predicate, nameof(predicate));
                     _predicate = predicate;
                 }
 
@@ -539,7 +539,7 @@ namespace Proto.Promises
                 /// </summary>
                 public WaitUntilInstruction(TCapture captureValue, Func<TCapture, bool> predicate)
                 {
-                    ValidateArgument(predicate, nameof(predicate), 1);
+                    ValidateArgument(predicate, nameof(predicate));
                     _capturedValue = captureValue;
                     _predicate = predicate;
                 }
@@ -564,7 +564,7 @@ namespace Proto.Promises
                 /// </summary>
                 public WaitWhileInstruction(Func<bool> predicate)
                 {
-                    ValidateArgument(predicate, nameof(predicate), 1);
+                    ValidateArgument(predicate, nameof(predicate));
                     _predicate = predicate;
                 }
 
@@ -589,7 +589,7 @@ namespace Proto.Promises
                 /// </summary>
                 public WaitWhileInstruction(TCapture captureValue, Func<TCapture, bool> predicate)
                 {
-                    ValidateArgument(predicate, nameof(predicate), 1);
+                    ValidateArgument(predicate, nameof(predicate));
                     _capturedValue = captureValue;
                     _predicate = predicate;
                 }
@@ -694,8 +694,8 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 public void OnCompleted(Action continuation)
                 {
-                    ValidateArgument(continuation, nameof(continuation), 1);
-                    InternalHelper.ValidateIsOnMainThread(1);
+                    ValidateArgument(continuation, nameof(continuation));
+                    InternalHelper.ValidateIsOnMainThread();
                     InternalHelper.PromiseBehaviour.s_updateProcessor.WaitForNext(continuation);
                 }
 
@@ -742,8 +742,8 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 public void OnCompleted(Action continuation)
                 {
-                    ValidateArgument(continuation, nameof(continuation), 1);
-                    InternalHelper.ValidateIsOnMainThread(1);
+                    ValidateArgument(continuation, nameof(continuation));
+                    InternalHelper.ValidateIsOnMainThread();
                     InternalHelper.PromiseBehaviour.s_lateUpdateProcessor.WaitForNext(continuation);
                 }
 
@@ -790,8 +790,8 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 public void OnCompleted(Action continuation)
                 {
-                    ValidateArgument(continuation, nameof(continuation), 1);
-                    InternalHelper.ValidateIsOnMainThread(1);
+                    ValidateArgument(continuation, nameof(continuation));
+                    InternalHelper.ValidateIsOnMainThread();
                     InternalHelper.PromiseBehaviour.s_fixedUpdateProcessor.WaitForNext(continuation);
                 }
 
@@ -838,8 +838,8 @@ namespace Proto.Promises
                 [MethodImpl(Internal.InlineOption)]
                 public void OnCompleted(Action continuation)
                 {
-                    ValidateArgument(continuation, nameof(continuation), 1);
-                    InternalHelper.ValidateIsOnMainThread(1);
+                    ValidateArgument(continuation, nameof(continuation));
+                    InternalHelper.ValidateIsOnMainThread();
                     InternalHelper.PromiseBehaviour.s_endOfFrameProcessor.WaitForNext(continuation);
                 }
 

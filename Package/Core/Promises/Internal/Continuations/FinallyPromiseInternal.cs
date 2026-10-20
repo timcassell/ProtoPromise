@@ -61,7 +61,7 @@ namespace Proto.Promises
                     handler.MaybeDispose();
                     var callback = _callback;
                     _callback = default;
-                    var scope = Diagnostics.CausalityTrace.EnterScopeIfNotNull(trace);
+                    var scope = Diagnostics.CausalityTrace.EnterScopeInternal(trace);
                     try
                     {
                         callback.Invoke();
@@ -80,7 +80,7 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            RejectContainer = CreateRejectContainer(e, false, this);
+                            RejectContainer = CreateRejectContainer(e, true, this);
                             state = Promise.State.Rejected;
                         }
                     }
@@ -163,7 +163,7 @@ namespace Proto.Promises
                     var callback = _callback;
                     _callback = default;
                     Promise result;
-                    var scope = Diagnostics.CausalityTrace.EnterScopeIfNotNull(trace);
+                    var scope = Diagnostics.CausalityTrace.EnterScopeInternal(trace);
                     try
                     {
                         result = callback.Invoke();
@@ -196,7 +196,7 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            RejectContainer = CreateRejectContainer(e, false, this);
+                            RejectContainer = CreateRejectContainer(e, true, this);
                             state = Promise.State.Rejected;
                         }
                     }

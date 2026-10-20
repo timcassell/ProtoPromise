@@ -29,12 +29,12 @@ namespace Proto.Promises
         internal const MethodImplOptions InlineOption = MethodImplOptions.AggressiveInlining;
 #endif
 
-        internal static void ValidateProgressValue(double value, string argName, int skipFrames)
+        internal static void ValidateProgressValue(double value, string argName)
         {
             bool isBetween01 = value >= 0f && value <= 1f;
             if (!isBetween01)
             {
-                throw new ArgumentOutOfRangeException(argName, "Must be between 0 and 1. Actual: " + value, GetFormattedStacktrace(skipFrames + 1));
+                throw new ArgumentOutOfRangeException(argName, "Must be between 0 and 1. Actual: " + value, GetFormattedStacktrace());
             }
         }
 
@@ -54,6 +54,39 @@ namespace Proto.Promises
             exceptions.Add(e);
         }
 
+        // The causality traces of exceptions (see TryGetExceptionTrace), and in RELEASE mode, of objects (see GetTrace).
+        // Some runtimes (like Unity's Mono and IL2CPP) clear the entries before the key's finalizer runs,
+        // and older runtimes (like Unity 2018's Mono and IL2CPP) never clear the entries, so keys leak while traces are enabled.
+        // The table is replaced when causality traces are disabled, so that objects that are pooled again and exceptions that are rejected again
+        // don't keep their old traces.
+        private static ConditionalWeakTable<object, CausalityTrace> s_causalityTraces = new ConditionalWeakTable<object, CausalityTrace>();
+
+        internal static void ClearTraces()
+            => s_causalityTraces = new ConditionalWeakTable<object, CausalityTrace>();
+
+        // An exception's trace is used to reconstruct the causality trace when the exception is rethrown from await in an async function,
+        // and its reject container is lost (see ExceptionRejectionContainer).
+        internal static bool TryGetExceptionTrace(object exception, out CausalityTrace trace)
+            => s_causalityTraces.TryGetValue(exception, out trace);
+
+        // Keeps the exception's first trace, which is where it was originally rejected or thrown.
+        internal static void AddExceptionTrace(object exception, CausalityTrace trace)
+        {
+            var causalityTraces = s_causalityTraces;
+#if NET7_0_OR_GREATER
+            causalityTraces.TryAdd(exception, trace);
+#else
+            lock (causalityTraces)
+            {
+                // Handle race condition where multiple containers are created for the same exception on different threads (unlikely, but theoretically possible).
+                if (!causalityTraces.TryGetValue(exception, out _))
+                {
+                    causalityTraces.Add(exception, trace);
+                }
+            }
+#endif
+        }
+
 #if PROMISE_DEBUG
         // In DEBUG mode, causality traces are stored in fields, so they're reliably available when leaked objects are reported from their finalizers.
         // (Some runtimes, like Unity's Mono and IL2CPP, clear ConditionalWeakTable entries before the key's finalizer runs.)
@@ -70,20 +103,10 @@ namespace Proto.Promises
         internal static void SetTrace(object obj, CausalityTrace trace)
             // This throws if a traced type is missing the ITraceable implementation.
             => ((ITraceable) obj).Trace = trace;
-
-        // Objects are never pooled in DEBUG mode, so their traces are released with them.
-        internal static void ClearTraces() { }
 #else
-        // In RELEASE mode, causality traces are stored in a table instead of fields to keep objects small, since they are rarely enabled.
+        // In RELEASE mode, causality traces of objects are stored in the table instead of fields to keep objects small, since they are rarely enabled.
         // Object pooling is disabled while causality traces are enabled, so entries are collected with their objects.
-        // Some runtimes (like Unity's Mono and IL2CPP) clear the entries before the key's finalizer runs,
-        // so leaked objects that are reported from their finalizers may not have a trace. Older runtimes (like Unity 2018's Mono and IL2CPP)
-        // never clear the entries, so traced objects leak while traces are enabled. DEBUG mode stores them in fields instead.
-        // The table is replaced when causality traces are disabled, so that objects that are pooled again don't keep their traces alive.
-        private static ConditionalWeakTable<object, CausalityTrace> s_causalityTraces = new ConditionalWeakTable<object, CausalityTrace>();
-
-        internal static void ClearTraces()
-            => s_causalityTraces = new ConditionalWeakTable<object, CausalityTrace>();
+        // Leaked objects that are reported from their finalizers may not have a trace (see s_causalityTraces). DEBUG mode stores them in fields instead.
 
         // Returns null if causality traces are disabled, without accessing the table.
         [MethodImpl(InlineOption)]
@@ -113,10 +136,11 @@ namespace Proto.Promises
         internal static void CopyTrace(object source, object target)
         {
             var trace = GetTrace(source);
-            if (trace != null)
+            if (trace == null)
             {
-                SetTrace(target, trace);
+                return;
             }
+            SetTrace(target, trace);
         }
 
         // We don't skip frames, because our own frames are hidden when the trace is formatted, and counting frames is unreliable when methods are inlined.
@@ -124,20 +148,12 @@ namespace Proto.Promises
         [MethodImpl(InlineOption)]
         internal static void SetCreatedStacktrace(object obj)
         {
-            if (CausalityTrace.IsEnabled)
+            if (!CausalityTrace.IsEnabled)
             {
-                SetTrace(obj, CausalityTrace.Capture());
+                return;
             }
+            SetTrace(obj, CausalityTrace.Capture());
         }
-
-        private static StackTrace GetStackTrace(int skipFrames)
-#if PROTO_PROMISE_DEVELOPER_MODE // Don't skip frames in developer mode.
-            => new StackTrace(1, true);
-#elif NET6_0_OR_GREATER // Internal frames are already hidden in .Net 6+.
-            => new StackTrace(true);
-#else
-            => new StackTrace(skipFrames + 1, true);
-#endif
 
         static partial void SetPrevious(this PromiseRefBase promise, PromiseRefBase previous);
 
@@ -149,17 +165,19 @@ namespace Proto.Promises
         internal static string GetFormattedStacktrace(object traceable)
             => GetTrace(traceable)?.ToString();
 
-        internal static string GetFormattedStacktrace(int skipFrames)
-            => CausalityTrace.FormatStackTrace(GetStackTrace(skipFrames + 1));
+        // We don't skip frames, because our own frames are hidden when the stack trace is formatted
+        // (see CausalityTrace.FormatStackTrace), and counting frames is unreliable when methods are inlined.
+        internal static string GetFormattedStacktrace()
+            => CausalityTrace.FormatStackTrace(new StackTrace(true));
 
-        internal static void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
+        internal static void ValidateArgument<TArg>(TArg arg, string argName)
         {
             if (arg == null)
             {
-                throw new ArgumentNullException(argName, null, GetFormattedStacktrace(skipFrames + 1));
+                throw new ArgumentNullException(argName, null, GetFormattedStacktrace());
             }
         }
-        internal static void ValidateArgument(Promise arg, string argName, int skipFrames)
+        internal static void ValidateArgument(Promise arg, string argName)
         {
 #pragma warning disable CS0618 // Type or member is obsolete
             if (!arg.IsValid)
@@ -167,11 +185,11 @@ namespace Proto.Promises
             {
                 throw new InvalidArgumentException(argName,
                     "Promise is invalid. Call `GetRetainer()` if you intend to await multiple times.",
-                    GetFormattedStacktrace(skipFrames + 1));
+                    GetFormattedStacktrace());
             }
         }
 
-        internal static void ValidateOperation(Promise promise, int skipFrames)
+        internal static void ValidateOperation(Promise promise)
         {
 #pragma warning disable CS0618 // Type or member is obsolete
             if (!promise.IsValid)
@@ -179,7 +197,7 @@ namespace Proto.Promises
             {
                 throw new InvalidOperationException("Promise is invalid." +
                     " Call `GetRetainer()` if you intend to await multiple times.",
-                    GetFormattedStacktrace(skipFrames + 1));
+                    GetFormattedStacktrace());
             }
         }
 
@@ -399,7 +417,7 @@ namespace Proto.Promises
             }
         }
 #else // PROMISE_DEBUG
-        internal static string GetFormattedStacktrace(int skipFrames) => null;
+        internal static string GetFormattedStacktrace() => null;
 
         internal static string GetFormattedStacktrace(object traceable) => null;
 #endif // PROMISE_DEBUG
@@ -408,22 +426,22 @@ namespace Proto.Promises
     partial struct Promise
     {
         // Calls to these get compiled away in RELEASE mode
-        partial void ValidateOperation(int skipFrames);
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
-        static partial void ValidateArgument(Promise arg, string argName, int skipFrames);
-        static partial void ValidateElement(Promise promise, string argName, int skipFrames);
+        partial void ValidateOperation();
+        static partial void ValidateArgument<TArg>(TArg arg, string argName);
+        static partial void ValidateArgument(Promise arg, string argName);
+        static partial void ValidateElement(Promise promise, string argName);
 
 #if PROMISE_DEBUG
-        partial void ValidateOperation(int skipFrames)
-            => Internal.ValidateOperation(this, skipFrames + 1);
+        partial void ValidateOperation()
+            => Internal.ValidateOperation(this);
 
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName)
+            => Internal.ValidateArgument(arg, argName);
 
-        static partial void ValidateArgument(Promise arg, string argName, int skipFrames)
-            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
+        static partial void ValidateArgument(Promise arg, string argName)
+            => Internal.ValidateArgument(arg, argName);
 
-        static partial void ValidateElement(Promise promise, string argName, int skipFrames)
+        static partial void ValidateElement(Promise promise, string argName)
         {
 #pragma warning disable CS0618 // Type or member is obsolete
             if (!promise.IsValid)
@@ -432,7 +450,7 @@ namespace Proto.Promises
                 throw new InvalidElementException(argName,
                     $"A promise is invalid in {argName}." +
                     " Call `GetRetainer()` if you intend to await multiple times.",
-                    Internal.GetFormattedStacktrace(skipFrames + 1));
+                    Internal.GetFormattedStacktrace());
             }
         }
 #endif
@@ -441,21 +459,21 @@ namespace Proto.Promises
     partial struct Promise<T>
     {
         // Calls to these get compiled away in RELEASE mode
-        partial void ValidateOperation(int skipFrames);
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
-        static partial void ValidateArgument(Promise<T> arg, string argName, int skipFrames);
-        static partial void ValidateElement(Promise<T> promise, string argName, int skipFrames);
+        partial void ValidateOperation();
+        static partial void ValidateArgument<TArg>(TArg arg, string argName);
+        static partial void ValidateArgument(Promise<T> arg, string argName);
+        static partial void ValidateElement(Promise<T> promise, string argName);
 #if PROMISE_DEBUG
-        partial void ValidateOperation(int skipFrames)
-            => Internal.ValidateOperation(this, skipFrames + 1);
+        partial void ValidateOperation()
+            => Internal.ValidateOperation(this);
 
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName)
+            => Internal.ValidateArgument(arg, argName);
 
-        static partial void ValidateArgument(Promise<T> arg, string argName, int skipFrames)
-            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
+        static partial void ValidateArgument(Promise<T> arg, string argName)
+            => Internal.ValidateArgument(arg, argName);
 
-        static partial void ValidateElement(Promise<T> promise, string argName, int skipFrames)
+        static partial void ValidateElement(Promise<T> promise, string argName)
         {
 #pragma warning disable CS0618 // Type or member is obsolete
             if (!promise.IsValid)
@@ -464,7 +482,7 @@ namespace Proto.Promises
                 throw new InvalidElementException(argName,
                     $"A promise is invalid in {argName}." +
                     " Call `GetRetainer()` if you intend to await multiple times.",
-                    Internal.GetFormattedStacktrace(skipFrames + 1));
+                    Internal.GetFormattedStacktrace());
             }
         }
 #endif

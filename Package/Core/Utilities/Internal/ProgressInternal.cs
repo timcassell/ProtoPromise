@@ -244,14 +244,14 @@ namespace Proto.Promises
 
             private void InvokeAndCatch(double value)
             {
-                var scope = CausalityTrace.EnterScopeIfNotNull(GetTrace(this));
+                var scope = CausalityTrace.EnterScopeInternal(GetTrace(this));
                 try
                 {
                     _progress.Report(value);
                 }
                 catch (Exception e)
                 {
-                    ReportRejection(e, this);
+                    ReportCaughtException(e, this);
                 }
                 finally
                 {

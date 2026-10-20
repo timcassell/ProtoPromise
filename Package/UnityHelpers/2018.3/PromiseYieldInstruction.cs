@@ -99,7 +99,7 @@ namespace Proto.Promises
                 }
                 default:
                 {
-                    throw new InvalidOperationException("Promise is still pending. You must wait for the promise to settle before calling GetResult.", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Promise is still pending. You must wait for the promise to settle before calling GetResult.", Internal.GetFormattedStacktrace());
                 }
             }
         }
@@ -120,7 +120,7 @@ namespace Proto.Promises
         {
             if (_retainCounter == 0)
             {
-                throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a valid yield instruction by calling promise.ToYieldInstruction().", Internal.GetFormattedStacktrace(1));
+                throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a valid yield instruction by calling promise.ToYieldInstruction().", Internal.GetFormattedStacktrace());
             }
         }
     }
@@ -185,7 +185,7 @@ namespace Proto.Promises
             {
                 if (Interlocked.Exchange(ref _disposeChecker, 1) == 1)
                 {
-                    throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a valid yield instruction by calling promise.ToYieldInstruction().", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a valid yield instruction by calling promise.ToYieldInstruction().", Internal.GetFormattedStacktrace());
                 }
                 MaybeDispose();
             }
@@ -235,7 +235,7 @@ namespace Proto.Promises
             {
                 if (Interlocked.Exchange(ref _disposeChecker, 1) == 1)
                 {
-                    throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a valid yield instruction by calling promise.ToYieldInstruction().", Internal.GetFormattedStacktrace(1));
+                    throw new InvalidOperationException("Promise yield instruction is not valid after you have disposed. You can get a valid yield instruction by calling promise.ToYieldInstruction().", Internal.GetFormattedStacktrace());
                 }
                 MaybeDispose();
             }

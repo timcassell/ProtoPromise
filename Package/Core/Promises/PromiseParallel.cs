@@ -25,7 +25,7 @@ namespace Proto.Promises
         public static Promise ParallelFor(int fromIndex, int toIndex, Func<int, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
-            ValidateArgument(body, nameof(body), 1);
+            ValidateArgument(body, nameof(body));
 
             return Internal.ParallelFor(fromIndex, toIndex, DelegateWrapper.Create(body), cancelationToken, Config.BackgroundContext, maxDegreeOfParallelism);
         }
@@ -42,7 +42,7 @@ namespace Proto.Promises
         public static Promise ParallelFor(int fromIndex, int toIndex, Func<int, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
-            ValidateArgument(body, nameof(body), 1);
+            ValidateArgument(body, nameof(body));
 
             return Internal.ParallelFor(fromIndex, toIndex, DelegateWrapper.Create(body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
         }
@@ -59,7 +59,7 @@ namespace Proto.Promises
         public static Promise ParallelFor<TCapture>(int fromIndex, int toIndex, TCapture captureValue, Func<int, TCapture, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
-            ValidateArgument(body, nameof(body), 1);
+            ValidateArgument(body, nameof(body));
 
             return Internal.ParallelFor(fromIndex, toIndex, DelegateWrapper.Create(captureValue, body), cancelationToken, Config.BackgroundContext, maxDegreeOfParallelism);
         }
@@ -77,7 +77,7 @@ namespace Proto.Promises
         public static Promise ParallelFor<TCapture>(int fromIndex, int toIndex, TCapture captureValue, Func<int, TCapture, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
-            ValidateArgument(body, nameof(body), 1);
+            ValidateArgument(body, nameof(body));
 
             return Internal.ParallelFor(fromIndex, toIndex, DelegateWrapper.Create(captureValue, body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
         }
@@ -273,7 +273,7 @@ namespace Proto.Promises
         public static Promise ParallelForEach(IEnumerable<T> source, Func<T, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
-            ValidateArgument(source, nameof(source), 1);
+            ValidateArgument(source, nameof(source));
 
             return ParallelForEach(source.GetEnumerator(), body, Promise.Config.BackgroundContext, cancelationToken, maxDegreeOfParallelism);
         }
@@ -290,7 +290,7 @@ namespace Proto.Promises
         public static Promise ParallelForEach(IEnumerable<T> source, Func<T, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
-            ValidateArgument(source, nameof(source), 1);
+            ValidateArgument(source, nameof(source));
 
             return ParallelForEach(source.GetEnumerator(), body, synchronizationContext, cancelationToken, maxDegreeOfParallelism);
         }
@@ -308,7 +308,7 @@ namespace Proto.Promises
         public static Promise ParallelForEach<TCapture>(IEnumerable<T> source, TCapture captureValue, Func<T, TCapture, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
-            ValidateArgument(source, nameof(source), 1);
+            ValidateArgument(source, nameof(source));
 
             return ParallelForEach(source.GetEnumerator(), captureValue, body, Promise.Config.BackgroundContext, cancelationToken, maxDegreeOfParallelism);
         }
@@ -327,7 +327,7 @@ namespace Proto.Promises
         public static Promise ParallelForEach<TCapture>(IEnumerable<T> source, TCapture captureValue, Func<T, TCapture, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
-            ValidateArgument(source, nameof(source), 1);
+            ValidateArgument(source, nameof(source));
 
             return ParallelForEach(source.GetEnumerator(), captureValue, body, synchronizationContext, cancelationToken, maxDegreeOfParallelism);
         }
@@ -362,8 +362,8 @@ namespace Proto.Promises
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
             where TEnumerator : IEnumerator<T>
         {
-            ValidateArgument(source, nameof(source), 1);
-            ValidateArgument(body, nameof(body), 1);
+            ValidateArgument(source, nameof(source));
+            ValidateArgument(body, nameof(body));
 
             return Internal.ParallelForEach<TEnumerator, Internal.Delegate2ArgResult<T, CancelationToken, Promise>, T>(
                 source, DelegateWrapper.Create(body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
@@ -403,8 +403,8 @@ namespace Proto.Promises
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
             where TEnumerator : IEnumerator<T>
         {
-            ValidateArgument(source, nameof(source), 1);
-            ValidateArgument(body, nameof(body), 1);
+            ValidateArgument(source, nameof(source));
+            ValidateArgument(body, nameof(body));
 
             return Internal.ParallelForEach<TEnumerator, Internal.DelegateArgCaptureArgResult<T, TCapture, CancelationToken, Promise>, T>(
                 source, DelegateWrapper.Create(captureValue, body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
@@ -422,8 +422,8 @@ namespace Proto.Promises
         public static Promise ParallelForEachAsync(IAsyncEnumerable<T> source, Func<T, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
-            ValidateArgument(source, nameof(source), 1);
-            ValidateArgument(body, nameof(body), 1);
+            ValidateArgument(source, nameof(source));
+            ValidateArgument(body, nameof(body));
 
             return ParallelForEachAsync(source, body, Promise.Config.BackgroundContext, cancelationToken, maxDegreeOfParallelism);
         }
@@ -440,8 +440,8 @@ namespace Proto.Promises
         public static Promise ParallelForEachAsync(IAsyncEnumerable<T> source, Func<T, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
-            ValidateArgument(source, nameof(source), 1);
-            ValidateArgument(body, nameof(body), 1);
+            ValidateArgument(source, nameof(source));
+            ValidateArgument(body, nameof(body));
 
             return ParallelForEachAsync(source.ToAsyncEnumerable(), body, synchronizationContext, cancelationToken, maxDegreeOfParallelism);
         }
@@ -459,8 +459,8 @@ namespace Proto.Promises
         public static Promise ParallelForEachAsync<TCapture>(IAsyncEnumerable<T> source, TCapture captureValue, Func<T, TCapture, CancelationToken, Promise> body,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
-            ValidateArgument(source, nameof(source), 1);
-            ValidateArgument(body, nameof(body), 1);
+            ValidateArgument(source, nameof(source));
+            ValidateArgument(body, nameof(body));
 
             return ParallelForEachAsync(source, captureValue, body, Promise.Config.BackgroundContext, cancelationToken, maxDegreeOfParallelism);
         }
@@ -479,8 +479,8 @@ namespace Proto.Promises
         public static Promise ParallelForEachAsync<TCapture>(IAsyncEnumerable<T> source, TCapture captureValue, Func<T, TCapture, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
-            ValidateArgument(source, nameof(source), 1);
-            ValidateArgument(body, nameof(body), 1);
+            ValidateArgument(source, nameof(source));
+            ValidateArgument(body, nameof(body));
 
             return ParallelForEachAsync(source.ToAsyncEnumerable(), captureValue, body, synchronizationContext, cancelationToken, maxDegreeOfParallelism);
         }
@@ -513,7 +513,7 @@ namespace Proto.Promises
         public static Promise ParallelForEachAsync(AsyncEnumerable<T> source, Func<T, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
-            ValidateArgument(body, nameof(body), 1);
+            ValidateArgument(body, nameof(body));
 
             return Internal.ParallelForEachAsync(source, DelegateWrapper.Create(body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
         }
@@ -548,7 +548,7 @@ namespace Proto.Promises
         public static Promise ParallelForEachAsync<TCapture>(AsyncEnumerable<T> source, TCapture captureValue, Func<T, TCapture, CancelationToken, Promise> body, SynchronizationContext synchronizationContext,
             CancelationToken cancelationToken = default, int maxDegreeOfParallelism = -1)
         {
-            ValidateArgument(body, nameof(body), 1);
+            ValidateArgument(body, nameof(body));
 
             return Internal.ParallelForEachAsync(source, DelegateWrapper.Create(captureValue, body), cancelationToken, synchronizationContext, maxDegreeOfParallelism);
         }

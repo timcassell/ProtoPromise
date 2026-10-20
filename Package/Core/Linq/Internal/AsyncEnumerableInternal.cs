@@ -93,7 +93,7 @@ namespace Proto.Promises
                     int newId = id + 1;
                     if (Interlocked.CompareExchange(ref _enumerableId, newId, id) != id)
                     {
-                        ThrowInvalidAsyncEnumerable(2);
+                        ThrowInvalidAsyncEnumerable();
                     }
                     return new AsyncEnumerable<T>(this, newId);
                 }
@@ -127,7 +127,7 @@ namespace Proto.Promises
                     int newId = id + 1;
                     if (Interlocked.CompareExchange(ref _enumerableId, newId, id) != id)
                     {
-                        throw new InvalidOperationException("AsyncEnumerable.GetAsyncEnumerator: instance is not valid. AsyncEnumerable may only be used once.", GetFormattedStacktrace(2));
+                        throw new InvalidOperationException("AsyncEnumerable.GetAsyncEnumerator: instance is not valid. AsyncEnumerable may only be used once.", GetFormattedStacktrace());
                     }
                     _cancelationToken = cancelationToken;
                     return new AsyncEnumerator<T>(this, newId);
@@ -141,7 +141,7 @@ namespace Proto.Promises
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                     if (_enumerableId != id)
                     {
-                        throw new InvalidOperationException("AsyncEnumerable.GetCurrent: instance is not valid, or the MoveNextAsync operation is still pending.", GetFormattedStacktrace(2));
+                        throw new InvalidOperationException("AsyncEnumerable.GetCurrent: instance is not valid, or the MoveNextAsync operation is still pending.", GetFormattedStacktrace());
                     }
 #endif
                     return _current;
@@ -185,7 +185,7 @@ namespace Proto.Promises
                             // The async iterator function is already complete. Return a resolved promise with `false` result.
                             return Promise.Resolved(false);
                         }
-                        throw new InvalidOperationException("AsyncEnumerable.MoveNextAsync: instance is not valid, or the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace(2));
+                        throw new InvalidOperationException("AsyncEnumerable.MoveNextAsync: instance is not valid, or the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace());
                     }
                     ThrowIfInPool(this);
                     _current = default;
@@ -217,7 +217,7 @@ namespace Proto.Promises
                     int newId = id - 1;
                     if (Interlocked.CompareExchange(ref _enumerableId, newId, id) != id)
                     {
-                        throw new InvalidOperationException("AsyncStreamWriter.YieldAsync: instance is not valid. This must only be called from the iterator method, and not within any catch or finally blocks.", GetFormattedStacktrace(2));
+                        throw new InvalidOperationException("AsyncStreamWriter.YieldAsync: instance is not valid. This must only be called from the iterator method, and not within any catch or finally blocks.", GetFormattedStacktrace());
                     }
                     ThrowIfInPool(this);
                     _current = value;
@@ -249,7 +249,7 @@ namespace Proto.Promises
                     {
                         if (oldId == id + 1)
                         {
-                            throw new InvalidOperationException("AsyncEnumerator.DisposeAsync: the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace(2));
+                            throw new InvalidOperationException("AsyncEnumerator.DisposeAsync: the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace());
                         }
                         // IAsyncDisposable.DisposeAsync must not throw if it's called multiple times, according to MSDN documentation.
                         return Promise.Resolved();
@@ -326,7 +326,7 @@ namespace Proto.Promises
                             }
                             return;
                         }
-                        throw new InvalidOperationException("AsyncStreamYielder.GetResult: instance is not valid. This should only be called from the async iterator method, and it may only be called once.", GetFormattedStacktrace(2));
+                        throw new InvalidOperationException("AsyncStreamYielder.GetResult: instance is not valid. This should only be called from the async iterator method, and it may only be called once.", GetFormattedStacktrace());
                     }
                     // Reset in case the async iterator function completes synchronously from Start.
                     ResetWithoutStacktrace();
@@ -337,7 +337,7 @@ namespace Proto.Promises
                 {
                     if (_enumerableId != enumerableId || Interlocked.CompareExchange(ref _iteratorPromiseRef, asyncPromiseRef, null) != null)
                     {
-                        throw new InvalidOperationException("AsyncStreamYielder: invalid await. Only one await is allowed.", GetFormattedStacktrace(2));
+                        throw new InvalidOperationException("AsyncStreamYielder: invalid await. Only one await is allowed.", GetFormattedStacktrace());
                     }
                     // Complete the MoveNextAsync promise.
                     _result = hasValue;
@@ -420,9 +420,9 @@ namespace Proto.Promises
         } // class AsyncEnumerableCreate<TValue, TIterator>
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void ThrowInvalidAsyncEnumerable(int skipFrames)
+        internal static void ThrowInvalidAsyncEnumerable()
         {
-            throw new InvalidOperationException("AsyncEnumerable instance is not valid. AsyncEnumerable may only be used once.", GetFormattedStacktrace(skipFrames + 1));
+            throw new InvalidOperationException("AsyncEnumerable instance is not valid. AsyncEnumerable may only be used once.", GetFormattedStacktrace());
         }
     } // class Internal
 } // namespace Proto.Promises

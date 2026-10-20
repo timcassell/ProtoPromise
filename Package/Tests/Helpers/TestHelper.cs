@@ -146,6 +146,12 @@ namespace ProtoPromise.Tests
         {
             WaitForAllThreadsToCompleteAndGcCollect();
 
+            // A causality trace scope that was not exited would be in every trace that is captured on this thread afterwards,
+            // so we fail the test that left it, and exit it so that the tests that run after it are not affected.
+            var causalityTraces = Proto.Diagnostics.CausalityTrace.ts_traces;
+            int causalityScopeCount = causalityTraces?.Count ?? 0;
+            causalityTraces?.Clear();
+
             Exception[] exceptions;
             lock (_uncaughtExceptions)
             {
@@ -164,6 +170,7 @@ namespace ProtoPromise.Tests
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             Internal.AssertAllObjectsReleased(spinForThreadPool);
 #endif
+            Assert.AreEqual(0, causalityScopeCount, "CausalityTrace scopes were not exited on the test thread.");
 
             s_expectedUncaughtRejectValue = null;
             LogProgress("Success");

@@ -37,7 +37,7 @@ namespace Proto.Promises.Threading
         {
             if (runThread == null)
             {
-                throw new ArgumentNullException(nameof(runThread), "runThread may not be null", Internal.GetFormattedStacktrace(1));
+                throw new ArgumentNullException(nameof(runThread), "runThread may not be null", Internal.GetFormattedStacktrace());
             }
             _thread = runThread;
             // Start with a modest initial capacity. This will grow in Post() if necessary.

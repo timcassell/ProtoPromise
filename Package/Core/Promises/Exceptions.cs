@@ -152,7 +152,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode]
 #endif
-    public class UnhandledException : Exception, Internal.IRejectContainer, Internal.IRejectionToContainer, Internal.ICantHandleException
+    public sealed class UnhandledException : Exception, Internal.IRejectContainer, Internal.IRejectionToContainer, Internal.ICantHandleException
     {
         private readonly object _value;
         private readonly CausalityTrace _causalityTrace;
@@ -165,28 +165,24 @@ namespace Proto.Promises
         }
 
         private static string GetMessage(string message, CausalityTrace causalityTrace)
-        {
-            if (causalityTrace != null)
-            {
-                return $"{message} -- This exception's Stacktrace contains the causality trace of all async continuations.";
-            }
-            if (!CausalityTrace.IsEnabled)
-            {
-                return $"{message} -- Set Proto.Diagnostics.CausalityTrace.IsEnabled = true to get a causality trace.";
-            }
+            => causalityTrace != null ? $"{message} -- This exception's Stacktrace contains the causality trace of all async continuations."
+            : !CausalityTrace.IsEnabled ? $"{message} -- Set Proto.Diagnostics.CausalityTrace.IsEnabled = true to get a causality trace."
             // Causality traces are enabled, but this rejection has no trace.
 #if PROMISE_DEBUG
-            return $"{message} -- No causality trace was captured. CausalityTrace.IsEnabled may have been set after the operation was started.";
+            : $"{message} -- No causality trace was captured. CausalityTrace.IsEnabled may have been set after the operation was started."
 #else
-            return $"{message} -- No causality trace was found. Causality traces are not always available in RELEASE mode (for example, objects reported from finalizers on some runtimes). Enable DEBUG mode for reliable causality traces.";
+            : $"{message} -- No causality trace was found. Causality traces are not always available in RELEASE mode (for example, objects reported from finalizers on some runtimes). Enable DEBUG mode for reliable causality traces."
 #endif
-        }
+            ;
 
 
         public override string StackTrace => _causalityTrace?.ToString();
 
         public object Value => _value;
 
+        /// <summary>
+        /// The causality trace of the rejection, or <see langword="null"/> if causality traces were disabled (see <see cref="CausalityTrace.IsEnabled"/>) or no trace was captured.
+        /// </summary>
         public CausalityTrace CausalityTrace => _causalityTrace;
 
         void Internal.ICantHandleException.ReportUnhandled(object traceable)

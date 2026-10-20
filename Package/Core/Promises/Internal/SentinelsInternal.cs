@@ -150,7 +150,7 @@ namespace Proto.Promises
 
                 internal override bool GetIsCompleted(short promiseId)
                 {
-                    ValidateId(promiseId, this, 2);
+                    ValidateId(promiseId, this);
                     return true;
                 }
 
@@ -159,7 +159,7 @@ namespace Proto.Promises
 
                 internal override PromiseRef<TResult> GetDuplicateT(short promiseId)
                 {
-                    ValidateId(promiseId, this, 2);
+                    ValidateId(promiseId, this);
                     return this;
                 }
 
@@ -168,7 +168,7 @@ namespace Proto.Promises
 
                 internal override void MaybeMarkAwaitedAndDispose(short promiseId)
                     // Do nothing.
-                    => ValidateId(promiseId, this, 2);
+                    => ValidateId(promiseId, this);
 
                 // Do nothing.
                 internal override void MaybeReportUnhandledAndDispose(Promise.State state) { }
@@ -177,7 +177,7 @@ namespace Proto.Promises
                 {
                     if (!GetIsValid(promiseId))
                     {
-                        throw new InvalidOperationException("Cannot forget an invalid promise.", GetFormattedStacktrace(2));
+                        throw new InvalidOperationException("Cannot forget an invalid promise.", GetFormattedStacktrace());
                     }
                     // Do nothing.
                 }

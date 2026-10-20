@@ -101,6 +101,23 @@ namespace Proto.Promises
                         obj => obj.UnsafeAs<ConfiguredPromise<TResult>>().HandleFromContext()
                     );
 
+                // If the waiter was just created (e.g. by Then), its trace already shows where it was scheduled, so we don't capture it again.
+                // Otherwise (e.g. a callback promise adopting this, an async function continuing in its own scope, or a waiter without a trace),
+                // we capture where it was scheduled.
+                private void ScheduleContinuationOnContextWhenHookedUp(HandleablePromiseBase waiter)
+                {
+                    var waiterTrace = GetTrace(waiter);
+                    if (waiterTrace == null || CausalityTrace.IsCurrentScope(waiterTrace))
+                    {
+                        ScheduleContinuationOnContext();
+                        return;
+                    }
+                    ScheduleContextCallbackDirect(_synchronizationContext, this,
+                        obj => obj.UnsafeAs<ConfiguredPromise<TResult>>().HandleFromContext(),
+                        obj => obj.UnsafeAs<ConfiguredPromise<TResult>>().HandleFromContext()
+                    );
+                }
+
                 [MethodImpl(InlineOption)]
                 private void HandleFromContext()
                     => HandleNextInternal(_tempState);
@@ -151,13 +168,13 @@ namespace Proto.Promises
                     }
 
                     previousWaiter = PendingAwaitSentinel.s_instance;
-                    ScheduleContinuationOnContext();
+                    ScheduleContinuationOnContextWhenHookedUp(waiter);
                     return null; // It doesn't matter what we return since previousWaiter is set to PendingAwaitSentinel.s_instance.
                 }
 
                 internal override bool GetIsCompleted(short promiseId)
                 {
-                    ValidateId(promiseId, this, 2);
+                    ValidateId(promiseId, this);
                     ThrowIfInPool(this);
                     // Make sure the continuation executes on the synchronization context.
                     if (GetShouldContinueImmediately()
@@ -232,10 +249,11 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     var callback = _continuation;
-                    var scope = CausalityTrace.EnterScopeIfNotNull(GetTrace(this));
+                    var trace = GetTrace(this);
 #if !PROMISE_DEBUG
                     Dispose();
 #endif
+                    var scope = CausalityTrace.EnterScopeInternal(trace);
                     try
                     {
                         callback.Invoke();
@@ -243,7 +261,7 @@ namespace Proto.Promises
                     catch (Exception e)
                     {
                         // This should never hit if the `await` keyword is used, but a user manually subscribing to OnCompleted could throw.
-                        ReportRejection(e, this);
+                        ReportCaughtException(e, this);
                     }
                     finally
                     {

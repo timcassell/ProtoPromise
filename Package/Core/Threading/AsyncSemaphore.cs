@@ -44,8 +44,8 @@ namespace Proto.Promises.Threading
             if (maxCount <= 0 | initialCount < 0 | initialCount > maxCount)
             {
                 throw maxCount <= 0
-                    ? new ArgumentOutOfRangeException(nameof(maxCount), "maxCount must be greater than 0", Internal.GetFormattedStacktrace(1))
-                    : new ArgumentOutOfRangeException(nameof(initialCount), "initialCount must be >= 0 and <= maxCount", Internal.GetFormattedStacktrace(1));
+                    ? new ArgumentOutOfRangeException(nameof(maxCount), "maxCount must be greater than 0", Internal.GetFormattedStacktrace())
+                    : new ArgumentOutOfRangeException(nameof(initialCount), "initialCount must be >= 0 and <= maxCount", Internal.GetFormattedStacktrace());
             }
 
             _currentCount = initialCount;
@@ -140,7 +140,7 @@ namespace Proto.Promises.Threading
         {
             if (releaseCount < 1)
             {
-                throw new ArgumentOutOfRangeException(nameof(releaseCount), "releaseCount cannot be less than 1", Internal.GetFormattedStacktrace(1));
+                throw new ArgumentOutOfRangeException(nameof(releaseCount), "releaseCount cannot be less than 1", Internal.GetFormattedStacktrace());
             }
 
             ReleaseImpl(releaseCount);

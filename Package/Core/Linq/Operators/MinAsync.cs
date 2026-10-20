@@ -40,7 +40,7 @@ namespace Proto.Promises.Linq
         public static Promise<TSource> MinAsync<TSource, TComparer>(this AsyncEnumerable<TSource> source, TComparer comparer, CancelationToken cancelationToken = default)
             where TComparer : IComparer<TSource>
         {
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(comparer, nameof(comparer));
 
             return MinAsyncCore(source.GetAsyncEnumerator(cancelationToken), comparer);
         }
@@ -77,7 +77,7 @@ namespace Proto.Promises.Linq
                 {
                     if (!await asyncEnumerator.MoveNextAsync())
                     {
-                        throw new InvalidOperationException("source must contain at least 1 element.", Internal.GetFormattedStacktrace(1));
+                        throw new InvalidOperationException("source must contain at least 1 element.", Internal.GetFormattedStacktrace());
                     }
 
                     var min = asyncEnumerator.Current;
@@ -125,7 +125,7 @@ namespace Proto.Promises.Linq
         public static Promise<TSource> MinAsync<TSource, TComparer>(this in ConfiguredAsyncEnumerable<TSource> source, TComparer comparer)
             where TComparer : IComparer<TSource>
         {
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(comparer, nameof(comparer));
 
             return MinAsyncCore(source.GetAsyncEnumerator(), comparer);
         }
@@ -162,7 +162,7 @@ namespace Proto.Promises.Linq
                 {
                     if (!await asyncEnumerator.MoveNextAsync())
                     {
-                        throw new InvalidOperationException("source must contain at least 1 element.", Internal.GetFormattedStacktrace(1));
+                        throw new InvalidOperationException("source must contain at least 1 element.", Internal.GetFormattedStacktrace());
                     }
 
                     var min = asyncEnumerator.Current;

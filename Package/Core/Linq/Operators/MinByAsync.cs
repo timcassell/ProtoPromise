@@ -51,8 +51,8 @@ namespace Proto.Promises.Linq
         public static Promise<TSource> MinByAsync<TSource, TKey, TComparer>(this AsyncEnumerable<TSource> source, Func<TSource, TKey> keySelector, TComparer comparer, CancelationToken cancelationToken = default)
             where TComparer : IComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return MinByHelper<TKey>.MinByAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(keySelector), comparer);
         }
@@ -99,8 +99,8 @@ namespace Proto.Promises.Linq
         public static Promise<TSource> MinByAsync<TSource, TKey, TCapture, TComparer>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, TKey> keySelector, TComparer comparer, CancelationToken cancelationToken = default)
             where TComparer : IComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return MinByHelper<TKey>.MinByAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
@@ -143,8 +143,8 @@ namespace Proto.Promises.Linq
         public static Promise<TSource> MinByAsync<TSource, TKey, TComparer>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<TKey>> keySelector, TComparer comparer, CancelationToken cancelationToken = default)
             where TComparer : IComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return MinByHelper<TKey>.MinByAwaitAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(keySelector), comparer);
         }
@@ -191,8 +191,8 @@ namespace Proto.Promises.Linq
         public static Promise<TSource> MinByAsync<TSource, TKey, TCapture, TComparer>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector, TComparer comparer, CancelationToken cancelationToken = default)
             where TComparer : IComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return MinByHelper<TKey>.MinByAwaitAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
@@ -233,8 +233,8 @@ namespace Proto.Promises.Linq
         public static Promise<TSource> MinByAsync<TSource, TKey, TComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, TKey> keySelector, TComparer comparer)
             where TComparer : IComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return MinByHelper<TKey>.MinByAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
@@ -279,8 +279,8 @@ namespace Proto.Promises.Linq
         public static Promise<TSource> MinByAsync<TSource, TKey, TCapture, TComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, TKey> keySelector, TComparer comparer)
             where TComparer : IComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return MinByHelper<TKey>.MinByAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
@@ -321,8 +321,8 @@ namespace Proto.Promises.Linq
         public static Promise<TSource> MinByAsync<TSource, TKey, TComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<TKey>> keySelector, TComparer comparer)
             where TComparer : IComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return MinByHelper<TKey>.MinByAwaitAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
@@ -367,8 +367,8 @@ namespace Proto.Promises.Linq
         public static Promise<TSource> MinByAsync<TSource, TKey, TCapture, TComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector, TComparer comparer)
             where TComparer : IComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return MinByHelper<TKey>.MinByAwaitAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
@@ -393,7 +393,7 @@ namespace Proto.Promises.Linq
                         }
                         else
                         {
-                            throw new InvalidOperationException("source must contain at least 1 element.", Internal.GetFormattedStacktrace(1));
+                            throw new InvalidOperationException("source must contain at least 1 element.", Internal.GetFormattedStacktrace());
                         }
                     }
 
@@ -469,7 +469,7 @@ namespace Proto.Promises.Linq
                         }
                         else
                         {
-                            throw new InvalidOperationException("source must contain at least 1 element.", Internal.GetFormattedStacktrace(1));
+                            throw new InvalidOperationException("source must contain at least 1 element.", Internal.GetFormattedStacktrace());
                         }
                     }
 
@@ -545,7 +545,7 @@ namespace Proto.Promises.Linq
                         }
                         else
                         {
-                            throw new InvalidOperationException("source must contain at least 1 element.", Internal.GetFormattedStacktrace(1));
+                            throw new InvalidOperationException("source must contain at least 1 element.", Internal.GetFormattedStacktrace());
                         }
                     }
 
@@ -621,7 +621,7 @@ namespace Proto.Promises.Linq
                         }
                         else
                         {
-                            throw new InvalidOperationException("source must contain at least 1 element.", Internal.GetFormattedStacktrace(1));
+                            throw new InvalidOperationException("source must contain at least 1 element.", Internal.GetFormattedStacktrace());
                         }
                     }
 
