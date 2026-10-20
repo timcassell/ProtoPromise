@@ -182,6 +182,18 @@ namespace Proto.Promises
                     // Do nothing.
                 }
             } // CanceledPromiseSentinel
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal static class TracedSentinel
+            {
+                // Traced async and deferred promises store this in the ContinuationContext field while it would otherwise be null,
+                // so that their completion fast path only needs to check the field for null, and the slow path enters the trace's scope.
+                // Only those types use this, because other promise types treat any non-null value in that field as a context.
+                // It's in its own class so that PromiseRefBase doesn't get a static constructor, which would add class initialization checks to its static members (IL2CPP).
+                internal static readonly object s_instance = new object();
+            }
         } // PromiseRefBase
 
 #if !PROTO_PROMISE_DEVELOPER_MODE

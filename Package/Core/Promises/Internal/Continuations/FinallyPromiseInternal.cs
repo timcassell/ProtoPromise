@@ -53,8 +53,50 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     handler.SetCompletionState(state);
 
+                    // The traced copy is separate, so that the common path doesn't pay for the try/finally of the trace's scope.
+                    // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel).
+                    if (ContinuationContext == null)
+                    {
+                        _result = handler.GetResult<TResult>();
+                        RejectContainer = handler.RejectContainer;
+                        handler.SuppressRejection = true;
+                        handler.MaybeDispose();
+                        var callback = _callback;
+                        _callback = default;
+                        try
+                        {
+                            callback.Invoke();
+                        }
+                        catch (Exception e)
+                        {
+                            // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
+                            if (state == Promise.State.Rejected)
+                            {
+                                RejectContainer.ReportUnhandled();
+                            }
+                            if (e is OperationCanceledException)
+                            {
+                                RejectContainer = null;
+                                state = Promise.State.Canceled;
+                            }
+                            else
+                            {
+                                RejectContainer = CreateRejectContainer(e, true, this);
+                                state = Promise.State.Rejected;
+                            }
+                        }
+                        HandleNextInternal(state);
+                        return;
+                    }
+                    HandleTraced(handler, state);
+                }
+
+                // Handle, but the callback runs in the scope of this promise's trace.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private void HandleTraced(PromiseRefBase handler, Promise.State state)
+                {
                     // Take the trace before the field is overwritten with the reject container.
-                    var trace = TakeCallbackTrace();
+                    var trace = TakeTracedTrace();
                     _result = handler.GetResult<TResult>();
                     RejectContainer = handler.RejectContainer;
                     handler.SuppressRejection = true;
@@ -154,8 +196,65 @@ namespace Proto.Promises
                     }
                     _firstContinue = false;
 
+                    // The traced copy is separate, so that the common path doesn't pay for the try/finally of the trace's scope.
+                    // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel).
+                    if (ContinuationContext == null)
+                    {
+                        _result = handler.GetResult<TResult>();
+                        RejectContainer = handler.RejectContainer;
+                        handler.SuppressRejection = true;
+                        handler.MaybeDispose();
+                        var callback = _callback;
+                        _callback = default;
+                        Promise result;
+                        try
+                        {
+                            result = callback.Invoke();
+                            ValidateReturn(result);
+
+                            this.SetPrevious(result._ref);
+                            if (result._ref != null)
+                            {
+                                PromiseRefBase promiseSingleAwait = result._ref.AddWaiter(result._id, this, out var previousWaiter);
+                                if (previousWaiter == PendingAwaitSentinel.s_instance)
+                                {
+                                    // Store the state until the returned promise is complete.
+                                    _previousState = state;
+                                    return;
+                                }
+                                state = VerifyAndGetResultFromComplete(result._ref, promiseSingleAwait, state);
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            // Unlike normal finally clauses, we don't swallow the previous rejection. Instead, we report it.
+                            if (state == Promise.State.Rejected)
+                            {
+                                RejectContainer.ReportUnhandled();
+                            }
+                            if (e is OperationCanceledException)
+                            {
+                                RejectContainer = null;
+                                state = Promise.State.Canceled;
+                            }
+                            else
+                            {
+                                RejectContainer = CreateRejectContainer(e, true, this);
+                                state = Promise.State.Rejected;
+                            }
+                        }
+                        HandleNextInternal(state);
+                        return;
+                    }
+                    HandleTraced(handler, state);
+                }
+
+                // Handle, but the callback runs in the scope of this promise's trace.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private void HandleTraced(PromiseRefBase handler, Promise.State state)
+                {
                     // Take the trace before the field is overwritten with the reject container.
-                    var trace = TakeCallbackTrace();
+                    var trace = TakeTracedTrace();
                     _result = handler.GetResult<TResult>();
                     RejectContainer = handler.RejectContainer;
                     handler.SuppressRejection = true;

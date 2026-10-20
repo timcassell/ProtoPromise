@@ -32,8 +32,17 @@ namespace Proto.Promises
 #endif
         }
 
+        // Must not be readonly.
+        private static SpinLocker s_isObjectPoolingDisabledLock;
+
+        // Called after either setting's field is written. The lock makes sure that the last update reads both settings' latest values,
+        // so that updates from the two settings on different threads can't leave pooling enabled while causality traces are enabled.
         internal static void UpdateIsObjectPoolingEnabled()
-            => s_isObjectPoolingDisabled = !Promise.Config.ObjectPoolingEnabled | Diagnostics.CausalityTrace.IsEnabled;
+        {
+            s_isObjectPoolingDisabledLock.Enter();
+            s_isObjectPoolingDisabled = !Promise.Config.ObjectPoolingEnabled | Diagnostics.CausalityTrace.IsEnabled;
+            s_isObjectPoolingDisabledLock.Exit();
+        }
 
         // If C#9 is available, we use function pointers instead of delegates to clear the pool.
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER

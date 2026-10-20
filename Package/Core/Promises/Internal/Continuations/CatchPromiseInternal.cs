@@ -20,8 +20,46 @@ namespace Proto.Promises
                 protected void InvokeCatch<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
                     where TDelegate : IFunc<TArg, TResult>
                 {
+                    // The traced copy is separate, so that the common path doesn't pay for the try/finally of the trace's scope.
+                    // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel).
+                    if (ContinuationContext == null)
+                    {
+                        Promise.State state;
+                        try
+                        {
+                            _result = callback.Invoke(arg);
+                            state = Promise.State.Resolved;
+                        }
+                        catch (RethrowException)
+                        {
+                            RejectContainer = rejectContainer;
+                            state = Promise.State.Rejected;
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            state = Promise.State.Canceled;
+                        }
+                        catch (Exception e)
+                        {
+                            RejectContainer = CreateRejectContainer(e, true, this);
+                            state = Promise.State.Rejected;
+                        }
+
+                        // We handle next last, so that if the runtime wants to, it can tail-call optimize.
+                        // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
+                        HandleNextInternal(state);
+                        return;
+                    }
+                    InvokeCatchTraced(in arg, in callback, rejectContainer);
+                }
+
+                // InvokeCatch, but the callback runs in the scope of this promise's trace.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private void InvokeCatchTraced<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IFunc<TArg, TResult>
+                {
                     Promise.State state;
-                    var scope = EnterCallbackScope();
+                    var scope = EnterTracedScopeAndClearSentinel();
                     try
                     {
                         _result = callback.Invoke(arg);
@@ -57,8 +95,61 @@ namespace Proto.Promises
                 protected void InvokeCatchAndAdoptVoid<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
                     where TDelegate : IFunc<TArg, Promise>
                 {
+                    // The traced copy is separate, so that the common path doesn't pay for the try/finally of the trace's scope.
+                    // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel).
+                    if (ContinuationContext == null)
+                    {
+                        Promise.State state;
+                        try
+                        {
+                            var result = callback.Invoke(arg);
+                            ValidateReturn(result);
+
+                            this.SetPrevious(result._ref);
+                            if (result._ref == null)
+                            {
+                                state = Promise.State.Resolved;
+                            }
+                            else
+                            {
+                                PromiseRefBase promiseSingleAwait = result._ref.AddWaiter(result._id, this, out var previousWaiter);
+                                if (previousWaiter == PendingAwaitSentinel.s_instance)
+                                {
+                                    return;
+                                }
+                                state = VerifyAndGetResultFromComplete(result._ref, promiseSingleAwait);
+                            }
+                        }
+                        catch (RethrowException)
+                        {
+                            RejectContainer = rejectContainer;
+                            state = Promise.State.Rejected;
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            state = Promise.State.Canceled;
+                        }
+                        catch (Exception e)
+                        {
+                            RejectContainer = CreateRejectContainer(e, true, this);
+                            state = Promise.State.Rejected;
+                        }
+
+                        // We handle next last, so that if the runtime wants to, it can tail-call optimize.
+                        // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
+                        HandleNextInternal(state);
+                        return;
+                    }
+                    InvokeCatchAndAdoptVoidTraced(in arg, in callback, rejectContainer);
+                }
+
+                // InvokeCatchAndAdoptVoid, but the callback runs in the scope of this promise's trace.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private void InvokeCatchAndAdoptVoidTraced<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IFunc<TArg, Promise>
+                {
                     Promise.State state;
-                    var scope = EnterCallbackScope();
+                    var scope = EnterTracedScopeAndClearSentinel();
                     try
                     {
                         var result = callback.Invoke(arg);
@@ -106,8 +197,62 @@ namespace Proto.Promises
                 protected void InvokeCatchAndAdopt<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
                     where TDelegate : IFunc<TArg, Promise<TResult>>
                 {
+                    // The traced copy is separate, so that the common path doesn't pay for the try/finally of the trace's scope.
+                    // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel).
+                    if (ContinuationContext == null)
+                    {
+                        Promise.State state;
+                        try
+                        {
+                            var result = callback.Invoke(arg);
+                            ValidateReturn(result);
+
+                            this.SetPrevious(result._ref);
+                            if (result._ref == null)
+                            {
+                                _result = result._result;
+                                state = Promise.State.Resolved;
+                            }
+                            else
+                            {
+                                PromiseRefBase promiseSingleAwait = result._ref.AddWaiter(result._id, this, out var previousWaiter);
+                                if (previousWaiter == PendingAwaitSentinel.s_instance)
+                                {
+                                    return;
+                                }
+                                state = VerifyAndGetResultFromComplete(result._ref, promiseSingleAwait);
+                            }
+                        }
+                        catch (RethrowException)
+                        {
+                            RejectContainer = rejectContainer;
+                            state = Promise.State.Rejected;
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            state = Promise.State.Canceled;
+                        }
+                        catch (Exception e)
+                        {
+                            RejectContainer = CreateRejectContainer(e, true, this);
+                            state = Promise.State.Rejected;
+                        }
+
+                        // We handle next last, so that if the runtime wants to, it can tail-call optimize.
+                        // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
+                        HandleNextInternal(state);
+                        return;
+                    }
+                    InvokeCatchAndAdoptTraced(in arg, in callback, rejectContainer);
+                }
+
+                // InvokeCatchAndAdopt, but the callback runs in the scope of this promise's trace.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private void InvokeCatchAndAdoptTraced<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
+                    where TDelegate : IFunc<TArg, Promise<TResult>>
+                {
                     Promise.State state;
-                    var scope = EnterCallbackScope();
+                    var scope = EnterTracedScopeAndClearSentinel();
                     try
                     {
                         var result = callback.Invoke(arg);

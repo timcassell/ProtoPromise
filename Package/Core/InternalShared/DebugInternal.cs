@@ -57,22 +57,38 @@ namespace Proto.Promises
         // The causality traces of exceptions (see TryGetExceptionTrace), and in RELEASE mode, of objects (see GetTrace).
         // Some runtimes (like Unity's Mono and IL2CPP) clear the entries before the key's finalizer runs,
         // and older runtimes (like Unity 2018's Mono and IL2CPP) never clear the entries, so keys leak while traces are enabled.
-        // The table is replaced when causality traces are disabled, so that objects that are pooled again and exceptions that are rejected again
-        // don't keep their old traces.
-        private static ConditionalWeakTable<object, CausalityTrace> s_causalityTraces = new ConditionalWeakTable<object, CausalityTrace>();
+        // The table is only created while causality traces are enabled, so that it isn't created (in Internal's static constructor) if they're never enabled.
+        // It's released when they are disabled, so that objects that are pooled again and exceptions that are rejected again don't keep their old traces.
+        // It may be null when it's read after causality traces were checked to be enabled, if they were disabled concurrently.
+        private static ConditionalWeakTable<object, CausalityTrace> s_causalityTraces;
 
-        internal static void ClearTraces()
+        internal static void CreateTraceTable()
             => s_causalityTraces = new ConditionalWeakTable<object, CausalityTrace>();
+
+        internal static void ReleaseTraceTable()
+            => s_causalityTraces = null;
 
         // An exception's trace is used to reconstruct the causality trace when the exception is rethrown from await in an async function,
         // and its reject container is lost (see ExceptionRejectionContainer).
         internal static bool TryGetExceptionTrace(object exception, out CausalityTrace trace)
-            => s_causalityTraces.TryGetValue(exception, out trace);
+        {
+            var causalityTraces = s_causalityTraces;
+            if (causalityTraces == null)
+            {
+                trace = null;
+                return false;
+            }
+            return causalityTraces.TryGetValue(exception, out trace);
+        }
 
         // Keeps the exception's first trace, which is where it was originally rejected or thrown.
         internal static void AddExceptionTrace(object exception, CausalityTrace trace)
         {
             var causalityTraces = s_causalityTraces;
+            if (causalityTraces == null)
+            {
+                return;
+            }
 #if NET7_0_OR_GREATER
             causalityTraces.TryAdd(exception, trace);
 #else
@@ -115,18 +131,26 @@ namespace Proto.Promises
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static CausalityTrace GetTraceFromTable(object obj)
-            => obj != null && s_causalityTraces.TryGetValue(obj, out var trace) ? trace : null;
+        {
+            var causalityTraces = s_causalityTraces;
+            return causalityTraces != null && obj != null && causalityTraces.TryGetValue(obj, out var trace) ? trace : null;
+        }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void SetTrace(object obj, CausalityTrace trace)
         {
+            var causalityTraces = s_causalityTraces;
+            if (causalityTraces == null)
+            {
+                return;
+            }
             // The object may already have an entry if it was taken from the pool after it was traced previously.
 #if NETCOREAPP || NETSTANDARD2_1_OR_GREATER
-            s_causalityTraces.AddOrUpdate(obj, trace);
+            causalityTraces.AddOrUpdate(obj, trace);
 #else
             // This is only set from the thread that creates the object, so we don't need to lock.
-            s_causalityTraces.Remove(obj);
-            s_causalityTraces.Add(obj, trace);
+            causalityTraces.Remove(obj);
+            causalityTraces.Add(obj, trace);
 #endif
         }
 #endif // PROMISE_DEBUG

@@ -12,12 +12,12 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 8.X
+          dotnet-version: 10.X
 
       - name: Build Debug
         run: dotnet build -c Debug
@@ -35,7 +35,7 @@ jobs:
         run: dotnet pack Core/ProtoPromise.UnityHelpers.2023.1/ProtoPromise.UnityHelpers.2023.1.csproj --no-build --output ./
         
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: packages
           path: ./*.nupkg

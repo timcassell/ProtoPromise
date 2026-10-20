@@ -33,17 +33,18 @@ namespace Proto.Promises
 
         partial class PromiseRefBase
         {
-            // Traced async and deferred promises store this in the ContinuationContext field while it would otherwise be null,
-            // so that their completion fast path only needs to check the field for null, and the slow path enters the trace's scope.
-            // Only those types use this, because other promise types treat any non-null value in that field as a context.
-            internal static readonly object s_tracedSentinel = new object();
-
             // The value to restore to an async promise's ContinuationContext field when its continuation context is cleared.
             // NoInlining because it's only used on slow paths, and it would otherwise inline a static class initialization check into async methods.
-            internal static object NoAsyncContinuationContext
+            internal object NoAsyncContinuationContext
             {
                 [MethodImpl(MethodImplOptions.NoInlining)]
-                get => CausalityTrace.IsEnabled ? s_tracedSentinel : null;
+#if PROMISE_DEBUG
+                // In DEBUG mode, the trace is kept while causality traces are disabled (see GetTrace), so the sentinel is restored if this has a trace,
+                // so that this enters its trace's scope again if causality traces are enabled again before it completes.
+                get => ((ITraceable) this).Trace != null ? TracedSentinel.s_instance : null;
+#else
+                get => CausalityTrace.IsEnabled ? TracedSentinel.s_instance : null;
+#endif
             }
 
             [MethodImpl(InlineOption)]
@@ -66,10 +67,10 @@ namespace Proto.Promises
                     return;
                 }
 
-                var context = ContinuationContext;
-                ContinuationContext = context == null | context == s_tracedSentinel
-                    ? (object) synchronizationContext
-                    : ConfiguredAwaitDualContext.GetOrCreate(synchronizationContext, context.UnsafeAs<ExecutionContext>());
+                // The field is null, an ExecutionContext, or the TracedSentinel.
+                ContinuationContext = ContinuationContext is ExecutionContext executionContext
+                    ? ConfiguredAwaitDualContext.GetOrCreate(synchronizationContext, executionContext)
+                    : (object) synchronizationContext;
 
                 this.SetPrevious(awaiter);
                 awaiter.HookupExistingWaiter(promiseId, this);
@@ -298,7 +299,7 @@ namespace Proto.Promises
                         {
                             if (continuationContext is SynchronizationContext synchronizationContext)
                             {
-                                _owner.ContinuationContext = NoAsyncContinuationContext;
+                                _owner.ContinuationContext = _owner.NoAsyncContinuationContext;
                                 ScheduleContextCallback(synchronizationContext, this,
                                     obj => obj.UnsafeAs<Continuer<TStateMachine>>().MoveNext(),
                                     obj => obj.UnsafeAs<Continuer<TStateMachine>>().MoveNext());
@@ -313,13 +314,13 @@ namespace Proto.Promises
                                     obj => obj.UnsafeAs<Continuer<TStateMachine>>().Continue(),
                                     obj => obj.UnsafeAs<Continuer<TStateMachine>>().Continue());
                             }
-                            else if (continuationContext == s_tracedSentinel)
+                            else if (continuationContext == TracedSentinel.s_instance)
                             {
                                 MoveNextInScope();
                             }
                             else
                             {
-                                _owner.ContinuationContext = NoAsyncContinuationContext;
+                                _owner.ContinuationContext = _owner.NoAsyncContinuationContext;
                                 ExecutionContext.Run(
                                     continuationContext.UnsafeAs<ExecutionContext>(),
                                     obj => obj.UnsafeAs<Continuer<TStateMachine>>().MoveNext(),
@@ -344,7 +345,7 @@ namespace Proto.Promises
                     if (Promise.Config.AsyncFlowExecutionContextEnabled)
                     {
                         // Capture returns null if the flow is suppressed.
-                        _ref.ContinuationContext = ExecutionContext.Capture() ?? NoAsyncContinuationContext;
+                        _ref.ContinuationContext = ExecutionContext.Capture() ?? _ref.NoAsyncContinuationContext;
                     }
                 }
 
@@ -479,7 +480,7 @@ namespace Proto.Promises
                                 obj => obj.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>().ContinueWithExecutionContext(),
                                 obj => obj.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>().ContinueWithExecutionContext());
                         }
-                        else if (continuationContext == s_tracedSentinel)
+                        else if (continuationContext == TracedSentinel.s_instance)
                         {
                             MoveNextInScope();
                         }
@@ -530,7 +531,7 @@ namespace Proto.Promises
                     if (Promise.Config.AsyncFlowExecutionContextEnabled)
                     {
                         // Capture returns null if the flow is suppressed.
-                        _ref.ContinuationContext = ExecutionContext.Capture() ?? NoAsyncContinuationContext;
+                        _ref.ContinuationContext = ExecutionContext.Capture() ?? _ref.NoAsyncContinuationContext;
                     }
                 }
 

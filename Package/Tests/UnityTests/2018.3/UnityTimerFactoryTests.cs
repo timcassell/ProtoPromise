@@ -225,5 +225,47 @@ namespace ProtoPromise.Tests.Unity
                 yield return yieldInstruction;
             }
         }
+
+        // Written after the helper's call, so that IL2CPP's C++ compiler doesn't turn it into a tail call, which would remove the helper's frame from the trace
+        // (see MiscellaneousTests.s_frameKeeper).
+        private static int s_frameKeeper;
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static Timer CreateTimerForTraceTest(TimerFactory timerFactory, Proto.Diagnostics.CausalityTrace[] callbackTrace)
+        {
+            var timer = timerFactory.CreateTimer(_ => callbackTrace[0] = Proto.Diagnostics.CausalityTrace.Capture(),
+                null, TimeSpan.FromMilliseconds(100), System.Threading.Timeout.InfiniteTimeSpan);
+            System.Threading.Volatile.Write(ref s_frameKeeper, 1);
+            return timer;
+        }
+
+        [UnityTest]
+        public IEnumerator TimerCallback_RunsInsideTheScopeOfWhereTheTimerWasCreated(
+            [Values] bool simulated)
+        {
+            Proto.Diagnostics.CausalityTrace.IsEnabled = true;
+            try
+            {
+                TimerFactory provider = simulated
+                    ? (TimerFactory) UnitySimulatedTimerFactory.Instance
+                    : UnityRealTimerFactory.Instance;
+                var callbackTrace = new Proto.Diagnostics.CausalityTrace[1];
+                var timer = CreateTimerForTraceTest(provider, callbackTrace);
+
+                yield return new WaitUntil(() => callbackTrace[0] != null);
+                using (var yieldInstruction = timer.DisposeAsync().ToYieldInstruction())
+                {
+                    yield return yieldInstruction;
+                }
+
+                Assert.IsNotNull(callbackTrace[0].Previous, callbackTrace[0].ToString());
+                StringAssert.Contains(nameof(CreateTimerForTraceTest), callbackTrace[0].Previous.StackTrace.ToString());
+                Assert.IsNull(callbackTrace[0].ScheduledFrom, callbackTrace[0].ToString());
+            }
+            finally
+            {
+                Proto.Diagnostics.CausalityTrace.IsEnabled = false;
+            }
+        }
     }
 }

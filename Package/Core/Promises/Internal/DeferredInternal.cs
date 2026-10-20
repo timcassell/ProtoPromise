@@ -167,7 +167,7 @@ namespace Proto.Promises
                 // that are invoked synchronously include it.
                 public void Reject(object reason)
                 {
-                    // The field is null while the deferred is pending, unless it's traced (see s_tracedSentinel).
+                    // The field is null while the deferred is pending, unless it's traced (see TracedSentinel).
                     if (ContinuationContext == null)
                     {
                         RejectDirect(CreateRejectContainer(reason, true, this));
@@ -206,7 +206,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 protected void HandleNextInScope(Promise.State state)
                 {
-                    // The field is null while the deferred is pending, unless it's traced (see s_tracedSentinel).
+                    // The field is null while the deferred is pending, unless it's traced (see TracedSentinel).
                     if (ContinuationContext == null)
                     {
                         HandleNextInternal(state);

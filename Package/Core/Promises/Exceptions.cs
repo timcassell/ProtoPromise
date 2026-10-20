@@ -165,7 +165,7 @@ namespace Proto.Promises
         }
 
         private static string GetMessage(string message, CausalityTrace causalityTrace)
-            => causalityTrace != null ? $"{message} -- This exception's Stacktrace contains the causality trace of all async continuations."
+            => causalityTrace != null ? $"{message} -- This exception's StackTrace contains the causality trace of the rejection (the async operations that led to it)."
             : !CausalityTrace.IsEnabled ? $"{message} -- Set Proto.Diagnostics.CausalityTrace.IsEnabled = true to get a causality trace."
             // Causality traces are enabled, but this rejection has no trace.
 #if PROMISE_DEBUG

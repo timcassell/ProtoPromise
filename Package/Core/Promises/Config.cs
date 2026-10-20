@@ -9,6 +9,7 @@
 
 using Proto.Timers;
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -18,23 +19,22 @@ namespace Proto.Promises
     partial struct Promise
     {
         /// <summary>
-        /// At what granularity should stack traces be captured when a promise is created or rejected. Higher values are more costly, but give more information for debugging purposes.
+        /// At what granularity should causality traces be captured in DEBUG mode.
         /// </summary>
-        [Obsolete("Prefer Proto.Diagnostics.CausalityTrace.IsEnabled", false)]
+        /// <remarks>This enum is obsolete. You should instead use <see cref="Diagnostics.CausalityTrace.IsEnabled"/>.</remarks>
+        [Obsolete("Prefer Proto.Diagnostics.CausalityTrace.IsEnabled, which also applies in RELEASE mode (guard it with #if DEBUG for the old behavior).", false), EditorBrowsable(EditorBrowsableState.Never)]
         public enum TraceLevel : byte
         {
             /// <summary>
-            /// Don't track any causality traces.
+            /// Don't capture causality traces.
             /// </summary>
             None,
             /// <summary>
-            /// Track causality only when Deferred.Reject is called.
+            /// Leaves <see cref="Diagnostics.CausalityTrace.IsEnabled"/> unchanged. Rejections are traced only while causality traces are enabled.
             /// </summary>
             Rejections,
             /// <summary>
-            /// Track causality when Deferred.Reject is called and every time a promise is created or a delegate is added to a promise (i.e. with .Then).
-            /// <para/>
-            /// NOTE: This can be extremely expensive, so you should only enable this if you ran into an error and you are not sure where it came from.
+            /// Capture causality traces (see <see cref="Diagnostics.CausalityTrace.IsEnabled"/>).
             /// </summary>
             All
         }
@@ -80,9 +80,10 @@ namespace Proto.Promises
 #endif
 
             /// <summary>
-            /// Set how causality is traced in DEBUG mode. Causality traces are readable from an UnhandledException's Stacktrace property.
+            /// Set how causality is traced in DEBUG mode. Causality traces are readable from an UnhandledException's StackTrace property.
             /// </summary>
-            [Obsolete("Prefer Proto.Diagnostics.CausalityTrace.IsEnabled", false)]
+            /// <remarks>This property is obsolete. You should instead use <see cref="Diagnostics.CausalityTrace.IsEnabled"/>, which also applies in RELEASE mode.</remarks>
+            [Obsolete("Prefer Proto.Diagnostics.CausalityTrace.IsEnabled, which also applies in RELEASE mode (guard it with #if DEBUG for the old behavior).", false), EditorBrowsable(EditorBrowsableState.Never)]
             public static TraceLevel DebugCausalityTracer
             {
 #if PROMISE_DEBUG
@@ -106,8 +107,9 @@ namespace Proto.Promises
             /// Uncaught rejections get routed through this delegate.
             /// </summary>
             /// <remarks>
-            /// This must be set to a non-null delegate, otherwise uncaught rejections will be thrown in the <see cref="ForegroundContext"/> or <see cref="BackgroundContext"/>.
-            /// If the delegate throws, its exception is thrown in the <see cref="ForegroundContext"/> or <see cref="BackgroundContext"/> instead.
+            /// This must be set to a non-null delegate, otherwise uncaught rejections will be thrown in the <see cref="ForegroundContext"/> or <see cref="BackgroundContext"/>,
+            /// or on the thread pool if neither is set.
+            /// If the delegate throws, its exception is thrown the same way.
             /// </remarks>
             public static Action<UnhandledException> UncaughtRejectionHandler
             {

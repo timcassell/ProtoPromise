@@ -147,10 +147,20 @@ namespace ProtoPromise.Tests
             WaitForAllThreadsToCompleteAndGcCollect();
 
             // A causality trace scope that was not exited would be in every trace that is captured on this thread afterwards,
-            // so we fail the test that left it, and exit it so that the tests that run after it are not affected.
+            // so we fail the test that left it, and exit it so that it's not in the traces of the tests that run after it.
+            // In DEBUG mode, the scope is also reported as not disposed when it's garbage collected, which may be during a later test.
             var causalityTraces = Proto.Diagnostics.CausalityTrace.ts_traces;
             int causalityScopeCount = causalityTraces?.Count ?? 0;
             causalityTraces?.Clear();
+            var causalityScheduledFrom = Proto.Diagnostics.CausalityTrace.ts_scheduledFrom;
+            Proto.Diagnostics.CausalityTrace.ts_scheduledFrom = null;
+            // A test that changes the causality trace settings must restore them, even if it fails. If it didn't (e.g. a Unity coroutine test that timed out
+            // before its finally block ran), we fail the test that left them, and restore them so that the tests that run after it are not traced
+            // (which makes them slow, and disables object pooling).
+            bool causalityTracesWereEnabled = Proto.Diagnostics.CausalityTrace.IsEnabled;
+            Proto.Diagnostics.CausalityTrace.IsEnabled = false;
+            int causalityMaxDepth = Proto.Diagnostics.CausalityTrace.MaxDepth;
+            Proto.Diagnostics.CausalityTrace.MaxDepth = 128; // The default.
 
             Exception[] exceptions;
             lock (_uncaughtExceptions)
@@ -171,6 +181,9 @@ namespace ProtoPromise.Tests
             Internal.AssertAllObjectsReleased(spinForThreadPool);
 #endif
             Assert.AreEqual(0, causalityScopeCount, "CausalityTrace scopes were not exited on the test thread.");
+            Assert.IsNull(causalityScheduledFrom, "CausalityTrace.ts_scheduledFrom was not restored on the test thread.");
+            Assert.IsFalse(causalityTracesWereEnabled, "CausalityTrace.IsEnabled was not restored.");
+            Assert.AreEqual(128, causalityMaxDepth, "CausalityTrace.MaxDepth was not restored.");
 
             s_expectedUncaughtRejectValue = null;
             LogProgress("Success");

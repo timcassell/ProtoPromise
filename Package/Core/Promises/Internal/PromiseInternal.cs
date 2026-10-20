@@ -147,7 +147,7 @@ namespace Proto.Promises
                 get => GetTrace(this);
             }
 
-            // Used instead of Reset by promise types that store s_tracedSentinel when they're traced (async, deferred, and callback promises).
+            // Used instead of Reset by promise types that store TracedSentinel when they're traced (async, deferred, and callback promises).
             // Those types must not store anything else in the ContinuationContext field before they enter the trace's scope.
             [MethodImpl(InlineOption)]
             protected void ResetWithSentinel()
@@ -164,14 +164,14 @@ namespace Proto.Promises
             private void SetTraceAndSentinel()
             {
                 SetTrace(this, Diagnostics.CausalityTrace.Capture());
-                ContinuationContext = s_tracedSentinel;
+                ContinuationContext = TracedSentinel.s_instance;
             }
 
             // For promise types that use ResetWithSentinel. The field is only non-null at this point if the promise is traced,
             // so the common case is a null check, and a scope that does nothing when it's disposed.
             [MethodImpl(InlineOption)]
             protected Diagnostics.CausalityTrace.Scope EnterScopeIfTraced()
-                => ContinuationContext == null ? default : EnterTracedScope();
+                => ContinuationContext != null ? EnterTracedScope() : default;
 
             [MethodImpl(MethodImplOptions.NoInlining)]
             private Diagnostics.CausalityTrace.Scope EnterTracedScope()
@@ -179,23 +179,15 @@ namespace Proto.Promises
                 => Diagnostics.CausalityTrace.EnterScopeInternal(Trace);
 
             // For callback promises, which only need the sentinel until their callback is invoked.
+            // Their invoke methods only call this from their traced copies, when the field is not null.
             // The field is shared with RejectContainer, so the sentinel is cleared when the scope is entered.
-            [MethodImpl(InlineOption)]
-            protected Diagnostics.CausalityTrace.Scope EnterCallbackScope()
-                => ContinuationContext == null ? default : EnterTracedScopeAndClearSentinel();
-
-            [MethodImpl(MethodImplOptions.NoInlining)]
-            private Diagnostics.CausalityTrace.Scope EnterTracedScopeAndClearSentinel()
+            protected Diagnostics.CausalityTrace.Scope EnterTracedScopeAndClearSentinel()
                 => Diagnostics.CausalityTrace.EnterScopeInternal(TakeTracedTrace());
 
             // For callback promises that need to overwrite the field before they enter the scope of their callback.
-            // Returns null if the promise is not traced.
-            [MethodImpl(InlineOption)]
-            protected Diagnostics.CausalityTrace TakeCallbackTrace()
-                => ContinuationContext == null ? null : TakeTracedTrace();
-
+            // Their invoke methods only call this from their traced copies, when the field is not null.
             [MethodImpl(MethodImplOptions.NoInlining)]
-            private Diagnostics.CausalityTrace TakeTracedTrace()
+            protected Diagnostics.CausalityTrace TakeTracedTrace()
             {
                 var trace = Trace;
                 // The field is shared with RejectContainer, so the sentinel is cleared when the trace is taken.

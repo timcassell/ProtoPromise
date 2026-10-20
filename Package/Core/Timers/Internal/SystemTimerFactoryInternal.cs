@@ -263,8 +263,32 @@ namespace Proto.Timers
                 [MethodImpl(InlineOption)]
                 private void InvokeDirect()
                 {
-                    _callback.Invoke(_state);
+                    if (!Diagnostics.CausalityTrace.IsEnabled)
+                    {
+                        // Common case: no causality trace.
+                        _callback.Invoke(_state);
+                    }
+                    else
+                    {
+                        InvokeInScope();
+                    }
                     Release();
+                }
+
+                // NoInlining to keep the common case small.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private void InvokeInScope()
+                {
+                    // A timer that wasn't traced doesn't enter a scope, the same as the common case.
+                    var scope = Diagnostics.CausalityTrace.EnterScopeInternal(GetTrace(this));
+                    try
+                    {
+                        _callback.Invoke(_state);
+                    }
+                    finally
+                    {
+                        scope.Dispose();
+                    }
                 }
 
                 [MethodImpl(InlineOption)]

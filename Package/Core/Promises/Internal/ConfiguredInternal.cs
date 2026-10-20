@@ -248,6 +248,34 @@ namespace Proto.Promises
                 private void HandleFromContext()
                 {
                     ThrowIfInPool(this);
+                    // The traced copy is separate, so that the common path doesn't pay for the try/finally of the trace's scope.
+                    if (!CausalityTrace.IsEnabled)
+                    {
+                        var callback = _continuation;
+#if !PROMISE_DEBUG
+                        Dispose();
+#endif
+                        try
+                        {
+                            callback.Invoke();
+                        }
+                        catch (Exception e)
+                        {
+                            // This should never hit if the `await` keyword is used, but a user manually subscribing to OnCompleted could throw.
+                            ReportCaughtException(e, this);
+                        }
+#if PROMISE_DEBUG
+                        Dispose();
+#endif
+                        return;
+                    }
+                    HandleFromContextTraced();
+                }
+
+                // HandleFromContext, but the callback runs in the scope of this object's trace.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private void HandleFromContextTraced()
+                {
                     var callback = _continuation;
                     var trace = GetTrace(this);
 #if !PROMISE_DEBUG
