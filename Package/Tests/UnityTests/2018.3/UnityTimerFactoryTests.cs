@@ -252,15 +252,17 @@ namespace ProtoPromise.Tests.Unity
                 var callbackTrace = new Proto.Diagnostics.CausalityTrace[1];
                 var timer = CreateTimerForTraceTest(provider, callbackTrace);
 
-                yield return new WaitUntil(() => callbackTrace[0] != null);
+                float timeout = Time.realtimeSinceStartup + 5f;
+                yield return new WaitUntil(() => callbackTrace[0] != null || Time.realtimeSinceStartup > timeout);
                 using (var yieldInstruction = timer.DisposeAsync().ToYieldInstruction())
                 {
                     yield return yieldInstruction;
                 }
 
+                Assert.IsNotNull(callbackTrace[0], "The timer callback was not invoked.");
                 Assert.IsNotNull(callbackTrace[0].Previous, callbackTrace[0].ToString());
                 StringAssert.Contains(nameof(CreateTimerForTraceTest), callbackTrace[0].Previous.StackTrace.ToString());
-                Assert.IsNull(callbackTrace[0].ScheduledFrom, callbackTrace[0].ToString());
+                CollectionAssert.IsEmpty(callbackTrace[0].OuterTraces, callbackTrace[0].ToString());
             }
             finally
             {

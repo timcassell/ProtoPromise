@@ -33,8 +33,8 @@ namespace Proto.Promises
         }
 
         // The callback is invoked in the scope of a trace of where it was scheduled, because what scheduled it (e.g. the code that completed an awaited promise)
-        // is not on the stack when the callback runs on the context. If the callback enters its own scope, its own trace is the previous trace
-        // of traces captured inside it, and the trace of where it was scheduled is their ScheduledFrom trace.
+        // is not on the stack when the callback runs on the context. If the callback enters its own scope, its own trace is the first of the previous traces
+        // of traces captured inside it, and the trace of where it was scheduled is one of their outer traces (see CausalityTrace.OuterTraces).
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static void ScheduleContextCallbackInScope(SynchronizationContext context, object state, SendOrPostCallback contextCallback, WaitCallback threadpoolCallback)
             => ScheduleContextCallbackDirect(context,
@@ -134,9 +134,6 @@ namespace Proto.Promises
             private static void InvokeContextCallback(object obj)
             {
                 var callback = obj.UnsafeAs<ScopedContextCallback>();
-                // The context may invoke it synchronously inside another scheduled callback, so we restore the outer one afterwards.
-                var scheduledFrom = CausalityTrace.ts_scheduledFrom;
-                CausalityTrace.ts_scheduledFrom = callback._trace;
                 var scope = CausalityTrace.EnterScopeInternal(callback._trace);
                 try
                 {
@@ -144,8 +141,6 @@ namespace Proto.Promises
                 }
                 finally
                 {
-                    // Restored before the scope is disposed, which throws if user code exited it.
-                    CausalityTrace.ts_scheduledFrom = scheduledFrom;
                     scope.Dispose();
                 }
             }
@@ -153,8 +148,6 @@ namespace Proto.Promises
             private static void InvokeThreadpoolCallback(object obj)
             {
                 var callback = obj.UnsafeAs<ScopedContextCallback>();
-                var scheduledFrom = CausalityTrace.ts_scheduledFrom;
-                CausalityTrace.ts_scheduledFrom = callback._trace;
                 var scope = CausalityTrace.EnterScopeInternal(callback._trace);
                 try
                 {
@@ -162,8 +155,6 @@ namespace Proto.Promises
                 }
                 finally
                 {
-                    // Restored before the scope is disposed, which throws if user code exited it.
-                    CausalityTrace.ts_scheduledFrom = scheduledFrom;
                     scope.Dispose();
                 }
             }

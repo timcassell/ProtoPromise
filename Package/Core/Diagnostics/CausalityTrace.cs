@@ -22,7 +22,7 @@ namespace Proto.Diagnostics
 {
     /// <summary>
     /// Represents a causality trace: the <see cref="System.Diagnostics.StackTrace"/> of where an operation was started,
-    /// and the causality trace of the operation that was running at that time (see <see cref="Previous"/>).
+    /// and the causality traces of the operations that were running at that time (see <see cref="Previous"/> and <see cref="OuterTraces"/>).
     /// </summary>
     /// <remarks>
     /// Previous traces may be shared by multiple causality traces.
@@ -35,10 +35,6 @@ namespace Proto.Diagnostics
     {
         [ThreadStatic]
         internal static Stack<CausalityTrace> ts_traces;
-        // The trace of where the callback that is running on this thread was scheduled to run on a context or the thread pool (see Internal.ScheduleContextCallback),
-        // because what scheduled it is not on the stack.
-        [ThreadStatic]
-        internal static CausalityTrace ts_scheduledFrom;
 
         // The fields have no initializers, so that the class has no static constructor. Otherwise, IL2CPP checks that the class is initialized
         // where the fields are accessed, which includes every read of IsEnabled on hot paths.
@@ -46,6 +42,10 @@ namespace Proto.Diagnostics
         // Stored as an offset from the default, so that the default doesn't need an initializer.
         private static int s_maxDepthOffset;
         private const int DefaultMaxDepth = 128;
+        private static int s_maxOuterTracesOffset;
+        private const int DefaultMaxOuterTraces = 8;
+        // Must not be readonly.
+        private static Promises.Internal.SpinLocker s_isEnabledLock;
 
         /// <summary>
         /// Should causality traces be captured when async objects are created and continued.
@@ -70,37 +70,46 @@ namespace Proto.Diagnostics
             get => s_isEnabled;
             set
             {
-                if (value == s_isEnabled)
+                // Locked so that concurrent sets can't leave this enabled without a trace table, or replace a table that was already in use.
+                s_isEnabledLock.Enter();
+                try
                 {
-                    return;
-                }
-                if (value)
-                {
-                    // The table is created before this is enabled, so that operations that see this enabled can store their traces.
-                    Promises.Internal.CreateTraceTable();
-                    s_isEnabled = true;
+                    if (value == s_isEnabled)
+                    {
+                        return;
+                    }
+                    if (value)
+                    {
+                        // The table is created before this is enabled, so that operations that see this enabled can store their traces.
+                        Promises.Internal.CreateTraceTable();
+                        s_isEnabled = true;
+                        Promises.Internal.UpdateIsObjectPoolingEnabled();
+                        return;
+                    }
+                    s_isEnabled = false;
                     Promises.Internal.UpdateIsObjectPoolingEnabled();
-                    return;
+                    // Objects that were traced may be pooled again, and exceptions may be rejected again, so we release their traces.
+                    Promises.Internal.ReleaseTraceTable();
+                    // The cached methods of the frames are released too, so that they don't keep their assemblies from being unloaded
+                    // (unless frames are printed again while traces are disabled, e.g. by a DEBUG validation exception).
+                    VisibilityCache.s_isVisible.Clear();
                 }
-                s_isEnabled = false;
-                Promises.Internal.UpdateIsObjectPoolingEnabled();
-                // Objects that were traced may be pooled again, and exceptions may be rejected again, so we release their traces.
-                Promises.Internal.ReleaseTraceTable();
-                // The cached methods of the frames are released too, so that they don't keep their assemblies from being unloaded
-                // (unless frames are printed again while traces are disabled, e.g. by a DEBUG validation exception).
-                VisibilityCache.s_isVisible.Clear();
+                finally
+                {
+                    s_isEnabledLock.Exit();
+                }
             }
         }
 
         /// <summary>
-        /// The maximum number of traces in the chain of a causality trace and its <see cref="Previous"/> traces, including itself. The default is 128.
+        /// The maximum number of traces in the chain of a causality trace and its causes (each one's <see cref="Previous"/> trace), including itself. The default is 128.
         /// When a newly captured trace would exceed this depth, its oldest traces are dropped, keeping the most recent half of this depth.
         /// </summary>
         /// <exception cref="System.ArgumentOutOfRangeException">The value is less than 1.</exception>
         /// <remarks>
         /// This prevents causality traces from growing without bound when callbacks are recursively scheduled
         /// (e.g. a callback that registers another callback that registers another callback...).
-        /// A trace that is captured at the same location as its previous trace on the same thread (e.g. a callback that registers itself again)
+        /// A trace that is captured at the same location as its previous trace, on the same thread or on any thread pool thread (e.g. a callback that registers itself again),
         /// replaces the previous trace instead of growing the chain (see <see cref="Repeats"/>).
         /// </remarks>
         public static int MaxDepth
@@ -117,14 +126,41 @@ namespace Proto.Diagnostics
             }
         }
 
+        /// <summary>
+        /// The maximum number of <see cref="OuterTraces"/> that a causality trace keeps. The default is 8.
+        /// When more outer traces would be kept, the outermost ones are dropped.
+        /// </summary>
+        /// <exception cref="System.ArgumentOutOfRangeException">The value is less than 0.</exception>
+        /// <remarks>
+        /// This prevents causality traces from growing without bound when operations are nested deeply
+        /// (e.g. a deep chain of async functions that complete synchronously, each of which continues the async function that awaited it while it's still running).
+        /// </remarks>
+        public static int MaxOuterTraces
+        {
+            [MethodImpl(Promises.Internal.InlineOption)]
+            get => s_maxOuterTracesOffset + DefaultMaxOuterTraces;
+            set
+            {
+                if (value < 0)
+                {
+                    throw new Promises.ArgumentOutOfRangeException(nameof(value), $"{nameof(MaxOuterTraces)} must not be negative.", Promises.Internal.GetFormattedStacktrace());
+                }
+                s_maxOuterTracesOffset = value - DefaultMaxOuterTraces;
+            }
+        }
+
         private readonly StackTrace _stackTrace;
+        // The cause (see Previous).
         private readonly CausalityTrace _previous;
-        private readonly CausalityTrace _scheduledFrom;
+        // Copies without their histories (see OuterTraces and GetWithoutHistory).
+        private readonly CausalityTrace[] _outerTraces;
         private readonly RepeatGroup[] _repeats;
         // The number of traces in the chain of this trace and its previous traces, including itself.
         private readonly int _depth;
         // Whether older traces were dropped from the chain to stay within MaxDepth.
         private readonly bool _isTruncated;
+        // Whether outer traces were dropped to stay within MaxOuterTraces.
+        private readonly bool _areOuterTracesTruncated;
         private readonly int _threadId;
         // Read when the trace is captured, because the thread's name may change later.
         private readonly string _threadName;
@@ -133,14 +169,17 @@ namespace Proto.Diagnostics
         private readonly long _timestamp;
         // The most recent truncated copy of this trace, so that captures in the same scope share it instead of copying it again.
         private TruncatedCopy _truncatedCopy;
-        // A copy of this trace without its history, for the traces that were scheduled from it (see ScheduledFrom). Lazily created.
+        // A copy of this trace without its history, for the traces whose outer traces include it (see OuterTraces). Lazily created.
         private CausalityTrace _withoutHistory;
+        // Lazily created.
+        private ReadOnlyCollection<CausalityTrace> _readOnlyOuterTraces;
         // Lazily created.
         private ReadOnlyCollection<RepeatGroup> _readOnlyRepeats;
         private string _string;
 
-        // Internal so that tests can check that the truncation is printed.
+        // Internal so that tests can check that the truncations are printed.
         internal bool IsTruncated => _isTruncated;
+        internal bool AreOuterTracesTruncated => _areOuterTracesTruncated;
 
         /// <summary>
         /// The raw <see cref="System.Diagnostics.StackTrace"/> of where this <see cref="CausalityTrace"/> was captured.
@@ -180,50 +219,67 @@ namespace Proto.Diagnostics
 
         /// <summary>
         /// The <see cref="CausalityTrace"/> of the operation that was running when this trace was captured, which is the async cause of this trace
-        /// (e.g. where the callback that was running was registered), or <see langword="null"/> if no operation was running,
-        /// or if it was dropped to stay within <see cref="MaxDepth"/>.
+        /// (e.g. where the callback that was running was registered), with its own <see cref="Previous"/> trace,
+        /// or <see langword="null"/> if no operation was running, or if it was dropped to stay within <see cref="MaxDepth"/>.
         /// </summary>
         /// <remarks>
-        /// An operation is anything that entered a <see cref="Scope"/>, such as a callback being invoked or a deferred being completed.
-        /// If operations were nested, this is the innermost operation.
+        /// An operation is anything that entered a <see cref="Scope"/>, such as a callback being invoked, a deferred being completed,
+        /// or a callback that was scheduled to run on a <see cref="SynchronizationContext"/> or the thread pool (whose trace is where it was scheduled).
+        /// If operations were nested, this is the innermost operation, and the others are in <see cref="OuterTraces"/>.
         /// <para/>
-        /// An operation whose trace was captured on the same thread by a call that was still running (e.g. <c>Promise.New</c>, which invokes its callback),
-        /// or by the call that scheduled the running callback, is skipped, because its frames are already in <see cref="StackTrace"/> or in <see cref="ScheduledFrom"/>,
-        /// unless it has <see cref="Repeats"/> or was scheduled from elsewhere. This compares what is printed (the methods and lines of the frames),
+        /// An operation whose trace was captured on the same thread by a call that was still running (e.g. <c>Promise.New</c>, which invokes its callback) is skipped,
+        /// because its frames are already in <see cref="StackTrace"/> (or in one of the <see cref="OuterTraces"/>), unless it has <see cref="Repeats"/>.
+        /// Its cause is this trace's cause instead, and its outer traces are kept. This compares what is printed (the methods and lines of the frames),
         /// so a trace that was captured by an earlier call on the same line (or in the same method, if line numbers are not available) may also be skipped.
         /// An operation whose trace was captured at the same location as this trace is folded into this trace (see <see cref="Repeats"/>).
+        /// So this may be <see langword="null"/> while <see cref="OuterTraces"/> is not empty.
         /// <para/>
         /// Which traces are skipped, folded or dropped is decided on a best-effort basis, and depends on the frames that the runtime provides,
-        /// so this (like <see cref="ScheduledFrom"/> and <see cref="Repeats"/>) is meant for diagnostics, not for program logic.
+        /// so this (like <see cref="OuterTraces"/> and <see cref="Repeats"/>) is meant for diagnostics, not for program logic.
         /// </remarks>
         public CausalityTrace Previous => _previous;
 
         /// <summary>
-        /// The <see cref="CausalityTrace"/> of where the callback that was running when this trace was captured was scheduled to run on a <see cref="SynchronizationContext"/>
-        /// or the thread pool (e.g. the code that completed a promise that an async function awaited with <c>ConfigureAwait</c>),
-        /// or <see langword="null"/> if the callback was not scheduled, or if it would add nothing: it's the <see cref="Previous"/> trace
-        /// or the <see cref="Previous"/> trace's <see cref="ScheduledFrom"/> (the callback captured both traces), it was captured at the same location
-        /// as the <see cref="Previous"/> trace or this trace, or its frames are already in <see cref="StackTrace"/> (the callback was invoked synchronously).
+        /// The <see cref="CausalityTrace"/>s of the other operations that were running when this trace was captured, outside of the <see cref="Previous"/> trace's operation,
+        /// from the innermost (e.g. where the code that invoked the callback that was running was scheduled from, which is not in <see cref="StackTrace"/> if the callback was scheduled).
         /// </summary>
         /// <remarks>
-        /// Instead of <see langword="null"/>, it may be where the callback of a trace that was skipped or folded into this trace was scheduled from
-        /// (see <see cref="Previous"/> and <see cref="Repeats"/>), which would be lost otherwise.
+        /// They are copies of the operations' traces without their own <see cref="Previous"/> traces, <see cref="OuterTraces"/> or <see cref="Repeats"/>,
+        /// so that a chain of causes is only printed once.
         /// <para/>
-        /// If IL offsets are not available (e.g. IL2CPP), where the callback was scheduled from by an earlier call on the same line of a method that is still running
-        /// (or in the same method, if line numbers are not available either) may also be dropped, because it's printed like the outer frames of <see cref="StackTrace"/>.
-        /// <para/>
-        /// What invokes a callback synchronously is already in <see cref="StackTrace"/>, but a scheduled callback's stack starts at the context or the thread pool.
-        /// This trace only has its own stack trace and where it was captured: its <see cref="Previous"/> and <see cref="ScheduledFrom"/> are <see langword="null"/>,
-        /// and it has no <see cref="Repeats"/>.
+        /// An outer trace is skipped if it adds nothing: its frames are already in <see cref="StackTrace"/> (e.g. a callback that a context invoked synchronously),
+        /// it's already in the chain of <see cref="Previous"/> traces or their outer traces, or it was captured at the same location as this trace, the <see cref="Previous"/> trace,
+        /// or another outer trace. If IL offsets are not available (e.g. IL2CPP), an outer trace that was captured by an earlier call on the same line of a method that is still running
+        /// (or in the same method, if line numbers are not available either) may also be skipped, because it's printed like the outer frames of <see cref="StackTrace"/>.
+        /// The outer traces of an operation that was skipped or folded into this trace (see <see cref="Previous"/>) are kept after this trace's own.
+        /// At most <see cref="MaxOuterTraces"/> are kept.
         /// <para/>
         /// Like <see cref="Previous"/>, this is decided on a best-effort basis, and is meant for diagnostics, not for program logic.
         /// </remarks>
-        public CausalityTrace ScheduledFrom => _scheduledFrom;
+        public IReadOnlyList<CausalityTrace> OuterTraces
+        {
+            get
+            {
+                if (_outerTraces.Length == 0)
+                {
+                    // Most traces have no outer traces. The empty array is shared, and it can't be modified.
+                    return _outerTraces;
+                }
+                // This may be set from multiple threads, but every collection is equivalent.
+                var outerTraces = Volatile.Read(ref _readOnlyOuterTraces);
+                if (outerTraces == null)
+                {
+                    outerTraces = new ReadOnlyCollection<CausalityTrace>(_outerTraces);
+                    Volatile.Write(ref _readOnlyOuterTraces, outerTraces);
+                }
+                return outerTraces;
+            }
+        }
 
         /// <summary>
         /// Earlier traces that were captured at the same location as this trace (with the same frames, see <see cref="GetFrames"/>),
         /// on the same thread or on any thread pool thread, each the cause of the next one (e.g. a callback that registers itself again).
-        /// They were folded into this trace instead of growing the chain of <see cref="Previous"/> traces, so this trace's <see cref="Previous"/> is the oldest one's previous trace (unless it was dropped to stay within <see cref="MaxDepth"/>).
+        /// They were folded into this trace instead of growing the chain of causes (see <see cref="Previous"/>), so this trace's cause is the oldest one's cause (unless it was dropped to stay within <see cref="MaxDepth"/>).
         /// They are grouped by thread, with all thread pool threads in one group, ordered from the most recent.
         /// </summary>
         /// <remarks>
@@ -389,53 +445,36 @@ namespace Proto.Diagnostics
             _repeats = Array.Empty<RepeatGroup>();
 
             var traces = ts_traces;
-            var previous = traces == null || traces.Count == 0 ? null : traces.Peek();
-            var scheduledFrom = ts_scheduledFrom;
-            // The trace that the running callback was scheduled from is only kept if it adds anything: it's not the previous trace
-            // (e.g. a callback without its own trace), it was not captured at the same location as the previous trace or this trace
-            // (e.g. an operation whose trace was captured where it was scheduled), and its frames are not already in this trace
-            // (e.g. a context that ran the callback synchronously, which is still in the same call, so its innermost frame is compared exactly).
-            if (scheduledFrom != null
-                && (scheduledFrom == previous || (previous != null && scheduledFrom.IsRepeatOf(previous)) || scheduledFrom.IsRepeatOf(this) || scheduledFrom.IsOuterPartOf(this, true)))
+            CausalityTrace previous = null;
+            // Most traces are captured in at most one scope, so they have no outer traces, which doesn't allocate.
+            var outerTraces = Array.Empty<CausalityTrace>();
+            int maxOuterTraces = MaxOuterTraces;
+            bool areOuterTracesTruncated = false;
+            if (traces != null && traces.Count > 0)
             {
-                scheduledFrom = null;
-            }
-            _scheduledFrom = scheduledFrom?.GetWithoutHistory();
-
-            bool isFolded = false;
-            // The previous trace may have been captured by a call that is still running (e.g. Promise.New, which invokes its callback),
-            // in which case its frames are already in this trace, so it's skipped.
-            if (previous != null && previous.IsContainedBy(this))
-            {
-                if (_scheduledFrom == null)
+                previous = traces.Peek();
+                if (traces.Count > 1)
                 {
-                    _scheduledFrom = previous._scheduledFrom;
+                    outerTraces = GetOuterTraces(traces, previous, maxOuterTraces, ref areOuterTracesTruncated);
                 }
+            }
+
+            // The previous trace may have been captured by a call that is still running (e.g. Promise.New, which invokes its callback),
+            // in which case its frames are already in this trace, so it's skipped. Its outer traces are kept, so that they're not lost.
+            if (previous != null && previous.IsContainedBy(this, outerTraces))
+            {
+                outerTraces = AddOuterTraces(outerTraces, previous, maxOuterTraces, ref areOuterTracesTruncated);
                 _isTruncated = previous._isTruncated;
                 previous = previous._previous;
-                isFolded = true;
             }
             // The previous trace may have been captured at the same location (e.g. a callback that registers itself again,
             // or a loop through Promise.New whose trace was skipped), in which case it's folded into this trace, so that the chain doesn't grow.
             if (previous != null && previous.IsRepeatOf(this))
             {
                 _repeats = RepeatGroup.Add(previous._repeats, previous);
-                if (_scheduledFrom == null)
-                {
-                    _scheduledFrom = previous._scheduledFrom;
-                }
+                outerTraces = AddOuterTraces(outerTraces, previous, maxOuterTraces, ref areOuterTracesTruncated);
                 _isTruncated = previous._isTruncated;
                 previous = previous._previous;
-                isFolded = true;
-            }
-            // After a fold, the trace that the running callback was scheduled from may be the new previous trace
-            // (e.g. a callback without its own trace that called Promise.New), or it may have been carried over from the folded trace
-            // and captured at the same location as this trace (e.g. a callback that schedules itself again through Promise.New), which would be printed twice.
-            if (isFolded && _scheduledFrom != null
-                && ((previous != null && (_scheduledFrom._stackTrace == previous._stackTrace || _scheduledFrom.IsRepeatOf(previous)))
-                    || _scheduledFrom.IsRepeatOf(this)))
-            {
-                _scheduledFrom = null;
             }
             _previous = previous;
             _depth = previous == null ? 1 : previous._depth + 1;
@@ -457,17 +496,169 @@ namespace Proto.Diagnostics
                 }
                 _depth = keepDepth;
             }
-            // The previous trace may have been captured in the same callback (e.g. a promise created after an await that continued on a context,
-            // and a trace captured in the promise's callback), in which case where the callback was scheduled from is already printed with it.
-            // This is checked after the chain is truncated, so that it's not lost with the previous trace.
-            if (_scheduledFrom != null && _previous != null && _previous._scheduledFrom != null && _previous._scheduledFrom._stackTrace == _scheduledFrom._stackTrace)
+            // This is checked after the chain is truncated, so that an outer trace is not lost with the traces that were dropped.
+            _outerTraces = RemovePrintedOuterTraces(outerTraces, _previous);
+            _areOuterTracesTruncated = areOuterTracesTruncated;
+        }
+
+        // Gets the outer traces that add anything (see ShouldAddOuterTrace), from the scopes outside of the innermost scope (which is the previous trace).
+        // They're copies without their histories, so that a trace only keeps the chain of its causes, which is limited by MaxDepth.
+        // Without the copies, each trace would keep the outer traces' histories, which may keep each other without bound
+        // (e.g. a loop that awaits an operation that was started while the previous one was completing).
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private CausalityTrace[] GetOuterTraces(Stack<CausalityTrace> traces, CausalityTrace previous, int maxOuterTraces, ref bool areOuterTracesTruncated)
+        {
+            var outerTraces = new CausalityTrace[Math.Min(traces.Count - 1, maxOuterTraces)];
+            int count = 0;
+            bool isInnermost = true;
+            // The stack enumerates from the top, which is the innermost scope.
+            foreach (var trace in traces)
             {
-                _scheduledFrom = null;
+                if (isInnermost)
+                {
+                    isInnermost = false;
+                    continue;
+                }
+                // The previous trace may be skipped (see IsContainedBy), but an outer trace that repeats it is still already printed in this trace.
+                if (trace != previous && !trace.IsRepeatOf(previous) && ShouldAddOuterTrace(trace, outerTraces, count))
+                {
+                    if (count == outerTraces.Length)
+                    {
+                        // The rest of the scopes are not compared, so that a deep stack of scopes stays fast.
+                        areOuterTracesTruncated = true;
+                        break;
+                    }
+                    outerTraces[count++] = trace.GetWithoutHistory();
+                }
             }
+            if (count < outerTraces.Length)
+            {
+                if (count == 0)
+                {
+                    return Array.Empty<CausalityTrace>();
+                }
+                Array.Resize(ref outerTraces, count);
+            }
+            return outerTraces;
+        }
+
+        // Adds the outer traces of a previous trace that was skipped or folded into this trace, after this trace's own outer traces.
+        private CausalityTrace[] AddOuterTraces(CausalityTrace[] outerTraces, CausalityTrace previous, int maxOuterTraces, ref bool areOuterTracesTruncated)
+        {
+            areOuterTracesTruncated |= previous._areOuterTracesTruncated;
+            var otherOuterTraces = previous._outerTraces;
+            if (otherOuterTraces.Length == 0)
+            {
+                return outerTraces;
+            }
+            var result = new CausalityTrace[Math.Min(outerTraces.Length + otherOuterTraces.Length, Math.Max(outerTraces.Length, maxOuterTraces))];
+            outerTraces.CopyTo(result, 0);
+            int count = outerTraces.Length;
+            foreach (var trace in otherOuterTraces)
+            {
+                if (ShouldAddOuterTrace(trace, result, count))
+                {
+                    if (count == result.Length)
+                    {
+                        areOuterTracesTruncated = true;
+                        break;
+                    }
+                    result[count++] = trace;
+                }
+            }
+            if (count == outerTraces.Length)
+            {
+                return outerTraces;
+            }
+            if (count < result.Length)
+            {
+                Array.Resize(ref result, count);
+            }
+            return result;
+        }
+
+        // An outer trace is only added if it adds anything: its frames are not already in this trace (e.g. Promise.New, which invokes its callback,
+        // or a context that ran a scheduled callback synchronously, which are still in the same call, so their innermost frames are compared exactly),
+        // and it was not captured at the same location as this trace or another outer trace (e.g. a callback that schedules itself again).
+        private bool ShouldAddOuterTrace(CausalityTrace trace, CausalityTrace[] outerTraces, int count)
+        {
+            if (trace.IsRepeatOf(this) || trace.IsOuterPartOf(this, true))
+            {
+                return false;
+            }
+            for (int i = 0; i < count; i++)
+            {
+                // Compared by stack trace first, because the traces may be different copies of the same trace (see GetWithoutHistory).
+                if (outerTraces[i]._stackTrace == trace._stackTrace || trace.IsRepeatOf(outerTraces[i]))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Removes the outer traces that are already printed: the previous trace, or a trace in the chain of previous traces or their outer traces
+        // (e.g. a callback that registered a callback, which captured both traces). Only the previous trace is compared by frames,
+        // so that the chain (which may be MaxDepth long) is only compared by stack trace.
+        private static CausalityTrace[] RemovePrintedOuterTraces(CausalityTrace[] outerTraces, CausalityTrace previous)
+        {
+            if (outerTraces.Length == 0 || previous == null)
+            {
+                return outerTraces;
+            }
+            CausalityTrace[] result = null;
+            int count = 0;
+            for (int i = 0; i < outerTraces.Length; i++)
+            {
+                var trace = outerTraces[i];
+                bool isPrinted = trace.IsRepeatOf(previous) || IsInChain(trace, previous);
+                if (isPrinted && result == null)
+                {
+                    result = new CausalityTrace[outerTraces.Length - 1];
+                    Array.Copy(outerTraces, result, i);
+                    count = i;
+                }
+                else if (!isPrinted && result != null)
+                {
+                    result[count++] = trace;
+                }
+            }
+            if (result == null)
+            {
+                return outerTraces;
+            }
+            if (count == 0)
+            {
+                return Array.Empty<CausalityTrace>();
+            }
+            if (count < result.Length)
+            {
+                Array.Resize(ref result, count);
+            }
+            return result;
+        }
+
+        private static bool IsInChain(CausalityTrace trace, CausalityTrace chain)
+        {
+            for (var current = chain; current != null; current = current._previous)
+            {
+                if (current._stackTrace == trace._stackTrace)
+                {
+                    return true;
+                }
+                foreach (var outerTrace in current._outerTraces)
+                {
+                    if (outerTrace._stackTrace == trace._stackTrace)
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
 
         // A copy of a trace with another previous trace, which shares its stack trace, where it was captured, its signature (if it was already created),
-        // the trace it was scheduled from, and its repeats. Internal so that tests can build traces with the same stack trace.
+        // its outer traces, and its repeats. Internal so that tests can build traces with the same stack trace.
         internal CausalityTrace(CausalityTrace trace, CausalityTrace previous, bool isTruncated)
         {
             _stackTrace = trace._stackTrace;
@@ -477,14 +668,15 @@ namespace Proto.Diagnostics
             _isBackgroundThread = trace._isBackgroundThread;
             _timestamp = trace._timestamp;
             _signature = Volatile.Read(ref trace._signature);
-            _scheduledFrom = trace._scheduledFrom;
+            _outerTraces = trace._outerTraces;
+            _areOuterTracesTruncated = trace._areOuterTracesTruncated;
             _repeats = trace._repeats;
             _previous = previous;
             _depth = previous == null ? 1 : previous._depth + 1;
             _isTruncated = isTruncated;
         }
 
-        // A copy without its previous trace, the trace it was scheduled from, or its repeats.
+        // A copy without its previous traces or its repeats.
         private CausalityTrace(CausalityTrace trace)
         {
             _stackTrace = trace._stackTrace;
@@ -494,13 +686,14 @@ namespace Proto.Diagnostics
             _isBackgroundThread = trace._isBackgroundThread;
             _timestamp = trace._timestamp;
             _signature = Volatile.Read(ref trace._signature);
+            _outerTraces = Array.Empty<CausalityTrace>();
             _repeats = Array.Empty<RepeatGroup>();
             _depth = 1;
         }
 
         private CausalityTrace GetWithoutHistory()
         {
-            if (_previous == null && _scheduledFrom == null && _repeats.Length == 0 && !_isTruncated)
+            if (_previous == null && _outerTraces.Length == 0 && _repeats.Length == 0 && !_isTruncated && !_areOuterTracesTruncated)
             {
                 return this;
             }
@@ -521,9 +714,10 @@ namespace Proto.Diagnostics
             && HasSameVisibleFrames(_stackTrace, other._stackTrace);
 
         // Whether this trace's frames are already in the next trace that is captured on the same thread, so it adds nothing to it: its visible frames are
-        // the outermost visible frames of that trace, or of the trace that trace was scheduled from (e.g. the trace of Promise.New, which invokes its callback,
-        // and the trace of an operation started in the callback). It's kept if it has repeats or was scheduled from elsewhere, which would be lost.
-        private bool IsContainedBy(CausalityTrace next)
+        // the outermost visible frames of that trace, or of one of its outer traces (e.g. the trace of Promise.New, which invokes its callback,
+        // and the trace of an operation started in the callback, or an async function's trace, and where it scheduled its continuation before it returned).
+        // It's kept if it has repeats, which would be lost. Its outer traces are added to the next trace's (see AddOuterTraces).
+        private bool IsContainedBy(CausalityTrace next, CausalityTrace[] nextOuterTraces)
         {
             if (_repeats.Length != 0)
             {
@@ -531,10 +725,16 @@ namespace Proto.Diagnostics
             }
             if (IsOuterPartOf(next, false))
             {
-                // Compared by stack trace, because the traces may be different copies of the same trace (e.g. copies made on different threads, see GetWithoutHistory).
-                return _scheduledFrom == null || next._scheduledFrom == null || _scheduledFrom._stackTrace == next._scheduledFrom._stackTrace;
+                return true;
             }
-            return _scheduledFrom == null && next._scheduledFrom != null && IsOuterPartOf(next._scheduledFrom, false);
+            foreach (var outerTrace in nextOuterTraces)
+            {
+                if (IsOuterPartOf(outerTrace, false))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         // A call that is still running is only on the stack of the thread that is running it, so the thread must be the same.
@@ -782,15 +982,17 @@ namespace Proto.Diagnostics
         /// Returns a readable representation of the <see cref="CausalityTrace"/>.
         /// </summary>
         /// <remarks>
-        /// The stack trace and its chain of <see cref="Previous"/> traces are printed in order, like an async stack trace.
+        /// The stack trace and its chain of causes (each one's <see cref="Previous"/> trace) are printed in order, like an async stack trace.
         /// Each stack trace is preceded by the thread that captured it, and how long before this trace it was captured
-        /// (e.g. <c>[Thread 5 (thread pool), 12.345 ms earlier]</c>). Threads without a name are printed as <c>(thread pool)</c>, <c>(background)</c> or <c>(foreground)</c>.
-        /// A stack trace whose frames are all hidden from stack traces is printed as <c>[All frames are hidden]</c>.
+        /// (e.g. <c>--- Thread 5 (thread pool), 12.345 ms earlier ---</c>). Threads without a name are printed as <c>(thread pool)</c>, <c>(background)</c> or <c>(foreground)</c>.
+        /// A stack trace whose frames are all hidden from stack traces is printed as <c>--- All frames are hidden ---</c>.
         /// <para/>
-        /// A trace's <see cref="Repeats"/> are printed after its stack trace with their threads and times, and its <see cref="ScheduledFrom"/> trace is printed after that.
+        /// A trace's <see cref="Repeats"/> are printed after its stack trace with their threads and times, and its <see cref="OuterTraces"/> are printed after that,
+        /// each indented one more level than the one before it (followed by <c>--- Outer traces truncated, increase CausalityTrace.MaxOuterTraces to see more ---</c>
+        /// if some were dropped to stay within <see cref="MaxOuterTraces"/>).
         /// Parts of the chain that repeat (e.g. a callback that registers itself again from another thread, or callbacks that register each other) are only printed once:
-        /// a single repeated trace is printed with the others as its repeats, and a longer repeated part is printed between <c>[#n Begin]</c> and <c>[#n End]</c> markers,
-        /// followed by <c>[#n repeated N times]</c> with the threads and times of the repeats.
+        /// a single repeated trace is printed with the others as its repeats, and a longer repeated part is printed between <c>--- #n Begin ---</c> and <c>--- #n End ---</c> markers,
+        /// followed by <c>--- #n repeated N times ---</c> with the threads and times of the repeats.
         /// </remarks>
         public override string ToString()
         {
@@ -840,16 +1042,19 @@ namespace Proto.Diagnostics
             var sb = new StringBuilder();
             foreach (var frame in GetVisibleFrames(stackTrace))
             {
-                // Create a new StackTrace to get proper formatting.
-                // Some runtimes include a trailing new line and some don't, so we normalize it to match the .Net 6 format (one line per frame, with a trailing new line).
-                sb.Append(new StackTrace(frame).ToString().TrimEnd('\r', '\n')).AppendLine();
+                AppendFrame(sb, frame);
             }
             return sb.ToString();
         }
 
+        private static void AppendFrame(StringBuilder sb, StackFrame frame)
+            // Create a new StackTrace to get proper formatting.
+            // Some runtimes include a trailing new line and some don't, so we normalize it to match the .Net 6 format (one line per frame, with a trailing new line).
+            => sb.Append(new StackTrace(frame).ToString().TrimEnd('\r', '\n')).AppendLine();
+
         /// <summary>
-        /// Enters a scope in which <paramref name="trace"/> is the current causality trace, so that it's the <see cref="Previous"/> trace of traces captured within the scope
-        /// (unless they skip it or fold it, see <see cref="Previous"/>).
+        /// Enters a scope in which <paramref name="trace"/> is the current causality trace, so that it's the <see cref="Previous"/> trace of traces captured within the scope,
+        /// or a copy of it without its history is one of their <see cref="OuterTraces"/> if a nested scope is entered (unless they skip it or fold it, see <see cref="Previous"/> and <see cref="OuterTraces"/>).
         /// </summary>
         /// <param name="trace">
         /// The trace to make current, typically captured with <see cref="Capture()"/> where the callback that will run in this scope was registered.

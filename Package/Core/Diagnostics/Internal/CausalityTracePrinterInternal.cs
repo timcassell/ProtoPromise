@@ -140,7 +140,7 @@ namespace Proto.Diagnostics
                     }
 
                     int label = ++_labelCount;
-                    _sb.Append(MessageIndent).Append("--- [#").Append(label).AppendLine(" Begin] ---");
+                    _sb.Append(MessageIndent).Append("--- #").Append(label).AppendLine(" Begin ---");
                     for (int i = 0; i < length; i++)
                     {
                         if (i > 0)
@@ -149,23 +149,23 @@ namespace Proto.Diagnostics
                         }
                         AppendTrace(_chain[index + i], GetRepeats(index + i, length, repeatCount));
                     }
-                    _sb.Append(MessageIndent).Append("--- [#").Append(label).AppendLine(" End] ---");
+                    _sb.Append(MessageIndent).Append("--- #").Append(label).AppendLine(" End ---");
                     // The threads and times of the repeated parts are the threads and times of their first traces.
                     var repeats = Array.Empty<RepeatGroup>();
                     for (int i = repeatCount; i > 0; i--)
                     {
                         repeats = RepeatGroup.Add(repeats, _chain[index + length * i]);
                     }
-                    _sb.Append(MessageIndent).Append("--- [#").Append(label).Append(" repeated ").Append(repeatCount).Append(repeatCount == 1 ? " time: " : " times: ");
+                    _sb.Append(MessageIndent).Append("--- #").Append(label).Append(" repeated ").Append(repeatCount).Append(repeatCount == 1 ? " time: " : " times: ");
                     AppendRepeats(repeats);
-                    _sb.AppendLine("] ---");
+                    _sb.AppendLine(" ---");
                     index += length * (1 + repeatCount);
                 }
 
                 if (_chain[_chain.Count - 1]._isTruncated)
                 {
                     _sb.AppendLine(PreviousLocationHeader);
-                    _sb.Append(MessageIndent).AppendLine($"--- [Older traces truncated, increase {nameof(CausalityTrace)}.{nameof(MaxDepth)} to see more] ---");
+                    _sb.Append(MessageIndent).AppendLine($"--- Older traces truncated, increase {nameof(CausalityTrace)}.{nameof(MaxDepth)} to see more ---");
                 }
                 return _sb.ToString();
             }
@@ -192,19 +192,24 @@ namespace Proto.Diagnostics
             }
 
             // Whether the part of the chain at the other index is a repeat of the part at the index.
-            // The traces they were scheduled from must also be the same, so that folding the repeats doesn't hide any stack trace.
+            // Their outer traces must also be the same, so that folding the repeats doesn't hide any stack trace.
             private bool IsRepeat(int index, int otherIndex, int length)
             {
                 for (int i = 0; i < length; i++)
                 {
                     var trace = _chain[index + i];
                     var other = _chain[otherIndex + i];
-                    if (!trace.GetSignature().Equals(other.GetSignature())
-                        || (trace._scheduledFrom == null
-                            ? other._scheduledFrom != null
-                            : other._scheduledFrom == null || !trace._scheduledFrom.GetSignature().Equals(other._scheduledFrom.GetSignature())))
+                    if (!trace.GetSignature().Equals(other.GetSignature()) || trace._outerTraces.Length != other._outerTraces.Length
+                        || trace._areOuterTracesTruncated != other._areOuterTracesTruncated)
                     {
                         return false;
+                    }
+                    for (int j = 0; j < trace._outerTraces.Length; j++)
+                    {
+                        if (!trace._outerTraces[j].GetSignature().Equals(other._outerTraces[j].GetSignature()))
+                        {
+                            return false;
+                        }
                     }
                 }
                 return true;
@@ -230,19 +235,11 @@ namespace Proto.Diagnostics
                 return repeats;
             }
 
-            // Prints the trace, with the repeats.
+            // Prints the trace, with the repeats, and its outer traces.
             private void AppendTrace(CausalityTrace trace, RepeatGroup[] repeats)
             {
-                _sb.Append(MessageIndent).Append("--- [");
-                AppendThreadDescription(_sb, trace._threadId, trace._threadName, trace._isThreadPoolThread, trace._isBackgroundThread);
-                if (trace != _trace)
-                {
-                    _sb.Append(", ");
-                    AppendMilliseconds(trace._timestamp);
-                    _sb.Append(" ms earlier");
-                }
-                _sb.AppendLine("] ---");
-                AppendStackTrace(trace);
+                AppendHeader(trace, "");
+                AppendStackTrace(trace, "");
 
                 if (repeats.Length > 0)
                 {
@@ -251,34 +248,53 @@ namespace Proto.Diagnostics
                     {
                         count += repeat.Count;
                     }
-                    _sb.Append(MessageIndent).Append("--- [Repeated ").Append(count).Append(count == 1 ? " time: " : " times: ");
+                    _sb.Append(MessageIndent).Append("--- Repeated ").Append(count).Append(count == 1 ? " time: " : " times: ");
                     AppendRepeats(repeats);
-                    _sb.AppendLine("] ---");
+                    _sb.AppendLine(" ---");
                 }
 
-                var scheduledFrom = trace._scheduledFrom;
-                if (scheduledFrom != null)
+                // Each outer trace is the trace of a scope outside of the one before it, so it's indented one more level.
+                string indent = "";
+                foreach (var outerTrace in trace._outerTraces)
                 {
-                    _sb.Append(MessageIndent).Append("--- [Scheduled from ");
-                    AppendThreadDescription(_sb, scheduledFrom._threadId, scheduledFrom._threadName, scheduledFrom._isThreadPoolThread, scheduledFrom._isBackgroundThread);
-                    _sb.Append(", ");
-                    AppendMilliseconds(scheduledFrom._timestamp);
-                    _sb.AppendLine(" ms earlier] ---");
-                    AppendStackTrace(scheduledFrom);
+                    indent += MessageIndent;
+                    AppendHeader(outerTrace, indent);
+                    AppendStackTrace(outerTrace, indent);
+                }
+                if (trace._areOuterTracesTruncated)
+                {
+                    indent += MessageIndent;
+                    _sb.Append(indent).Append(MessageIndent).AppendLine($"--- Outer traces truncated, increase {nameof(CausalityTrace)}.{nameof(MaxOuterTraces)} to see more ---");
                 }
             }
 
-            private void AppendStackTrace(CausalityTrace trace)
+            // E.g. --- Thread 5 (thread pool), 12.345 ms earlier ---
+            private void AppendHeader(CausalityTrace trace, string indent)
             {
-                var stackTrace = FormatStackTrace(trace._stackTrace);
-                if (stackTrace.Length == 0)
+                _sb.Append(indent).Append(MessageIndent).Append("--- ");
+                AppendThreadDescription(_sb, trace._threadId, trace._threadName, trace._isThreadPoolThread, trace._isBackgroundThread);
+                if (trace != _trace)
+                {
+                    _sb.Append(", ");
+                    AppendMilliseconds(trace._timestamp);
+                    _sb.Append(" ms earlier");
+                }
+                _sb.AppendLine(" ---");
+            }
+
+            private void AppendStackTrace(CausalityTrace trace, string indent)
+            {
+                var frames = GetVisibleFrames(trace._stackTrace);
+                if (frames.Length == 0)
                 {
                     // Every frame is hidden (e.g. ProtoPromise completed the operation from its own code), so we show that the trace is there.
-                    _sb.Append(MessageIndent).AppendLine("--- [All frames are hidden] ---");
+                    _sb.Append(indent).Append(MessageIndent).AppendLine("--- All frames are hidden ---");
+                    return;
                 }
-                else
+                foreach (var frame in frames)
                 {
-                    _sb.Append(stackTrace);
+                    _sb.Append(indent);
+                    AppendFrame(_sb, frame);
                 }
             }
 

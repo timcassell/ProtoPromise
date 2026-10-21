@@ -1645,7 +1645,7 @@ namespace ProtoPromise.Tests.APIs
                 Assert.AreSame(traceB, traceX.Previous);
                 Assert.AreSame(traceA, traceB.Previous);
                 Assert.IsNull(traceA.Previous);
-                Assert.IsNull(traceX.ScheduledFrom);
+                Assert.IsNull(OuterTrace(traceX));
                 CollectionAssert.IsEmpty(traceX.Repeats);
 
                 var text = traceX.ToString();
@@ -1914,9 +1914,9 @@ namespace ProtoPromise.Tests.APIs
 
                 Assert.IsNotNull(deferredTrace);
                 Assert.IsNotNull(thenTrace);
-                // The deferred's scope is outside the continuation's scope, and what completed the deferred is on the stack.
+                // The deferred's scope is outside the continuation's scope, so its trace is an outer trace, and what completed the deferred is on the stack.
                 AssertPreviousTrace(thenTrace, callbackTrace);
-                Assert.IsNull(callbackTrace.ScheduledFrom);
+                CollectionAssert.AreEqual(OuterTracesFromTheSameMethod(deferredTrace), callbackTrace.OuterTraces, callbackTrace.ToString());
             }
             finally
             {
@@ -2244,6 +2244,8 @@ namespace ProtoPromise.Tests.APIs
                     traceAfterSecondAwait = CausalityTrace.Capture();
                 }
 
+                var deferred1Trace = deferred1.Promise._ref.Trace;
+                var deferred2Trace = deferred2.Promise._ref.Trace;
                 var promise = Func();
                 var asyncTrace = promise._ref.Trace;
                 promise.Forget();
@@ -2256,18 +2258,19 @@ namespace ProtoPromise.Tests.APIs
                 Assert.AreSame(asyncTrace, traceAfterFirstAwait.Previous);
                 Assert.AreSame(asyncTrace, traceAfterSecondAwait.Previous);
                 // Only the continuation that was scheduled on the context has where it was scheduled.
-                // The context runs it from this method (see KeepsScheduledFromInTheSameMethod).
+                // The context runs it from this method (see KeepsOuterTracesFromTheSameMethod).
+                // A continuation that the deferred invoked synchronously runs in the deferred's scope, so its outer trace is the deferred's trace instead.
                 if (!configureFirstAwaitToForeground)
                 {
-                    Assert.IsNull(traceAfterFirstAwait.ScheduledFrom, traceAfterFirstAwait.ToString());
+                    CollectionAssert.AreEqual(OuterTracesFromTheSameMethod(deferred1Trace), traceAfterFirstAwait.OuterTraces, traceAfterFirstAwait.ToString());
                 }
-                else if (KeepsScheduledFromInTheSameMethod)
+                else if (KeepsOuterTracesFromTheSameMethod)
                 {
-                    Assert.IsNotNull(traceAfterFirstAwait.ScheduledFrom, traceAfterFirstAwait.ToString());
+                    Assert.IsNotNull(OuterTrace(traceAfterFirstAwait), traceAfterFirstAwait.ToString());
                 }
                 // Otherwise it's dropped, unless IL2CPP's C++ linker folded Deferred.Resolve with an identical function,
                 // whose name is printed in its place, so its frame is visible and it's not printed like the outer frames of the trace.
-                Assert.IsNull(traceAfterSecondAwait.ScheduledFrom, traceAfterSecondAwait.ToString());
+                CollectionAssert.AreEqual(OuterTracesFromTheSameMethod(deferred2Trace), traceAfterSecondAwait.OuterTraces, traceAfterSecondAwait.ToString());
             }
             finally
             {
@@ -2484,6 +2487,7 @@ namespace ProtoPromise.Tests.APIs
             try
             {
                 var deferred = Promise.NewDeferred();
+                var deferredTrace = deferred.Promise._ref.Trace;
                 var continuationTrace = new CausalityTrace[1];
                 OnCompletedForTraceTest(deferred.Promise, configured, continuationTrace);
 
@@ -2492,15 +2496,16 @@ namespace ProtoPromise.Tests.APIs
 
                 AssertRanInsideTheScopeStartedBy(continuationTrace[0], nameof(OnCompletedForTraceTest));
                 // Only the continuation that was scheduled on the context has where it was scheduled from.
+                // The continuation that the deferred invoked synchronously runs in the deferred's scope, so its outer trace is the deferred's trace instead.
                 var text = continuationTrace[0].ToString();
                 if (configured)
                 {
-                    Assert.IsNotNull(continuationTrace[0].ScheduledFrom, text);
-                    Assert.IsTrue(ContainsMethod(continuationTrace[0].ScheduledFrom, nameof(ResolveForTraceTest)), text);
+                    Assert.IsNotNull(OuterTrace(continuationTrace[0]), text);
+                    Assert.IsTrue(ContainsMethod(OuterTrace(continuationTrace[0]), nameof(ResolveForTraceTest)), text);
                 }
                 else
                 {
-                    Assert.IsNull(continuationTrace[0].ScheduledFrom, text);
+                    CollectionAssert.AreEqual(OuterTracesFromTheSameMethod(deferredTrace), continuationTrace[0].OuterTraces, text);
                 }
             }
             finally
@@ -2543,8 +2548,8 @@ namespace ProtoPromise.Tests.APIs
                 // The waiter continued on the context, so where the lock was released from is not on its stack.
                 Assert.IsNotNull(trace[0]);
                 var text = trace[0].ToString();
-                Assert.IsNotNull(trace[0].ScheduledFrom, text);
-                Assert.IsTrue(ContainsMethod(trace[0].ScheduledFrom, nameof(ReleaseForTraceTest)), text);
+                Assert.IsNotNull(OuterTrace(trace[0]), text);
+                Assert.IsTrue(ContainsMethod(OuterTrace(trace[0]), nameof(ReleaseForTraceTest)), text);
             }
             finally
             {
@@ -2606,16 +2611,21 @@ namespace ProtoPromise.Tests.APIs
                     ? Proto.Timers.TimerFactory.FromTimeProvider(new CustomTimeProviderForTraceTest())
                     : Proto.Timers.TimerFactory.System;
                 var callbackTrace = new CausalityTrace[1];
-                using (var invoked = new System.Threading.ManualResetEventSlim())
+                // Not disposed, because a late callback may set it after the wait timed out.
+                var invoked = new System.Threading.ManualResetEventSlim();
+                var timer = CreateTimerForTraceTest(timerFactory, callbackTrace, invoked);
+                try
                 {
-                    var timer = CreateTimerForTraceTest(timerFactory, callbackTrace, invoked);
                     Assert.IsTrue(invoked.Wait(System.TimeSpan.FromSeconds(5)));
+                }
+                finally
+                {
                     // Waits for the callback to return.
                     timer.DisposeAsync().WaitWithTimeout(System.TimeSpan.FromSeconds(5));
                 }
 
                 AssertRanInsideTheScopeStartedBy(callbackTrace[0], nameof(CreateTimerForTraceTest));
-                Assert.IsNull(callbackTrace[0].ScheduledFrom, callbackTrace[0].ToString());
+                Assert.IsNull(OuterTrace(callbackTrace[0]), callbackTrace[0].ToString());
             }
             finally
             {
@@ -2763,6 +2773,184 @@ namespace ProtoPromise.Tests.APIs
         }
 
         [Test]
+        public void CausalityTraceMaxOuterTraces_MustNotBeNegative()
+        {
+            Assert.Throws<Proto.Promises.ArgumentOutOfRangeException>(() => CausalityTrace.MaxOuterTraces = -1);
+        }
+
+        [Test]
+        public void CausalityTraceCapture_MoreOuterScopesThanMaxOuterTraces_KeepsTheInnermostOnes(
+            [Values(0, 2, 3)] int maxOuterTraces)
+        {
+            CausalityTrace.MaxOuterTraces = maxOuterTraces;
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var other = CaptureAtOther();
+                // From the innermost.
+                var outers = new[] { CaptureAtStep(), CaptureAtLoop(), CaptureAtRoot() };
+                var trace = CaptureInScopesForTraceTest(other, outers);
+
+                var text = trace.ToString();
+                Assert.AreSame(other, trace.Previous, text);
+                CollectionAssert.AreEqual(outers.Take(maxOuterTraces), trace.OuterTraces, text);
+                Assert.AreEqual(maxOuterTraces < outers.Length, trace.AreOuterTracesTruncated, text);
+                if (trace.AreOuterTracesTruncated)
+                {
+                    // Printed after the outer traces, indented one more level.
+                    StringAssert.Contains(System.Environment.NewLine + new string(' ', 3 * (maxOuterTraces + 2))
+                        + "--- Outer traces truncated, increase CausalityTrace.MaxOuterTraces to see more ---" + System.Environment.NewLine, text);
+                }
+                AssertCausalityTraceIsPrintedCorrectly(trace, text);
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+                CausalityTrace.MaxOuterTraces = 8;
+            }
+        }
+
+        [Test]
+        public void CausalityTraceCapture_RepeatOfThePreviousTrace_TheOuterTracesAreTruncatedIfItsOuterTracesDontFitOrWereTruncated(
+            [Values] bool sameOuterTrace)
+        {
+            CausalityTrace.MaxOuterTraces = 1;
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var other = CaptureAtOther();
+                // The repeat's outer traces are truncated.
+                var previousOuters = new[] { CaptureAtLoop(), CaptureAtRoot() };
+                // If the trace's outer trace is the repeat's, the repeat's outer traces fit, but the ones that it dropped are still missing.
+                // A null scope doesn't change the current trace, so that the second trace is captured in as many nested calls as the first.
+                var outers = new[] { sameOuterTrace ? previousOuters[0] : CaptureAtStep(), null };
+                // Captured from the same line, so that the second trace is a repeat of the first.
+                var trace = other;
+                for (int i = 0; i < 2; ++i)
+                {
+                    trace = CaptureInScopesForTraceTest(trace, i == 0 ? previousOuters : outers);
+                }
+
+                var text = trace.ToString();
+                Assert.AreEqual(1, trace.Repeats.Count, text);
+                Assert.AreSame(other, trace.Previous, text);
+                CollectionAssert.AreEqual(new[] { outers[0] }, trace.OuterTraces, text);
+                Assert.IsTrue(trace.AreOuterTracesTruncated, text);
+                AssertCausalityTraceIsPrintedCorrectly(trace, text);
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+                CausalityTrace.MaxOuterTraces = 8;
+            }
+        }
+
+        [Test]
+        public void CausalityTraceCapture_TruncatedCopyOfATraceWhoseOuterTracesWereTruncated_TheyAreStillTruncated()
+        {
+            CausalityTrace.MaxOuterTraces = 0;
+            CausalityTrace.MaxDepth = 4;
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var trace = CaptureAtRoot();
+                for (int i = 0; i < 2; ++i)
+                {
+                    var scope = CausalityTrace.EnterScope(trace);
+                    trace = i == 0 ? CaptureAtLoop() : CaptureAtLeaf();
+                    scope.Dispose();
+                }
+                var withTruncatedOuterTraces = CaptureInScopesForTraceTest(trace, new[] { CaptureAtStep() });
+                Assert.IsTrue(withTruncatedOuterTraces.AreOuterTracesTruncated, withTruncatedOuterTraces.ToString());
+                // The trace is at the max depth, so the next trace has a truncated copy of it.
+                var deepScope = CausalityTrace.EnterScope(withTruncatedOuterTraces);
+                var last = CaptureAtOther();
+                deepScope.Dispose();
+
+                var text = last.ToString();
+                Assert.AreEqual(2, GetCausalityTraceDepth(last), text);
+                Assert.AreNotSame(withTruncatedOuterTraces, last.Previous, text);
+                Assert.IsTrue(last.Previous.AreOuterTracesTruncated, text);
+                AssertCausalityTraceIsPrintedCorrectly(last, text);
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+                CausalityTrace.MaxDepth = 128;
+                CausalityTrace.MaxOuterTraces = 8;
+            }
+        }
+
+        // Captures inside the scopes of the outer traces (from the innermost) and the previous trace.
+        private static CausalityTrace CaptureInScopesForTraceTest(CausalityTrace previous, CausalityTrace[] outers)
+            => CaptureInScopesForTraceTest(previous, outers, outers.Length - 1);
+
+        private static CausalityTrace CaptureInScopesForTraceTest(CausalityTrace previous, CausalityTrace[] outers, int index)
+        {
+            if (index < 0)
+            {
+                return CaptureInScopeForTraceTest(previous);
+            }
+            var scope = CausalityTrace.EnterScope(outers[index]);
+            try
+            {
+                return CaptureInScopesForTraceTest(previous, outers, index - 1);
+            }
+            finally
+            {
+                scope.Dispose();
+            }
+        }
+
+        [Test]
+        public void CausalityTraceCapture_DeepChainOfAsyncFunctionsThatCompleteSynchronously_KeepsAtMostMaxOuterTraces()
+        {
+            CausalityTrace.MaxOuterTraces = 4;
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                // Each async function continues the one that awaited it while it's still running, so their scopes are nested.
+                var deferred = Promise.NewDeferred();
+                var traces = new List<CausalityTrace>();
+                var promise = AwaitRecursivelyForTraceTest(deferred.Promise, 16, traces);
+                deferred.Resolve();
+                promise.WaitWithTimeout(System.TimeSpan.FromSeconds(5));
+
+                Assert.AreEqual(17, traces.Count);
+                var last = traces[traces.Count - 1];
+                var text = last.ToString();
+                foreach (var trace in traces)
+                {
+                    Assert.LessOrEqual(trace.OuterTraces.Count, 4, trace.ToString());
+                }
+                // Without line numbers, the outer traces are printed like the outer frames of the trace, so they're dropped.
+                if (KeepsOuterTracesFromTheSameMethod)
+                {
+                    Assert.IsTrue(last.AreOuterTracesTruncated, text);
+                }
+                AssertCausalityTraceIsPrintedCorrectly(last, text);
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+                CausalityTrace.MaxOuterTraces = 8;
+            }
+        }
+
+        private static async Promise AwaitRecursivelyForTraceTest(Promise promise, int depth, List<CausalityTrace> traces)
+        {
+            if (depth == 0)
+            {
+                await promise;
+            }
+            else
+            {
+                await AwaitRecursivelyForTraceTest(promise, depth - 1, traces);
+            }
+            traces.Add(CausalityTrace.Capture());
+        }
+
+        [Test]
         public void CausalityTrace_SequentialScopes_DepthIsTruncatedToHalfWhenItExceedsMax()
         {
             const int maxDepth = 10;
@@ -2902,7 +3090,7 @@ namespace ProtoPromise.Tests.APIs
                 var text200 = traces[0].ToString();
                 var trace400 = traces[1];
                 var text400 = trace400.ToString();
-                StringAssert.IsMatch(@"--- \[Repeated \d+ times: Thread \d+ ", text400);
+                StringAssert.IsMatch(@"--- Repeated \d+ times: Thread \d+ ", text400);
                 // Only the number of repeats is different.
                 AssertPrintedTheSame(text200.Replace("Repeated 199 times", "Repeated 399 times"), text400);
                 AssertCausalityTraceIsPrintedCorrectly(trace400, text400);
@@ -3548,7 +3736,7 @@ namespace ProtoPromise.Tests.APIs
                 var root = CopyTrace(CaptureWithoutFrames(), false, CopyTrace(CaptureWithoutFrames(), false, CaptureAtLeaf()));
 
                 var text = root.ToString();
-                Assert.AreEqual(2, CountOccurrences(text, "--- [All frames are hidden] ---"), text);
+                Assert.AreEqual(2, CountOccurrences(text, "--- All frames are hidden ---"), text);
                 AssertCausalityTraceIsPrintedCorrectly(root, text);
             }
             finally
@@ -3672,15 +3860,15 @@ namespace ProtoPromise.Tests.APIs
 
                 // The printed trace has no time, and the earlier traces show how long before it they were captured.
                 var firstLine = text.Split('\n')[0].TrimEnd('\r');
-                StringAssert.StartsWith($"   --- [Thread {root.ThreadId} ", firstLine);
+                StringAssert.StartsWith($"   --- Thread {root.ThreadId} ", firstLine);
                 StringAssert.DoesNotContain("earlier", firstLine);
-                const string time = @", \d+\.\d{3} ms earlier\] ---";
-                StringAssert.IsMatch($@"--- \[Thread {foreground.ThreadId} \(foreground\){time}", text);
-                StringAssert.IsMatch($@"--- \[{ThreadPattern(named)}{time}", text);
-                StringAssert.IsMatch($@"--- \[Thread {background.ThreadId} \(background\){time}", text);
+                const string time = @", \d+\.\d{3} ms earlier ---";
+                StringAssert.IsMatch($@"--- Thread {foreground.ThreadId} \(foreground\){time}", text);
+                StringAssert.IsMatch($@"--- {ThreadPattern(named)}{time}", text);
+                StringAssert.IsMatch($@"--- Thread {background.ThreadId} \(background\){time}", text);
                 // Newer runtimes name thread pool threads.
                 var poolThread = pooled.ThreadName == null ? $@"Thread {pooled.ThreadId} \(thread pool\)" : ThreadPattern(pooled);
-                StringAssert.IsMatch($@"--- \[{poolThread}{time}", text);
+                StringAssert.IsMatch($@"--- {poolThread}{time}", text);
                 AssertCausalityTraceIsPrintedCorrectly(root, text);
             }
             finally
@@ -3702,7 +3890,7 @@ namespace ProtoPromise.Tests.APIs
                 thread.Join();
 
                 var text = trace.ToString();
-                StringAssert.StartsWith($"   --- [Thread {trace.ThreadId} \"First  Second Third\"] ---", text);
+                StringAssert.StartsWith($"   --- Thread {trace.ThreadId} \"First  Second Third\" ---", text);
                 AssertCausalityTraceIsPrintedCorrectly(trace, text);
             }
             finally
@@ -3728,10 +3916,10 @@ namespace ProtoPromise.Tests.APIs
                 // The last time is printed, and the others are folded into it, grouped by thread from the latest to the earliest.
                 var threadA = ThreadPattern(last);
                 var threadB = ThreadPattern(last.Previous);
-                StringAssert.IsMatch($@"--- \[{threadA}, \d+\.\d{{3}} ms earlier\] ---", text);
+                StringAssert.IsMatch($@"--- {threadA}, \d+\.\d{{3}} ms earlier ---", text);
                 const string time = @"(\d+\.\d{3})";
-                var match = System.Text.RegularExpressions.Regex.Match(text, $@"--- \[Repeated 4 times: {threadA} 3 times at {time} to {time} ms earlier; "
-                    + $@"{threadB} 1 time at {time} ms earlier\] ---");
+                var match = System.Text.RegularExpressions.Regex.Match(text, $@"--- Repeated 4 times: {threadA} 3 times at {time} to {time} ms earlier; "
+                    + $@"{threadB} 1 time at {time} ms earlier ---");
                 Assert.IsTrue(match.Success, text);
                 var times = Enumerable.Range(1, 3).Select(i => double.Parse(match.Groups[i].Value, System.Globalization.CultureInfo.InvariantCulture)).ToArray();
                 Assert.That(times[0], Is.LessThan(times[1]), text);
@@ -3762,7 +3950,7 @@ namespace ProtoPromise.Tests.APIs
                 Assert.AreEqual(2, trace.Repeats[0].Count);
                 Assert.AreEqual(traces[1].ThreadId, trace.Repeats[0].ThreadId);
                 var text = trace.ToString();
-                StringAssert.IsMatch(@"--- \[Repeated 2 times: thread pool 2 times at \d+\.\d{3} to \d+\.\d{3} ms earlier\] ---", text);
+                StringAssert.IsMatch(@"--- Repeated 2 times: thread pool 2 times at \d+\.\d{3} to \d+\.\d{3} ms earlier ---", text);
                 AssertCausalityTraceIsPrintedCorrectly(trace, text);
             }
             finally
@@ -3819,7 +4007,7 @@ namespace ProtoPromise.Tests.APIs
                 Assert.AreEqual(traces[3].Timestamp, repeat.LastTimestamp);
 
                 var text = trace.ToString();
-                StringAssert.IsMatch(@"--- \[Repeated 4 times: Thread \d+ .* 4 times at \d+\.\d{3} to \d+\.\d{3} ms earlier\] ---", text);
+                StringAssert.IsMatch(@"--- Repeated 4 times: Thread \d+ .* 4 times at \d+\.\d{3} to \d+\.\d{3} ms earlier ---", text);
                 Assert.AreEqual(1, CountOccurrences(text, nameof(CaptureInScopeForTraceTest)), text);
                 AssertCausalityTraceIsPrintedCorrectly(trace, text);
             }
@@ -3887,7 +4075,7 @@ namespace ProtoPromise.Tests.APIs
                 var text = trace[0].ToString();
                 // The async function's trace was captured where it was called, which is in the trace of where it switched,
                 // so the trace and where it was scheduled from are the whole chain.
-                bool isSkipped = trace[0].ScheduledFrom != null;
+                bool isSkipped = OuterTrace(trace[0]) != null;
 #if !PROMISE_DEBUG
                 // In release builds, the async function's trace is captured where it first awaits, which is where it switched.
                 // Depending on the runtime's frames, it's skipped the same way, or where the trace was scheduled from is dropped as its repeat instead.
@@ -3901,12 +4089,12 @@ namespace ProtoPromise.Tests.APIs
                 {
                     // The async function's trace is kept if one of its hidden frames is printed with another function's name.
                     Assert.LessOrEqual(GetCausalityTraceDepth(trace[0]), 2, text);
-                    StringAssert.Contains(nameof(CausalityTraceCapture_AfterSwitchingToAContext_SkipsTheTraceOfTheAsyncFunctionThatSwitched), trace[0].ScheduledFrom.ToString());
+                    StringAssert.Contains(nameof(CausalityTraceCapture_AfterSwitchingToAContext_SkipsTheTraceOfTheAsyncFunctionThatSwitched), OuterTrace(trace[0]).ToString());
                 }
                 else if (isSkipped)
                 {
                     Assert.AreEqual(1, GetCausalityTraceDepth(trace[0]), text);
-                    StringAssert.Contains(nameof(CausalityTraceCapture_AfterSwitchingToAContext_SkipsTheTraceOfTheAsyncFunctionThatSwitched), trace[0].ScheduledFrom.ToString());
+                    StringAssert.Contains(nameof(CausalityTraceCapture_AfterSwitchingToAContext_SkipsTheTraceOfTheAsyncFunctionThatSwitched), OuterTrace(trace[0]).ToString());
                 }
 #if PROMISE_DEBUG
                 Assert.IsTrue(isSkipped, text);
@@ -3926,7 +4114,8 @@ namespace ProtoPromise.Tests.APIs
         }
 
         // The tests below capture with CaptureFromTheSameLineForTraceTest in a loop, so that a trace that is captured deeper contains the trace before it,
-        // like a trace captured in Promise.New's callback contains the trace of Promise.New. They set the trace that the running callback was scheduled from directly.
+        // like a trace captured in Promise.New's callback contains the trace of Promise.New. They enter the scope of an outer trace around it directly,
+        // like a callback that was scheduled from that trace.
 
         // Captures a trace inside the scope of the previous trace, here or one call deeper, from the same line.
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
@@ -3943,56 +4132,47 @@ namespace ProtoPromise.Tests.APIs
             }
         }
 
-        // Captures a trace and then a deeper trace inside its scope, each as if their callbacks were scheduled from the traces.
-        private static CausalityTrace CaptureContainedForTraceTest(CausalityTrace previous, CausalityTrace scheduledFrom, CausalityTrace deeperScheduledFrom, out CausalityTrace contained)
+        // Captures a trace and then a deeper trace inside its scope, each inside the scope of an outer trace (if it's not null), as if their callbacks were scheduled from it.
+        private static CausalityTrace CaptureContainedForTraceTest(CausalityTrace previous, CausalityTrace outer, CausalityTrace deeperOuter, out CausalityTrace contained)
         {
             contained = null;
             var trace = previous;
-            try
+            for (int i = 0; i < 2; ++i)
             {
-                for (int i = 0; i < 2; ++i)
+                var scope = CausalityTrace.EnterScope(i == 0 ? outer : deeperOuter);
+                try
                 {
-                    CausalityTrace.ts_scheduledFrom = i == 0 ? scheduledFrom : deeperScheduledFrom;
                     trace = CaptureFromTheSameLineForTraceTest(trace, i == 1);
-                    if (i == 0)
-                    {
-                        contained = trace;
-                    }
                 }
-            }
-            finally
-            {
-                CausalityTrace.ts_scheduledFrom = null;
+                finally
+                {
+                    scope.Dispose();
+                }
+                if (i == 0)
+                {
+                    contained = trace;
+                }
             }
             return trace;
         }
 
         [Test]
-        public void CausalityTraceCapture_SkippedTrace_ItsScheduledFromIsKept(
-            [Values] bool deeperIsScheduled)
+        public void CausalityTraceCapture_SkippedTrace_ItsOuterTracesAreKept(
+            [Values] bool deeperHasAnOuterTrace)
         {
             CausalityTrace.IsEnabled = true;
             try
             {
                 var other = CaptureAtOther();
-                var scheduledFrom = CaptureAtStep();
-                var deeperScheduledFrom = deeperIsScheduled ? CaptureAtLoop() : null;
-                var trace = CaptureContainedForTraceTest(other, scheduledFrom, deeperScheduledFrom, out var contained);
+                var outer = CaptureAtStep();
+                var deeperOuter = deeperHasAnOuterTrace ? CaptureAtLoop() : null;
+                var trace = CaptureContainedForTraceTest(other, outer, deeperOuter, out var contained);
 
-                Assert.AreSame(scheduledFrom, contained.ScheduledFrom);
+                CollectionAssert.AreEqual(new[] { outer }, contained.OuterTraces);
+                // The contained trace is skipped, and its outer traces are kept after the trace's own.
                 var text = trace.ToString();
-                if (deeperIsScheduled)
-                {
-                    // The contained trace was scheduled from elsewhere, which would be lost, so it's kept.
-                    Assert.AreSame(contained, trace.Previous, text);
-                    Assert.AreSame(deeperScheduledFrom, trace.ScheduledFrom, text);
-                }
-                else
-                {
-                    // The contained trace is skipped, and where it was scheduled from is kept.
-                    Assert.AreSame(other, trace.Previous, text);
-                    Assert.AreSame(scheduledFrom, trace.ScheduledFrom, text);
-                }
+                Assert.AreSame(other, trace.Previous, text);
+                CollectionAssert.AreEqual(deeperHasAnOuterTrace ? new[] { deeperOuter, outer } : new[] { outer }, trace.OuterTraces, text);
                 AssertCausalityTraceIsPrintedCorrectly(trace, text);
             }
             finally
@@ -4002,32 +4182,36 @@ namespace ProtoPromise.Tests.APIs
         }
 
         [Test]
-        public void CausalityTraceCapture_TraceContainedByWhereTheCallbackWasScheduledFrom_IsKeptIfItWasScheduledFromElsewhere(
-            [Values] bool containedIsScheduled)
+        public void CausalityTraceCapture_TraceContainedByWhereTheCallbackWasScheduledFrom_IsSkippedAndItsOuterTracesAreKept(
+            [Values] bool containedHasAnOuterTrace)
         {
             CausalityTrace.IsEnabled = true;
             try
             {
                 // The trace of where the callback was scheduled from contains the previous trace, like an async function that switched to another context.
                 var other = CaptureAtOther();
-                var containedScheduledFrom = containedIsScheduled ? CaptureAtStep() : null;
-                var scheduledFrom = CaptureContainedForTraceTest(other, containedScheduledFrom, null, out var contained);
+                var containedOuter = containedHasAnOuterTrace ? CaptureAtStep() : null;
+                var scheduledFrom = CaptureContainedForTraceTest(other, containedOuter, null, out var contained);
                 CausalityTrace trace;
+                var scope = CausalityTrace.EnterScope(scheduledFrom);
                 try
                 {
-                    CausalityTrace.ts_scheduledFrom = scheduledFrom;
                     trace = CaptureInScopeForTraceTest(contained);
                 }
                 finally
                 {
-                    CausalityTrace.ts_scheduledFrom = null;
+                    scope.Dispose();
                 }
 
+                // The contained trace is skipped, and its outer traces are kept after the trace's own.
                 var text = trace.ToString();
-                Assert.IsNotNull(trace.ScheduledFrom, text);
-                Assert.AreSame(scheduledFrom.StackTrace, trace.ScheduledFrom.StackTrace, text);
-                // The contained trace would be lost with where it was scheduled from, so it's only skipped if it was not scheduled.
-                Assert.AreSame(containedIsScheduled ? contained : other, trace.Previous, text);
+                Assert.AreSame(other, trace.Previous, text);
+                Assert.AreEqual(containedHasAnOuterTrace ? 2 : 1, trace.OuterTraces.Count, text);
+                Assert.AreSame(scheduledFrom.StackTrace, trace.OuterTraces[0].StackTrace, text);
+                if (containedHasAnOuterTrace)
+                {
+                    Assert.AreSame(containedOuter, trace.OuterTraces[1], text);
+                }
                 AssertCausalityTraceIsPrintedCorrectly(trace, text);
             }
             finally
@@ -4136,7 +4320,7 @@ namespace ProtoPromise.Tests.APIs
 
                 var text = trace.ToString();
                 Assert.AreSame(scheduledFrom, trace.Previous, text);
-                Assert.IsNull(trace.ScheduledFrom, text);
+                Assert.IsNull(OuterTrace(trace), text);
                 Assert.AreEqual(1, CountOccurrences(text, nameof(CaptureAtOther)), text);
                 AssertCausalityTraceIsPrintedCorrectly(trace, text);
             }
@@ -4161,9 +4345,9 @@ namespace ProtoPromise.Tests.APIs
 
                 // Both traces were scheduled from the same trace, so nothing is lost.
                 var text = trace.ToString();
-                Assert.AreSame(scheduledFrom, contained.ScheduledFrom, text);
+                Assert.AreSame(scheduledFrom, OuterTrace(contained), text);
                 Assert.AreSame(other, trace.Previous, text);
-                Assert.AreSame(deeperScheduledFrom, trace.ScheduledFrom, text);
+                Assert.AreSame(deeperScheduledFrom, OuterTrace(trace), text);
                 AssertCausalityTraceIsPrintedCorrectly(trace, text);
             }
             finally
@@ -4189,9 +4373,9 @@ namespace ProtoPromise.Tests.APIs
                 var promiseTrace = traces[0];
                 var callbackTrace = traces[1];
                 var text = callbackTrace.ToString();
-                Assert.IsNotNull(promiseTrace.ScheduledFrom, promiseTrace.ToString());
+                Assert.IsNotNull(OuterTrace(promiseTrace), promiseTrace.ToString());
                 Assert.AreSame(promiseTrace.Previous, callbackTrace.Previous, text);
-                Assert.AreSame(promiseTrace.ScheduledFrom, callbackTrace.ScheduledFrom, text);
+                Assert.AreSame(OuterTrace(promiseTrace), OuterTrace(callbackTrace), text);
             }
             finally
             {
@@ -4212,7 +4396,7 @@ namespace ProtoPromise.Tests.APIs
         }
 
         [Test]
-        public void CausalityTraceCapture_SkippedTraceWithoutScheduledFrom_ScheduledFromAtTheSameLocationAsTheNewPreviousTraceIsDropped()
+        public void CausalityTraceCapture_SkippedTraceWithoutOuterTraces_OuterTraceAtTheSameLocationAsTheNewPreviousTraceIsDropped()
         {
             CausalityTrace.IsEnabled = true;
             try
@@ -4227,7 +4411,7 @@ namespace ProtoPromise.Tests.APIs
 
                 var text = trace.ToString();
                 Assert.AreSame(steps[0], trace.Previous, text);
-                Assert.IsNull(trace.ScheduledFrom, text);
+                Assert.IsNull(OuterTrace(trace), text);
                 Assert.AreEqual(1, CountOccurrences(text, nameof(CaptureAtStep)), text);
             }
             finally
@@ -4237,7 +4421,7 @@ namespace ProtoPromise.Tests.APIs
         }
 
         [Test]
-        public void CausalityTraceCapture_SkippedTraceScheduledFromTheSameLocationAsTheTrace_ItsScheduledFromIsDropped()
+        public void CausalityTraceCapture_SkippedTraceScheduledFromTheSameLocationAsTheTrace_ItsOuterTraceIsDropped()
         {
             CausalityTrace.IsEnabled = true;
             try
@@ -4255,9 +4439,9 @@ namespace ProtoPromise.Tests.APIs
 
                 var trace = traces[1];
                 var text = trace.ToString();
-                Assert.AreSame(traces[0].StackTrace, contained.ScheduledFrom.StackTrace, text);
+                Assert.AreSame(traces[0].StackTrace, OuterTrace(contained).StackTrace, text);
                 Assert.AreSame(other, trace.Previous, text);
-                Assert.IsNull(trace.ScheduledFrom, text);
+                Assert.IsNull(OuterTrace(trace), text);
                 Assert.AreEqual(1, CountOccurrences(text, nameof(CaptureAtLeaf)), text);
             }
             finally
@@ -4277,9 +4461,9 @@ namespace ProtoPromise.Tests.APIs
                 ScheduleInPromiseNewForTraceTest(context, scheduledFrom, 3);
                 context.Execute();
 
-                // The last continuation was scheduled from the same location as the one before it.
+                // The last continuation was scheduled from the same location as the one before it, so that isn't one of its outer traces.
                 var text = scheduledFrom[0].ToString();
-                Assert.IsNull(scheduledFrom[0].ScheduledFrom, text);
+                Assert.IsFalse(scheduledFrom[0].OuterTraces.Any(trace => HasSameFrames(trace, scheduledFrom[0])), text);
             }
             finally
             {
@@ -4300,7 +4484,9 @@ namespace ProtoPromise.Tests.APIs
         private static async Promise ContinueOnContextForTraceTest(Promise promise, QueuedContext context, CausalityTrace[] scheduledFrom, int count)
         {
             await promise.ConfigureAwait(new ContinuationOptions(context, CompletedContinuationBehavior.Asynchronous));
-            scheduledFrom[0] = CausalityTrace.ts_scheduledFrom;
+            // The continuation runs in the scope of where it was scheduled from, which is the outermost scope, because the test runs the context outside of any scope.
+            var traces = CausalityTrace.ts_traces.ToArray();
+            scheduledFrom[0] = traces[traces.Length - 1];
             if (count > 1)
             {
                 ScheduleInPromiseNewForTraceTest(context, scheduledFrom, count - 1);
@@ -4308,27 +4494,27 @@ namespace ProtoPromise.Tests.APIs
         }
 
         [Test]
-        public void CausalityTraceCapture_ScheduledFromThePreviousTraceWithoutVisibleFrames_IsDropped()
+        public void CausalityTraceCapture_OuterTraceThatIsThePreviousTraceWithoutVisibleFrames_IsDropped()
         {
             CausalityTrace.IsEnabled = true;
             try
             {
-                // Like a callback without its own trace, whose scope is where it was scheduled from.
+                // Like a callback without its own trace, whose scope is where it was scheduled from, which entered the scope again.
                 var hidden = CaptureWithoutFrames();
                 CausalityTrace trace;
+                var scope = CausalityTrace.EnterScope(hidden);
                 try
                 {
-                    CausalityTrace.ts_scheduledFrom = hidden;
                     trace = CaptureInScopeForTraceTest(hidden);
                 }
                 finally
                 {
-                    CausalityTrace.ts_scheduledFrom = null;
+                    scope.Dispose();
                 }
 
                 var text = trace.ToString();
                 Assert.AreSame(hidden, trace.Previous, text);
-                Assert.IsNull(trace.ScheduledFrom, text);
+                Assert.IsNull(OuterTrace(trace), text);
             }
             finally
             {
@@ -4348,7 +4534,7 @@ namespace ProtoPromise.Tests.APIs
 
                 var text = trace.ToString();
                 Assert.AreSame(hidden, trace.Previous, text);
-                Assert.IsNull(trace.ScheduledFrom, text);
+                Assert.IsNull(OuterTrace(trace), text);
             }
             finally
             {
@@ -4414,10 +4600,10 @@ namespace ProtoPromise.Tests.APIs
                 CaptureAfterAwaitOnContextForTraceTest(deferred.Promise, context, t => trace = t).Forget();
                 ResolveForTraceTest(deferred);
 
-                // What resolved the deferred is already in the trace.
+                // What resolved the deferred is already in the trace, so where it was scheduled is not one of its outer traces.
                 var text = trace.ToString();
                 Assert.IsTrue(ContainsMethod(trace, nameof(ResolveForTraceTest)), text);
-                Assert.IsNull(trace.ScheduledFrom, text);
+                Assert.IsFalse(trace.OuterTraces.Any(outer => ContainsMethod(outer, nameof(ResolveForTraceTest))), text);
             }
             finally
             {
@@ -4427,7 +4613,7 @@ namespace ProtoPromise.Tests.APIs
 #endif // !PROTO_PROMISE_DEVELOPER_MODE
 
         [Test]
-        public void CausalityTraceCapture_RepeatOfThePreviousTrace_ItsScheduledFromIsKept()
+        public void CausalityTraceCapture_RepeatOfThePreviousTrace_ItsOuterTracesAreKept()
         {
             CausalityTrace.IsEnabled = true;
             try
@@ -4436,23 +4622,23 @@ namespace ProtoPromise.Tests.APIs
                 var scheduledFrom = CaptureAtStep();
                 // Captured from the same line, so that the second trace is a repeat of the first.
                 var trace = other;
-                try
+                for (int i = 0; i < 2; ++i)
                 {
-                    for (int i = 0; i < 2; ++i)
+                    var scope = CausalityTrace.EnterScope(i == 0 ? scheduledFrom : null);
+                    try
                     {
-                        CausalityTrace.ts_scheduledFrom = i == 0 ? scheduledFrom : null;
                         trace = CaptureInScopeForTraceTest(trace);
                     }
-                }
-                finally
-                {
-                    CausalityTrace.ts_scheduledFrom = null;
+                    finally
+                    {
+                        scope.Dispose();
+                    }
                 }
 
                 var text = trace.ToString();
                 Assert.AreEqual(1, trace.Repeats.Count, text);
                 Assert.AreSame(other, trace.Previous, text);
-                Assert.AreSame(scheduledFrom, trace.ScheduledFrom, text);
+                Assert.AreSame(scheduledFrom, OuterTrace(trace), text);
                 AssertCausalityTraceIsPrintedCorrectly(trace, text);
             }
             finally
@@ -4462,33 +4648,34 @@ namespace ProtoPromise.Tests.APIs
         }
 
         [Test]
-        public void CausalityTraceCapture_RepeatOfThePreviousTrace_ItsOwnScheduledFromIsKept(
-            [Values] bool previousIsScheduled)
+        public void CausalityTraceCapture_RepeatOfThePreviousTrace_ItsOwnOuterTracesAreFirst(
+            [Values] bool previousHasAnOuterTrace)
         {
             CausalityTrace.IsEnabled = true;
             try
             {
                 var other = CaptureAtOther();
                 var scheduledFrom = CaptureAtStep();
-                var previousScheduledFrom = previousIsScheduled ? CaptureAtLoop() : null;
+                var previousScheduledFrom = previousHasAnOuterTrace ? CaptureAtLoop() : null;
                 // Captured from the same line, so that the second trace is a repeat of the first.
                 var trace = other;
-                try
+                for (int i = 0; i < 2; ++i)
                 {
-                    for (int i = 0; i < 2; ++i)
+                    var scope = CausalityTrace.EnterScope(i == 0 ? previousScheduledFrom : scheduledFrom);
+                    try
                     {
-                        CausalityTrace.ts_scheduledFrom = i == 0 ? previousScheduledFrom : scheduledFrom;
                         trace = CaptureInScopeForTraceTest(trace);
                     }
-                }
-                finally
-                {
-                    CausalityTrace.ts_scheduledFrom = null;
+                    finally
+                    {
+                        scope.Dispose();
+                    }
                 }
 
+                // The repeat's outer traces are kept after the trace's own.
                 var text = trace.ToString();
                 Assert.AreEqual(1, trace.Repeats.Count, text);
-                Assert.AreSame(scheduledFrom, trace.ScheduledFrom, text);
+                CollectionAssert.AreEqual(previousHasAnOuterTrace ? new[] { scheduledFrom, previousScheduledFrom } : new[] { scheduledFrom }, trace.OuterTraces, text);
             }
             finally
             {
@@ -4522,7 +4709,7 @@ namespace ProtoPromise.Tests.APIs
         }
 
         [Test]
-        public void CausalityTraceCapture_ScheduledFromAtTheSameLocationAsTheTrace_IsDropped()
+        public void CausalityTraceCapture_OuterTraceAtTheSameLocationAsTheTrace_IsDropped()
         {
             CausalityTrace.IsEnabled = true;
             try
@@ -4530,22 +4717,22 @@ namespace ProtoPromise.Tests.APIs
                 var other = CaptureAtOther();
                 // Like an operation whose trace was captured where it was scheduled: both traces are captured from the same line.
                 CausalityTrace trace = null;
-                try
+                for (int i = 0; i < 2; ++i)
                 {
-                    for (int i = 0; i < 2; ++i)
+                    var scope = CausalityTrace.EnterScope(trace);
+                    try
                     {
-                        CausalityTrace.ts_scheduledFrom = trace;
                         trace = CaptureInScopeForTraceTest(other);
                     }
-                }
-                finally
-                {
-                    CausalityTrace.ts_scheduledFrom = null;
+                    finally
+                    {
+                        scope.Dispose();
+                    }
                 }
 
                 var text = trace.ToString();
                 Assert.AreSame(other, trace.Previous, text);
-                Assert.IsNull(trace.ScheduledFrom, text);
+                Assert.IsNull(OuterTrace(trace), text);
             }
             finally
             {
@@ -4554,7 +4741,7 @@ namespace ProtoPromise.Tests.APIs
         }
 
         [Test]
-        public void CausalityTraceCapture_ScheduledFromAtTheSameLocationAsThePreviousTrace_IsDropped()
+        public void CausalityTraceCapture_OuterTraceAtTheSameLocationAsThePreviousTrace_IsDropped()
         {
             CausalityTrace.IsEnabled = true;
             try
@@ -4565,19 +4752,19 @@ namespace ProtoPromise.Tests.APIs
                     steps[i] = CaptureAtStep();
                 }
                 CausalityTrace trace;
+                var scope = CausalityTrace.EnterScope(steps[1]);
                 try
                 {
-                    CausalityTrace.ts_scheduledFrom = steps[1];
                     trace = CaptureInScopeForTraceTest(steps[0]);
                 }
                 finally
                 {
-                    CausalityTrace.ts_scheduledFrom = null;
+                    scope.Dispose();
                 }
 
                 var text = trace.ToString();
                 Assert.AreSame(steps[0], trace.Previous, text);
-                Assert.IsNull(trace.ScheduledFrom, text);
+                Assert.IsNull(OuterTrace(trace), text);
             }
             finally
             {
@@ -4586,32 +4773,223 @@ namespace ProtoPromise.Tests.APIs
         }
 
         [Test]
+        public void CausalityTraceCapture_InAListenerOfAQueuedEvent_IncludesWhereTheEventWasRaised()
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                // Like an event that is raised, then dispatched later: the dispatcher enters the scope of where the event was raised,
+                // then each listener is invoked in the scope of where it was added.
+                var listenerTrace = CaptureAtStep();
+                var raiseTrace = CaptureAtLoop();
+                CausalityTrace trace;
+                var scope = CausalityTrace.EnterScope(raiseTrace);
+                try
+                {
+                    trace = CaptureInScopeForTraceTest(listenerTrace);
+                }
+                finally
+                {
+                    scope.Dispose();
+                }
+
+                // The listener's trace is the cause, and where the event was raised is an outer trace.
+                var text = trace.ToString();
+                Assert.AreSame(listenerTrace, trace.Previous, text);
+                CollectionAssert.AreEqual(new[] { raiseTrace }, trace.OuterTraces, text);
+                AssertCausalityTraceIsPrintedCorrectly(trace, text);
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
+        [Test]
+        public void CausalityTraceToString_OuterTraces_EachIsIndentedOneMoreLevel()
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var other = CaptureAtOther();
+                var outers = new[] { CaptureAtStep(), CaptureAtLoop() };
+                CausalityTrace trace;
+                // The outermost scope is entered first.
+                var outerScope = CausalityTrace.EnterScope(outers[1]);
+                try
+                {
+                    var innerScope = CausalityTrace.EnterScope(outers[0]);
+                    try
+                    {
+                        trace = CaptureInScopeForTraceTest(other);
+                    }
+                    finally
+                    {
+                        innerScope.Dispose();
+                    }
+                }
+                finally
+                {
+                    outerScope.Dispose();
+                }
+
+                var text = trace.ToString();
+                CollectionAssert.AreEqual(outers, trace.OuterTraces, text);
+                // The outer traces are printed after the trace, from the innermost, each indented one more level than the one before it.
+                StringAssert.IsMatch(@"(?m)^      --- Thread \d+ .*, \d+\.\d{3} ms earlier ---\r?$", text);
+                StringAssert.IsMatch(@"(?m)^         --- Thread \d+ .*, \d+\.\d{3} ms earlier ---\r?$", text);
+                Assert.Less(text.IndexOf(nameof(CaptureAtStep)), text.IndexOf(nameof(CaptureAtLoop)), text);
+                Assert.Less(text.IndexOf(nameof(CaptureAtLoop)), text.IndexOf(nameof(CaptureAtOther)), text);
+                AssertCausalityTraceIsPrintedCorrectly(trace, text);
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
+        [Test]
+        public void CausalityTraceCapture_InsideAScopeWithANullTrace_KeepsTheTracesOfTheScopesOutsideOfIt(
+            [Values] bool hasInnerScope)
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                // A scope with a null trace doesn't change the current trace, so the traces outside of it are kept.
+                var outer = CaptureAtStep();
+                var inner = CaptureAtLoop();
+                CausalityTrace trace;
+                var outerScope = CausalityTrace.EnterScope(outer);
+                try
+                {
+                    var nullScope = CausalityTrace.EnterScope(null);
+                    try
+                    {
+                        trace = hasInnerScope ? CaptureInScopeForTraceTest(inner) : CaptureAtLeaf();
+                    }
+                    finally
+                    {
+                        nullScope.Dispose();
+                    }
+                }
+                finally
+                {
+                    outerScope.Dispose();
+                }
+
+                var text = trace.ToString();
+                Assert.AreSame(hasInnerScope ? inner : outer, trace.Previous, text);
+                CollectionAssert.AreEqual(hasInnerScope ? new[] { outer } : new CausalityTrace[0], trace.OuterTraces, text);
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
+        [Test]
+        public void CausalityTraceOuterTraces_IsCachedAndReadOnly()
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var outer = CaptureAtStep();
+                var cause = CaptureAtLoop();
+                CausalityTrace trace;
+                var scope = CausalityTrace.EnterScope(outer);
+                try
+                {
+                    trace = CaptureInScopeForTraceTest(cause);
+                }
+                finally
+                {
+                    scope.Dispose();
+                }
+
+                var outerTraces = trace.OuterTraces;
+                Assert.AreSame(cause, trace.Previous, trace.ToString());
+                CollectionAssert.AreEqual(new[] { outer }, outerTraces, trace.ToString());
+                Assert.AreSame(outerTraces, trace.OuterTraces);
+                Assert.Throws<System.NotSupportedException>(() => ((IList<CausalityTrace>) outerTraces)[0] = null);
+                // A trace that was captured outside of any scope has no previous or outer traces.
+                Assert.IsNull(outer.Previous);
+                CollectionAssert.IsEmpty(outer.OuterTraces);
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
+        [Test]
+        public void CausalityTraceCapture_AsyncLoop_DoesNotKeepTheEarlierIterations()
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                // Each iteration's async function is called while the previous one is completing, so the previous one's scope is an outer scope of its trace.
+                // The outer traces are copies without their previous traces, so the iterations don't keep each other.
+                var counts = new[] { 4, 16 }.Select(iterations => CountReachableTraces(GetTraceFromAsyncLoop(iterations))).ToArray();
+                Assert.AreEqual(counts[0], counts[1]);
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
+        // The number of distinct traces that the trace keeps, through its previous traces.
+        private static int CountReachableTraces(CausalityTrace trace)
+        {
+            var reached = new HashSet<CausalityTrace>();
+            var pending = new Stack<CausalityTrace>();
+            pending.Push(trace);
+            while (pending.Count > 0)
+            {
+                var current = pending.Pop();
+                if (reached.Add(current))
+                {
+                    if (current.Previous != null)
+                    {
+                        pending.Push(current.Previous);
+                    }
+                    foreach (var outer in current.OuterTraces)
+                    {
+                        pending.Push(outer);
+                    }
+                }
+            }
+            return reached.Count;
+        }
+
+        [Test]
         public void CausalityTraceToString_RepeatedPartOfTheChainScheduledFromAnotherLocation_IsNotFolded()
         {
             CausalityTrace.IsEnabled = true;
             try
             {
+                var other = CaptureAtOther();
                 var scheduledFroms = new[] { CaptureAtStep(), CaptureAtLoop() };
                 var traces = new CausalityTrace[2];
-                try
+                for (int i = 0; i < 2; ++i)
                 {
-                    for (int i = 0; i < 2; ++i)
+                    var scope = CausalityTrace.EnterScope(scheduledFroms[i]);
+                    try
                     {
-                        CausalityTrace.ts_scheduledFrom = scheduledFroms[i];
-                        traces[i] = CaptureAtLeaf();
+                        traces[i] = CaptureInScopeForTraceTest(other);
+                    }
+                    finally
+                    {
+                        scope.Dispose();
                     }
                 }
-                finally
-                {
-                    CausalityTrace.ts_scheduledFrom = null;
-                }
-                Assert.AreSame(scheduledFroms[0], traces[0].ScheduledFrom);
-                Assert.AreSame(scheduledFroms[1], traces[1].ScheduledFrom);
+                CollectionAssert.AreEqual(new[] { scheduledFroms[0] }, traces[0].OuterTraces);
+                CollectionAssert.AreEqual(new[] { scheduledFroms[1] }, traces[1].OuterTraces);
 
                 // The traces have the same frames, but folding them would lose where one of them was scheduled from.
-                var trace = CopyTrace(traces[1], false, CopyTrace(traces[0], false, CaptureAtOther()));
+                var trace = CopyTrace(traces[1], false, CopyTrace(traces[0], false, other));
                 var text = trace.ToString();
-                StringAssert.DoesNotContain("--- [Repeated", text);
+                StringAssert.DoesNotContain("--- Repeated", text);
                 AssertCausalityTraceIsPrintedCorrectly(trace, text);
             }
             finally
@@ -4714,7 +5092,7 @@ namespace ProtoPromise.Tests.APIs
 
                 // The context ran the continuation from the method that scheduled it, so where it was scheduled from is printed like the outer frames of the trace,
                 // but the async function had moved on to another call on the same line, so the context didn't run it synchronously.
-                Assert.IsNotNull(trace[0].ScheduledFrom, trace[0].ToString());
+                Assert.IsNotNull(OuterTrace(trace[0]), trace[0].ToString());
             }
             finally
             {
@@ -4750,7 +5128,7 @@ namespace ProtoPromise.Tests.APIs
                 var text = root.ToString();
                 Assert.AreEqual(1, CountOccurrences(text, nameof(CaptureAtStep)), text);
                 Assert.AreEqual(1, CountOccurrences(text, nameof(CaptureAtLoop)), text);
-                StringAssert.IsMatch(@"--- \[#1 repeated 2 times: Thread \d+ .* 2 times at \d+\.\d{3} to \d+\.\d{3} ms earlier\] ---", text);
+                StringAssert.IsMatch(@"--- #1 repeated 2 times: Thread \d+ .* 2 times at \d+\.\d{3} to \d+\.\d{3} ms earlier ---", text);
                 StringAssert.Contains(nameof(CaptureAtOther), text);
                 AssertCausalityTraceIsPrintedCorrectly(root, text);
             }
@@ -4781,7 +5159,7 @@ namespace ProtoPromise.Tests.APIs
                 Assert.AreEqual(1, CountOccurrences(text, nameof(CaptureAtStep)), text);
                 Assert.AreEqual(1, CountOccurrences(text, nameof(CaptureAtLoop)), text);
                 Assert.AreEqual(1, CountOccurrences(text, nameof(CaptureAtLeaf)), text);
-                StringAssert.Contains("--- [#1 repeated 2 times: ", text);
+                StringAssert.Contains("--- #1 repeated 2 times: ", text);
                 AssertCausalityTraceIsPrintedCorrectly(root, text);
             }
             finally
@@ -4814,9 +5192,9 @@ namespace ProtoPromise.Tests.APIs
 
                 // The latest copy is printed, and the threads and times of the earlier copies are listed from the latest to the earliest.
                 var text = root.ToString();
-                StringAssert.IsMatch($@"--- \[Thread {steps[2].ThreadId} \(background\), \d+\.\d{{3}} ms earlier\] ---", text);
-                StringAssert.IsMatch($@"--- \[#1 repeated 2 times: Thread {steps[1].ThreadId} \(background\) 1 time at \d+\.\d{{3}} ms earlier; "
-                    + $@"Thread {steps[0].ThreadId} \(background\) 1 time at \d+\.\d{{3}} ms earlier\] ---", text);
+                StringAssert.IsMatch($@"--- Thread {steps[2].ThreadId} \(background\), \d+\.\d{{3}} ms earlier ---", text);
+                StringAssert.IsMatch($@"--- #1 repeated 2 times: Thread {steps[1].ThreadId} \(background\) 1 time at \d+\.\d{{3}} ms earlier; "
+                    + $@"Thread {steps[0].ThreadId} \(background\) 1 time at \d+\.\d{{3}} ms earlier ---", text);
                 AssertCausalityTraceIsPrintedCorrectly(root, text);
             }
             finally
@@ -4889,8 +5267,8 @@ namespace ProtoPromise.Tests.APIs
                 }
 
                 var text = trace.ToString();
-                StringAssert.Contains("--- [#1 repeated 1 time: ", text);
-                StringAssert.Contains("--- [Repeated 8 times: ", text);
+                StringAssert.Contains("--- #1 repeated 1 time: ", text);
+                StringAssert.Contains("--- Repeated 8 times: ", text);
                 AssertCausalityTraceIsPrintedCorrectly(trace, text);
             }
             finally
@@ -4994,15 +5372,16 @@ namespace ProtoPromise.Tests.APIs
                     Assert.LessOrEqual(GetCausalityTraceDepth(trace16), 2, text16);
                 }
                 // The async function's frame is its state machine's MoveNext, which is printed with the function's name.
-                // The context runs it from this method (see KeepsScheduledFromInTheSameMethod).
-                if (KeepsScheduledFromInTheSameMethod)
+                // The context runs it from this method (see KeepsOuterTracesFromTheSameMethod).
+                if (KeepsOuterTracesFromTheSameMethod)
                 {
-                    StringAssert.Contains(nameof(SwitchInLoopForTraceTest), trace16.ScheduledFrom.ToString());
-                    StringAssert.Contains("--- [Scheduled from Thread ", text16);
+                    StringAssert.Contains(nameof(SwitchInLoopForTraceTest), OuterTrace(trace16).ToString());
+                    // Outer traces are indented one more level.
+                    StringAssert.Contains("      --- Thread ", text16);
                 }
                 else
                 {
-                    Assert.IsNull(trace16.ScheduledFrom, text16);
+                    Assert.IsNull(OuterTrace(trace16), text16);
                 }
                 AssertCausalityTraceIsPrintedCorrectly(trace16, text16);
             }
@@ -5048,7 +5427,8 @@ namespace ProtoPromise.Tests.APIs
 
                 var text = trace.ToString();
                 Assert.IsTrue(trace.IsThreadPoolThread, text);
-                Assert.IsTrue(ContainsMethod(trace.ScheduledFrom, nameof(ResolveForTraceTest)), text);
+                Assert.IsNotNull(OuterTrace(trace), text);
+                Assert.IsTrue(ContainsMethod(OuterTrace(trace), nameof(ResolveForTraceTest)), text);
                 AssertCausalityTraceIsPrintedCorrectly(trace, text);
             }
             finally
@@ -5296,11 +5676,12 @@ namespace ProtoPromise.Tests.APIs
 
                 // The code that resolved the deferred isn't on the stack when the continuation runs on the context, but the trace includes it.
                 Assert.IsFalse(ContainsMethod(trace, nameof(ResolveForTraceTest)), trace.ToString());
-                Assert.IsTrue(ContainsMethod(trace.ScheduledFrom, nameof(ResolveForTraceTest)), trace.ToString());
+                Assert.IsNotNull(OuterTrace(trace), trace.ToString());
+                Assert.IsTrue(ContainsMethod(OuterTrace(trace), nameof(ResolveForTraceTest)), trace.ToString());
                 // It only has its own stack trace.
-                Assert.IsNull(trace.ScheduledFrom.Previous);
-                Assert.IsNull(trace.ScheduledFrom.ScheduledFrom);
-                CollectionAssert.IsEmpty(trace.ScheduledFrom.Repeats);
+                Assert.IsNull(OuterTrace(trace).Previous);
+                Assert.IsNull(OuterTrace(OuterTrace(trace)));
+                CollectionAssert.IsEmpty(OuterTrace(trace).Repeats);
                 // The async function is still the previous trace.
                 AssertPreviousTraceIsFrom(trace, nameof(CausalityTraceCapture_InContinuationOnAnotherContext_IncludesWhereTheContinuationWasScheduled));
                 AssertCausalityTraceIsPrintedCorrectly(trace, trace.ToString());
@@ -5327,7 +5708,8 @@ namespace ProtoPromise.Tests.APIs
                 context.Execute();
 
                 Assert.IsFalse(ContainsMethod(trace, nameof(ResolveForTraceTest)), trace.ToString());
-                Assert.IsTrue(ContainsMethod(trace.ScheduledFrom, nameof(ResolveForTraceTest)), trace.ToString());
+                Assert.IsNotNull(OuterTrace(trace), trace.ToString());
+                Assert.IsTrue(ContainsMethod(OuterTrace(trace), nameof(ResolveForTraceTest)), trace.ToString());
                 AssertCausalityTraceIsPrintedCorrectly(trace, trace.ToString());
             }
             finally
@@ -5598,7 +5980,7 @@ namespace ProtoPromise.Tests.APIs
 
                 Assert.IsTrue(HistoryContainsMethod(trace, nameof(ResolveForTraceTest)), trace.ToString());
                 // The trace of where it was scheduled is the previous trace, so it's not also the trace it was scheduled from.
-                Assert.IsNull(trace.ScheduledFrom, trace.ToString());
+                Assert.IsNull(OuterTrace(trace), trace.ToString());
                 AssertCausalityTraceIsPrintedCorrectly(trace, trace.ToString());
             }
             finally
@@ -5637,7 +6019,7 @@ namespace ProtoPromise.Tests.APIs
                 Assert.IsTrue(trace.IsThreadPoolThread, trace.ToString());
                 Assert.IsTrue(HistoryContainsMethod(trace, nameof(ResolveForTraceTest)), trace.ToString());
                 // The trace of where it was scheduled is the previous trace, so it's not also the trace it was scheduled from.
-                Assert.IsNull(trace.ScheduledFrom, trace.ToString());
+                Assert.IsNull(OuterTrace(trace), trace.ToString());
                 AssertCausalityTraceIsPrintedCorrectly(trace, trace.ToString());
             }
             finally
@@ -5793,7 +6175,7 @@ namespace ProtoPromise.Tests.APIs
                 // The run promise's trace is the only cause; scheduling the callback when the promise was created doesn't add another.
                 Assert.IsNull(runTrace.Previous, runTrace.ToString());
                 AssertPreviousTrace(runTrace, trace);
-                Assert.IsNull(trace.ScheduledFrom, trace.ToString());
+                Assert.IsNull(OuterTrace(trace), trace.ToString());
                 AssertCausalityTraceIsPrintedCorrectly(trace, trace.ToString());
             }
             finally
@@ -5822,7 +6204,7 @@ namespace ProtoPromise.Tests.APIs
                 // The callback promise's trace is the only cause; scheduling the callback when it was hooked up doesn't add another.
                 Assert.IsNull(thenTrace.Previous, thenTrace.ToString());
                 AssertPreviousTrace(thenTrace, trace);
-                Assert.IsNull(trace.ScheduledFrom, trace.ToString());
+                Assert.IsNull(OuterTrace(trace), trace.ToString());
                 AssertCausalityTraceIsPrintedCorrectly(trace, trace.ToString());
             }
             finally
@@ -5851,18 +6233,30 @@ namespace ProtoPromise.Tests.APIs
             Volatile.Write(ref s_frameKeeper, 17);
         }
 
-        // Whether the method is in the frames of the trace or its previous traces, or the traces they were scheduled from.
+        // Whether the method is in the frames of the trace or its previous traces, or their outer traces.
         private static bool HistoryContainsMethod(CausalityTrace trace, string methodName)
         {
             for (var current = trace; current != null; current = current.Previous)
             {
-                if (ContainsMethod(current, methodName) || (current.ScheduledFrom != null && ContainsMethod(current.ScheduledFrom, methodName)))
+                if (ContainsMethod(current, methodName) || current.OuterTraces.Any(outer => ContainsMethod(outer, methodName)))
                 {
                     return true;
                 }
             }
             return false;
         }
+
+        // The trace's only outer trace (in these tests, where the callback that captured it was scheduled from), or null if it has none.
+        private static CausalityTrace OuterTrace(CausalityTrace trace)
+        {
+            Assert.LessOrEqual(trace.OuterTraces.Count, 1, trace.ToString());
+            return trace.OuterTraces.Count == 0 ? null : trace.OuterTraces[0];
+        }
+
+        // Whether the traces have the same visible frames, by their methods and lines.
+        private static bool HasSameFrames(CausalityTrace trace, CausalityTrace other)
+            => trace.GetFrames().Select(frame => (frame.GetMethod(), frame.GetFileLineNumber()))
+                .SequenceEqual(other.GetFrames().Select(frame => (frame.GetMethod(), frame.GetFileLineNumber())));
 
         private static bool ContainsMethod(CausalityTrace trace, string methodName)
             => trace.GetFrames().Any(frame => frame.GetMethod().Name == methodName);
@@ -5876,14 +6270,20 @@ namespace ProtoPromise.Tests.APIs
         // is printed like the outer frames of a trace captured in that method, so it's skipped (see CausalityTrace.Previous).
         private static readonly bool s_hasLineNumbers = new System.Diagnostics.StackFrame(0, true).GetFileLineNumber() != 0;
 
-        // Whether where a callback was scheduled from earlier in a method that is still running is kept, when a context runs the callback from that method.
-        // Without line numbers and accurate IL offsets (IL2CPP's default), it's printed like the outer frames of the trace, so it's dropped (see CausalityTrace.ScheduledFrom).
+        // Whether an outer trace that was captured earlier in a method that is still running is kept (e.g. where a callback was scheduled from,
+        // when a context runs the callback from that method, or where a deferred was created, when that method resolves it).
+        // Without line numbers and accurate IL offsets (IL2CPP's default), it's printed like the outer frames of the trace, so it's dropped (see CausalityTrace.OuterTraces).
         // Developer mode doesn't hide internal frames, so it's never printed like the outer frames of the trace.
 #if ENABLE_IL2CPP && !PROTO_PROMISE_DEVELOPER_MODE
-        private static bool KeepsScheduledFromInTheSameMethod => s_hasLineNumbers;
+        private static bool KeepsOuterTracesFromTheSameMethod => s_hasLineNumbers;
 #else
-        private static bool KeepsScheduledFromInTheSameMethod => true;
+        private static bool KeepsOuterTracesFromTheSameMethod => true;
 #endif
+
+        // The expected outer traces, which were captured earlier in the test method that is still running (e.g. where a deferred was created),
+        // so they're dropped if they're printed like the outer frames of the trace (see KeepsOuterTracesFromTheSameMethod).
+        private static CausalityTrace[] OuterTracesFromTheSameMethod(params CausalityTrace[] traces)
+            => KeepsOuterTracesFromTheSameMethod ? traces : new CausalityTrace[0];
 
         // Whether a hidden frame may be printed with the name of another function, so that a trace that's printed like the outer frames of another trace is not skipped.
         // IL2CPP's C++ linker in Unity versions before 2021.2 folds some library functions with identical functions, whose names are printed in their place
@@ -5957,7 +6357,7 @@ namespace ProtoPromise.Tests.APIs
         }
 
         [Test]
-        public void CausalityTraceCapture_PreviousTraceScheduledFromTheSameTrace_ScheduledFromIsOnlyKeptIfThePreviousTraceIsTruncated(
+        public void CausalityTraceCapture_PreviousTraceScheduledFromTheSameTrace_OuterTraceIsOnlyKeptIfThePreviousTraceIsTruncated(
             [Values] bool isTruncated)
         {
             int originalMaxDepth = CausalityTrace.MaxDepth;
@@ -5969,10 +6369,10 @@ namespace ProtoPromise.Tests.APIs
                 var other = CaptureAtOther();
                 var scheduledFrom = CaptureAtStep();
                 CausalityTrace previous, trace;
+                // Both traces are captured in the same callback.
+                var outerScope = CausalityTrace.EnterScope(scheduledFrom);
                 try
                 {
-                    // Both traces are captured in the same callback.
-                    CausalityTrace.ts_scheduledFrom = scheduledFrom;
                     previous = CaptureInScopeForTraceTest(other);
                     var scope = CausalityTrace.EnterScope(previous);
                     try
@@ -5986,20 +6386,20 @@ namespace ProtoPromise.Tests.APIs
                 }
                 finally
                 {
-                    CausalityTrace.ts_scheduledFrom = null;
+                    outerScope.Dispose();
                 }
 
                 var text = trace.ToString();
-                Assert.AreSame(scheduledFrom, previous.ScheduledFrom, text);
+                Assert.AreSame(scheduledFrom, OuterTrace(previous), text);
                 if (isTruncated)
                 {
                     Assert.IsNull(trace.Previous, text);
-                    Assert.AreSame(scheduledFrom, trace.ScheduledFrom, text);
+                    Assert.AreSame(scheduledFrom, OuterTrace(trace), text);
                 }
                 else
                 {
                     Assert.AreSame(previous, trace.Previous, text);
-                    Assert.IsNull(trace.ScheduledFrom, text);
+                    Assert.IsNull(OuterTrace(trace), text);
                 }
                 Assert.AreEqual(1, CountOccurrences(text, nameof(CaptureAtStep)), text);
                 AssertCausalityTraceIsPrintedCorrectly(trace, text);
@@ -6025,8 +6425,8 @@ namespace ProtoPromise.Tests.APIs
                 context.Execute();
 
                 // Where the outer callback was scheduled from is restored after the callback that the other context ran synchronously.
-                Assert.IsNotNull(traces[0].ScheduledFrom, traces[0].ToString());
-                Assert.AreSame(traces[0].ScheduledFrom, traces[1].ScheduledFrom, traces[1].ToString());
+                Assert.IsNotNull(OuterTrace(traces[0]), traces[0].ToString());
+                Assert.AreSame(OuterTrace(traces[0]), OuterTrace(traces[1]), traces[1].ToString());
             }
             finally
             {
@@ -6165,23 +6565,23 @@ namespace ProtoPromise.Tests.APIs
         }
 
         // Repeated blocks must be labeled once, and printed before they are repeated.
-        // Every stack trace in the chain, and every trace that they were scheduled from, must be printed (as a whole),
+        // Every stack trace in the chain, and every one of their outer traces (indented one more level than the one before it), must be printed (as a whole),
         // and the truncation must be printed if the chain is truncated.
         private static void AssertCausalityTraceIsPrintedCorrectly(CausalityTrace trace, string text)
         {
-            foreach (System.Text.RegularExpressions.Match match in System.Text.RegularExpressions.Regex.Matches(text, @"\[#(\d+) repeated (\d+) times?(?:: [^\]]*)?\]"))
+            foreach (System.Text.RegularExpressions.Match match in System.Text.RegularExpressions.Regex.Matches(text, @"--- #(\d+) repeated (\d+) times?(?:: .*?)? ---"))
             {
                 var number = match.Groups[1].Value;
-                int beginIndex = text.IndexOf("--- [#" + number + " Begin] ---");
-                int endIndex = text.IndexOf("--- [#" + number + " End] ---");
+                int beginIndex = text.IndexOf("--- #" + number + " Begin ---");
+                int endIndex = text.IndexOf("--- #" + number + " End ---");
                 Assert.GreaterOrEqual(beginIndex, 0, "Missing begin label for " + match.Value + ": " + text);
                 Assert.Greater(endIndex, beginIndex, "Missing end label for " + match.Value + ": " + text);
                 Assert.Less(endIndex, match.Index, match.Value + " must be after its block: " + text);
-                Assert.AreEqual(1, CountOccurrences(text, "--- [#" + number + " Begin] ---"), "Duplicate begin label for " + match.Value + ": " + text);
+                Assert.AreEqual(1, CountOccurrences(text, "--- #" + number + " Begin ---"), "Duplicate begin label for " + match.Value + ": " + text);
                 Assert.AreNotEqual("0", match.Groups[2].Value, text);
             }
             var openLabels = new Stack<string>();
-            foreach (System.Text.RegularExpressions.Match match in System.Text.RegularExpressions.Regex.Matches(text, @"--- \[#(\d+) (Begin|End)\] ---"))
+            foreach (System.Text.RegularExpressions.Match match in System.Text.RegularExpressions.Regex.Matches(text, @"--- #(\d+) (Begin|End) ---"))
             {
                 if (match.Groups[2].Value == "Begin")
                 {
@@ -6200,27 +6600,34 @@ namespace ProtoPromise.Tests.APIs
             for (var current = trace; current != null; current = current.Previous)
             {
                 chain.Add(current);
-                AssertStackTraceIsPrinted(current, textLines, text);
-                if (current.ScheduledFrom != null)
+                AssertStackTraceIsPrinted(current, textLines, text, "");
+                string indent = "";
+                foreach (var outer in current.OuterTraces)
                 {
-                    AssertStackTraceIsPrinted(current.ScheduledFrom, textLines, text);
+                    indent += "   ";
+                    AssertStackTraceIsPrinted(outer, textLines, text, indent);
+                    // Outer traces don't have their own histories, so that a chain of causes is only printed once.
+                    Assert.IsNull(outer.Previous, text);
+                    CollectionAssert.IsEmpty(outer.OuterTraces, text);
+                    CollectionAssert.IsEmpty(outer.Repeats, text);
                 }
             }
             Assert.AreEqual(chain[chain.Count - 1].IsTruncated, text.Contains("Older traces truncated"), text);
+            Assert.AreEqual(chain.Any(current => current.AreOuterTracesTruncated), text.Contains("Outer traces truncated"), text);
 
-            // Each trace's thread and time is printed at most once with its stack trace and once with the trace it was scheduled from,
+            // Each trace's thread and time is printed at most once with its stack trace and once with each of its outer traces,
             // and each group of repeats has at most two times (including the traces that are folded as repeats),
-            // so the output can't grow faster than the number of traces and their repeats.
+            // so the output can't grow faster than the number of traces, their outer traces and their repeats.
             int timeCount = System.Text.RegularExpressions.Regex.Matches(text, @"\d+\.\d{3}(?= ms earlier| to )").Count;
-            Assert.LessOrEqual(timeCount, chain.Count * 4 + chain.Sum(current => current.Repeats.Count * 2), text);
+            Assert.LessOrEqual(timeCount, chain.Sum(current => 4 + current.OuterTraces.Count + current.Repeats.Count * 2), text);
         }
 
-        private static void AssertStackTraceIsPrinted(CausalityTrace trace, string[] textLines, string text)
+        private static void AssertStackTraceIsPrinted(CausalityTrace trace, string[] textLines, string text, string indent)
         {
             var stackTraceText = string.Join(System.Environment.NewLine,
-                trace.GetFrames().Select(frame => new System.Diagnostics.StackTrace(frame).ToString().TrimEnd('\r', '\n')));
+                trace.GetFrames().Select(frame => indent + new System.Diagnostics.StackTrace(frame).ToString().TrimEnd('\r', '\n')));
             var stackTraceLines = stackTraceText.Length == 0
-                ? new[] { "   --- [All frames are hidden] ---" }
+                ? new[] { indent + "   --- All frames are hidden ---" }
                 : stackTraceText.Split(new[] { System.Environment.NewLine }, System.StringSplitOptions.None);
             Assert.IsTrue(ContainsBlock(textLines, stackTraceLines), "Missing stack trace:" + System.Environment.NewLine + stackTraceText + System.Environment.NewLine + "in:" + System.Environment.NewLine + text);
         }
@@ -6255,7 +6662,7 @@ namespace ProtoPromise.Tests.APIs
         // Removes the threads and times of repeats, and replaces the times of the stack traces.
         private static string WithoutThreadsAndTimes(string text)
         {
-            text = System.Text.RegularExpressions.Regex.Replace(text, @"[:;] (?:Thread|thread pool) [^\]]*\]", "]");
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"[:;] (?:Thread|thread pool) .*?(?= ---\r?$)", "", System.Text.RegularExpressions.RegexOptions.Multiline);
             return System.Text.RegularExpressions.Regex.Replace(text, @"\d+\.\d{3} ms earlier", "0.000 ms earlier");
         }
     }

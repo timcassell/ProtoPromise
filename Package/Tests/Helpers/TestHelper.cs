@@ -152,8 +152,6 @@ namespace ProtoPromise.Tests
             var causalityTraces = Proto.Diagnostics.CausalityTrace.ts_traces;
             int causalityScopeCount = causalityTraces?.Count ?? 0;
             causalityTraces?.Clear();
-            var causalityScheduledFrom = Proto.Diagnostics.CausalityTrace.ts_scheduledFrom;
-            Proto.Diagnostics.CausalityTrace.ts_scheduledFrom = null;
             // A test that changes the causality trace settings must restore them, even if it fails. If it didn't (e.g. a Unity coroutine test that timed out
             // before its finally block ran), we fail the test that left them, and restore them so that the tests that run after it are not traced
             // (which makes them slow, and disables object pooling).
@@ -161,6 +159,8 @@ namespace ProtoPromise.Tests
             Proto.Diagnostics.CausalityTrace.IsEnabled = false;
             int causalityMaxDepth = Proto.Diagnostics.CausalityTrace.MaxDepth;
             Proto.Diagnostics.CausalityTrace.MaxDepth = 128; // The default.
+            int causalityMaxOuterTraces = Proto.Diagnostics.CausalityTrace.MaxOuterTraces;
+            Proto.Diagnostics.CausalityTrace.MaxOuterTraces = 8; // The default.
 
             Exception[] exceptions;
             lock (_uncaughtExceptions)
@@ -181,9 +181,9 @@ namespace ProtoPromise.Tests
             Internal.AssertAllObjectsReleased(spinForThreadPool);
 #endif
             Assert.AreEqual(0, causalityScopeCount, "CausalityTrace scopes were not exited on the test thread.");
-            Assert.IsNull(causalityScheduledFrom, "CausalityTrace.ts_scheduledFrom was not restored on the test thread.");
             Assert.IsFalse(causalityTracesWereEnabled, "CausalityTrace.IsEnabled was not restored.");
             Assert.AreEqual(128, causalityMaxDepth, "CausalityTrace.MaxDepth was not restored.");
+            Assert.AreEqual(8, causalityMaxOuterTraces, "CausalityTrace.MaxOuterTraces was not restored.");
 
             s_expectedUncaughtRejectValue = null;
             LogProgress("Success");
