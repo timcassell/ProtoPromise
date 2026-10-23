@@ -53,7 +53,7 @@ Proto.Promises.UnhandledException: An exception was not handled. -- This excepti
    --- End of inner exception stack trace ---
    --- Thread 4 ".NET TP Worker" ---
    at Program.LoadLevelAsync() in Program.cs:line 29
-   at Proto.Promises.Internal.PromiseRefBase.AsyncPromiseRef`1.PromiseMethodContinuer.Continuer`1.<>c.<ContinueOnContext>b__7_1(Object obj) in AsyncInternal.cs:line 385
+   at Proto.Promises.Internal.PromiseRefBase.AsyncPromiseRef`1.PromiseMethodContinuer.Continuer`1.<>c.<ContinueOnContext>b__7_1(Object obj) in AsyncInternal.cs:line 396
    at Proto.Promises.Internal.<>c__DisplayClass71_0.<ScheduleContextCallbackDirect>b__0(Object _) in HelperFunctionsInternal.cs:line 60
    at System.Threading.ThreadPoolWorkQueue.Dispatch()
    at System.Threading.PortableThreadPool.WorkerThread.WorkerThreadStart()
@@ -86,7 +86,7 @@ A causality trace is printed like an async stack trace: the stack trace of where
 
 ## Limiting the Depth
 
-`CausalityTrace.MaxDepth` limits how many traces a trace's chain of causes keeps (default 128). When a trace would exceed it, its oldest traces are dropped, which is shown with `--- Older traces truncated, increase CausalityTrace.MaxDepth to see more ---`.
+`CausalityTrace.MaxDepth` limits how many traces a trace's chain of causes keeps (default 128). When a trace would exceed it, its oldest traces are dropped, keeping the most recent half, which is shown with `--- Older traces truncated, increase CausalityTrace.MaxDepth to see more ---`.
 
 `CausalityTrace.MaxOuterTraces` limits how many traces of the other operations that were running around it a trace keeps (default 8). When more operations were running (for example, callbacks that complete other promises synchronously, or scopes that you entered recursively), the outermost ones are dropped, which is shown with `--- Outer traces truncated, increase CausalityTrace.MaxOuterTraces to see more ---`.
 

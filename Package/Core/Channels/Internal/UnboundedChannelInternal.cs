@@ -426,6 +426,8 @@ namespace Proto.Promises
 
             internal override bool TryReject(object reason, int id)
             {
+                // Created before the lock is taken, because capturing its trace is slow.
+                var rejection = CreateRejectContainer(reason, true, this);
                 _smallFields._locker.Enter();
                 ValidateInsideLock(id);
 
@@ -435,7 +437,6 @@ namespace Proto.Promises
                     return false;
                 }
 
-                var rejection = CreateRejectContainer(reason, true, this);
                 _closedReason = rejection;
                 var readers = _readers.TakeElements();
                 var waitToReaders = _waitToReaders.TakeElements();

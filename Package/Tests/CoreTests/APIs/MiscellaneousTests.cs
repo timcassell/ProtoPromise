@@ -1624,6 +1624,87 @@ namespace ProtoPromise.Tests.APIs
             }
         }
 
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static CausalityTrace CaptureSkippingFramesForTraceTest(int skipFrames)
+        {
+            var trace = CausalityTrace.Capture(skipFrames);
+            Volatile.Write(ref s_frameKeeper, 28);
+            return trace;
+        }
+
+        [Test]
+        public void CausalityTraceCapture_WithSkipFrames_ReturnsTraceStartingThatManyFramesUpTheStack()
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var traceAtHelper = CaptureSkippingFramesForTraceTest(0);
+                var traceAtCaller = CaptureSkippingFramesForTraceTest(1);
+                Assert.IsNotNull(traceAtHelper);
+                Assert.IsNotNull(traceAtCaller);
+#if !PROTO_PROMISE_DEVELOPER_MODE // Developer mode doesn't skip frames.
+                Assert.AreEqual(nameof(CaptureSkippingFramesForTraceTest), traceAtHelper.StackTrace.GetFrame(0).GetMethod().Name);
+                Assert.AreEqual(nameof(CausalityTraceCapture_WithSkipFrames_ReturnsTraceStartingThatManyFramesUpTheStack), traceAtCaller.StackTrace.GetFrame(0).GetMethod().Name);
+#endif
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
+        [Test]
+        public void CausalityTraceCapture_WithTheLargestSkipFrames_ReturnsTraceWithoutFrames(
+            [Values(int.MaxValue - 1, int.MaxValue)] int skipFrames)
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var trace = CausalityTrace.Capture(skipFrames);
+                Assert.IsNotNull(trace);
+#if !PROTO_PROMISE_DEVELOPER_MODE // Developer mode doesn't skip frames.
+                Assert.AreEqual(0, trace.StackTrace.FrameCount);
+#endif
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
+#if !PROMISE_DEBUG // Object pooling is always disabled in DEBUG mode.
+        [Test]
+        public void ObjectPooling_IsDisabledWhileCausalityTracesAreEnabled()
+        {
+            bool wasObjectPoolingEnabled = Promise.Config.ObjectPoolingEnabled;
+            try
+            {
+                Promise.Config.ObjectPoolingEnabled = true;
+                CausalityTrace.IsEnabled = true;
+                Assert.IsFalse(Internal.IsObjectPoolingEnabled);
+
+                // Enabling object pooling while causality traces are enabled doesn't enable it.
+                Promise.Config.ObjectPoolingEnabled = false;
+                Promise.Config.ObjectPoolingEnabled = true;
+                Assert.IsFalse(Internal.IsObjectPoolingEnabled);
+
+                CausalityTrace.IsEnabled = false;
+                Assert.IsTrue(Internal.IsObjectPoolingEnabled);
+
+                // Disabling causality traces doesn't enable object pooling if it was disabled.
+                Promise.Config.ObjectPoolingEnabled = false;
+                CausalityTrace.IsEnabled = true;
+                CausalityTrace.IsEnabled = false;
+                Assert.IsFalse(Internal.IsObjectPoolingEnabled);
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+                Promise.Config.ObjectPoolingEnabled = wasObjectPoolingEnabled;
+            }
+        }
+#endif
+
         [Test]
         public void CausalityTraceToString_PrintsTheChainOfPreviousTraces()
         {
@@ -1867,6 +1948,7 @@ namespace ProtoPromise.Tests.APIs
                 var unhandledException = CaptureUnhandledException(exception, () => Promise.Rejected(exception).Forget());
 
                 Assert.IsNotNull(unhandledException.CausalityTrace);
+                Assert.AreEqual(unhandledException.CausalityTrace.ToString(), unhandledException.StackTrace);
                 StringAssert.EndsWith(" -- This exception's StackTrace contains the causality trace of the rejection (the async operations that led to it).", unhandledException.Message);
             }
             finally
@@ -1882,6 +1964,7 @@ namespace ProtoPromise.Tests.APIs
             var unhandledException = CaptureUnhandledException(exception, () => Promise.Rejected(exception).Forget());
 
             Assert.IsNull(unhandledException.CausalityTrace);
+            Assert.IsNull(unhandledException.StackTrace);
             StringAssert.EndsWith(" -- Set Proto.Diagnostics.CausalityTrace.IsEnabled = true to get a causality trace.", unhandledException.Message);
         }
 
@@ -1916,7 +1999,12 @@ namespace ProtoPromise.Tests.APIs
             {
                 var deferred = NewVoidDeferredForTraceTest();
                 CausalityTrace callbackTrace = null;
-                var thenPromise = deferred.Promise.Then(() => { callbackTrace = CausalityTrace.Capture(); });
+                CausalityTrace callbackScope = null;
+                var thenPromise = deferred.Promise.Then(() =>
+                {
+                    callbackTrace = CausalityTrace.Capture();
+                    callbackScope = GetCurrentTraceForTraceTest();
+                });
                 var thenTrace = thenPromise._ref.Trace;
                 thenPromise.Forget();
 
@@ -1924,6 +2012,7 @@ namespace ProtoPromise.Tests.APIs
 
                 Assert.IsNotNull(thenTrace);
                 // Completing a deferred doesn't enter its scope. What completed it is on the stack.
+                Assert.AreSame(thenTrace, callbackScope);
                 AssertPreviousTrace(thenTrace, callbackTrace);
                 Assert.IsFalse(HistoryContainsMethod(callbackTrace, nameof(NewVoidDeferredForTraceTest)), callbackTrace.ToString());
                 CollectionAssert.IsEmpty(callbackTrace.OuterTraces, callbackTrace.ToString());
@@ -1935,19 +2024,26 @@ namespace ProtoPromise.Tests.APIs
         }
 
         [Test]
-        public void DeferredResolve_CreatedWhileTracingIsDisabled_ContinuationsRunWithoutTheDeferredScope()
+        public void DeferredResolve_CreatedWhileTracingIsDisabled_ContinuationsRunInsideTheirOwnScopes()
         {
             var deferred = Promise.NewDeferred();
             CausalityTrace.IsEnabled = true;
             try
             {
                 CausalityTrace callbackTrace = null;
-                var thenPromise = deferred.Promise.Then(() => { callbackTrace = CausalityTrace.Capture(); });
+                CausalityTrace callbackScope = null;
+                var thenPromise = deferred.Promise.Then(() =>
+                {
+                    callbackTrace = CausalityTrace.Capture();
+                    callbackScope = GetCurrentTraceForTraceTest();
+                });
                 var thenTrace = thenPromise._ref.Trace;
                 thenPromise.Forget();
 
                 deferred.Resolve();
 
+                Assert.IsNotNull(thenTrace);
+                Assert.AreSame(thenTrace, callbackScope);
                 AssertPreviousTrace(thenTrace, callbackTrace);
             }
             finally
@@ -1994,13 +2090,19 @@ namespace ProtoPromise.Tests.APIs
             {
                 var deferred = Promise.NewDeferred();
                 CausalityTrace callbackTrace = null;
+                CausalityTrace callbackScope = null;
                 var finallyPromise = callbackReturnsPromise
                     ? deferred.Promise.Finally(() =>
                     {
                         callbackTrace = CausalityTrace.Capture();
+                        callbackScope = GetCurrentTraceForTraceTest();
                         return Promise.Resolved();
                     })
-                    : deferred.Promise.Finally(() => { callbackTrace = CausalityTrace.Capture(); });
+                    : deferred.Promise.Finally(() =>
+                    {
+                        callbackTrace = CausalityTrace.Capture();
+                        callbackScope = GetCurrentTraceForTraceTest();
+                    });
                 var finallyTrace = finallyPromise._ref.Trace;
                 finallyPromise
                     .Catch(() => { })
@@ -2016,6 +2118,7 @@ namespace ProtoPromise.Tests.APIs
                 }
 
                 Assert.IsNotNull(finallyTrace);
+                Assert.AreSame(finallyTrace, callbackScope);
                 AssertPreviousTrace(finallyTrace, callbackTrace);
             }
             finally
@@ -2033,19 +2136,26 @@ namespace ProtoPromise.Tests.APIs
             {
                 var deferred = Promise.NewDeferred();
                 CausalityTrace callbackTrace = null;
+                CausalityTrace callbackScope = null;
                 var catchPromise = callbackReturnsPromise
                     ? deferred.Promise.Catch(() =>
                     {
                         callbackTrace = CausalityTrace.Capture();
+                        callbackScope = GetCurrentTraceForTraceTest();
                         return Promise.Resolved();
                     })
-                    : deferred.Promise.Catch(() => { callbackTrace = CausalityTrace.Capture(); });
+                    : deferred.Promise.Catch(() =>
+                    {
+                        callbackTrace = CausalityTrace.Capture();
+                        callbackScope = GetCurrentTraceForTraceTest();
+                    });
                 var catchTrace = catchPromise._ref.Trace;
                 catchPromise.Forget();
 
                 deferred.Reject("Rejected");
 
                 Assert.IsNotNull(catchTrace);
+                Assert.AreSame(catchTrace, callbackScope);
                 AssertPreviousTrace(catchTrace, callbackTrace);
             }
             finally
@@ -2068,16 +2178,22 @@ namespace ProtoPromise.Tests.APIs
             {
                 var exception = new System.InvalidOperationException("Bang!");
                 CausalityTrace thenTrace = null;
+                CausalityTrace thenScope = null;
                 var trace = CaptureUnhandledException(exception, () =>
                 {
                     var deferred = Promise.NewDeferred();
-                    var thenPromise = deferred.Promise.Then(() => ThrowRejectExceptionForTraceTest(exception));
+                    var thenPromise = deferred.Promise.Then(() =>
+                    {
+                        thenScope = GetCurrentTraceForTraceTest();
+                        ThrowRejectExceptionForTraceTest(exception);
+                    });
                     thenTrace = thenPromise._ref.Trace;
                     thenPromise.Forget();
                     deferred.Resolve();
                 }).CausalityTrace;
 
                 Assert.IsNotNull(thenTrace);
+                Assert.AreSame(thenTrace, thenScope);
                 StringAssert.Contains(nameof(ThrowRejectExceptionForTraceTest), trace.StackTrace.ToString());
                 AssertPreviousTrace(thenTrace, trace);
             }
@@ -2287,6 +2403,102 @@ namespace ProtoPromise.Tests.APIs
             }
         }
 
+        [Test]
+        public void AsyncPromise_AwaitedWhileTheExecutionContextFlowIsSuppressed_ContinuationRunsInsideTheAsyncPromiseScope()
+        {
+            // The async promise can't capture the ExecutionContext while its flow is suppressed, so it stores its traced mark instead.
+            bool wasFlowExecutionContextEnabled = Promise.Config.s_asyncFlowExecutionContextEnabled;
+            Promise.Config.s_asyncFlowExecutionContextEnabled = true;
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var deferred = NewVoidDeferredForTraceTest();
+                CausalityTrace traceAfterAwait = null;
+
+                async Promise Func()
+                {
+                    await deferred.Promise;
+                    traceAfterAwait = CausalityTrace.Capture();
+                }
+
+                Promise promise;
+                using (ExecutionContext.SuppressFlow())
+                {
+                    promise = Func();
+                }
+                var asyncTrace = promise._ref.Trace;
+                promise.Forget();
+
+                deferred.Resolve();
+
+                Assert.IsNotNull(asyncTrace);
+                Assert.IsNotNull(traceAfterAwait);
+                Assert.AreSame(asyncTrace, traceAfterAwait.Previous, traceAfterAwait.ToString());
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+                Promise.Config.s_asyncFlowExecutionContextEnabled = wasFlowExecutionContextEnabled;
+            }
+        }
+
+        [Test]
+        public void AsyncIterator_ResumedByADeferred_RunsInsideItsScope_AndTheConsumerRunsInsideItsOwnScope()
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var deferred = NewVoidDeferredForTraceTest();
+                CausalityTrace iteratorScope = null;
+                CausalityTrace consumerScope = null;
+                var items = new List<int>();
+
+                var enumerable = Proto.Promises.Linq.AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
+                {
+                    await writer.YieldAsync(1);
+                    await deferred.Promise;
+                    iteratorScope = GetCurrentTraceForTraceTest();
+                    await writer.YieldAsync(2);
+                });
+
+                // The enumerator is used directly instead of await foreach, which requires C# 8.
+                async Promise Consume()
+                {
+                    var enumerator = enumerable.GetAsyncEnumerator();
+                    try
+                    {
+                        while (await enumerator.MoveNextAsync())
+                        {
+                            items.Add(enumerator.Current);
+                        }
+                        consumerScope = GetCurrentTraceForTraceTest();
+                    }
+                    finally
+                    {
+                        await enumerator.DisposeAsync();
+                    }
+                }
+
+                var consumer = Consume();
+                var consumerTrace = consumer._ref.Trace;
+                consumer.Forget();
+                CollectionAssert.AreEqual(new[] { 1 }, items);
+
+                deferred.Resolve();
+
+                CollectionAssert.AreEqual(new[] { 1, 2 }, items);
+                Assert.IsNotNull(consumerTrace);
+                Assert.AreSame(consumerTrace, consumerScope);
+                // The iterator resumes in the scope of its own async function, which was started by the consumer.
+                Assert.IsNotNull(iteratorScope);
+                Assert.AreNotSame(consumerTrace, iteratorScope);
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
 #if PROMISE_DEBUG
         [Test]
         public void AsyncPromise_ResumedOnAContextWhileTracingIsDisabled_ContinuationsRunInsideTheAsyncPromiseScopeAfterItIsEnabledAgain()
@@ -2336,7 +2548,7 @@ namespace ProtoPromise.Tests.APIs
             [Values] bool flowExecutionContext)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            // Disabled covers the path where the async promise resumes with its traced mark (and no trace) after tracing is disabled.
+            // Disabled covers the path where the async promise resumes with its traced mark (and its trace is ignored) after tracing is disabled.
             bool wasFlowExecutionContextEnabled = Promise.Config.s_asyncFlowExecutionContextEnabled;
             Promise.Config.s_asyncFlowExecutionContextEnabled = flowExecutionContext;
             CausalityTrace.IsEnabled = true;
@@ -2366,8 +2578,6 @@ namespace ProtoPromise.Tests.APIs
 
                 Assert.IsTrue(resumed);
                 Assert.IsTrue(completed);
-                // No scope was left on the stack.
-                Assert.IsTrue(CausalityTrace.ts_traces == null || CausalityTrace.ts_traces.Count == 0);
             }
             finally
             {
@@ -2781,6 +2991,112 @@ namespace ProtoPromise.Tests.APIs
             }
         }
 
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static PromiseAllGroup<int> NewAllGroupForTraceTest(CausalityTrace[] cleanupTrace)
+        {
+            var group = PromiseAllGroup<int>.New(out _, value => { cleanupTrace[0] = CausalityTrace.Capture(); });
+            Volatile.Write(ref s_frameKeeper, 29);
+            return group;
+        }
+
+        [Test]
+        public void PromiseAllGroupCleanup_RunsInsideTheScopeOfWhereItWasRegistered()
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var cleanupTrace = new CausalityTrace[1];
+                var resolved = Promise<int>.NewDeferred();
+                var rejected = Promise<int>.NewDeferred();
+                NewAllGroupForTraceTest(cleanupTrace)
+                    .Add(resolved.Promise)
+                    .Add(rejected.Promise)
+                    .WaitAsync()
+                    .ContinueWith(_ => { })
+                    .Forget();
+
+                resolved.Resolve(1);
+                // The resolved value is cleaned up when the group is rejected, inside the call that rejected it.
+                rejected.Reject(new System.InvalidOperationException("Bang!"));
+
+                AssertRanInsideTheScopeStartedBy(cleanupTrace[0], nameof(NewAllGroupForTraceTest));
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static PromiseMergeGroup<int> AddWithCleanupForTraceTest(PromiseMergeGroup group, Promise<int> promise, CausalityTrace[] cleanupTrace)
+        {
+            var result = group.Add(promise, value => { cleanupTrace[0] = CausalityTrace.Capture(); });
+            Volatile.Write(ref s_frameKeeper, 30);
+            return result;
+        }
+
+        [Test]
+        public void PromiseMergeGroupCleanup_RunsInsideTheScopeOfWhereItWasRegistered()
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var cleanupTrace = new CausalityTrace[1];
+                var resolved = Promise<int>.NewDeferred();
+                var rejected = Promise<int>.NewDeferred();
+                AddWithCleanupForTraceTest(PromiseMergeGroup.New(out _), resolved.Promise, cleanupTrace)
+                    .Add(rejected.Promise)
+                    .WaitAsync()
+                    .ContinueWith(_ => { })
+                    .Forget();
+
+                resolved.Resolve(1);
+                // The resolved value is cleaned up when the group is rejected, inside the call that rejected it.
+                rejected.Reject(new System.InvalidOperationException("Bang!"));
+
+                AssertRanInsideTheScopeStartedBy(cleanupTrace[0], nameof(AddWithCleanupForTraceTest));
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static PromiseRaceGroup<int> NewRaceGroupForTraceTest(CausalityTrace[] cleanupTrace)
+        {
+            var group = PromiseRaceGroup<int>.New(out _, value => { cleanupTrace[0] = CausalityTrace.Capture(); });
+            Volatile.Write(ref s_frameKeeper, 31);
+            return group;
+        }
+
+        [Test]
+        public void PromiseRaceGroupCleanup_RunsInsideTheScopeOfWhereItWasRegistered()
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var cleanupTrace = new CausalityTrace[1];
+                var winner = Promise<int>.NewDeferred();
+                var loser = Promise<int>.NewDeferred();
+                NewRaceGroupForTraceTest(cleanupTrace)
+                    .Add(winner.Promise)
+                    .Add(loser.Promise)
+                    .WaitAsync()
+                    .Forget();
+
+                winner.Resolve(1);
+                // The value that lost the race is cleaned up inside the call that resolved it.
+                loser.Resolve(2);
+
+                AssertRanInsideTheScopeStartedBy(cleanupTrace[0], nameof(NewRaceGroupForTraceTest));
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
 #if !UNITY_WEBGL
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         private static Proto.Timers.Timer CreateTimerForTraceTest(Proto.Timers.TimerFactory timerFactory, CausalityTrace[] callbackTrace, System.Threading.ManualResetEventSlim invoked)
@@ -2959,6 +3275,44 @@ namespace ProtoPromise.Tests.APIs
                 CausalityTrace.IsEnabled = false;
             }
         }
+
+#if PROTO_PROMISE_TEST_GC_ENABLED && !PROMISE_DEBUG // In DEBUG mode, traces are stored in their objects' fields.
+        [Test]
+        public void CausalityTraceIsEnabled_Disabled_ReleasesTheTracesOfOperationsThatAreStillPending()
+        {
+            CausalityTrace.IsEnabled = true;
+            Promise.Deferred deferred;
+            System.WeakReference traceReference;
+            try
+            {
+                deferred = NewDeferredAndGetItsTraceForTraceTest(out traceReference);
+                Assert.IsTrue(traceReference.IsAlive);
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+
+            // The table of traces may only be released when its finalizer runs, so this collects twice.
+            TestHelper.GcCollectAndWaitForFinalizers();
+            TestHelper.GcCollectAndWaitForFinalizers();
+            Assert.IsFalse(traceReference.IsAlive);
+            // The promise is still pending, so it's not collected with its trace.
+            deferred.Resolve();
+        }
+
+        // NoInlining so that the trace isn't kept alive by a local of the test.
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static Promise.Deferred NewDeferredAndGetItsTraceForTraceTest(out System.WeakReference traceReference)
+        {
+            var deferred = Promise.NewDeferred();
+            var trace = deferred.Promise._ref.Trace;
+            Assert.IsNotNull(trace);
+            traceReference = new System.WeakReference(trace);
+            deferred.Promise.Forget();
+            return deferred;
+        }
+#endif
 
         [Test]
         public void CausalityTraceMaxDepth_MustBeGreaterThanZero()
@@ -4548,6 +4902,35 @@ namespace ProtoPromise.Tests.APIs
         }
 
         [Test]
+        public void CausalityTraceCapture_SkippedTraceRepeatedByAnOuterScope_TheRepeatIsNotAnOuterTrace()
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var other = CaptureAtOther();
+                CausalityTrace contained = null;
+                CausalityTrace trace = null;
+                for (int i = 0; i < 2; ++i)
+                {
+                    // The second time, the deeper trace is captured inside the scope of the first contained trace, which has the same frames as the second
+                    // contained trace, as if a callback that was scheduled from the same location ran it. Its frames are already printed in the deeper trace.
+                    trace = CaptureContainedForTraceTest(other, null, contained, out contained);
+                }
+
+                var text = trace.ToString();
+                Assert.AreSame(other, contained.Previous, text);
+                // The second contained trace is skipped, and the first one adds nothing.
+                Assert.AreSame(other, trace.Previous, text);
+                CollectionAssert.IsEmpty(trace.OuterTraces, text);
+                AssertCausalityTraceIsPrintedCorrectly(trace, text);
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
+        [Test]
         public void CausalityTraceCapture_TraceContainedByWhereTheCallbackWasScheduledFrom_IsSkippedAndItsOuterTracesAreKept(
             [Values] bool containedHasAnOuterTrace)
         {
@@ -4628,7 +5011,9 @@ namespace ProtoPromise.Tests.APIs
                 Assert.IsNull(trace.Previous);
                 Assert.IsTrue(trace.IsTruncated);
                 var text = trace.ToString();
-                StringAssert.Contains("Older traces truncated", text);
+                StringAssert.EndsWith(System.Environment.NewLine
+                    + "--- End of stack trace from the previous location ---" + System.Environment.NewLine
+                    + "   --- Older traces truncated, increase CausalityTrace.MaxDepth to see more ---" + System.Environment.NewLine, text);
                 AssertCausalityTraceIsPrintedCorrectly(trace, text);
             }
             finally
@@ -5397,6 +5782,49 @@ namespace ProtoPromise.Tests.APIs
             }
         }
 
+        [Test]
+        public void CausalityTraceToString_RepeatedPartOfTheChainWithOtherOuterTraces_IsNotFolded(
+            [Values] bool newerHasMore,
+            [Values] bool onlyTheTruncationDiffers)
+        {
+            if (onlyTheTruncationDiffers)
+            {
+                CausalityTrace.MaxOuterTraces = 1;
+            }
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var other = CaptureAtOther();
+                var scheduledFrom = CaptureAtStep();
+                // Both copies are captured in as many scopes, so that they have the same frames (a null scope doesn't change the current trace).
+                // The one with more has one more outer trace, or the same outer trace and one that was truncated.
+                var fewer = onlyTheTruncationDiffers ? new[] { scheduledFrom, null } : new CausalityTrace[] { null, null };
+                var more = new[] { scheduledFrom, onlyTheTruncationDiffers ? CaptureAtLoop() : null };
+                var traces = new CausalityTrace[2];
+                for (int i = 0; i < 2; ++i)
+                {
+                    traces[i] = CaptureInScopesForTraceTest(other, (i == 1) == newerHasMore ? more : fewer);
+                }
+                var withMore = traces[newerHasMore ? 1 : 0];
+                var withFewer = traces[newerHasMore ? 0 : 1];
+                CollectionAssert.AreEqual(new[] { scheduledFrom }, withMore.OuterTraces);
+                Assert.AreEqual(onlyTheTruncationDiffers, withMore.AreOuterTracesTruncated);
+                Assert.AreEqual(onlyTheTruncationDiffers ? 1 : 0, withFewer.OuterTraces.Count);
+                Assert.IsFalse(withFewer.AreOuterTracesTruncated);
+
+                // The traces have the same frames, but folding them would lose one of their outer traces, or that it was truncated.
+                var trace = CopyTrace(traces[1], false, CopyTrace(traces[0], false, other));
+                var text = trace.ToString();
+                StringAssert.DoesNotContain("--- Repeated", text);
+                AssertCausalityTraceIsPrintedCorrectly(trace, text);
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+                CausalityTrace.MaxOuterTraces = 8;
+            }
+        }
+
 #if PROMISE_DEBUG // In optimized code, two calls in one method may report the same line.
         [Test]
         public void CausalityTraceCapture_InsideTheScopeOfATraceCapturedAtAnotherLineOfTheSameCall_KeepsIt()
@@ -5676,6 +6104,46 @@ namespace ProtoPromise.Tests.APIs
             }
         }
 
+        [Test]
+        public void CausalityTraceToString_OneRepeat_SaysOneTime()
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var trace = GetTraceWithRepeatsForTraceTest(1);
+
+                var text = trace.ToString();
+                StringAssert.Contains("--- Repeated 1 time: ", text);
+                StringAssert.DoesNotContain("1 times", text);
+                AssertCausalityTraceIsPrintedCorrectly(trace, text);
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
+        [Test]
+        public void CausalityTraceToString_UnnamedThreads_AreDescribedByTheirKind()
+        {
+            // Checked directly, because newer runtimes name their thread pool threads.
+            var sb = new System.Text.StringBuilder();
+            CausalityTrace.Printer.AppendThreadDescription(sb, 5, null, true, true);
+            Assert.AreEqual("Thread 5 (thread pool)", sb.ToString());
+
+            sb.Clear();
+            CausalityTrace.Printer.AppendThreadDescription(sb, 6, null, false, true);
+            Assert.AreEqual("Thread 6 (background)", sb.ToString());
+
+            sb.Clear();
+            CausalityTrace.Printer.AppendThreadDescription(sb, 7, null, false, false);
+            Assert.AreEqual("Thread 7 (foreground)", sb.ToString());
+
+            sb.Clear();
+            CausalityTrace.Printer.AppendThreadDescription(sb, 8, "Worker", true, true);
+            Assert.AreEqual("Thread 8 \"Worker\"", sb.ToString());
+        }
+
         // Gets a trace with the count of repeats.
         private static CausalityTrace GetTraceWithRepeatsForTraceTest(int count)
         {
@@ -5694,8 +6162,11 @@ namespace ProtoPromise.Tests.APIs
             try
             {
                 var pending = new Queue<Promise.Deferred>();
-                var trace = new CausalityTrace[1];
-                InitializeForTraceTest(pending, trace).Forget();
+                // The trace, and the scope where it was captured.
+                var trace = new CausalityTrace[2];
+                var promise = InitializeForTraceTest(pending, trace);
+                var asyncTrace = promise._ref.Trace;
+                promise.Forget();
                 while (pending.Count > 0)
                 {
                     pending.Dequeue().Resolve();
@@ -5714,6 +6185,8 @@ namespace ProtoPromise.Tests.APIs
                 }
                 Assert.IsFalse(HistoryContainsMethod(trace[0], nameof(LoadConfigForTraceTest)), trace[0].ToString());
                 Assert.IsFalse(HistoryContainsMethod(trace[0], nameof(ConnectForTraceTest)), trace[0].ToString());
+                Assert.IsNotNull(asyncTrace);
+                Assert.AreSame(asyncTrace, trace[1]);
                 AssertPreviousTraceIsFrom(trace[0], nameof(CausalityTraceCapture_AfterSequentialAwaits_DoesNotIncludeTheEarlierAwaits));
                 AssertCausalityTraceIsPrintedCorrectly(trace[0], trace[0].ToString());
             }
@@ -5729,6 +6202,7 @@ namespace ProtoPromise.Tests.APIs
             await ConnectForTraceTest(pending);
             await GetPendingPromise(pending);
             trace[0] = CausalityTrace.Capture();
+            trace[1] = GetCurrentTraceForTraceTest();
         }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
@@ -6068,11 +6542,20 @@ namespace ProtoPromise.Tests.APIs
                 var context = new QueuedContext();
                 var deferred = Promise.NewDeferred();
                 CausalityTrace trace = null;
-                CaptureAfterAwaitOnContextForTraceTest(deferred.Promise, context, captured => trace = captured).Forget();
+                CausalityTrace scope = null;
+                var promise = CaptureAfterAwaitOnContextForTraceTest(deferred.Promise, context, captured =>
+                {
+                    trace = captured;
+                    scope = GetCurrentTraceForTraceTest();
+                });
+                var asyncTrace = promise._ref.Trace;
+                promise.Forget();
                 ResolveForTraceTest(deferred);
                 Assert.IsNull(trace);
                 context.Execute();
 
+                Assert.IsNotNull(asyncTrace);
+                Assert.AreSame(asyncTrace, scope);
                 // The code that resolved the deferred isn't on the stack when the continuation runs on the context, but the trace includes it.
                 Assert.IsFalse(ContainsMethod(trace, nameof(ResolveForTraceTest)), trace.ToString());
                 Assert.IsNotNull(OuterTrace(trace), trace.ToString());
@@ -6127,11 +6610,18 @@ namespace ProtoPromise.Tests.APIs
                 {
                     var exception = new System.InvalidOperationException("Thrown in callback");
                     var deferred = Promise.NewDeferred();
-                    deferred.Promise
-                        .Then(() => throw exception)
-                        .Forget();
+                    CausalityTrace thenScope = null;
+                    var thenPromise = deferred.Promise.Then(() =>
+                    {
+                        thenScope = GetCurrentTraceForTraceTest();
+                        throw exception;
+                    });
+                    var thenTrace = thenPromise._ref.Trace;
+                    thenPromise.Forget();
                     ResolveForTraceTest(deferred);
 
+                    Assert.IsNotNull(thenTrace);
+                    Assert.AreSame(thenTrace, thenScope);
                     var trace = reports.GetTrace(exception);
                     // Where the exception was caught, which is inside the call that resolved the deferred.
                     Assert.IsTrue(trace.GetFrames().Any(frame => frame.GetMethod().Name == nameof(ResolveForTraceTest)), trace.ToString());
@@ -6156,9 +6646,14 @@ namespace ProtoPromise.Tests.APIs
                 {
                     var exception = new System.InvalidOperationException("Thrown in async function");
                     var deferred = Promise.NewDeferred();
-                    ThrowAfterAwaitForTraceTest(deferred.Promise, exception).Forget();
+                    var scope = new CausalityTrace[1];
+                    var promise = ThrowAfterAwaitForTraceTest(deferred.Promise, exception, scope);
+                    var asyncTrace = promise._ref.Trace;
+                    promise.Forget();
                     ResolveForTraceTest(deferred);
 
+                    Assert.IsNotNull(asyncTrace);
+                    Assert.AreSame(asyncTrace, scope[0]);
                     var trace = reports.GetTrace(exception);
                     Assert.IsTrue(trace.GetFrames().Any(frame => frame.GetMethod().Name == nameof(ResolveForTraceTest)), trace.ToString());
                     // Where the async function was called is still the previous trace.
@@ -6183,12 +6678,21 @@ namespace ProtoPromise.Tests.APIs
                 {
                     var exception = new System.InvalidOperationException("Thrown in " + callbackType);
                     var deferred = Promise.NewDeferred();
-                    Promise promise = callbackType == "Catch" ? deferred.Promise.Then(() => throw new System.Exception("Caught")).Catch(() => throw exception)
-                        : callbackType == "ContinueWith" ? deferred.Promise.ContinueWith(_ => throw exception)
-                        : deferred.Promise.Finally(() => throw exception);
+                    CausalityTrace callbackScope = null;
+                    System.Action throwInScope = () =>
+                    {
+                        callbackScope = GetCurrentTraceForTraceTest();
+                        throw exception;
+                    };
+                    Promise promise = callbackType == "Catch" ? deferred.Promise.Then(() => throw new System.Exception("Caught")).Catch(throwInScope)
+                        : callbackType == "ContinueWith" ? deferred.Promise.ContinueWith(_ => throwInScope())
+                        : deferred.Promise.Finally(throwInScope);
+                    var callbackTrace = promise._ref.Trace;
                     promise.Forget();
                     ResolveForTraceTest(deferred);
 
+                    Assert.IsNotNull(callbackTrace);
+                    Assert.AreSame(callbackTrace, callbackScope);
                     var trace = reports.GetTrace(exception);
                     Assert.IsTrue(trace.GetFrames().Any(frame => frame.GetMethod().Name == nameof(ResolveForTraceTest)), trace.ToString());
                     AssertPreviousTraceIsFrom(trace, nameof(UnhandledRejection_ExceptionThrownInCatchContinueWithOrFinally_TraceIncludesWhatInvokedTheCallback));
@@ -6211,9 +6715,18 @@ namespace ProtoPromise.Tests.APIs
                 {
                     var context = new QueuedContext();
                     var exception = new System.InvalidOperationException("Thrown in Promise.New");
-                    Promise.New(_ => throw exception, context, forceAsync: true).Forget();
+                    CausalityTrace newScope = null;
+                    var newPromise = Promise.New(_ =>
+                    {
+                        newScope = GetCurrentTraceForTraceTest();
+                        throw exception;
+                    }, context, forceAsync: true);
+                    var newTrace = newPromise._ref.Trace;
+                    newPromise.Forget();
                     ExecuteForTraceTest(context);
 
+                    Assert.IsNotNull(newTrace);
+                    Assert.AreSame(newTrace, newScope);
                     var trace = reports.GetTrace(exception);
                     Assert.IsTrue(trace.GetFrames().Any(frame => frame.GetMethod().Name == nameof(ExecuteForTraceTest)), trace.ToString());
                     AssertPreviousTraceIsFrom(trace, nameof(UnhandledRejection_ExceptionThrownInPromiseNewOnAContext_TraceIncludesWhatRanTheCallback));
@@ -6326,6 +6839,34 @@ namespace ProtoPromise.Tests.APIs
                     var traces = reports.GetTraces(exception);
                     Assert.AreEqual(2, traces.Length);
                     Assert.AreSame(originalTrace, traces[1]);
+                }
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
+        [Test]
+        public void UnhandledException_RethrownByAwait_HasTheTraceOfWhereItWasRejected()
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                using (var reports = new ReportedExceptions())
+                {
+                    var exception = new System.InvalidOperationException("Rethrown");
+                    var deferred = Promise.NewDeferred();
+                    // The async function rethrows the exception when it awaits the rejected promise.
+                    AwaitForTraceTest(deferred.Promise).Forget();
+                    deferred.Reject(exception);
+                    // Rejecting it again also uses the trace of where it was first rejected.
+                    Promise.Rejected(exception).Forget();
+
+                    var traces = reports.GetTraces(exception);
+                    Assert.AreEqual(2, traces.Length);
+                    Assert.IsNotNull(traces[0]);
+                    Assert.AreSame(traces[1], traces[0]);
                 }
             }
             finally
@@ -6642,9 +7183,10 @@ namespace ProtoPromise.Tests.APIs
             Volatile.Write(ref s_frameKeeper, 16);
         }
 
-        private static async Promise ThrowAfterAwaitForTraceTest(Promise promise, System.Exception exception)
+        private static async Promise ThrowAfterAwaitForTraceTest(Promise promise, System.Exception exception, CausalityTrace[] scope)
         {
             await promise;
+            scope[0] = GetCurrentTraceForTraceTest();
             throw exception;
         }
 
@@ -6656,13 +7198,19 @@ namespace ProtoPromise.Tests.APIs
             {
                 var context = new QueuedContext();
                 CausalityTrace trace = null;
-                var runPromise = Promise.Run(() => { trace = CausalityTrace.Capture(); }, context);
+                CausalityTrace scope = null;
+                var runPromise = Promise.Run(() =>
+                {
+                    trace = CausalityTrace.Capture();
+                    scope = GetCurrentTraceForTraceTest();
+                }, context);
                 var runTrace = runPromise._ref.Trace;
                 runPromise.Forget();
                 context.Execute();
 
                 // The run promise's trace is the only cause; scheduling the callback when the promise was created doesn't add another.
                 Assert.IsNull(runTrace.Previous, runTrace.ToString());
+                Assert.AreSame(runTrace, scope);
                 AssertPreviousTrace(runTrace, trace);
                 Assert.IsNull(OuterTrace(trace), trace.ToString());
                 AssertCausalityTraceIsPrintedCorrectly(trace, trace.ToString());
@@ -6684,14 +7232,20 @@ namespace ProtoPromise.Tests.APIs
                 var configured = deferred.Promise.ConfigureContinuation(new ContinuationOptions(context, CompletedContinuationBehavior.Asynchronous));
                 deferred.Resolve();
                 CausalityTrace trace = null;
+                CausalityTrace scope = null;
                 // The configured promise is already complete, so the callback is scheduled on the context when Then is called.
-                var thenPromise = configured.Then(() => { trace = CausalityTrace.Capture(); });
+                var thenPromise = configured.Then(() =>
+                {
+                    trace = CausalityTrace.Capture();
+                    scope = GetCurrentTraceForTraceTest();
+                });
                 var thenTrace = thenPromise._ref.Trace;
                 thenPromise.Forget();
                 context.Execute();
 
                 // The callback promise's trace is the only cause; scheduling the callback when it was hooked up doesn't add another.
                 Assert.IsNull(thenTrace.Previous, thenTrace.ToString());
+                Assert.AreSame(thenTrace, scope);
                 AssertPreviousTrace(thenTrace, trace);
                 Assert.IsNull(OuterTrace(trace), trace.ToString());
                 AssertCausalityTraceIsPrintedCorrectly(trace, trace.ToString());
@@ -6779,6 +7333,7 @@ namespace ProtoPromise.Tests.APIs
 #endif
 
         // Asserts that the previous trace of the trace is the expected trace, or, without line numbers, that it was skipped.
+        // Without line numbers, this can't tell a skipped trace from a scope that wasn't entered, so the callers also check the scope where the trace was captured (see GetCurrentTraceForTraceTest).
         private static void AssertPreviousTrace(CausalityTrace expected, CausalityTrace trace)
         {
             if (s_hasLineNumbers || trace.Previous == expected)
@@ -6793,6 +7348,7 @@ namespace ProtoPromise.Tests.APIs
 
         // Asserts that the previous trace of the trace was captured in the method, or, without line numbers, that it was skipped.
         // The callers capture the previous trace without an outer scope, so the trace has no previous trace if it was skipped.
+        // Without line numbers, this can't tell a skipped trace from a scope that wasn't entered, so the callers also check the scope where the trace was captured (see GetCurrentTraceForTraceTest).
         private static void AssertPreviousTraceIsFrom(CausalityTrace trace, string methodName)
         {
             if (s_hasLineNumbers || (trace.Previous != null && ContainsMethod(trace.Previous, methodName)))

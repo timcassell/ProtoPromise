@@ -142,12 +142,12 @@ namespace Proto.Promises
             public bool TryReject<TReject>(TReject reason)
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) != true)
+                if (_this?.TryIncrementDeferredId(_deferredId) == true)
                 {
-                    return false;
+                    _this.Reject(reason);
+                    return true;
                 }
-                _this.Reject(reason);
-                return true;
+                return false;
             }
 
             /// <summary>
@@ -174,12 +174,12 @@ namespace Proto.Promises
             public bool TryCancel()
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) != true)
+                if (_this?.TryIncrementDeferredId(_deferredId) == true)
                 {
-                    return false;
+                    _this.CancelDirect();
+                    return true;
                 }
-                _this.CancelDirect();
-                return true;
+                return false;
             }
 
             /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="DeferredBase"/>.</summary>
@@ -304,12 +304,12 @@ namespace Proto.Promises
             public bool TryResolve()
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) != true)
+                if (_this?.TryIncrementDeferredId(_deferredId) == true)
                 {
-                    return false;
+                    _this.ResolveDirectVoid();
+                    return true;
                 }
-                _this.ResolveDirectVoid();
-                return true;
+                return false;
             }
 
             /// <summary>
@@ -335,12 +335,12 @@ namespace Proto.Promises
             public bool TryReject<TReject>(TReject reason)
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) != true)
+                if (_this?.TryIncrementDeferredId(_deferredId) == true)
                 {
-                    return false;
+                    _this.Reject(reason);
+                    return true;
                 }
-                _this.Reject(reason);
-                return true;
+                return false;
             }
 
             /// <summary>
@@ -367,12 +367,12 @@ namespace Proto.Promises
             public bool TryCancel()
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) != true)
+                if (_this?.TryIncrementDeferredId(_deferredId) == true)
                 {
-                    return false;
+                    _this.CancelDirect();
+                    return true;
                 }
-                _this.CancelDirect();
-                return true;
+                return false;
             }
 
             /// <summary>
@@ -514,12 +514,12 @@ namespace Proto.Promises
             public bool TryResolve(T value)
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) != true)
+                if (_this?.TryIncrementDeferredId(_deferredId) == true)
                 {
-                    return false;
+                    _this.ResolveDirect(value);
+                    return true;
                 }
-                _this.ResolveDirect(value);
-                return true;
+                return false;
             }
 
             /// <summary>
@@ -545,12 +545,12 @@ namespace Proto.Promises
             public bool TryReject<TReject>(TReject reason)
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) != true)
+                if (_this?.TryIncrementDeferredId(_deferredId) == true)
                 {
-                    return false;
+                    _this.Reject(reason);
+                    return true;
                 }
-                _this.Reject(reason);
-                return true;
+                return false;
             }
 
             /// <summary>
@@ -577,12 +577,12 @@ namespace Proto.Promises
             public bool TryCancel()
             {
                 var _this = _ref;
-                if (_this?.TryIncrementDeferredId(_deferredId) != true)
+                if (_this?.TryIncrementDeferredId(_deferredId) == true)
                 {
-                    return false;
+                    _this.CancelDirect();
+                    return true;
                 }
-                _this.CancelDirect();
-                return true;
+                return false;
             }
 
             /// <summary>

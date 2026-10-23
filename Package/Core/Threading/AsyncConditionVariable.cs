@@ -39,7 +39,10 @@ namespace Proto.Promises.Threading
         /// </summary>
         public AsyncConditionVariable()
         {
+#if PROMISE_DEBUG
+            // Only the finalizer reads it, which reports abandoned waiters in DEBUG mode.
             Internal.SetCreatedStacktrace(this);
+#endif
         }
 
 #if PROMISE_DEBUG

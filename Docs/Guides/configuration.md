@@ -2,7 +2,7 @@
 
 ## Config
 
-You can change whether or not objects will be pooled via `Promise.Config.ObjectPoolingEnabled`. Enabling pooling reduces GC pressure, and it is enabled by default.
+You can change whether or not objects will be pooled via `Promise.Config.ObjectPoolingEnabled`. Enabling pooling reduces GC pressure, and it is enabled by default. Objects are not pooled while causality traces are enabled.
 
 `Promise.Config.UncaughtRejectionHandler` allows you to route unhandled rejections through a delegate instead of being thrown.
 

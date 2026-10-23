@@ -416,7 +416,8 @@ namespace Proto.Diagnostics
             {
                 throw new Promises.ArgumentOutOfRangeException(nameof(skipFrames), $"{nameof(skipFrames)} must be greater than or equal to 0.", Promises.Internal.GetFormattedStacktrace());
             }
-            return s_isEnabled ? new CausalityTrace(skipFrames + 1) : null;
+            // Clamped so that adding this frame (here and in the constructor) doesn't overflow. A count that large skips every frame either way.
+            return s_isEnabled ? new CausalityTrace(Math.Min(skipFrames, int.MaxValue - 2) + 1) : null;
         }
 
         /// <summary>
@@ -858,7 +859,8 @@ namespace Proto.Diagnostics
                 copy = new CausalityTrace(chain[i], copy, copy == null);
             }
             // This may be set from multiple threads, but every copy for the same depth is equivalent.
-            // It's published with a release fence, so that other threads can't see the TruncatedCopy before its fields are written (e.g. on ARM).
+            // Published with a release fence. CoreCLR already publishes new objects that way, but Mono and IL2CPP don't guarantee it on weakly ordered CPUs (e.g. ARM),
+            // where other threads could otherwise see the TruncatedCopy before its constructor's writes.
             Volatile.Write(ref trace._truncatedCopy, new TruncatedCopy(copy, maxDepth));
             return copy;
         }
@@ -992,7 +994,7 @@ namespace Proto.Diagnostics
         /// if some were dropped to stay within <see cref="MaxOuterTraces"/>).
         /// Parts of the chain that repeat (e.g. a callback that registers itself again from another thread, or callbacks that register each other) are only printed once:
         /// a single repeated trace is printed with the others as its repeats, and a longer repeated part is printed between <c>--- #n Begin ---</c> and <c>--- #n End ---</c> markers,
-        /// followed by <c>--- #n repeated N times ---</c> with the threads and times of the repeats.
+        /// followed by <c>--- #n repeated N times: ... ---</c> with the threads and times of the repeats.
         /// </remarks>
         public override string ToString()
         {
@@ -1290,6 +1292,51 @@ namespace Proto.Diagnostics
                 _traces.Push(trace);
                 _trace = trace;
                 _depth = _traces.Count;
+            }
+
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            private Scope(Stack<CausalityTrace> traces, CausalityTrace trace, int depth, DisposedChecker disposedChecker)
+            {
+                _disposedChecker = disposedChecker;
+#else
+            private Scope(Stack<CausalityTrace> traces, CausalityTrace trace, int depth)
+            {
+#endif
+                _traces = traces;
+                _trace = trace;
+                _depth = depth;
+            }
+
+            // A scope that is kept in an object, for the library's callback invokes. A Scope local (unlike a reference local) makes their untraced path slower,
+            // even when it's only the default value (see PromiseRefBase.EnterTracedScopeAndClearSentinel).
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal sealed class Box
+            {
+                private readonly Stack<CausalityTrace> _traces;
+                private readonly CausalityTrace _trace;
+                private readonly int _depth;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                private readonly DisposedChecker _disposedChecker;
+#endif
+
+                internal Box(in Scope scope)
+                {
+                    _traces = scope._traces;
+                    _trace = scope._trace;
+                    _depth = scope._depth;
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    _disposedChecker = scope._disposedChecker;
+#endif
+                }
+
+                internal void Dispose()
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    => new Scope(_traces, _trace, _depth, _disposedChecker).Dispose();
+#else
+                    => new Scope(_traces, _trace, _depth).Dispose();
+#endif
             }
 
             /// <summary>

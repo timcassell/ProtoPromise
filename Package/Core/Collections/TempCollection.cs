@@ -226,7 +226,10 @@ namespace Proto.Promises.Collections
 
         internal TempCollectionDisposedChecker()
         {
+#if PROTO_PROMISE_DEVELOPER_MODE
+            // Only the tests' leak tracker reads it (see Internal.AssertAllObjectsReleased).
             Internal.SetCreatedStacktrace(this);
+#endif
             Internal.MarkNotInPool(this);
         }
 

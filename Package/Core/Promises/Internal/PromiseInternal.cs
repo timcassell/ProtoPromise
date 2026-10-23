@@ -167,28 +167,35 @@ namespace Proto.Promises
                 ContinuationContext = TracedSentinel.s_instance;
             }
 
-            // For promise types that use ResetWithSentinel, before anything can complete them. The field is only non-null at this point if the promise is traced,
-            // so the common case is a null check, and a scope that does nothing when it's disposed.
-            [MethodImpl(InlineOption)]
-            protected Diagnostics.CausalityTrace.Scope EnterScopeIfTracedAndClearSentinel()
-                => ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : default;
-
-            // For callback promises, which only need the sentinel until their callback is invoked.
-            // Their invoke methods only call this from their traced copies, when the field is not null.
+            // For callback promises and Promise.New, which only need the sentinel until their callback is invoked.
+            // Their invoke methods call this when the field is not null, and exit the scope after their callback without a finally block
+            // (they catch all of its exceptions), so that the common path doesn't pay for a try/finally.
+            // It's not generic over the callback, so the invoke methods don't need a traced copy, which AOT compilers (e.g. IL2CPP)
+            // would generate for every callback type. NoInlining to keep the invoke methods small.
+            // The scope is boxed, because a Scope local makes the common path slower (see CausalityTrace.Scope.Box). It's null if there's no trace
+            // (e.g. causality traces were disabled since the promise was created).
             // The field is shared with RejectContainer, so the sentinel is cleared when the scope is entered.
-            protected Diagnostics.CausalityTrace.Scope EnterTracedScopeAndClearSentinel()
-                => Diagnostics.CausalityTrace.EnterScopeInternal(TakeTracedTrace());
-
-            // For callback promises that need to overwrite the field before they enter the scope of their callback.
-            // Their invoke methods only call this from their traced copies, when the field is not null.
             [MethodImpl(MethodImplOptions.NoInlining)]
-            protected Diagnostics.CausalityTrace TakeTracedTrace()
+            protected Diagnostics.CausalityTrace.Scope.Box EnterTracedScopeAndClearSentinel()
             {
                 var trace = Trace;
-                // The field is shared with RejectContainer, so the sentinel is cleared when the trace is taken.
                 ContinuationContext = null;
-                return trace;
+                return trace == null ? null : new Diagnostics.CausalityTrace.Scope.Box(Diagnostics.CausalityTrace.EnterScopeInternal(trace));
             }
+
+            [MethodImpl(InlineOption)]
+            protected static void ExitTracedScope(Diagnostics.CausalityTrace.Scope.Box scope)
+            {
+                if (scope != null)
+                {
+                    ExitTracedScopeCore(scope);
+                }
+            }
+
+            // NoInlining to keep the invoke methods small.
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private static void ExitTracedScopeCore(Diagnostics.CausalityTrace.Scope.Box scope)
+                => scope.Dispose();
 
             [MethodImpl(InlineOption)]
             protected void PrepareEarlyDispose()

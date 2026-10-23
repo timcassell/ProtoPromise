@@ -855,13 +855,17 @@ namespace Proto.Promises
                         : obj.UnsafeAs<CallbackNodeImpl<TCancelable>>();
                 }
 
+                // The trace is captured by the caller before it takes the parent's lock, because capturing is slow (see CaptureNodeTrace).
                 [MethodImpl(InlineOption)]
-                internal static CallbackNodeImpl<TCancelable> GetOrCreate(in TCancelable cancelable, CancelationRef parent)
+                internal static CallbackNodeImpl<TCancelable> GetOrCreate(in TCancelable cancelable, CancelationRef parent, CausalityTrace trace)
                 {
                     var node = GetOrCreate();
                     node._parentId = parent._smallFields._instanceId;
                     node._cancelable = cancelable;
-                    SetCreatedStacktrace(node);
+                    if (trace != null)
+                    {
+                        SetTrace(node, trace);
+                    }
                     return node;
                 }
 
@@ -884,22 +888,8 @@ namespace Proto.Promises
                     InvokeInScope();
                 }
 
-                // NoInlining to keep the common case small.
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                private void InvokeInScope()
-                {
-                    // A node that wasn't traced doesn't enter a scope, the same as the common case.
-                    var scope = CausalityTrace.EnterScopeInternal(GetTrace(this));
-                    try
-                    {
-                        _cancelable.Cancel();
-                    }
-                    finally
-                    {
-                        scope.Dispose();
-                        Dispose();
-                    }
-                }
+                protected override void InvokeCancelable()
+                    => _cancelable.Cancel();
 
                 [MethodImpl(InlineOption)]
                 internal override void Dispose()
@@ -1021,6 +1011,11 @@ namespace Proto.Promises
                 }
             } // class LinkedCancelationNode
 
+            // Node creators capture the trace of their node when they're created, so that it's not captured while the lock is held (see TryRegister).
+            [MethodImpl(InlineOption)]
+            private static CausalityTrace CaptureNodeTrace()
+                => CausalityTrace.IsEnabled ? CausalityTrace.Capture() : null;
+
             private interface INodeCreator
             {
                 CancelationCallbackNodeBase CreateNode(CancelationRef parent, int tokenId);
@@ -1035,18 +1030,20 @@ namespace Proto.Promises
             {
                 internal CancelationRegistration _registration;
                 private readonly TCancelable _cancelable;
+                private readonly CausalityTrace _trace;
 
                 [MethodImpl(InlineOption)]
                 public UserNodeCreator(in TCancelable cancelable)
                 {
                     _registration = default;
                     _cancelable = cancelable;
+                    _trace = CaptureNodeTrace();
                 }
 
                 [MethodImpl(InlineOption)]
                 public CancelationCallbackNodeBase CreateNode(CancelationRef parent, int tokenId)
                 {
-                    var node = CallbackNodeImpl<TCancelable>.GetOrCreate(_cancelable, parent);
+                    var node = CallbackNodeImpl<TCancelable>.GetOrCreate(_cancelable, parent, _trace);
                     _registration = new CancelationRegistration(parent, node, node.NodeId, tokenId);
                     return node;
                 }
@@ -1064,6 +1061,7 @@ namespace Proto.Promises
             {
                 internal CancelationRegistration _registration;
                 private readonly TCancelable _cancelable;
+                private readonly CausalityTrace _trace;
                 internal bool _isCanceled;
 
                 [MethodImpl(InlineOption)]
@@ -1071,13 +1069,14 @@ namespace Proto.Promises
                 {
                     _registration = default;
                     _cancelable = cancelable;
+                    _trace = CaptureNodeTrace();
                     _isCanceled = false;
                 }
 
                 [MethodImpl(InlineOption)]
                 public CancelationCallbackNodeBase CreateNode(CancelationRef parent, int tokenId)
                 {
-                    var node = CallbackNodeImpl<TCancelable>.GetOrCreate(_cancelable, parent);
+                    var node = CallbackNodeImpl<TCancelable>.GetOrCreate(_cancelable, parent, _trace);
                     _registration = new CancelationRegistration(parent, node, node.NodeId, tokenId);
                     return node;
                 }
@@ -1140,6 +1139,27 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 get => _nodeId;
             }
+
+            // Invoke, but the callback runs in the scope of this node's trace.
+            // It's not generic over the cancelable, so that AOT compilers (e.g. IL2CPP) don't generate it for every cancelable type.
+            // NoInlining to keep the common case small.
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            protected void InvokeInScope()
+            {
+                // A node that wasn't traced doesn't enter a scope, the same as the common case.
+                var scope = CausalityTrace.EnterScopeInternal(GetTrace(this));
+                try
+                {
+                    InvokeCancelable();
+                }
+                finally
+                {
+                    scope.Dispose();
+                    Dispose();
+                }
+            }
+
+            protected abstract void InvokeCancelable();
 
             [MethodImpl(InlineOption)]
             internal static bool GetIsRegistered(CancelationRef parent, CancelationCallbackNode _this, int nodeId, int tokenId)
@@ -1468,6 +1488,8 @@ namespace Proto.Promises
 
             internal System.Threading.CancellationToken GetCancellationToken(int tokenId)
             {
+                // Captured before the lock is taken, in case the node is created (see CaptureNodeTrace).
+                var trace = CaptureNodeTrace();
                 _smallFields._locker.Enter();
                 try
                 {
@@ -1484,7 +1506,7 @@ namespace Proto.Promises
                         _bclSource = new CancellationTokenSource();
                         CancelationConverter.AttachCancelationRef(_bclSource, this);
                         var del = DelegateWrapper.Create(_bclSource, source => source.Cancel(false));
-                        var node = CallbackNodeImpl<DelegateCaptureVoidVoid<CancellationTokenSource>>.GetOrCreate(del, this);
+                        var node = CallbackNodeImpl<DelegateCaptureVoidVoid<CancellationTokenSource>>.GetOrCreate(del, this, trace);
                         InsertPrevious(node);
                     }
                     return _bclSource.Token;

@@ -50,7 +50,10 @@ namespace Proto.Promises.Threading
 
             _currentCount = initialCount;
             _maxCount = maxCount;
+#if PROMISE_DEBUG
+            // Only the finalizer reads it, which reports abandoned waiters in DEBUG mode.
             Internal.SetCreatedStacktrace(this);
+#endif
         }
 
         /// <summary>

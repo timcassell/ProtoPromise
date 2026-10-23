@@ -221,49 +221,9 @@ namespace Proto.Promises
                 protected void Invoke<TArg, TDelegate>(in TArg arg, in TDelegate callback)
                     where TDelegate : IFunc<TArg, TResult>
                 {
-                    // The traced copy is separate, so that the common path doesn't pay for the try/finally of the trace's scope.
-                    // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel).
-                    if (ContinuationContext == null)
-                    {
-                        Promise.State state;
-                        try
-                        {
-                            // JIT removes this check so we will get more optimal assembly if the result is void.
-                            if (null != default(TResult) && typeof(TResult) == typeof(VoidResult))
-                            {
-                                callback.Invoke(arg);
-                            }
-                            else
-                            {
-                                _result = callback.Invoke(arg);
-                            }
-                            state = Promise.State.Resolved;
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            state = Promise.State.Canceled;
-                        }
-                        catch (Exception e)
-                        {
-                            RejectContainer = CreateRejectContainer(e, true, this);
-                            state = Promise.State.Rejected;
-                        }
-
-                        // We handle next last, so that if the runtime wants to, it can tail-call optimize.
-                        // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
-                        HandleNextInternal(state);
-                        return;
-                    }
-                    InvokeTraced(in arg, in callback);
-                }
-
-                // Invoke, but the callback runs in the scope of this promise's trace.
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                private void InvokeTraced<TArg, TDelegate>(in TArg arg, in TDelegate callback)
-                    where TDelegate : IFunc<TArg, TResult>
-                {
+                    // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel and EnterTracedScopeAndClearSentinel).
+                    var scope = ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : null;
                     Promise.State state;
-                    var scope = EnterTracedScopeAndClearSentinel();
                     try
                     {
                         // JIT removes this check so we will get more optimal assembly if the result is void.
@@ -286,10 +246,7 @@ namespace Proto.Promises
                         RejectContainer = CreateRejectContainer(e, true, this);
                         state = Promise.State.Rejected;
                     }
-                    finally
-                    {
-                        scope.Dispose();
-                    }
+                    ExitTracedScope(scope);
 
                     // We handle next last, so that if the runtime wants to, it can tail-call optimize.
                     // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
@@ -320,56 +277,9 @@ namespace Proto.Promises
             protected void InvokeAndAdoptVoid<TArg, TDelegate>(in TArg arg, in TDelegate callback)
                 where TDelegate : IFunc<TArg, Promise>
             {
-                // The traced copy is separate, so that the common path doesn't pay for the try/finally of the trace's scope.
-                // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel).
-                if (ContinuationContext == null)
-                {
-                    Promise.State state;
-                    try
-                    {
-                        var result = callback.Invoke(arg);
-                        ValidateReturn(result);
-
-                        this.SetPrevious(result._ref);
-                        if (result._ref == null)
-                        {
-                            state = Promise.State.Resolved;
-                        }
-                        else
-                        {
-                            PromiseRefBase promiseSingleAwait = result._ref.AddWaiter(result._id, this, out var previousWaiter);
-                            if (previousWaiter == PendingAwaitSentinel.s_instance)
-                            {
-                                return;
-                            }
-                            state = VerifyAndGetResultFromComplete(result._ref, promiseSingleAwait);
-                        }
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        state = Promise.State.Canceled;
-                    }
-                    catch (Exception e)
-                    {
-                        RejectContainer = CreateRejectContainer(e, true, this);
-                        state = Promise.State.Rejected;
-                    }
-
-                    // We handle next last, so that if the runtime wants to, it can tail-call optimize.
-                    // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
-                    HandleNextInternal(state);
-                    return;
-                }
-                InvokeAndAdoptVoidTraced(in arg, in callback);
-            }
-
-            // InvokeAndAdoptVoid, but the callback runs in the scope of this promise's trace.
-            [MethodImpl(MethodImplOptions.NoInlining)]
-            private void InvokeAndAdoptVoidTraced<TArg, TDelegate>(in TArg arg, in TDelegate callback)
-                where TDelegate : IFunc<TArg, Promise>
-            {
+                // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel and EnterTracedScopeAndClearSentinel).
+                var scope = ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : null;
                 Promise.State state;
-                var scope = EnterTracedScopeAndClearSentinel();
                 try
                 {
                     var result = callback.Invoke(arg);
@@ -385,6 +295,7 @@ namespace Proto.Promises
                         PromiseRefBase promiseSingleAwait = result._ref.AddWaiter(result._id, this, out var previousWaiter);
                         if (previousWaiter == PendingAwaitSentinel.s_instance)
                         {
+                            ExitTracedScope(scope);
                             return;
                         }
                         state = VerifyAndGetResultFromComplete(result._ref, promiseSingleAwait);
@@ -399,10 +310,7 @@ namespace Proto.Promises
                     RejectContainer = CreateRejectContainer(e, true, this);
                     state = Promise.State.Rejected;
                 }
-                finally
-                {
-                    scope.Dispose();
-                }
+                ExitTracedScope(scope);
 
                 // We handle next last, so that if the runtime wants to, it can tail-call optimize.
                 // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
@@ -435,61 +343,9 @@ namespace Proto.Promises
                 protected void InvokeAndAdopt<TArg, TDelegate>(in TArg arg, in TDelegate callback)
                     where TDelegate : IFunc<TArg, Promise<TResult>>
                 {
-                    // The traced copy is separate, so that the common path doesn't pay for the try/finally of the trace's scope.
-                    // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel).
-                    if (ContinuationContext == null)
-                    {
-                        Promise.State state;
-                        try
-                        {
-                            var result = callback.Invoke(arg);
-                            ValidateReturn(result);
-
-                            this.SetPrevious(result._ref);
-                            if (result._ref == null)
-                            {
-                                // JIT removes this check so we will get more optimal assembly if the result is void.
-                                if (null == default(TResult) || typeof(TResult) != typeof(VoidResult))
-                                {
-                                    _result = result._result;
-                                }
-                                state = Promise.State.Resolved;
-                            }
-                            else
-                            {
-                                PromiseRefBase promiseSingleAwait = result._ref.AddWaiter(result._id, this, out var previousWaiter);
-                                if (previousWaiter == PendingAwaitSentinel.s_instance)
-                                {
-                                    return;
-                                }
-                                state = VerifyAndGetResultFromComplete(result._ref, promiseSingleAwait);
-                            }
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            state = Promise.State.Canceled;
-                        }
-                        catch (Exception e)
-                        {
-                            RejectContainer = CreateRejectContainer(e, true, this);
-                            state = Promise.State.Rejected;
-                        }
-
-                        // We handle next last, so that if the runtime wants to, it can tail-call optimize.
-                        // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
-                        HandleNextInternal(state);
-                        return;
-                    }
-                    InvokeAndAdoptTraced(in arg, in callback);
-                }
-
-                // InvokeAndAdopt, but the callback runs in the scope of this promise's trace.
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                private void InvokeAndAdoptTraced<TArg, TDelegate>(in TArg arg, in TDelegate callback)
-                    where TDelegate : IFunc<TArg, Promise<TResult>>
-                {
+                    // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel and EnterTracedScopeAndClearSentinel).
+                    var scope = ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : null;
                     Promise.State state;
-                    var scope = EnterTracedScopeAndClearSentinel();
                     try
                     {
                         var result = callback.Invoke(arg);
@@ -510,6 +366,7 @@ namespace Proto.Promises
                             PromiseRefBase promiseSingleAwait = result._ref.AddWaiter(result._id, this, out var previousWaiter);
                             if (previousWaiter == PendingAwaitSentinel.s_instance)
                             {
+                                ExitTracedScope(scope);
                                 return;
                             }
                             state = VerifyAndGetResultFromComplete(result._ref, promiseSingleAwait);
@@ -524,10 +381,7 @@ namespace Proto.Promises
                         RejectContainer = CreateRejectContainer(e, true, this);
                         state = Promise.State.Rejected;
                     }
-                    finally
-                    {
-                        scope.Dispose();
-                    }
+                    ExitTracedScope(scope);
 
                     // We handle next last, so that if the runtime wants to, it can tail-call optimize.
                     // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990

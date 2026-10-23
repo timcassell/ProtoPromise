@@ -92,10 +92,11 @@ namespace Proto.Diagnostics
                 => _hashCode;
         }
 
+        // Internal so that tests can check descriptions of threads that their runtime may not have (e.g. unnamed thread pool threads, which newer runtimes name).
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        private sealed class Printer
+        internal sealed class Printer
         {
             private const string PreviousLocationHeader = "--- End of stack trace from the previous location ---";
             // Every other message is indented like the stack frames, so that the previous location headers stand out.

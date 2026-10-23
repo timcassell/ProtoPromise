@@ -62,8 +62,10 @@ namespace Proto.Promises
         // It may be null when it's read after causality traces were checked to be enabled, if they were disabled concurrently.
         private static ConditionalWeakTable<object, CausalityTrace> s_causalityTraces;
 
+        // Published with a release fence. CoreCLR already publishes new objects that way, but Mono and IL2CPP don't guarantee it on weakly ordered CPUs (e.g. ARM),
+        // where other threads could otherwise see the table before its constructor's writes.
         internal static void CreateTraceTable()
-            => s_causalityTraces = new ConditionalWeakTable<object, CausalityTrace>();
+            => System.Threading.Volatile.Write(ref s_causalityTraces, new ConditionalWeakTable<object, CausalityTrace>());
 
         internal static void ReleaseTraceTable()
             => s_causalityTraces = null;

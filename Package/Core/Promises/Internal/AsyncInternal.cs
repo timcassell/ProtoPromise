@@ -34,18 +34,28 @@ namespace Proto.Promises
         partial class PromiseRefBase
         {
             // The value to restore to an async promise's ContinuationContext field when its continuation context is cleared.
-            // NoInlining because it's only used on slow paths, and it would otherwise inline a static class initialization check into async methods.
             internal object NoAsyncContinuationContext
             {
-                [MethodImpl(MethodImplOptions.NoInlining)]
+                [MethodImpl(InlineOption)]
 #if PROMISE_DEBUG
                 // In DEBUG mode, the trace is kept while causality traces are disabled (see GetTrace), so the sentinel is restored if this has a trace,
                 // so that this enters its trace's scope again if causality traces are enabled again before it completes.
-                get => ((ITraceable) this).Trace != null ? TracedSentinel.s_instance : null;
+                get => ((ITraceable) this).Trace != null ? GetTracedSentinel() : null;
 #else
-                get => CausalityTrace.IsEnabled ? TracedSentinel.s_instance : null;
+                get => CausalityTrace.IsEnabled ? GetTracedSentinel() : null;
 #endif
             }
+
+            // NoInlining for methods that are inlined into async methods, where it's only needed when the ExecutionContext flow is suppressed,
+            // so that they don't grow by NoAsyncContinuationContext's check.
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            internal object GetNoAsyncContinuationContext()
+                => NoAsyncContinuationContext;
+
+            // NoInlining because it would otherwise inline a static class initialization check into async methods.
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private static object GetTracedSentinel()
+                => TracedSentinel.s_instance;
 
             // Traced async promises add this in place of their waiter (see AsyncPromiseRef.TracedAsyncPromiseRef and AsyncPromiseRef.TracedAsyncPromiseRefMachine),
             // so that when an async function completes inside its own scope (its body completes it), the waiter, and everything that it continues synchronously,
@@ -265,7 +275,8 @@ namespace Proto.Promises
                         Dispose();
                         _continuer?.Dispose();
                         _continuer = null;
-                        // Object pooling is disabled while causality traces are enabled, so we discard instead of returning to the object pool.
+                        // Traced promises are never returned to the object pool, even if they complete after causality traces are disabled
+                        // (object pooling is disabled while they're enabled), so we discard it.
                         Discard(this);
                     }
                 }
@@ -290,6 +301,25 @@ namespace Proto.Promises
                     private PromiseMethodContinuer() { }
 
                     internal abstract void Continue();
+
+                    // MoveNext, in the scope of the async promise's trace.
+                    // It's not generic over the state machine, so that AOT compilers (e.g. IL2CPP) don't generate it for every async function.
+                    [MethodImpl(MethodImplOptions.NoInlining)]
+                    protected void MoveNextInScope()
+                    {
+                        // An async promise that wasn't traced doesn't enter a scope, the same as the fast path.
+                        var scope = CausalityTrace.EnterScopeInternal(_owner.Trace);
+                        try
+                        {
+                            MoveNextStateMachine();
+                        }
+                        finally
+                        {
+                            scope.Dispose();
+                        }
+                    }
+
+                    protected abstract void MoveNextStateMachine();
 
                     public abstract void Dispose();
 
@@ -362,20 +392,8 @@ namespace Proto.Promises
                             MoveNextInScope();
                         }
 
-                        [MethodImpl(MethodImplOptions.NoInlining)]
-                        private void MoveNextInScope()
-                        {
-                            // An async promise that wasn't traced doesn't enter a scope, the same as the fast path.
-                            var scope = CausalityTrace.EnterScopeInternal(_owner.Trace);
-                            try
-                            {
-                                _stateMachine.MoveNext();
-                            }
-                            finally
-                            {
-                                scope.Dispose();
-                            }
-                        }
+                        protected override void MoveNextStateMachine()
+                            => _stateMachine.MoveNext();
 
                         // NoInlining to keep the continuation fast path small.
                         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -429,7 +447,7 @@ namespace Proto.Promises
                     if (Promise.Config.AsyncFlowExecutionContextEnabled)
                     {
                         // Capture returns null if the flow is suppressed.
-                        _ref.ContinuationContext = ExecutionContext.Capture() ?? _ref.NoAsyncContinuationContext;
+                        _ref.ContinuationContext = ExecutionContext.Capture() ?? _ref.GetNoAsyncContinuationContext();
                     }
                 }
 
@@ -459,6 +477,26 @@ namespace Proto.Promises
 
             partial class AsyncPromiseRef<TResult>
             {
+                // MoveNext, in the scope of this promise's trace.
+                // It's not generic over the state machine, so that AOT compilers (e.g. IL2CPP) don't generate it for every async function.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                protected void MoveNextInScope()
+                {
+                    // An async promise that wasn't traced doesn't enter a scope, the same as the fast path.
+                    var scope = CausalityTrace.EnterScopeInternal(Trace);
+                    try
+                    {
+                        MoveNextStateMachine();
+                    }
+                    finally
+                    {
+                        scope.Dispose();
+                    }
+                }
+
+                // Only async promises with a state machine are continued (see AsyncPromiseRefMachine).
+                protected virtual void MoveNextStateMachine() => throw new System.InvalidOperationException();
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
                 [DebuggerNonUserCode, StackTraceHidden]
 #endif
@@ -526,20 +564,8 @@ namespace Proto.Promises
                         MoveNextInScope();
                     }
 
-                    [MethodImpl(MethodImplOptions.NoInlining)]
-                    private void MoveNextInScope()
-                    {
-                        // An async promise that wasn't traced doesn't enter a scope, the same as the fast path.
-                        var scope = CausalityTrace.EnterScopeInternal(Trace);
-                        try
-                        {
-                            _stateMachine.MoveNext();
-                        }
-                        finally
-                        {
-                            scope.Dispose();
-                        }
-                    }
+                    protected override void MoveNextStateMachine()
+                        => _stateMachine.MoveNext();
 
                     internal override void Handle(PromiseRefBase handler, Promise.State state)
                     {
@@ -623,6 +649,8 @@ namespace Proto.Promises
                         promise._stateMachine = stateMachine;
                     }
 
+                    // NoInlining so that it's only generated once for each TResult, not in each SetStateMachine.
+                    [MethodImpl(MethodImplOptions.NoInlining)]
                     private static TracedAsyncPromiseRefMachine Create()
                     {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
@@ -646,7 +674,8 @@ namespace Proto.Promises
                     {
                         Dispose();
                         _stateMachine = null;
-                        // Object pooling is disabled while causality traces are enabled, so we discard instead of returning to the object pool.
+                        // Traced promises are never returned to the object pool, even if they complete after causality traces are disabled
+                        // (object pooling is disabled while they're enabled), so we discard it.
                         Discard(this);
                     }
                 }
@@ -669,7 +698,7 @@ namespace Proto.Promises
                     if (Promise.Config.AsyncFlowExecutionContextEnabled)
                     {
                         // Capture returns null if the flow is suppressed.
-                        _ref.ContinuationContext = ExecutionContext.Capture() ?? _ref.NoAsyncContinuationContext;
+                        _ref.ContinuationContext = ExecutionContext.Capture() ?? _ref.GetNoAsyncContinuationContext();
                     }
                 }
 
