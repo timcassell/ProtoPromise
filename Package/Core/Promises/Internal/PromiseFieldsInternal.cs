@@ -622,7 +622,7 @@ namespace Proto.Promises
                 partial class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef<TResult> where TStateMachine : IAsyncStateMachine
                 {
                     // Using a promiseref object as its own continuer saves 16 bytes of object overhead (x64). 24 bytes if we include the `ILinked<T>.Next` field for object pooling purposes.
-                    private TStateMachine _stateMachine;
+                    protected TStateMachine _stateMachine;
                 }
 #endif // !OPTIMIZED_ASYNC_MODE
             } // AsyncPromiseRef

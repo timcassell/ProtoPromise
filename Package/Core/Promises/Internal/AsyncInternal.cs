@@ -47,6 +47,43 @@ namespace Proto.Promises
 #endif
             }
 
+            // Traced async promises add this in place of their waiter (see AsyncPromiseRef.TracedAsyncPromiseRef and AsyncPromiseRef.TracedAsyncPromiseRefMachine),
+            // so that when an async function completes inside its own scope (its body completes it), the waiter, and everything that it continues synchronously,
+            // runs outside of that scope, as if it was continued from where the async function was called.
+            // The async function's trace is where it was called, which is usually already in the waiter's frames (e.g. the code that awaited it called it),
+            // and nesting would make the scopes of a chain of async functions that complete synchronously grow with its depth.
+            // It's a separate type, so that untraced async promises don't pay for it when they complete.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private sealed class ScopeExitingWaiter : HandleablePromiseBase
+            {
+                private readonly HandleablePromiseBase _waiter;
+
+                internal ScopeExitingWaiter(HandleablePromiseBase waiter)
+                {
+                    _waiter = waiter;
+                }
+
+                internal override void Handle(PromiseRefBase handler, Promise.State state)
+                {
+                    var exitedScope = CausalityTrace.ExitScopeIfCurrent(handler);
+                    if (exitedScope._trace == null)
+                    {
+                        _waiter.Handle(handler, state);
+                        return;
+                    }
+                    try
+                    {
+                        _waiter.Handle(handler, state);
+                    }
+                    finally
+                    {
+                        exitedScope.Dispose();
+                    }
+                }
+            }
+
             [MethodImpl(InlineOption)]
             internal void HookupAwaiter(PromiseRefBase awaiter, short promiseId)
             {
@@ -95,9 +132,20 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static AsyncPromiseRef<TResult> GetOrCreate()
                 {
+#if OPTIMIZED_ASYNC_MODE
+                    // Only used for async functions that complete before they await anything, so nothing waits for them while they complete.
                     var promise = GetFromPoolOrCreate();
                     promise.ResetWithSentinel();
                     return promise;
+#else
+                    if (!CausalityTrace.IsEnabled)
+                    {
+                        var promise = GetFromPoolOrCreate();
+                        promise.ResetWithoutStacktrace();
+                        return promise;
+                    }
+                    return TracedAsyncPromiseRef.Create();
+#endif
                 }
 
                 internal void SetException(Exception exception)
@@ -184,8 +232,44 @@ namespace Proto.Promises
             } // class AsyncPromiseRef<TResult>
 
 #if !OPTIMIZED_ASYNC_MODE
-            sealed partial class AsyncPromiseRef<TResult>
+            partial class AsyncPromiseRef<TResult>
             {
+                // A traced async promise, which exits its scope while its waiter runs (see ScopeExitingWaiter).
+#if !PROTO_PROMISE_DEVELOPER_MODE
+                [DebuggerNonUserCode, StackTraceHidden]
+#endif
+                private sealed class TracedAsyncPromiseRef : AsyncPromiseRef<TResult>
+                {
+                    [MethodImpl(MethodImplOptions.NoInlining)]
+                    internal static AsyncPromiseRef<TResult> Create()
+                    {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                        // Take from pool for object tracking purposes.
+                        var obj = ObjectPool.TryTakeOrInvalid<TracedAsyncPromiseRef>();
+                        var promise = obj == InvalidAwaitSentinel.s_instance
+                            ? new TracedAsyncPromiseRef()
+                            : obj.UnsafeAs<TracedAsyncPromiseRef>();
+#else
+                        var promise = new TracedAsyncPromiseRef();
+#endif
+                        promise.ResetWithSentinel();
+                        return promise;
+                    }
+
+                    // The waiter is wrapped before it's added, so that it's never handled without the wrapper if this completes on another thread.
+                    internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter)
+                        => base.AddWaiter(promiseId, new ScopeExitingWaiter(waiter), out previousWaiter);
+
+                    internal override void MaybeDispose()
+                    {
+                        Dispose();
+                        _continuer?.Dispose();
+                        _continuer = null;
+                        // Object pooling is disabled while causality traces are enabled, so we discard instead of returning to the object pool.
+                        Discard(this);
+                    }
+                }
+
                 private Action MoveNext
                 {
                     [MethodImpl(InlineOption)]
@@ -378,9 +462,9 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
                 [DebuggerNonUserCode, StackTraceHidden]
 #endif
-                private sealed partial class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef<TResult> where TStateMachine : IAsyncStateMachine
+                private partial class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef<TResult> where TStateMachine : IAsyncStateMachine
                 {
-                    private AsyncPromiseRefMachine()
+                    protected AsyncPromiseRefMachine()
                     {
                         _moveNext = Continue;
                     }
@@ -396,12 +480,17 @@ namespace Proto.Promises
 
                     internal static void SetStateMachine(ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref, ref short id)
                     {
-                        var promise = GetOrCreate();
-                        promise.ResetWithSentinel();
-                        id = promise.Id;
-                        // ORDER VERY IMPORTANT, ref must be set before copying stateMachine.
-                        _ref = promise;
-                        promise._stateMachine = stateMachine;
+                        if (!CausalityTrace.IsEnabled)
+                        {
+                            var promise = GetOrCreate();
+                            promise.ResetWithoutStacktrace();
+                            id = promise.Id;
+                            // ORDER VERY IMPORTANT, ref must be set before copying stateMachine.
+                            _ref = promise;
+                            promise._stateMachine = stateMachine;
+                            return;
+                        }
+                        TracedAsyncPromiseRefMachine.SetStateMachine(ref stateMachine, ref _ref, ref id);
                     }
 
                     internal override void MaybeDispose()
@@ -511,6 +600,55 @@ namespace Proto.Promises
                         => ScheduleContextCallback(synchronizationContext, this,
                             obj => obj.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>().Continue(),
                             obj => obj.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>().Continue());
+                }
+
+                // A traced async promise, which exits its scope while its waiter runs (see ScopeExitingWaiter).
+                // It holds the state machine boxed, so that its code is only generated once for each TResult instead of for each async method,
+                // which matters for AOT runtimes like IL2CPP and NativeAOT.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+                [DebuggerNonUserCode, StackTraceHidden]
+#endif
+                private sealed class TracedAsyncPromiseRefMachine : AsyncPromiseRefMachine<IAsyncStateMachine>
+                {
+                    // Separate from AsyncPromiseRefMachine.SetStateMachine, so that the traced path doesn't make the untraced path slower.
+                    // The state machine is passed by ref, so that it's not boxed until after _ref is set. Only this small method is generated for each async method.
+                    [MethodImpl(MethodImplOptions.NoInlining)]
+                    new internal static void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref, ref short id)
+                        where TStateMachine : IAsyncStateMachine
+                    {
+                        var promise = Create();
+                        id = promise.Id;
+                        // ORDER VERY IMPORTANT, ref must be set before boxing stateMachine.
+                        _ref = promise;
+                        promise._stateMachine = stateMachine;
+                    }
+
+                    private static TracedAsyncPromiseRefMachine Create()
+                    {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                        // Take from pool for object tracking purposes.
+                        var obj = ObjectPool.TryTakeOrInvalid<TracedAsyncPromiseRefMachine>();
+                        var promise = obj == InvalidAwaitSentinel.s_instance
+                            ? new TracedAsyncPromiseRefMachine()
+                            : obj.UnsafeAs<TracedAsyncPromiseRefMachine>();
+#else
+                        var promise = new TracedAsyncPromiseRefMachine();
+#endif
+                        promise.ResetWithSentinel();
+                        return promise;
+                    }
+
+                    // The waiter is wrapped before it's added, so that it's never handled without the wrapper if this completes on another thread.
+                    internal override PromiseRefBase AddWaiter(short promiseId, HandleablePromiseBase waiter, out HandleablePromiseBase previousWaiter)
+                        => base.AddWaiter(promiseId, new ScopeExitingWaiter(waiter), out previousWaiter);
+
+                    internal override void MaybeDispose()
+                    {
+                        Dispose();
+                        _stateMachine = null;
+                        // Object pooling is disabled while causality traces are enabled, so we discard instead of returning to the object pool.
+                        Discard(this);
+                    }
                 }
 
                 private Action MoveNext

@@ -163,32 +163,8 @@ namespace Proto.Promises
                     RejectDirect(CreateRejectContainer(reason, false, this));
                 }
 
-                // Completing the deferred enters the scope of its trace, so that the rejection's trace and any continuations
-                // that are invoked synchronously include it.
                 public void Reject(object reason)
-                {
-                    // The field is null while the deferred is pending, unless it's traced (see TracedSentinel).
-                    if (ContinuationContext == null)
-                    {
-                        RejectDirect(CreateRejectContainer(reason, true, this));
-                        return;
-                    }
-                    RejectTraced(reason);
-                }
-
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                private void RejectTraced(object reason)
-                {
-                    var scope = CausalityTrace.EnterScopeIfNeeded(Trace);
-                    try
-                    {
-                        RejectDirect(CreateRejectContainer(reason, true, this));
-                    }
-                    finally
-                    {
-                        scope.Dispose();
-                    }
-                }
+                    => RejectDirect(CreateRejectContainer(reason, true, this));
 
                 public void RejectDirect(IRejectContainer reasonContainer)
                 {
@@ -200,36 +176,7 @@ namespace Proto.Promises
                 public void CancelDirect()
                 {
                     ThrowIfInPool(this);
-                    HandleNextInScope(Promise.State.Canceled);
-                }
-
-                [MethodImpl(InlineOption)]
-                protected void HandleNextInScope(Promise.State state)
-                {
-                    // The field is null while the deferred is pending, unless it's traced (see TracedSentinel).
-                    if (ContinuationContext == null)
-                    {
-                        HandleNextInternal(state);
-                        return;
-                    }
-                    HandleNextTraced(state);
-                }
-
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                private void HandleNextTraced(Promise.State state)
-                {
-                    var trace = Trace;
-                    // The field is shared with RejectContainer, so clear the sentinel before completing.
-                    ContinuationContext = null;
-                    var scope = CausalityTrace.EnterScopeIfNeeded(trace);
-                    try
-                    {
-                        HandleNextInternal(state);
-                    }
-                    finally
-                    {
-                        scope.Dispose();
-                    }
+                    HandleNextInternal(Promise.State.Canceled);
                 }
             }
 
@@ -260,7 +207,7 @@ namespace Proto.Promises
                 internal static DeferredPromise<TResult> GetOrCreate()
                 {
                     var promise = GetFromPoolOrCreate();
-                    promise.ResetWithSentinel();
+                    promise.Reset();
                     return promise;
                 }
 
@@ -269,14 +216,14 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     _result = value;
-                    HandleNextInScope(Promise.State.Resolved);
+                    HandleNextInternal(Promise.State.Resolved);
                 }
 
                 [MethodImpl(InlineOption)]
                 internal void ResolveDirectVoid()
                 {
                     ThrowIfInPool(this);
-                    HandleNextInScope(Promise.State.Resolved);
+                    HandleNextInternal(Promise.State.Resolved);
                 }
             }
 
@@ -344,7 +291,7 @@ namespace Proto.Promises
                     var runner = _runner;
                     _runner = default;
 
-                    var scope = EnterScopeIfTraced();
+                    var scope = EnterScopeIfTracedAndClearSentinel();
                     try
                     {
                         runner.Invoke(this);

@@ -78,7 +78,7 @@ namespace Proto.Promises.Channels
         /// <exception cref="ObjectDisposedException">This was already disposed.</exception>
         /// <exception cref="NullReferenceException">This is a default value.</exception>
         public void Dispose()
-            => _ref.DisposeInScope(_id);
+            => _ref.Dispose(_id);
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="Channel{T}"/>.</summary>
         [MethodImpl(Internal.InlineOption)]

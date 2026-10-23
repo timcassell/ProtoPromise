@@ -44,8 +44,8 @@ namespace Proto.Promises
         {
             protected CausalityTrace _causalityTrace;
 
-            // The operation that completes the promise (e.g. Deferred.Reject, or the callback that threw) enters the scope of its trace before this,
-            // so the captured trace already has it as its cause.
+            // The captured trace is where the promise was rejected: the callback that threw runs in the scope of its trace, so the trace has it as its cause,
+            // and the code that rejected a deferred is on the stack.
             protected void SetCausalityTrace(bool captureTrace, object traceable)
                 => _causalityTrace = CausalityTrace.IsEnabled & captureTrace
                     ? CausalityTrace.Capture()

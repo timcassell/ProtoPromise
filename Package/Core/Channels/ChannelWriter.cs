@@ -155,7 +155,7 @@ namespace Proto.Promises.Channels
                 }
                 throw new ObjectDisposedException(nameof(Channel<T>));
             }
-            return channel.TryRejectInScope(reason, channelId);
+            return channel.TryReject(reason, channelId);
         }
 
         /// <summary>
@@ -165,7 +165,7 @@ namespace Proto.Promises.Channels
         /// <exception cref="ObjectDisposedException">The channel was disposed.</exception>
         /// <exception cref="NullReferenceException">This is a default value.</exception>
         public bool TryCancel()
-            => _channel._ref.TryCancelInScope(_channel._id);
+            => _channel._ref.TryCancel(_channel._id);
 
         /// <summary>
         /// Attempts to close the channel in a resolved state.
@@ -174,7 +174,7 @@ namespace Proto.Promises.Channels
         /// <exception cref="ObjectDisposedException">The channel was disposed.</exception>
         /// <exception cref="NullReferenceException">This is a default value.</exception>
         public bool TryClose()
-            => _channel._ref.TryCloseInScope(_channel._id);
+            => _channel._ref.TryClose(_channel._id);
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="ChannelWriter{T}"/>.</summary>
         [MethodImpl(Internal.InlineOption)]

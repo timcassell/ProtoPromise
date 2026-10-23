@@ -133,7 +133,7 @@ namespace Proto.Diagnostics
         /// <exception cref="System.ArgumentOutOfRangeException">The value is less than 0.</exception>
         /// <remarks>
         /// This prevents causality traces from growing without bound when operations are nested deeply
-        /// (e.g. a deep chain of async functions that complete synchronously, each of which continues the async function that awaited it while it's still running).
+        /// (e.g. callbacks that complete other promises synchronously, or scopes that are entered recursively).
         /// </remarks>
         public static int MaxOuterTraces
         {
@@ -223,7 +223,7 @@ namespace Proto.Diagnostics
         /// or <see langword="null"/> if no operation was running, or if it was dropped to stay within <see cref="MaxDepth"/>.
         /// </summary>
         /// <remarks>
-        /// An operation is anything that entered a <see cref="Scope"/>, such as a callback being invoked, a deferred being completed,
+        /// An operation is anything that entered a <see cref="Scope"/>, such as a callback being invoked, an async function running,
         /// or a callback that was scheduled to run on a <see cref="SynchronizationContext"/> or the thread pool (whose trace is where it was scheduled).
         /// If operations were nested, this is the innermost operation, and the others are in <see cref="OuterTraces"/>.
         /// <para/>
@@ -1087,11 +1087,6 @@ namespace Proto.Diagnostics
         internal static Scope EnterScopeInternal(CausalityTrace trace)
             => trace != null ? new Scope(trace, false) : default;
 
-        // Enters a scope for trace only if it would add anything (see ShouldEnterScope), otherwise returns a scope that does nothing when it's disposed.
-        [MethodImpl(Promises.Internal.InlineOption)]
-        internal static Scope EnterScopeIfNeeded(CausalityTrace trace)
-            => ShouldEnterScope(trace) ? new Scope(trace, false) : default;
-
         // Whether trace is the scope that is entered on this thread.
         internal static bool IsCurrentScope(CausalityTrace trace)
         {
@@ -1099,17 +1094,70 @@ namespace Proto.Diagnostics
             return traces != null && traces.Count > 0 && traces.Peek() == trace;
         }
 
-        // Whether entering a scope for trace would add anything: it's non-null and not already the current scope
-        // (e.g. Promise.New's callback already entered the deferred's scope before the deferred is resolved).
-        [MethodImpl(Promises.Internal.InlineOption)]
-        private static bool ShouldEnterScope(CausalityTrace trace)
+        // A scope that was exited without disposing its Scope, until it's restored by disposing this (see ExitScopeIfCurrent).
+        // Disposing a default value does nothing.
+        internal readonly ref struct ExitedScope
         {
-            if (trace == null)
+            internal readonly CausalityTrace _trace;
+            // The number of traces on the stack after it was exited, to find the scopes that were entered since then and not disposed (see Dispose).
+            internal readonly int _depth;
+
+            internal ExitedScope(CausalityTrace trace, int depth)
             {
-                return false;
+                _trace = trace;
+                _depth = depth;
             }
+
+            internal void Dispose()
+            {
+                if (_trace == null)
+                {
+                    // Nothing was exited (see ExitScopeIfCurrent).
+                    return;
+                }
+                var traces = ts_traces;
+                if (traces.Count == _depth)
+                {
+                    traces.Push(_trace);
+                    return;
+                }
+                if (traces.Count < _depth)
+                {
+                    // An outer scope was disposed first, which also exited this scope, so it's not restored (its Scope throws when it's disposed, the same as if it wasn't exited).
+                    return;
+                }
+                // Nested scopes were entered since it was exited and not disposed (e.g. by a continuation that doesn't enter a scope of its own),
+                // which is not its Scope's fault. We exit them, the same as when a Scope is disposed before its nested scopes (see Scope.Exit),
+                // so that its Scope is still disposed correctly, and traces that are captured later on this thread are not corrupted.
+                while (traces.Count > _depth)
+                {
+                    traces.Pop();
+                }
+                traces.Push(_trace);
+#if !(PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE)
+                // In DEBUG mode, its Scope reports it when it's disposed (see Scope.Dispose).
+                Scope.ReportNestedScopesNotDisposed(_trace);
+#endif
+            }
+        }
+
+        // Exits the scope of the promise's trace if it's the current scope, until the result is disposed, without disposing its Scope
+        // (see PromiseRefBase.ScopeExitingWaiter). The result's trace is null if it's not the current scope.
+        internal static ExitedScope ExitScopeIfCurrent(Promises.Internal.PromiseRefBase promise)
+        {
             var traces = ts_traces;
-            return traces == null || traces.Count == 0 || traces.Peek() != trace;
+            // The trace is looked up after the stack is checked, so that it's not looked up when no scope is current (e.g. the promise was completed from outside any scope).
+            if (traces == null || traces.Count == 0)
+            {
+                return default;
+            }
+            var trace = promise.Trace;
+            if (trace == null || traces.Peek() != trace)
+            {
+                return default;
+            }
+            traces.Pop();
+            return new ExitedScope(trace, traces.Count);
         }
 
         /// <summary>
@@ -1343,7 +1391,7 @@ namespace Proto.Diagnostics
             // Its causality trace is where the scope was entered if users entered it and it was captured (in DEBUG mode, see DisposedChecker),
             // otherwise the scope's trace. For the library's scopes, that's where the callback that didn't dispose its nested scopes was registered.
             [MethodImpl(MethodImplOptions.NoInlining)]
-            private static void ReportNestedScopesNotDisposed(CausalityTrace trace)
+            internal static void ReportNestedScopesNotDisposed(CausalityTrace trace)
                 => Promises.Internal.ReportUnhandledValue(new Promises.InvalidOperationException(
                     $"A {nameof(CausalityTrace)}.{nameof(Scope)} was disposed before its nested {nameof(Scope)}s. Nested {nameof(Scope)}s must be disposed before outer {nameof(Scope)}s.",
                     FormatStackTrace(new StackTrace(true))), IsEnabled ? trace : null);

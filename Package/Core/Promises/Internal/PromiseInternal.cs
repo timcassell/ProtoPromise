@@ -147,7 +147,7 @@ namespace Proto.Promises
                 get => GetTrace(this);
             }
 
-            // Used instead of Reset by promise types that store TracedSentinel when they're traced (async, deferred, and callback promises).
+            // Used instead of Reset by promise types that store TracedSentinel when they're traced (async promises, Promise.New, and callback promises).
             // Those types must not store anything else in the ContinuationContext field before they enter the trace's scope.
             [MethodImpl(InlineOption)]
             protected void ResetWithSentinel()
@@ -167,16 +167,11 @@ namespace Proto.Promises
                 ContinuationContext = TracedSentinel.s_instance;
             }
 
-            // For promise types that use ResetWithSentinel. The field is only non-null at this point if the promise is traced,
+            // For promise types that use ResetWithSentinel, before anything can complete them. The field is only non-null at this point if the promise is traced,
             // so the common case is a null check, and a scope that does nothing when it's disposed.
             [MethodImpl(InlineOption)]
-            protected Diagnostics.CausalityTrace.Scope EnterScopeIfTraced()
-                => ContinuationContext != null ? EnterTracedScope() : default;
-
-            [MethodImpl(MethodImplOptions.NoInlining)]
-            private Diagnostics.CausalityTrace.Scope EnterTracedScope()
-                // The trace may be null if causality traces were disabled after this was traced.
-                => Diagnostics.CausalityTrace.EnterScopeInternal(Trace);
+            protected Diagnostics.CausalityTrace.Scope EnterScopeIfTracedAndClearSentinel()
+                => ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : default;
 
             // For callback promises, which only need the sentinel until their callback is invoked.
             // Their invoke methods only call this from their traced copies, when the field is not null.

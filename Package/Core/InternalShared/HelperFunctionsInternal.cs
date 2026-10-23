@@ -33,7 +33,7 @@ namespace Proto.Promises
         }
 
         // The callback is invoked in the scope of a trace of where it was scheduled, because what scheduled it (e.g. the code that completed an awaited promise)
-        // is not on the stack when the callback runs on the context. If the callback enters its own scope, its own trace is the first of the previous traces
+        // is not on the stack when the callback runs on the context. If the callback enters its own scope, its own trace is the Previous trace
         // of traces captured inside it, and the trace of where it was scheduled is one of their outer traces (see CausalityTrace.OuterTraces).
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static void ScheduleContextCallbackInScope(SynchronizationContext context, object state, SendOrPostCallback contextCallback, WaitCallback threadpoolCallback)
