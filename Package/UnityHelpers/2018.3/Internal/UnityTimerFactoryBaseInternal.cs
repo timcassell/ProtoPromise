@@ -130,6 +130,12 @@ namespace Proto.Timers
             {
                 _callback.Invoke(_state);
             }
+            catch (Exception e)
+            {
+                // Reported inside the scope, the same as other callbacks (see ReportCaughtException).
+                // In the common case, the caller reports it.
+                ReportCaughtException(e, this);
+            }
             finally
             {
                 scope.Dispose();

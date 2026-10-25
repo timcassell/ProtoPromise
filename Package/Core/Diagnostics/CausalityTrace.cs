@@ -82,7 +82,10 @@ namespace Proto.Diagnostics
                     {
                         // The table is created before this is enabled, so that operations that see this enabled can store their traces.
                         Promises.Internal.CreateTraceTable();
+                        // Pooling is disabled before this is enabled, so that objects that are traced can't be pooled with their traces.
+                        Promises.Internal.DisableObjectPooling();
                         s_isEnabled = true;
+                        // Updated again, in case Promise.Config.ObjectPoolingEnabled was set concurrently and enabled pooling before it could see this enabled.
                         Promises.Internal.UpdateIsObjectPoolingEnabled();
                         return;
                     }
@@ -985,7 +988,7 @@ namespace Proto.Diagnostics
         /// </summary>
         /// <remarks>
         /// The stack trace and its chain of causes (each one's <see cref="Previous"/> trace) are printed in order, like an async stack trace.
-        /// Each stack trace is preceded by the thread that captured it, and how long before this trace it was captured
+        /// Each stack trace is preceded by the thread that captured it, and for the earlier traces, how long before this trace they were captured
         /// (e.g. <c>--- Thread 5 (thread pool), 12.345 ms earlier ---</c>). Threads without a name are printed as <c>(thread pool)</c>, <c>(background)</c> or <c>(foreground)</c>.
         /// A stack trace whose frames are all hidden from stack traces is printed as <c>--- All frames are hidden ---</c>.
         /// <para/>
@@ -1126,6 +1129,7 @@ namespace Proto.Diagnostics
                 if (traces.Count < _depth)
                 {
                     // An outer scope was disposed first, which also exited this scope, so it's not restored (its Scope throws when it's disposed, the same as if it wasn't exited).
+                    // This only happens when scopes are misused (e.g. a callback disposed a scope that was entered outside of it), so it's not tested.
                     return;
                 }
                 // Nested scopes were entered since it was exited and not disposed (e.g. by a continuation that doesn't enter a scope of its own),

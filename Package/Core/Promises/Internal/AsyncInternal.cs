@@ -143,9 +143,10 @@ namespace Proto.Promises
                 internal static AsyncPromiseRef<TResult> GetOrCreate()
                 {
 #if OPTIMIZED_ASYNC_MODE
-                    // Only used for async functions that complete before they await anything, so nothing waits for them while they complete.
+                    // Only used for async functions that throw before they await anything, so nothing waits for them while they complete,
+                    // and they never continue in their scope, so they don't store the sentinel.
                     var promise = GetFromPoolOrCreate();
-                    promise.ResetWithSentinel();
+                    promise.Reset();
                     return promise;
 #else
                     if (!CausalityTrace.IsEnabled)
@@ -159,6 +160,16 @@ namespace Proto.Promises
                 }
 
                 internal void SetException(Exception exception)
+                    => SetException(exception, true);
+
+#if OPTIMIZED_ASYNC_MODE
+                // For an async function that threw before it awaited anything. Its trace was just captured where it threw (see GetOrCreate),
+                // so the rejection uses that trace instead of capturing the same frames again.
+                internal void SetExceptionCreated(Exception exception)
+                    => SetException(exception, false);
+#endif
+
+                private void SetException(Exception exception, bool captureTrace)
                 {
                     if (exception is OperationCanceledException)
                     {
@@ -168,7 +179,7 @@ namespace Proto.Promises
                     }
                     else
                     {
-                        RejectContainer = CreateRejectContainer(exception, true, this);
+                        RejectContainer = CreateRejectContainer(exception, captureTrace, this);
                         HandleNextInternal(Promise.State.Rejected);
                     }
                 }

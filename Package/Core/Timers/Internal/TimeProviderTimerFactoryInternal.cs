@@ -280,12 +280,20 @@ namespace Proto.Timers
                     if (!Diagnostics.CausalityTrace.IsEnabled)
                     {
                         // Common case: no causality trace.
-                        _callback.Invoke(_state);
+                        try
+                        {
+                            _callback.Invoke(_state);
+                        }
+                        catch (Exception e)
+                        {
+                            ReportRejection(e, this);
+                        }
                     }
                     else
                     {
                         InvokeInScope();
                     }
+                    // Released even if the callback threw, so that DisposeAsync still completes.
                     Release();
                 }
 
@@ -298,6 +306,11 @@ namespace Proto.Timers
                     try
                     {
                         _callback.Invoke(_state);
+                    }
+                    catch (Exception e)
+                    {
+                        // Reported inside the scope, the same as other callbacks (see ReportCaughtException).
+                        ReportCaughtException(e, this);
                     }
                     finally
                     {

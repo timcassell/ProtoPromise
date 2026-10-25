@@ -278,7 +278,36 @@ namespace Proto.Promises
 
                 private void ExecuteWorker(bool fromMoveNext)
                 {
+                    if (!CausalityTrace.IsEnabled)
+                    {
+                        // Common case: no causality trace.
+                        ExecuteWorkerCore(fromMoveNext);
+                    }
+                    else
+                    {
+                        ExecuteWorkerInScope(fromMoveNext);
+                    }
+                }
+
+                // NoInlining to keep the common case small. It only wraps ExecuteWorkerCore, so that AOT compilers (e.g. IL2CPP)
+                // don't generate another copy of its exception handling for every loop type.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private void ExecuteWorkerInScope(bool fromMoveNext)
+                {
+                    // A loop that wasn't traced doesn't enter a scope, the same as the common case.
                     var scope = CausalityTrace.EnterScopeInternal(Trace);
+                    try
+                    {
+                        ExecuteWorkerCore(fromMoveNext);
+                    }
+                    finally
+                    {
+                        scope.Dispose();
+                    }
+                }
+
+                private void ExecuteWorkerCore(bool fromMoveNext)
+                {
                     try
                     {
                         WorkerBody(fromMoveNext);
@@ -294,10 +323,6 @@ namespace Proto.Promises
                         // will propagate exceptions as is appropriate to the top-level promise.
                         RecordException(e);
                         CancelWorkersAndMaybeComplete(1);
-                    }
-                    finally
-                    {
-                        scope.Dispose();
                     }
                 }
 

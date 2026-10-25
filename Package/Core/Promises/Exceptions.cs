@@ -150,7 +150,7 @@ namespace Proto.Promises
     /// Exception that is thrown if a promise is rejected and that rejection is never handled.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode]
+    [DebuggerNonUserCode, StackTraceHidden]
 #endif
     public sealed class UnhandledException : Exception, Internal.IRejectContainer, Internal.IRejectionToContainer, Internal.ICantHandleException
     {

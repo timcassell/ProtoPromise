@@ -227,7 +227,7 @@ namespace ProtoPromise.Tests.Unity
         }
 
         // Written after the helper's call, so that IL2CPP's C++ compiler doesn't turn it into a tail call, which would remove the helper's frame from the trace
-        // (see MiscellaneousTests.s_frameKeeper).
+        // (see CausalityTraceTests.s_frameKeeper).
         private static int s_frameKeeper;
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
@@ -267,6 +267,66 @@ namespace ProtoPromise.Tests.Unity
             finally
             {
                 Proto.Diagnostics.CausalityTrace.IsEnabled = false;
+            }
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static Timer CreateThrowingTimerForTraceTest(TimerFactory timerFactory, Exception exception)
+        {
+            var timer = timerFactory.CreateTimer(_ => throw exception,
+                null, TimeSpan.FromMilliseconds(100), System.Threading.Timeout.InfiniteTimeSpan);
+            System.Threading.Volatile.Write(ref s_frameKeeper, 2);
+            return timer;
+        }
+
+        [UnityTest]
+        public IEnumerator UnhandledException_ThrownInTimerCallback_IsReportedInsideTheScopeOfWhereTheTimerWasCreated(
+            [Values] bool simulated)
+        {
+            var exception = new System.InvalidOperationException("Thrown in timer callback");
+            Proto.Diagnostics.CausalityTrace reportTrace = null;
+            bool isReported = false;
+            var previousHandler = Promise.Config.UncaughtRejectionHandler;
+            Promise.Config.UncaughtRejectionHandler = e =>
+            {
+#if PROTO_PROMISE_DEVELOPER_MODE
+                // Developer mode wraps the report in an exception that is traced where it was reported.
+                e = (UnhandledException) e.InnerException;
+#endif
+                if (e.Value != exception)
+                {
+                    previousHandler(e);
+                    return;
+                }
+                reportTrace = e.CausalityTrace;
+                isReported = true;
+            };
+            Proto.Diagnostics.CausalityTrace.IsEnabled = true;
+            try
+            {
+                TimerFactory provider = simulated
+                    ? (TimerFactory) UnitySimulatedTimerFactory.Instance
+                    : UnityRealTimerFactory.Instance;
+                var timer = CreateThrowingTimerForTraceTest(provider, exception);
+
+                float timeout = Time.realtimeSinceStartup + 5f;
+                yield return new WaitUntil(() => isReported || Time.realtimeSinceStartup > timeout);
+                // The timer is released even though its callback threw, so this completes.
+                using (var yieldInstruction = timer.DisposeAsync().ToYieldInstruction())
+                {
+                    yield return yieldInstruction;
+                }
+
+                Assert.IsTrue(isReported, "The exception was not reported.");
+                // The report's trace is where the exception was caught, inside the scope of where the timer was created.
+                Assert.IsNotNull(reportTrace);
+                Assert.IsNotNull(reportTrace.Previous, reportTrace.ToString());
+                StringAssert.Contains(nameof(CreateThrowingTimerForTraceTest), reportTrace.Previous.StackTrace.ToString());
+            }
+            finally
+            {
+                Proto.Diagnostics.CausalityTrace.IsEnabled = false;
+                Promise.Config.UncaughtRejectionHandler = previousHandler;
             }
         }
     }

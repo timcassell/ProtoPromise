@@ -44,6 +44,14 @@ namespace Proto.Promises
             s_isObjectPoolingDisabledLock.Exit();
         }
 
+        // Called before causality traces are enabled, so that objects that are traced can't be pooled with their traces (see CausalityTrace.IsEnabled).
+        internal static void DisableObjectPooling()
+        {
+            s_isObjectPoolingDisabledLock.Enter();
+            s_isObjectPoolingDisabled = true;
+            s_isObjectPoolingDisabledLock.Exit();
+        }
+
         // If C#9 is available, we use function pointers instead of delegates to clear the pool.
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
         // Pointers cannot be used in generic Array.Resize<T>, so we have to cast to/from IntPtr.

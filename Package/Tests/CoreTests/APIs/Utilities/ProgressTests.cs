@@ -196,6 +196,38 @@ namespace ProtoPromise.Tests.APIs.Utilities
         }
 
         [Test]
+        public void ProgressHandlerThrows_ExceptionIsReportedAndDisposeAsyncCompletes(
+            [Values(SynchronizationOption.Synchronous, SynchronizationOption.Foreground)] SynchronizationOption invokeOption)
+        {
+            var expected = new Exception("Thrown in progress handler");
+            var currentHandler = Promise.Config.UncaughtRejectionHandler;
+            int uncaughtHandledCount = 0;
+            Promise.Config.UncaughtRejectionHandler = e =>
+            {
+                if (e.Value == expected)
+                {
+                    ++uncaughtHandledCount;
+                    return;
+                }
+                currentHandler(e);
+            };
+            try
+            {
+                var progress = Progress.New(_ => throw expected, invokeOption);
+
+                progress.Token.Report(0.5d);
+                progress.DisposeAsync()
+                    .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
+
+                Assert.AreEqual(1, uncaughtHandledCount);
+            }
+            finally
+            {
+                Promise.Config.UncaughtRejectionHandler = currentHandler;
+            }
+        }
+
+        [Test]
         public void OnProgressWillOnlyBeInvokedWithAValueBetween0And1()
         {
             var progress = Progress.New(p =>

@@ -1488,8 +1488,6 @@ namespace Proto.Promises
 
             internal System.Threading.CancellationToken GetCancellationToken(int tokenId)
             {
-                // Captured before the lock is taken, in case the node is created (see CaptureNodeTrace).
-                var trace = CaptureNodeTrace();
                 _smallFields._locker.Enter();
                 try
                 {
@@ -1506,7 +1504,9 @@ namespace Proto.Promises
                         _bclSource = new CancellationTokenSource();
                         CancelationConverter.AttachCancelationRef(_bclSource, this);
                         var del = DelegateWrapper.Create(_bclSource, source => source.Cancel(false));
-                        var node = CallbackNodeImpl<DelegateCaptureVoidVoid<CancellationTokenSource>>.GetOrCreate(del, this, trace);
+                        // The node isn't traced, so the callbacks that were registered to the token run in the scope of what canceled this,
+                        // instead of where the token was first requested, which is not what registered them.
+                        var node = CallbackNodeImpl<DelegateCaptureVoidVoid<CancellationTokenSource>>.GetOrCreate(del, this, null);
                         InsertPrevious(node);
                     }
                     return _bclSource.Token;

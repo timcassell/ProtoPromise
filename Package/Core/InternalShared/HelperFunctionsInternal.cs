@@ -50,6 +50,9 @@ namespace Proto.Promises
             {
                 throw new System.InvalidOperationException("context cannot be null");
             }
+#endif
+#if PROTO_PROMISE_DEVELOPER_MODE
+            // Callbacks are wrapped to catch bugs in the library, so that they are reported instead of crashing the test process.
             if (context == BackgroundSynchronizationContextSentinel.s_instance)
             {
                 ThreadPool.QueueUserWorkItem(_ =>
@@ -107,6 +110,7 @@ namespace Proto.Promises
             private readonly WaitCallback _threadpoolCallback;
             private readonly CausalityTrace _trace;
 
+#if PROTO_PROMISE_DEVELOPER_MODE
             // Reports an exception that a scheduled callback threw (which should never happen) with the trace of what was scheduled,
             // or with the trace of where it was scheduled if it doesn't have one.
             internal static void Report(Exception exception, object state)
@@ -122,6 +126,7 @@ namespace Proto.Promises
                 }
                 ReportRejection(exception, state);
             }
+#endif
 
             internal ScopedContextCallback(object state, SendOrPostCallback contextCallback, WaitCallback threadpoolCallback, CausalityTrace trace)
             {
