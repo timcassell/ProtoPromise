@@ -71,8 +71,10 @@ namespace Proto.Promises
                 get => !s_objectPoolingDisabled;
                 set
                 {
+                    s_lock.Enter();
                     s_objectPoolingDisabled = !value;
-                    Internal.UpdateIsObjectPoolingEnabled();
+                    UpdateCombinedSettings();
+                    s_lock.Exit();
                 }
             }
             // Inverted, so that pooling is enabled by default without an initializer.
@@ -161,18 +163,65 @@ namespace Proto.Promises
             {
                 [MethodImpl(Internal.InlineOption)]
                 get => s_asyncFlowExecutionContextEnabled;
-                [MethodImpl(Internal.InlineOption)]
                 set
                 {
                     if (!value)
                     {
                         ThrowCannotDisableAsyncFlow();
                     }
-                    s_asyncFlowExecutionContextEnabled = true;
+                    SetAsyncFlowExecutionContextEnabled(true);
                 }
             }
-            // Internal so that tests can disable it directly.
-            internal static bool s_asyncFlowExecutionContextEnabled;
+            private static bool s_asyncFlowExecutionContextEnabled;
+
+            // Internal so that tests can disable it.
+            internal static void SetAsyncFlowExecutionContextEnabled(bool value)
+            {
+                s_lock.Enter();
+                s_asyncFlowExecutionContextEnabled = value;
+                UpdateCombinedSettings();
+                s_lock.Exit();
+            }
+
+            /// <summary>
+            /// Should async <see cref="Promise"/> and async <see cref="Promise{T}"/> functions capture a causality trace where they await,
+            /// while <see cref="Diagnostics.CausalityTrace.IsEnabled"/> is <see langword="true"/>.
+            /// </summary>
+            /// <remarks>
+            /// When this is enabled, an async function that continues after an await runs inside the scope of where it awaited, so traces that are captured after the await
+            /// include what continued the function before that await, whatever it awaited (including awaitables that aren't ProtoPromise's, like <see cref="System.Threading.Tasks.Task"/>).
+            /// This is disabled by default, because it captures another trace for each await that doesn't complete synchronously,
+            /// usually at about the same location as the trace of the operation that it awaits.
+            /// </remarks>
+            public static bool AwaitTracesEnabled
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get => s_awaitTracesEnabled;
+                set
+                {
+                    s_lock.Enter();
+                    s_awaitTracesEnabled = value;
+                    UpdateCombinedSettings();
+                    s_lock.Exit();
+                }
+            }
+            private static bool s_awaitTracesEnabled;
+
+            // AsyncFlowExecutionContextEnabled | (CausalityTrace.IsEnabled & AwaitTracesEnabled), so that async functions only check 1 field when they await
+            // (see PromiseRefBase.CaptureAwaitContextAndOrTrace).
+            internal static bool s_isAwaitCaptureEnabled;
+
+            // Must not be readonly.
+            // Held while the settings that the combined settings are computed from are set (including CausalityTrace.IsEnabled),
+            // so that sets on different threads can't leave a combined setting computed from an old value.
+            internal static Internal.SpinLocker s_lock;
+
+            // Called while s_lock is held, after a setting is written.
+            internal static void UpdateCombinedSettings()
+            {
+                Internal.s_isObjectPoolingDisabled = !ObjectPoolingEnabled | Diagnostics.CausalityTrace.IsEnabled;
+                s_isAwaitCaptureEnabled = s_asyncFlowExecutionContextEnabled | (Diagnostics.CausalityTrace.IsEnabled & s_awaitTracesEnabled);
+            }
 
             [MethodImpl(MethodImplOptions.NoInlining)]
             private static void ThrowCannotDisableAsyncFlow()

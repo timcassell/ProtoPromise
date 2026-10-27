@@ -61,7 +61,7 @@ namespace ProtoPromise.Tests.APIs
             bool asyncFlowExecutionContext)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            Promise.Config.s_asyncFlowExecutionContextEnabled = asyncFlowExecutionContext;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(asyncFlowExecutionContext);
 
             var foregroundThread = Thread.CurrentThread;
             var threadHelper = new ThreadHelper();
@@ -117,7 +117,7 @@ namespace ProtoPromise.Tests.APIs
             bool asyncFlowExecutionContext)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            Promise.Config.s_asyncFlowExecutionContextEnabled = asyncFlowExecutionContext;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(asyncFlowExecutionContext);
 
             var foregroundThread = Thread.CurrentThread;
             var threadHelper = new ThreadHelper();
@@ -175,7 +175,7 @@ namespace ProtoPromise.Tests.APIs
             [Values] bool asyncFlowExecutionContext)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            Promise.Config.s_asyncFlowExecutionContextEnabled = asyncFlowExecutionContext;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(asyncFlowExecutionContext);
 
             var foregroundThread = Thread.CurrentThread;
             var continuationOptions = TestHelper.GetContinuationOptions(continuationContext, completedBehavior);
@@ -236,7 +236,7 @@ namespace ProtoPromise.Tests.APIs
             [Values] bool asyncFlowExecutionContext)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            Promise.Config.s_asyncFlowExecutionContextEnabled = asyncFlowExecutionContext;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(asyncFlowExecutionContext);
 
             var foregroundThread = Thread.CurrentThread;
             var continuationOptions = TestHelper.GetContinuationOptions(continuationContext, completedBehavior);

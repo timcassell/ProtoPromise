@@ -11,6 +11,20 @@ using System.Threading;
 
 namespace Proto.Promises.CompilerServices
 {
+#if !NETCOREAPP
+    partial struct PromiseSwitchToContextAwaiter
+    {
+        // Fix for IL2CPP not invoking the static constructor.
+#if ENABLE_IL2CPP
+        [MethodImpl(Internal.InlineOption)]
+        static partial void CreateOverride()
+#else
+        static PromiseSwitchToContextAwaiter()
+#endif
+            => Internal.AwaitOverriderImpl<PromiseSwitchToContextAwaiter>.Create();
+    }
+#endif
+
     /// <summary>
     /// Provides an awaiter for switching to a context.
     /// </summary>
@@ -18,8 +32,7 @@ namespace Proto.Promises.CompilerServices
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    // TODO: Implement IPromiseAwareAwaiter when we start using IThreadPoolWorkItem.
-    public readonly partial struct PromiseSwitchToContextAwaiter : ICriticalNotifyCompletion
+    public readonly partial struct PromiseSwitchToContextAwaiter : ICriticalNotifyCompletion, Internal.IPromiseAwareAwaiter
     {
         private readonly SynchronizationContext _context;
         private readonly bool _forceAsync;
@@ -29,7 +42,10 @@ namespace Proto.Promises.CompilerServices
         {
             _context = context;
             _forceAsync = forceAsync;
+            CreateOverride();
         }
+
+        static partial void CreateOverride();
 
         /// <summary>Gets the awaiter for this.</summary>
         /// <remarks>This method is intended for compiler use rather than use directly in code.</remarks>
@@ -67,8 +83,9 @@ namespace Proto.Promises.CompilerServices
         public void OnCompleted(Action continuation)
         {
             ValidateArgument(continuation, nameof(continuation));
-            // Scheduled the same way as other continuations, so that it's traced the same way.
-            Internal.ScheduleContextCallback(_context ?? Internal.BackgroundSynchronizationContextSentinel.s_instance, continuation,
+            // It's scheduled where the awaiting function awaits, so it doesn't capture where it was scheduled, which is where it awaited.
+            // Only async Promise functions capture that (see Promise.Config.AwaitTracesEnabled).
+            Internal.ScheduleContextCallbackDirect(_context ?? Internal.BackgroundSynchronizationContextSentinel.s_instance, continuation,
                 state => state.UnsafeAs<Action>().Invoke(),
                 state => state.UnsafeAs<Action>().Invoke());
         }
@@ -79,6 +96,11 @@ namespace Proto.Promises.CompilerServices
         [MethodImpl(Internal.InlineOption)]
         public void UnsafeOnCompleted(Action continuation)
             => OnCompleted(continuation);
+
+        // Async promises don't capture where they were scheduled either (see AsyncPromiseRef.ContinueOnContext).
+        [MethodImpl(Internal.InlineOption)]
+        void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
+            => asyncPromiseRef.SwitchToContext(_context ?? Internal.BackgroundSynchronizationContextSentinel.s_instance);
 
         static partial void ValidateArgument<TArg>(TArg arg, string argName);
 #if PROMISE_DEBUG

@@ -140,7 +140,8 @@ namespace Proto.Promises.CompilerServices
                 _ref.OnCompleted(continuation, _continuationOptions.GetContinuationContext(), _promise._id);
                 return;
             }
-            Internal.ScheduleContextCallback(_continuationOptions.GetContinuationContext(), continuation,
+            // The promise is already complete, so it's scheduled where the awaiting function awaits, and it doesn't capture where it was scheduled, which is where it awaited.
+            Internal.ScheduleContextCallbackDirect(_continuationOptions.GetContinuationContext(), continuation,
                 obj => obj.UnsafeAs<Action>().Invoke(),
                 obj => obj.UnsafeAs<Action>().Invoke()
             );
@@ -253,7 +254,8 @@ namespace Proto.Promises.CompilerServices
                 _ref.OnCompleted(continuation, _continuationOptions.GetContinuationContext(), _promise._id);
                 return;
             }
-            Internal.ScheduleContextCallback(_continuationOptions.GetContinuationContext(), continuation,
+            // The promise is already complete, so it's scheduled where the awaiting function awaits, and it doesn't capture where it was scheduled, which is where it awaited.
+            Internal.ScheduleContextCallbackDirect(_continuationOptions.GetContinuationContext(), continuation,
                 obj => obj.UnsafeAs<Action>().Invoke(),
                 obj => obj.UnsafeAs<Action>().Invoke()
             );
@@ -358,7 +360,8 @@ namespace Proto.Promises.CompilerServices
                 _ref.OnCompleted(continuation, _continuationOptions.GetContinuationContext(), _promise._id);
                 return;
             }
-            Internal.ScheduleContextCallback(_continuationOptions.GetContinuationContext(), continuation,
+            // The promise is already complete, so it's scheduled where the awaiting function awaits, and it doesn't capture where it was scheduled, which is where it awaited.
+            Internal.ScheduleContextCallbackDirect(_continuationOptions.GetContinuationContext(), continuation,
                 obj => obj.UnsafeAs<Action>().Invoke(),
                 obj => obj.UnsafeAs<Action>().Invoke()
             );
@@ -463,7 +466,8 @@ namespace Proto.Promises.CompilerServices
                 _ref.OnCompleted(continuation, _continuationOptions.GetContinuationContext(), _promise._id);
                 return;
             }
-            Internal.ScheduleContextCallback(_continuationOptions.GetContinuationContext(), continuation,
+            // The promise is already complete, so it's scheduled where the awaiting function awaits, and it doesn't capture where it was scheduled, which is where it awaited.
+            Internal.ScheduleContextCallbackDirect(_continuationOptions.GetContinuationContext(), continuation,
                 obj => obj.UnsafeAs<Action>().Invoke(),
                 obj => obj.UnsafeAs<Action>().Invoke()
             );

@@ -1,4 +1,4 @@
-﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -783,12 +783,14 @@ namespace ProtoPromise.Tests.APIs
         [Test]
         public void AsyncPromise_ContinuationsRunInsideTheAsyncPromiseScope(
             [Values] bool configureFirstAwaitToForeground,
-            [Values] bool flowExecutionContext)
+            [Values] bool flowExecutionContext,
+            [Values] bool awaitTraces)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
             // Enabled covers the ExecutionContext and ConfiguredAwaitDualContext paths.
-            bool wasFlowExecutionContextEnabled = Promise.Config.s_asyncFlowExecutionContextEnabled;
-            Promise.Config.s_asyncFlowExecutionContextEnabled = flowExecutionContext;
+            bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(flowExecutionContext);
+            Promise.Config.AwaitTracesEnabled = awaitTraces;
             CausalityTrace.IsEnabled = true;
             try
             {
@@ -796,6 +798,8 @@ namespace ProtoPromise.Tests.APIs
                 var deferred2 = NewVoidDeferredForTraceTest();
                 CausalityTrace traceAfterFirstAwait = null;
                 CausalityTrace traceAfterSecondAwait = null;
+                CausalityTrace firstAwaitTrace = null;
+                Promise promise = default;
 
                 async Promise Func()
                 {
@@ -808,12 +812,13 @@ namespace ProtoPromise.Tests.APIs
                         await deferred1.Promise;
                     }
                     traceAfterFirstAwait = CausalityTrace.Capture();
+                    firstAwaitTrace = promise._ref.AwaitTrace;
                     // If the first await resumed on a context, this checks that the async promise is still traced afterwards.
                     await deferred2.Promise;
                     traceAfterSecondAwait = CausalityTrace.Capture();
                 }
 
-                var promise = Func();
+                promise = Func();
                 var asyncTrace = promise._ref.Trace;
                 promise.Forget();
 
@@ -822,36 +827,65 @@ namespace ProtoPromise.Tests.APIs
                 deferred2.Resolve();
 
                 Assert.IsNotNull(asyncTrace);
+                Assert.AreEqual(awaitTraces, firstAwaitTrace != null);
+#if PROTO_PROMISE_DEVELOPER_MODE // Developer mode doesn't hide internal frames, so where it first awaited doesn't contain the async promise's trace.
                 Assert.AreSame(asyncTrace, traceAfterFirstAwait.Previous);
+#else
+                if (!awaitTraces)
+                {
+                    Assert.AreSame(asyncTrace, traceAfterFirstAwait.Previous);
+                }
+                else
+                {
+                    // Where it first awaited contains where it was called, so the async promise's trace is skipped, and its cause is kept.
+                    // Where it first awaited is printed in its place, unless it's dropped like the frames of this method (see KeepsOuterTracesFromTheSameMethod).
+                    Assert.AreSame(asyncTrace.Previous, traceAfterFirstAwait.Previous, traceAfterFirstAwait.ToString());
+                    if (KeepsOuterTracesFromTheSameMethod)
+                    {
+                        CollectionAssert.Contains(traceAfterFirstAwait.OuterTraces, firstAwaitTrace, traceAfterFirstAwait.ToString());
+                    }
+                }
+#endif
                 Assert.AreSame(asyncTrace, traceAfterSecondAwait.Previous);
                 // Only the continuation that was scheduled on the context has where it was scheduled.
                 // The context runs it from this method (see KeepsOuterTracesFromTheSameMethod).
                 // A continuation that the deferred invoked synchronously has what completed the deferred on its stack.
-                if (!configureFirstAwaitToForeground)
+                if (!configureFirstAwaitToForeground & !awaitTraces)
                 {
                     CollectionAssert.IsEmpty(traceAfterFirstAwait.OuterTraces, traceAfterFirstAwait.ToString());
                 }
                 else if (KeepsOuterTracesFromTheSameMethod)
                 {
-                    Assert.IsNotNull(OuterTrace(traceAfterFirstAwait), traceAfterFirstAwait.ToString());
+                    // In developer mode, the optimized async mode's first await trace is the async promise's trace (see CausalityTrace.GetWithAllFrames), which is already the previous trace.
+                    bool hasFirstAwaitTrace = firstAwaitTrace != null && firstAwaitTrace != asyncTrace;
+                    Assert.AreEqual((configureFirstAwaitToForeground ? 1 : 0) + (hasFirstAwaitTrace ? 1 : 0), traceAfterFirstAwait.OuterTraces.Count, traceAfterFirstAwait.ToString());
                 }
                 // Otherwise it's dropped, unless IL2CPP's C++ linker folded Deferred.Resolve with an identical function,
                 // whose name is printed in its place, so its frame is visible and it's not printed like the outer frames of the trace.
-                CollectionAssert.IsEmpty(traceAfterSecondAwait.OuterTraces, traceAfterSecondAwait.ToString());
+                // With await traces, the second await continues inside the scope of where it awaited, which has what continued the first await on its stack (in this method).
+                if (!awaitTraces)
+                {
+                    CollectionAssert.IsEmpty(traceAfterSecondAwait.OuterTraces, traceAfterSecondAwait.ToString());
+                }
+                else if (KeepsOuterTracesFromTheSameMethod)
+                {
+                    Assert.IsNotNull(OuterTrace(traceAfterSecondAwait), traceAfterSecondAwait.ToString());
+                }
             }
             finally
             {
                 CausalityTrace.IsEnabled = false;
-                Promise.Config.s_asyncFlowExecutionContextEnabled = wasFlowExecutionContextEnabled;
+                Promise.Config.AwaitTracesEnabled = false;
+                Promise.Config.SetAsyncFlowExecutionContextEnabled(wasFlowExecutionContextEnabled);
             }
         }
 
         [Test]
         public void AsyncPromise_AwaitedWhileTheExecutionContextFlowIsSuppressed_ContinuationRunsInsideTheAsyncPromiseScope()
         {
-            // The async promise can't capture the ExecutionContext while its flow is suppressed, so it stores its traced mark instead.
-            bool wasFlowExecutionContextEnabled = Promise.Config.s_asyncFlowExecutionContextEnabled;
-            Promise.Config.s_asyncFlowExecutionContextEnabled = true;
+            // The async promise can't capture the ExecutionContext while its flow is suppressed, so it continues without one, still inside its scope.
+            bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(true);
             CausalityTrace.IsEnabled = true;
             try
             {
@@ -881,7 +915,7 @@ namespace ProtoPromise.Tests.APIs
             finally
             {
                 CausalityTrace.IsEnabled = false;
-                Promise.Config.s_asyncFlowExecutionContextEnabled = wasFlowExecutionContextEnabled;
+                Promise.Config.SetAsyncFlowExecutionContextEnabled(wasFlowExecutionContextEnabled);
             }
         }
 
@@ -949,8 +983,8 @@ namespace ProtoPromise.Tests.APIs
             // In DEBUG mode, the async promise keeps its trace while causality traces are disabled, so it has its trace again after they're enabled again.
             // Resuming on a context clears the field that marks it as traced, so this checks that the mark is restored while they're disabled.
             // (When the ExecutionContext flows, the field is the ExecutionContext instead, which is captured again at every await.)
-            bool wasFlowExecutionContextEnabled = Promise.Config.s_asyncFlowExecutionContextEnabled;
-            Promise.Config.s_asyncFlowExecutionContextEnabled = false;
+            bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(false);
             CausalityTrace.IsEnabled = true;
             try
             {
@@ -981,7 +1015,7 @@ namespace ProtoPromise.Tests.APIs
             finally
             {
                 CausalityTrace.IsEnabled = false;
-                Promise.Config.s_asyncFlowExecutionContextEnabled = wasFlowExecutionContextEnabled;
+                Promise.Config.SetAsyncFlowExecutionContextEnabled(wasFlowExecutionContextEnabled);
             }
         }
 #endif
@@ -992,8 +1026,8 @@ namespace ProtoPromise.Tests.APIs
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
             // Disabled covers the path where the async promise resumes with its traced mark (and its trace is ignored) after tracing is disabled.
-            bool wasFlowExecutionContextEnabled = Promise.Config.s_asyncFlowExecutionContextEnabled;
-            Promise.Config.s_asyncFlowExecutionContextEnabled = flowExecutionContext;
+            bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(flowExecutionContext);
             CausalityTrace.IsEnabled = true;
             try
             {
@@ -1025,7 +1059,7 @@ namespace ProtoPromise.Tests.APIs
             finally
             {
                 CausalityTrace.IsEnabled = false;
-                Promise.Config.s_asyncFlowExecutionContextEnabled = wasFlowExecutionContextEnabled;
+                Promise.Config.SetAsyncFlowExecutionContextEnabled(wasFlowExecutionContextEnabled);
             }
         }
 
@@ -1198,7 +1232,7 @@ namespace ProtoPromise.Tests.APIs
         }
 
         [Test]
-        public void AwaiterContinuation_RunsInsideTheScopeOfWhereItWasAwaited(
+        public void AwaiterContinuation_DoesNotRunInsideTheScopeOfWhereItWasAwaited(
             [Values] bool configured)
         {
             CausalityTrace.IsEnabled = true;
@@ -1211,18 +1245,15 @@ namespace ProtoPromise.Tests.APIs
                 ResolveForTraceTest(deferred);
                 TestHelper.ExecuteForegroundCallbacks();
 
-                AssertRanInsideTheScopeStartedBy(continuationTrace[0], nameof(OnCompletedForTraceTest));
-                // Only the continuation that was scheduled on the context has where it was scheduled from.
-                // The continuation that the deferred invoked synchronously has what completed the deferred on its stack.
+                // The awaiting function isn't traced, so where it awaited isn't captured, the same as an async Promise function without await traces.
                 var text = continuationTrace[0].ToString();
+                Assert.IsFalse(HistoryContainsMethod(continuationTrace[0], nameof(OnCompletedForTraceTest)), text);
+                CollectionAssert.IsEmpty(continuationTrace[0].OuterTraces, text);
+                // Only the continuation that was scheduled on the context has where it was scheduled from, which is what completed the deferred.
+                // The continuation that the deferred invoked synchronously has what completed the deferred on its stack.
                 if (configured)
                 {
-                    Assert.IsNotNull(OuterTrace(continuationTrace[0]), text);
-                    Assert.IsTrue(ContainsMethod(OuterTrace(continuationTrace[0]), nameof(ResolveForTraceTest)), text);
-                }
-                else
-                {
-                    CollectionAssert.IsEmpty(continuationTrace[0].OuterTraces, text);
+                    Assert.IsTrue(HistoryContainsMethod(continuationTrace[0], nameof(ResolveForTraceTest)), text);
                 }
             }
             finally
@@ -1238,6 +1269,96 @@ namespace ProtoPromise.Tests.APIs
         {
             await promise;
         }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE // Developer mode doesn't hide internal frames.
+        [Test]
+        public void AsyncPromiseTrace_StartsAtTheAsyncFunctionWhereItWasCalled(
+            [Values] bool flowExecutionContext,
+            [Values] bool awaitTraces)
+        {
+            // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
+            // Enabled runs the async function with the runtime's async method builder, whose frames are between the async function and where it was called.
+            bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(flowExecutionContext);
+            Promise.Config.AwaitTracesEnabled = awaitTraces;
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var deferred = Promise.NewDeferred();
+                var promise = AwaitForTraceTest(deferred.Promise);
+                var asyncTrace = promise._ref.Trace;
+                var awaitTrace = promise._ref.AwaitTrace;
+                promise.Forget();
+                deferred.Resolve();
+
+                // Whether it's captured before the async function's body runs (non-optimized mode) or where it first awaits (optimized mode),
+                // it starts at the method that the compiler generated for the async function, followed by where it was called.
+                var frames = asyncTrace.GetFrames();
+                Assert.AreEqual(nameof(AwaitForTraceTest), frames[0].GetMethod().Name, asyncTrace.ToString());
+                Assert.AreEqual(nameof(AsyncPromiseTrace_StartsAtTheAsyncFunctionWhereItWasCalled), frames[1].GetMethod().Name, asyncTrace.ToString());
+                if (awaitTraces)
+                {
+                    // Where it first awaited starts at the async function's state machine, where it awaited.
+                    var awaitFrames = awaitTrace.GetFrames();
+                    Assert.AreEqual("MoveNext", awaitFrames[0].GetMethod().Name, awaitTrace.ToString());
+                    StringAssert.Contains(nameof(AwaitForTraceTest), awaitFrames[0].GetMethod().DeclaringType.Name, awaitTrace.ToString());
+                }
+                else
+                {
+                    Assert.IsNull(awaitTrace);
+                }
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+                Promise.Config.AwaitTracesEnabled = false;
+                Promise.Config.SetAsyncFlowExecutionContextEnabled(wasFlowExecutionContextEnabled);
+            }
+        }
+
+        [Test]
+        public void CausalityTraceCapture_AfterContinuingOnTheExecutionContext_HidesExecutionContextRunOnlyIfProtoPromiseCalledIt()
+        {
+            // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
+            bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(true);
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var deferred = Promise.NewDeferred();
+                CausalityTrace asyncTrace = null;
+                CausalityTrace userTrace = null;
+                async Promise Func()
+                {
+                    await deferred.Promise;
+                    asyncTrace = CausalityTrace.Capture();
+                }
+                Func().Forget();
+                deferred.Resolve();
+                System.Threading.ExecutionContext.Run(System.Threading.ExecutionContext.Capture(), _ => userTrace = CausalityTrace.Capture(), null);
+
+                // Only the frames above this method are checked, because the thread that runs it may have started it with ExecutionContext.Run too.
+                bool HasExecutionContextFrame(System.Diagnostics.StackFrame[] frames) => frames
+                    .TakeWhile(frame => frame.GetMethod().Name != nameof(CausalityTraceCapture_AfterContinuingOnTheExecutionContext_HidesExecutionContextRunOnlyIfProtoPromiseCalledIt))
+                    .Any(frame => frame.GetMethod().DeclaringType == typeof(System.Threading.ExecutionContext));
+                // The async function continued on its ExecutionContext with ExecutionContext.Run, which is hidden like the code that called it.
+                Assert.IsTrue(HasExecutionContextFrame(asyncTrace.StackTrace.GetFrames()), asyncTrace.StackTrace.ToString());
+                Assert.IsFalse(HasExecutionContextFrame(asyncTrace.GetFrames()), asyncTrace.ToString());
+                // It's not hidden when other code calls it.
+                Assert.IsTrue(HasExecutionContextFrame(userTrace.GetFrames()), userTrace.ToString());
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+                Promise.Config.SetAsyncFlowExecutionContextEnabled(wasFlowExecutionContextEnabled);
+            }
+        }
+#endif // !PROTO_PROMISE_DEVELOPER_MODE
+
+        // Whether the pending async promise is in the optimized async mode, which creates it where its function first awaits (see AsyncInternal.cs).
+        // It depends on how the library was built (e.g. its .Net Standard 2.0 build has the IL2CPP workarounds), so it's checked at runtime.
+        private static bool IsInOptimizedAsyncMode(Promise promise)
+            => promise._ref.GetType().Name.Contains("Machine");
 
         public enum CallbackKindForTraceTest
         {
@@ -1260,8 +1381,8 @@ namespace ProtoPromise.Tests.APIs
             [Values] bool flowExecutionContext)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            bool wasFlowExecutionContextEnabled = Promise.Config.s_asyncFlowExecutionContextEnabled;
-            Promise.Config.s_asyncFlowExecutionContextEnabled = flowExecutionContext;
+            bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(flowExecutionContext);
             CausalityTrace.IsEnabled = true;
             try
             {
@@ -1328,7 +1449,7 @@ namespace ProtoPromise.Tests.APIs
             finally
             {
                 CausalityTrace.IsEnabled = false;
-                Promise.Config.s_asyncFlowExecutionContextEnabled = wasFlowExecutionContextEnabled;
+                Promise.Config.SetAsyncFlowExecutionContextEnabled(wasFlowExecutionContextEnabled);
             }
         }
 
@@ -1483,8 +1604,8 @@ namespace ProtoPromise.Tests.APIs
             [Values] bool flowExecutionContext)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            bool wasFlowExecutionContextEnabled = Promise.Config.s_asyncFlowExecutionContextEnabled;
-            Promise.Config.s_asyncFlowExecutionContextEnabled = flowExecutionContext;
+            bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(flowExecutionContext);
             CausalityTrace.IsEnabled = true;
             try
             {
@@ -1495,15 +1616,16 @@ namespace ProtoPromise.Tests.APIs
 
                 deferred.Resolve();
 
-                // The async function completed inside its own scope, but its scope was exited while the continuation ran.
+                // The async function completed inside its own scope, but its scope was exited while the continuation ran,
+                // and the awaiting function isn't traced, so the continuation ran outside of any scope.
                 // Where the async function was called is usually already on the stack of the code that awaits it.
-                AssertRanInsideTheScopeStartedBy(continuationTrace[0], nameof(OnCompletedForTraceTest));
+                Assert.IsNull(continuationTrace[0].Previous, continuationTrace[0].ToString());
                 CollectionAssert.IsEmpty(continuationTrace[0].OuterTraces, continuationTrace[0].ToString());
             }
             finally
             {
                 CausalityTrace.IsEnabled = false;
-                Promise.Config.s_asyncFlowExecutionContextEnabled = wasFlowExecutionContextEnabled;
+                Promise.Config.SetAsyncFlowExecutionContextEnabled(wasFlowExecutionContextEnabled);
             }
         }
 
@@ -2035,6 +2157,44 @@ namespace ProtoPromise.Tests.APIs
             }
         }
 
+        [Test]
+        public void ParallelAsyncBody_AfterThePreviousBodyCompleted_DoesNotIncludeWhatCompletedIt(
+            [Values] bool asyncEnumerable)
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var deferred = NewVoidDeferredForTraceTest();
+                var bodyTraces = new List<CausalityTrace>();
+                var options = new Proto.Promises.Threading.ParallelAsyncOptions()
+                {
+                    SynchronizationContext = Promise.Config.ForegroundContext,
+                    MaxDegreeOfParallelism = 1
+                };
+                // The first body completes when the deferred is resolved, then the loop schedules the worker again for the second body.
+                System.Func<int, CancelationToken, Promise> body = (index, _) =>
+                {
+                    bodyTraces.Add(CausalityTrace.Capture());
+                    return index == 0 ? deferred.Promise : Promise.Resolved();
+                };
+                var promise = asyncEnumerable
+                    ? Proto.Promises.Threading.ParallelAsync.ForEach(Proto.Promises.Linq.AsyncEnumerable.Range(0, 2), options, body)
+                    : Proto.Promises.Threading.ParallelAsync.ForEach(Enumerable.Range(0, 2), options, body);
+                TestHelper.ExecuteForegroundCallbacks();
+                ResolveForTraceTest(deferred);
+                promise.WaitWithTimeoutWhileExecutingForegroundContext(System.TimeSpan.FromSeconds(1));
+
+                Assert.AreEqual(2, bodyTraces.Count);
+                // What completed the previous body doesn't concern the next one, so it's not captured.
+                Assert.IsFalse(HistoryContainsMethod(bodyTraces[1], nameof(ResolveForTraceTest)), bodyTraces[1].ToString());
+                AssertRanInsideTheScopeStartedBy(bodyTraces[1], nameof(ParallelAsyncBody_AfterThePreviousBodyCompleted_DoesNotIncludeWhatCompletedIt));
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
         public enum ParallelBodyOutcomeForTraceTest
         {
             Throw,
@@ -2384,26 +2544,54 @@ namespace ProtoPromise.Tests.APIs
 
         [Test]
         public void CausalityTraceCapture_DeepChainOfAsyncFunctionsThatCompleteSynchronously_EachRunsOutsideTheScopeOfTheOneThatCompleted(
-            [Values] bool flowExecutionContext)
+            [Values] bool flowExecutionContext,
+            [Values] bool awaitBefore,
+            [Values] bool awaitTraces)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            bool wasFlowExecutionContextEnabled = Promise.Config.s_asyncFlowExecutionContextEnabled;
-            Promise.Config.s_asyncFlowExecutionContextEnabled = flowExecutionContext;
+            bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(flowExecutionContext);
+            Promise.Config.AwaitTracesEnabled = awaitTraces;
             CausalityTrace.IsEnabled = true;
             try
             {
                 // Each async function continues the one that awaited it while it's still running inside its own scope,
                 // so without exiting that scope, their scopes would be nested as deep as the chain.
+                // With await traces, each continues inside the scope of where it awaited too, which is exited with its own scope.
                 var deferred = Promise.NewDeferred();
                 var traces = new List<CausalityTrace>();
-                var promise = AwaitRecursivelyForTraceTest(deferred.Promise, 16, traces);
+                var pending = new Queue<Promise.Deferred>();
+                var promise = AwaitRecursivelyForTraceTest(deferred.Promise, 16, traces, awaitBefore ? pending : null);
+#if PROTO_PROMISE_DEVELOPER_MODE
+                // In developer mode, the optimized async mode's first await trace is the async promise's trace (see CausalityTrace.GetWithAllFrames),
+                // so without an await before, where it awaited isn't an outer trace.
+                bool hasAwaitTrace = awaitTraces & (awaitBefore | !IsInOptimizedAsyncMode(promise));
+#else
+                bool hasAwaitTrace = awaitTraces;
+#endif
+                while (pending.Count > 0)
+                {
+                    pending.Dequeue().Resolve();
+                }
                 deferred.Resolve();
                 promise.WaitWithTimeout(System.TimeSpan.FromSeconds(5));
 
                 Assert.AreEqual(17, traces.Count);
                 foreach (var trace in traces)
                 {
-                    CollectionAssert.IsEmpty(trace.OuterTraces, trace.ToString());
+                    if (!hasAwaitTrace)
+                    {
+                        CollectionAssert.IsEmpty(trace.OuterTraces, trace.ToString());
+                    }
+                    // The trace of where its own async function awaited, unless it's dropped like the frames of this method (see KeepsOuterTracesFromTheSameMethod).
+                    else if (KeepsOuterTracesFromTheSameMethod)
+                    {
+                        Assert.AreEqual(1, trace.OuterTraces.Count, trace.ToString());
+                    }
+                    else
+                    {
+                        Assert.LessOrEqual(trace.OuterTraces.Count, 1, trace.ToString());
+                    }
                     Assert.IsFalse(trace.AreOuterTracesTruncated, trace.ToString());
                 }
                 AssertCausalityTraceIsPrintedCorrectly(traces[traces.Count - 1], traces[traces.Count - 1].ToString());
@@ -2411,7 +2599,8 @@ namespace ProtoPromise.Tests.APIs
             finally
             {
                 CausalityTrace.IsEnabled = false;
-                Promise.Config.s_asyncFlowExecutionContextEnabled = wasFlowExecutionContextEnabled;
+                Promise.Config.AwaitTracesEnabled = false;
+                Promise.Config.SetAsyncFlowExecutionContextEnabled(wasFlowExecutionContextEnabled);
             }
         }
 
@@ -2431,8 +2620,8 @@ namespace ProtoPromise.Tests.APIs
             [Values] bool flowExecutionContext)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            bool wasFlowExecutionContextEnabled = Promise.Config.s_asyncFlowExecutionContextEnabled;
-            Promise.Config.s_asyncFlowExecutionContextEnabled = flowExecutionContext;
+            bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(flowExecutionContext);
             CausalityTrace.IsEnabled = true;
             try
             {
@@ -2457,7 +2646,7 @@ namespace ProtoPromise.Tests.APIs
             finally
             {
                 CausalityTrace.IsEnabled = false;
-                Promise.Config.s_asyncFlowExecutionContextEnabled = wasFlowExecutionContextEnabled;
+                Promise.Config.SetAsyncFlowExecutionContextEnabled(wasFlowExecutionContextEnabled);
             }
         }
 
@@ -2466,8 +2655,8 @@ namespace ProtoPromise.Tests.APIs
             [Values] bool flowExecutionContext)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            bool wasFlowExecutionContextEnabled = Promise.Config.s_asyncFlowExecutionContextEnabled;
-            Promise.Config.s_asyncFlowExecutionContextEnabled = flowExecutionContext;
+            bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(flowExecutionContext);
             CausalityTrace.IsEnabled = true;
             try
             {
@@ -2491,7 +2680,7 @@ namespace ProtoPromise.Tests.APIs
             finally
             {
                 CausalityTrace.IsEnabled = false;
-                Promise.Config.s_asyncFlowExecutionContextEnabled = wasFlowExecutionContextEnabled;
+                Promise.Config.SetAsyncFlowExecutionContextEnabled(wasFlowExecutionContextEnabled);
             }
         }
 
@@ -2510,8 +2699,8 @@ namespace ProtoPromise.Tests.APIs
             [Values] bool flowExecutionContext)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            bool wasFlowExecutionContextEnabled = Promise.Config.s_asyncFlowExecutionContextEnabled;
-            Promise.Config.s_asyncFlowExecutionContextEnabled = flowExecutionContext;
+            bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(flowExecutionContext);
             CausalityTrace.IsEnabled = true;
             try
             {
@@ -2577,7 +2766,7 @@ namespace ProtoPromise.Tests.APIs
             finally
             {
                 CausalityTrace.IsEnabled = false;
-                Promise.Config.s_asyncFlowExecutionContextEnabled = wasFlowExecutionContextEnabled;
+                Promise.Config.SetAsyncFlowExecutionContextEnabled(wasFlowExecutionContextEnabled);
             }
         }
 
@@ -2589,15 +2778,19 @@ namespace ProtoPromise.Tests.APIs
 
         // NoInlining for the same reason as AwaitForTraceTest.
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
-        private static async Promise AwaitRecursivelyForTraceTest(Promise promise, int depth, List<CausalityTrace> traces)
+        private static async Promise AwaitRecursivelyForTraceTest(Promise promise, int depth, List<CausalityTrace> traces, Queue<Promise.Deferred> pendingBefore = null)
         {
+            if (pendingBefore != null)
+            {
+                await GetPendingPromise(pendingBefore);
+            }
             if (depth == 0)
             {
                 await promise;
             }
             else
             {
-                await AwaitRecursivelyForTraceTest(promise, depth - 1, traces);
+                await AwaitRecursivelyForTraceTest(promise, depth - 1, traces, pendingBefore);
             }
             traces.Add(CausalityTrace.Capture());
         }
@@ -3733,8 +3926,10 @@ namespace ProtoPromise.Tests.APIs
         }
 
         [Test]
-        public void CausalityTraceCapture_AfterSwitchingToAContext_SkipsTheTraceOfTheAsyncFunctionThatSwitched()
+        public void CausalityTraceCapture_AfterSwitchingToAContextAtTheFirstAwait_ItsCauseIsWhereTheAsyncFunctionWasCalled(
+            [Values] bool awaitTraces)
         {
+            Promise.Config.AwaitTracesEnabled = awaitTraces;
             CausalityTrace.IsEnabled = true;
             try
             {
@@ -3744,37 +3939,28 @@ namespace ProtoPromise.Tests.APIs
                 context.Execute();
 
                 var text = trace[0].ToString();
-                // The async function's trace was captured where it was called, which is in the trace of where it switched,
-                // so the trace and where it was scheduled from are the whole chain.
-                bool isSkipped = OuterTrace(trace[0]) != null;
-#if !PROMISE_DEBUG
-                // In release builds, the async function's trace is captured where it first awaits, which is where it switched.
-                // Depending on the runtime's frames, it's skipped the same way, or where the trace was scheduled from is dropped as its repeat instead.
-                if (!isSkipped)
+                // Nothing ran before the first await except where the async function was called, which is its own trace,
+                // so where the switch was scheduled (where it awaited) isn't captured.
+                if (!awaitTraces)
                 {
-                    Assert.AreEqual(2, GetCausalityTraceDepth(trace[0]), text);
-                    StringAssert.Contains(nameof(CausalityTraceCapture_AfterSwitchingToAContext_SkipsTheTraceOfTheAsyncFunctionThatSwitched), trace[0].Previous.ToString());
+                    CollectionAssert.IsEmpty(trace[0].OuterTraces, text);
+                    AssertPreviousTraceIsFrom(trace[0], nameof(CausalityTraceCapture_AfterSwitchingToAContextAtTheFirstAwait_ItsCauseIsWhereTheAsyncFunctionWasCalled));
                 }
-#endif
-                if (isSkipped && MayPrintHiddenFramesWithOtherNames)
+                // With await traces, where it awaited contains where it was called, so its own trace is skipped, and where it awaited is printed in its place,
+                // unless it's dropped like the frames of this method (see KeepsOuterTracesFromTheSameMethod).
+                else if (KeepsOuterTracesFromTheSameMethod)
                 {
-                    // The async function's trace is kept if one of its hidden frames is printed with another function's name.
-                    Assert.LessOrEqual(GetCausalityTraceDepth(trace[0]), 2, text);
-                    StringAssert.Contains(nameof(CausalityTraceCapture_AfterSwitchingToAContext_SkipsTheTraceOfTheAsyncFunctionThatSwitched), OuterTrace(trace[0]).ToString());
+                    Assert.IsNotNull(OuterTrace(trace[0]), text);
+                    Assert.IsTrue(ContainsMethod(OuterTrace(trace[0]), nameof(CausalityTraceCapture_AfterSwitchingToAContextAtTheFirstAwait_ItsCauseIsWhereTheAsyncFunctionWasCalled)), text);
+                    Assert.IsNull(trace[0].Previous, text);
                 }
-                else if (isSkipped)
-                {
-                    Assert.AreEqual(1, GetCausalityTraceDepth(trace[0]), text);
-                    StringAssert.Contains(nameof(CausalityTraceCapture_AfterSwitchingToAContext_SkipsTheTraceOfTheAsyncFunctionThatSwitched), OuterTrace(trace[0]).ToString());
-                }
-#if PROMISE_DEBUG
-                Assert.IsTrue(isSkipped, text);
-#endif
+                Assert.LessOrEqual(GetCausalityTraceDepth(trace[0]), 2, text);
                 AssertCausalityTraceIsPrintedCorrectly(trace[0], text);
             }
             finally
             {
                 CausalityTrace.IsEnabled = false;
+                Promise.Config.AwaitTracesEnabled = false;
             }
         }
 
@@ -4860,6 +5046,8 @@ namespace ProtoPromise.Tests.APIs
         [Test]
         public void CausalityTraceCapture_ScheduledFromAnotherCallOnTheSameLineOfAMethodThatIsStillRunning_KeepsIt()
         {
+            // The second switch captures where it awaits, which is where it switches.
+            Promise.Config.AwaitTracesEnabled = true;
             CausalityTrace.IsEnabled = true;
             try
             {
@@ -4875,6 +5063,7 @@ namespace ProtoPromise.Tests.APIs
             finally
             {
                 CausalityTrace.IsEnabled = false;
+                Promise.Config.AwaitTracesEnabled = false;
             }
         }
 
@@ -5175,6 +5364,8 @@ namespace ProtoPromise.Tests.APIs
         [Test]
         public void CausalityTraceToString_LoopOnAContext_DoesNotGrowWithTheIterations()
         {
+            // Each iteration captures where it awaits, which is where it switches.
+            Promise.Config.AwaitTracesEnabled = true;
             CausalityTrace.IsEnabled = true;
             try
             {
@@ -5212,6 +5403,7 @@ namespace ProtoPromise.Tests.APIs
             finally
             {
                 CausalityTrace.IsEnabled = false;
+                Promise.Config.AwaitTracesEnabled = false;
             }
         }
 
@@ -5526,8 +5718,10 @@ namespace ProtoPromise.Tests.APIs
         }
 
         [Test]
-        public void CausalityTraceCapture_AfterSwitchingToAnotherContext_IncludesWhereTheSwitchWasScheduled()
+        public void CausalityTraceCapture_AfterSwitchingToAnotherContext_IncludesWhatContinuedTheAsyncFunctionBeforeItSwitched_OnlyWithAwaitTraces(
+            [Values] bool awaitTraces)
         {
+            Promise.Config.AwaitTracesEnabled = awaitTraces;
             CausalityTrace.IsEnabled = true;
             try
             {
@@ -5541,14 +5735,74 @@ namespace ProtoPromise.Tests.APIs
                 context.Execute();
 
                 Assert.IsFalse(ContainsMethod(trace, nameof(ResolveForTraceTest)), trace.ToString());
-                Assert.IsNotNull(OuterTrace(trace), trace.ToString());
-                Assert.IsTrue(ContainsMethod(OuterTrace(trace), nameof(ResolveForTraceTest)), trace.ToString());
+                // The switch is scheduled where the async function awaits, so it's only captured as where it awaited.
+                if (awaitTraces)
+                {
+                    Assert.IsNotNull(OuterTrace(trace), trace.ToString());
+                    Assert.IsTrue(ContainsMethod(OuterTrace(trace), nameof(ResolveForTraceTest)), trace.ToString());
+                }
+                else
+                {
+                    Assert.IsFalse(HistoryContainsMethod(trace, nameof(ResolveForTraceTest)), trace.ToString());
+                }
                 AssertCausalityTraceIsPrintedCorrectly(trace, trace.ToString());
             }
             finally
             {
                 CausalityTrace.IsEnabled = false;
+                Promise.Config.AwaitTracesEnabled = false;
             }
+        }
+
+        [Test]
+        public void CausalityTraceCapture_AfterSwitchingToAnotherContextInAnAsyncTaskFunction_DoesNotIncludeWhatContinuedItBeforeItSwitched(
+            [Values] bool configureAwait)
+        {
+#if PROMISE_DEBUG
+            if (configureAwait)
+            {
+                // In DEBUG mode, Promise.Resolved() is backed by an object, so the await takes the path of a pending promise, whose continuation is traced.
+                Assert.Ignore();
+            }
+#endif
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var context = new QueuedContext();
+                var deferred = Promise.NewDeferred();
+                CausalityTrace trace = null;
+                var task = CaptureAfterSwitchToContextInTaskForTraceTest(deferred.Promise, context, configureAwait, captured => trace = captured);
+                // The async function continues in ResolveForTraceTest, then switches to the context.
+                ResolveForTraceTest(deferred);
+                Assert.IsNull(trace);
+                context.Execute();
+
+                Assert.IsTrue(task.IsCompleted);
+                task.Wait();
+                // Only async Promise functions capture where they await, which is where the switch is scheduled.
+                CollectionAssert.IsEmpty(trace.OuterTraces, trace.ToString());
+                Assert.IsFalse(HistoryContainsMethod(trace, nameof(ResolveForTraceTest)), trace.ToString());
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
+        // Switches with SwitchToContextAwait, or with ConfigureAwait on a promise that's already complete.
+        private static async System.Threading.Tasks.Task CaptureAfterSwitchToContextInTaskForTraceTest(Promise promise, System.Threading.SynchronizationContext context, bool configureAwait,
+            System.Action<CausalityTrace> onCaptured)
+        {
+            await promise;
+            if (configureAwait)
+            {
+                await Promise.Resolved().ConfigureAwait(new ContinuationOptions(context, CompletedContinuationBehavior.Asynchronous));
+            }
+            else
+            {
+                await Promise.SwitchToContextAwait(context, forceAsync: true);
+            }
+            onCaptured(CausalityTrace.Capture());
         }
 
         [Test]
@@ -5616,6 +5870,246 @@ namespace ProtoPromise.Tests.APIs
             {
                 CausalityTrace.IsEnabled = false;
             }
+        }
+
+        [Test]
+        public void UnhandledRejection_ExceptionThrownInAsyncFunctionAfterItAwaitedTwice_TraceIncludesWhatContinuedTheFunctionBeforeItAwaited(
+            [Values] bool continueOnAnotherThread)
+        {
+            Promise.Config.AwaitTracesEnabled = true;
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                using (var reports = new ReportedExceptions())
+                {
+                    var exception = new System.InvalidOperationException("Thrown in async function");
+                    var deferred1 = NewVoidDeferredForTraceTest();
+                    var deferred2 = NewVoidDeferredForTraceTest();
+                    ThrowAfterAwaitingTwiceForTraceTest(deferred1.Promise, deferred2.Promise, exception).Forget();
+                    var threadHelper = new ThreadHelper();
+                    threadHelper.ExecuteSynchronousOrOnThread(() => ResolveFirstForTraceTest(deferred1), !continueOnAnotherThread);
+                    threadHelper.ExecuteSynchronousOrOnThread(() => ResolveSecondForTraceTest(deferred2), !continueOnAnotherThread);
+
+                    var trace = reports.GetTrace(exception);
+                    var text = trace.ToString();
+                    // What continued the function is on the stack of where it threw, and what continued it before it awaited is in the trace of where it awaited.
+                    Assert.IsTrue(ContainsMethod(trace, nameof(ResolveSecondForTraceTest)), text);
+                    Assert.IsTrue(trace.OuterTraces.Any(outer => ContainsMethod(outer, nameof(ResolveFirstForTraceTest))), text);
+                    AssertPreviousTraceIsFrom(trace, nameof(UnhandledRejection_ExceptionThrownInAsyncFunctionAfterItAwaitedTwice_TraceIncludesWhatContinuedTheFunctionBeforeItAwaited));
+                    AssertCausalityTraceIsPrintedCorrectly(trace, text);
+                }
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+                Promise.Config.AwaitTracesEnabled = false;
+            }
+        }
+
+        private static async Promise ThrowAfterAwaitingTwiceForTraceTest(Promise first, Promise second, System.Exception exception)
+        {
+            await first;
+            await second;
+            throw exception;
+        }
+
+        [Test]
+        public void CausalityTraceCapture_AfterAwaits_IncludesWhatContinuedTheAsyncFunctionBeforeItAwaited_ButNotBeforeThat(
+            [Values] bool continueOnAnotherThread,
+            [Values] bool lastAwaitIsForeign)
+        {
+            Promise.Config.AwaitTracesEnabled = true;
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var deferred1 = NewVoidDeferredForTraceTest();
+                var deferred2 = NewVoidDeferredForTraceTest();
+                // The last await is either a promise or an awaitable that isn't ProtoPromise's. The deferred is only created if it's awaited.
+                var deferred3 = lastAwaitIsForeign ? default : NewVoidDeferredForTraceTest();
+                var foreignAwaitable = lastAwaitIsForeign ? new ForeignAwaitableForTraceTest() : null;
+                var traces = new CausalityTrace[2];
+                AwaitThreeTimesForTraceTest(deferred1.Promise, deferred2.Promise, deferred3, foreignAwaitable, traces).Forget();
+                var threadHelper = new ThreadHelper();
+                threadHelper.ExecuteSynchronousOrOnThread(() => ResolveFirstForTraceTest(deferred1), !continueOnAnotherThread);
+                threadHelper.ExecuteSynchronousOrOnThread(() => ResolveSecondForTraceTest(deferred2), !continueOnAnotherThread);
+                threadHelper.ExecuteSynchronousOrOnThread(() =>
+                {
+                    if (lastAwaitIsForeign)
+                    {
+                        ContinueForeignAwaitForTraceTest(foreignAwaitable);
+                    }
+                    else
+                    {
+                        ResolveThirdForTraceTest(deferred3);
+                    }
+                }, !continueOnAnotherThread);
+
+                // What continued the function is on its stack, and what continued it before it awaited is in the trace of where it awaited,
+                // whose scope is entered outside of the async function's own scope.
+                var text0 = traces[0].ToString();
+                Assert.IsTrue(ContainsMethod(traces[0], nameof(ResolveSecondForTraceTest)), text0);
+                Assert.IsNotNull(OuterTrace(traces[0]), text0);
+                Assert.IsTrue(ContainsMethod(OuterTrace(traces[0]), nameof(ResolveFirstForTraceTest)), text0);
+                AssertPreviousTraceIsFrom(traces[0], nameof(CausalityTraceCapture_AfterAwaits_IncludesWhatContinuedTheAsyncFunctionBeforeItAwaited_ButNotBeforeThat));
+
+                // What continued it before that isn't kept, so that its traces don't grow with the number of times it awaited.
+                var text1 = traces[1].ToString();
+                Assert.IsTrue(ContainsMethod(traces[1], lastAwaitIsForeign ? nameof(ContinueForeignAwaitForTraceTest) : nameof(ResolveThirdForTraceTest)), text1);
+                Assert.IsNotNull(OuterTrace(traces[1]), text1);
+                Assert.IsTrue(ContainsMethod(OuterTrace(traces[1]), nameof(ResolveSecondForTraceTest)), text1);
+                Assert.IsFalse(HistoryContainsMethod(traces[1], nameof(ResolveFirstForTraceTest)), text1);
+                AssertPreviousTraceIsFrom(traces[1], nameof(CausalityTraceCapture_AfterAwaits_IncludesWhatContinuedTheAsyncFunctionBeforeItAwaited_ButNotBeforeThat));
+                AssertCausalityTraceIsPrintedCorrectly(traces[1], text1);
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+                Promise.Config.AwaitTracesEnabled = false;
+            }
+        }
+
+        [Test]
+        public void CausalityTraceCapture_AfterAwaitsWithoutAwaitTraces_OnlyIncludesWhatContinuedTheAsyncFunctionLast(
+            [Values] bool continueOnAnotherThread,
+            [Values] bool lastAwaitIsForeign,
+            [Values] bool flowExecutionContext)
+        {
+            // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
+            // Enabled covers the async functions that capture the ExecutionContext where they await, without capturing a trace.
+            bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(flowExecutionContext);
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var deferred1 = NewVoidDeferredForTraceTest();
+                var deferred2 = NewVoidDeferredForTraceTest();
+                var deferred3 = lastAwaitIsForeign ? default : NewVoidDeferredForTraceTest();
+                var foreignAwaitable = lastAwaitIsForeign ? new ForeignAwaitableForTraceTest() : null;
+                var traces = new CausalityTrace[2];
+                AwaitThreeTimesForTraceTest(deferred1.Promise, deferred2.Promise, deferred3, foreignAwaitable, traces).Forget();
+                var threadHelper = new ThreadHelper();
+                threadHelper.ExecuteSynchronousOrOnThread(() => ResolveFirstForTraceTest(deferred1), !continueOnAnotherThread);
+                threadHelper.ExecuteSynchronousOrOnThread(() => ResolveSecondForTraceTest(deferred2), !continueOnAnotherThread);
+                threadHelper.ExecuteSynchronousOrOnThread(() =>
+                {
+                    if (lastAwaitIsForeign)
+                    {
+                        ContinueForeignAwaitForTraceTest(foreignAwaitable);
+                    }
+                    else
+                    {
+                        ResolveThirdForTraceTest(deferred3);
+                    }
+                }, !continueOnAnotherThread);
+
+                // What continued the function is on its stack, but where it awaited isn't captured, so what continued it before that isn't kept.
+                var text0 = traces[0].ToString();
+                Assert.IsTrue(ContainsMethod(traces[0], nameof(ResolveSecondForTraceTest)), text0);
+                Assert.IsFalse(HistoryContainsMethod(traces[0], nameof(ResolveFirstForTraceTest)), text0);
+                AssertPreviousTraceIsFrom(traces[0], nameof(CausalityTraceCapture_AfterAwaitsWithoutAwaitTraces_OnlyIncludesWhatContinuedTheAsyncFunctionLast));
+
+                var text1 = traces[1].ToString();
+                Assert.IsTrue(ContainsMethod(traces[1], lastAwaitIsForeign ? nameof(ContinueForeignAwaitForTraceTest) : nameof(ResolveThirdForTraceTest)), text1);
+                Assert.IsFalse(HistoryContainsMethod(traces[1], nameof(ResolveSecondForTraceTest)), text1);
+                AssertPreviousTraceIsFrom(traces[1], nameof(CausalityTraceCapture_AfterAwaitsWithoutAwaitTraces_OnlyIncludesWhatContinuedTheAsyncFunctionLast));
+                AssertCausalityTraceIsPrintedCorrectly(traces[1], text1);
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+                Promise.Config.SetAsyncFlowExecutionContextEnabled(wasFlowExecutionContextEnabled);
+            }
+        }
+
+        [Test]
+        public void Config_AwaitCaptureIsEnabledWhileTheExecutionContextFlowsOrAwaitsAreTraced(
+            [Values] bool flowExecutionContext,
+            [Values] bool causalityTraces,
+            [Values] bool awaitTraces)
+        {
+            // Async functions check the combined setting when they await, so it must follow each setting, whichever is set last.
+            bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
+            try
+            {
+                Promise.Config.SetAsyncFlowExecutionContextEnabled(flowExecutionContext);
+                Promise.Config.AwaitTracesEnabled = awaitTraces;
+                CausalityTrace.IsEnabled = causalityTraces;
+                Assert.AreEqual(flowExecutionContext | (causalityTraces & awaitTraces), Promise.Config.s_isAwaitCaptureEnabled);
+
+                CausalityTrace.IsEnabled = !causalityTraces;
+                Promise.Config.AwaitTracesEnabled = !awaitTraces;
+                Assert.AreEqual(flowExecutionContext | (!causalityTraces & !awaitTraces), Promise.Config.s_isAwaitCaptureEnabled);
+
+                Promise.Config.SetAsyncFlowExecutionContextEnabled(!flowExecutionContext);
+                Assert.AreEqual(!flowExecutionContext | (!causalityTraces & !awaitTraces), Promise.Config.s_isAwaitCaptureEnabled);
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+                Promise.Config.AwaitTracesEnabled = false;
+                Promise.Config.SetAsyncFlowExecutionContextEnabled(wasFlowExecutionContextEnabled);
+            }
+        }
+
+        // The last await is the foreign awaitable if it's not null, otherwise the third deferred's promise.
+        private static async Promise AwaitThreeTimesForTraceTest(Promise first, Promise second, Promise.Deferred third, ForeignAwaitableForTraceTest foreignAwaitable, CausalityTrace[] traces)
+        {
+            await first;
+            await second;
+            traces[0] = CausalityTrace.Capture();
+            if (foreignAwaitable != null)
+            {
+                await foreignAwaitable;
+            }
+            else
+            {
+                await third.Promise;
+            }
+            traces[1] = CausalityTrace.Capture();
+        }
+
+        // An awaitable that isn't ProtoPromise's (like a Task or a Unity Awaitable), which continues the await when it's continued.
+        private sealed class ForeignAwaitableForTraceTest : System.Runtime.CompilerServices.INotifyCompletion
+        {
+            private System.Action _continuation;
+
+            public ForeignAwaitableForTraceTest GetAwaiter() => this;
+
+            public bool IsCompleted => false;
+
+            public void GetResult() { }
+
+            public void OnCompleted(System.Action continuation) => _continuation = continuation;
+
+            internal void Continue() => _continuation.Invoke();
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static void ContinueForeignAwaitForTraceTest(ForeignAwaitableForTraceTest foreignAwaitable)
+        {
+            foreignAwaitable.Continue();
+            Volatile.Write(ref s_frameKeeper, 38);
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static void ResolveFirstForTraceTest(Promise.Deferred deferred)
+        {
+            deferred.Resolve();
+            Volatile.Write(ref s_frameKeeper, 39);
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static void ResolveSecondForTraceTest(Promise.Deferred deferred)
+        {
+            deferred.Resolve();
+            Volatile.Write(ref s_frameKeeper, 40);
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static void ResolveThirdForTraceTest(Promise.Deferred deferred)
+        {
+            deferred.Resolve();
+            Volatile.Write(ref s_frameKeeper, 41);
         }
 
         [Test]
@@ -6041,8 +6535,8 @@ namespace ProtoPromise.Tests.APIs
             [Values] bool flowExecutionContext)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            bool wasFlowExecutionContextEnabled = Promise.Config.s_asyncFlowExecutionContextEnabled;
-            Promise.Config.s_asyncFlowExecutionContextEnabled = flowExecutionContext;
+            bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(flowExecutionContext);
             CausalityTrace.IsEnabled = true;
             try
             {
@@ -6060,7 +6554,7 @@ namespace ProtoPromise.Tests.APIs
             finally
             {
                 CausalityTrace.IsEnabled = false;
-                Promise.Config.s_asyncFlowExecutionContextEnabled = wasFlowExecutionContextEnabled;
+                Promise.Config.SetAsyncFlowExecutionContextEnabled(wasFlowExecutionContextEnabled);
             }
         }
 
@@ -6131,8 +6625,8 @@ namespace ProtoPromise.Tests.APIs
             [Values] bool flowExecutionContext)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            bool wasFlowExecutionContextEnabled = Promise.Config.s_asyncFlowExecutionContextEnabled;
-            Promise.Config.s_asyncFlowExecutionContextEnabled = flowExecutionContext;
+            bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(flowExecutionContext);
             CausalityTrace.IsEnabled = true;
             try
             {
@@ -6167,7 +6661,7 @@ namespace ProtoPromise.Tests.APIs
             finally
             {
                 CausalityTrace.IsEnabled = false;
-                Promise.Config.s_asyncFlowExecutionContextEnabled = wasFlowExecutionContextEnabled;
+                Promise.Config.SetAsyncFlowExecutionContextEnabled(wasFlowExecutionContextEnabled);
             }
         }
 #endif

@@ -19,8 +19,8 @@ namespace Proto.Promises
     {
         // Object pooling is disabled while causality traces are enabled, because in RELEASE mode promise traces are stored in a ConditionalWeakTable keyed by the promise,
         // and we want them to be collected with their promises. (Pooling is always disabled in DEBUG mode.)
-        // This is updated when either setting changes, so the pool only needs to check 1 field.
-        private static bool s_isObjectPoolingDisabled;
+        // This is updated when either setting changes (see Promise.Config.UpdateCombinedSettings), so the pool only needs to check 1 field.
+        internal static bool s_isObjectPoolingDisabled;
 
         internal static bool IsObjectPoolingEnabled
         {
@@ -30,26 +30,6 @@ namespace Proto.Promises
 #else
             get => !s_isObjectPoolingDisabled;
 #endif
-        }
-
-        // Must not be readonly.
-        private static SpinLocker s_isObjectPoolingDisabledLock;
-
-        // Called after either setting's field is written. The lock makes sure that the last update reads both settings' latest values,
-        // so that updates from the two settings on different threads can't leave pooling enabled while causality traces are enabled.
-        internal static void UpdateIsObjectPoolingEnabled()
-        {
-            s_isObjectPoolingDisabledLock.Enter();
-            s_isObjectPoolingDisabled = !Promise.Config.ObjectPoolingEnabled | Diagnostics.CausalityTrace.IsEnabled;
-            s_isObjectPoolingDisabledLock.Exit();
-        }
-
-        // Called before causality traces are enabled, so that objects that are traced can't be pooled with their traces (see CausalityTrace.IsEnabled).
-        internal static void DisableObjectPooling()
-        {
-            s_isObjectPoolingDisabledLock.Enter();
-            s_isObjectPoolingDisabled = true;
-            s_isObjectPoolingDisabledLock.Exit();
         }
 
         // If C#9 is available, we use function pointers instead of delegates to clear the pool.

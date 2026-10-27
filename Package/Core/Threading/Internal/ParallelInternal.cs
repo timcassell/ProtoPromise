@@ -429,7 +429,9 @@ namespace Proto.Promises
                     if (state == Promise.State.Resolved)
                     {
                         // Schedule the worker body to run again on the context, but without launching another worker.
-                        ScheduleContextCallback(ContinuationContext.UnsafeAs<SynchronizationContext>(), this,
+                        // The loop schedules the worker again after its previous body completed, so it doesn't capture where it was scheduled.
+                        // That's what completed the previous body, which doesn't concern the next one.
+                        ScheduleContextCallbackDirect(ContinuationContext.UnsafeAs<SynchronizationContext>(), this,
                             obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorkerWithoutLaunchNext(),
                             obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorkerWithoutLaunchNext()
                         );

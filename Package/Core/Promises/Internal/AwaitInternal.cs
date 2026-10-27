@@ -4,7 +4,6 @@
 #undef PROMISE_DEBUG
 #endif
 
-using Proto.Diagnostics;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -133,7 +132,6 @@ namespace Proto.Promises
                     var continuer = GetOrCreate();
                     continuer._next = null;
                     continuer._continuation = continuation;
-                    SetCreatedStacktrace(continuer);
                     return continuer;
                 }
 
@@ -144,44 +142,16 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
+                // The awaiting function (e.g. an async Task function) isn't traced, so this doesn't capture where it awaited, the same as an async Promise function
+                // without await traces (see Promise.Config.AwaitTracesEnabled). What completed the promise is already on its stack.
                 internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
                     ThrowIfInPool(this);
                     handler.SetCompletionState(state);
-                    // The traced copy is separate, so that the common path doesn't pay for the try/finally of the trace's scope.
-                    if (!CausalityTrace.IsEnabled)
-                    {
-                        var callback = _continuation;
-#if !PROMISE_DEBUG
-                        Dispose();
-#endif
-                        try
-                        {
-                            callback.Invoke();
-                        }
-                        catch (Exception e)
-                        {
-                            // This should never hit if the `await` keyword is used, but a user manually subscribing to OnCompleted could throw.
-                            ReportCaughtException(e, this);
-                        }
-#if PROMISE_DEBUG
-                        Dispose();
-#endif
-                        return;
-                    }
-                    HandleTraced();
-                }
-
-                // Handle, but the callback runs in the scope of this object's trace.
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                private void HandleTraced()
-                {
                     var callback = _continuation;
-                    var trace = GetTrace(this);
 #if !PROMISE_DEBUG
                     Dispose();
 #endif
-                    var scope = CausalityTrace.EnterScopeInternal(trace);
                     try
                     {
                         callback.Invoke();
@@ -190,10 +160,6 @@ namespace Proto.Promises
                     {
                         // This should never hit if the `await` keyword is used, but a user manually subscribing to OnCompleted could throw.
                         ReportCaughtException(e, this);
-                    }
-                    finally
-                    {
-                        scope.Dispose();
                     }
 #if PROMISE_DEBUG
                     Dispose();

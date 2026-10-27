@@ -1,4 +1,4 @@
-﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -44,8 +44,6 @@ namespace Proto.Diagnostics
         private const int DefaultMaxDepth = 128;
         private static int s_maxOuterTracesOffset;
         private const int DefaultMaxOuterTraces = 8;
-        // Must not be readonly.
-        private static Promises.Internal.SpinLocker s_isEnabledLock;
 
         /// <summary>
         /// Should causality traces be captured when async objects are created and continued.
@@ -70,8 +68,9 @@ namespace Proto.Diagnostics
             get => s_isEnabled;
             set
             {
-                // Locked so that concurrent sets can't leave this enabled without a trace table, or replace a table that was already in use.
-                s_isEnabledLock.Enter();
+                // Locked so that concurrent sets can't leave this enabled without a trace table, or replace a table that was already in use,
+                // and so that the settings that are combined with this are updated from its latest value (see Promise.Config.UpdateCombinedSettings).
+                Promises.Promise.Config.s_lock.Enter();
                 try
                 {
                     if (value == s_isEnabled)
@@ -83,23 +82,22 @@ namespace Proto.Diagnostics
                         // The table is created before this is enabled, so that operations that see this enabled can store their traces.
                         Promises.Internal.CreateTraceTable();
                         // Pooling is disabled before this is enabled, so that objects that are traced can't be pooled with their traces.
-                        Promises.Internal.DisableObjectPooling();
+                        Promises.Internal.s_isObjectPoolingDisabled = true;
                         s_isEnabled = true;
-                        // Updated again, in case Promise.Config.ObjectPoolingEnabled was set concurrently and enabled pooling before it could see this enabled.
-                        Promises.Internal.UpdateIsObjectPoolingEnabled();
+                        Promises.Promise.Config.UpdateCombinedSettings();
                         return;
                     }
                     s_isEnabled = false;
-                    Promises.Internal.UpdateIsObjectPoolingEnabled();
+                    Promises.Promise.Config.UpdateCombinedSettings();
                     // Objects that were traced may be pooled again, and exceptions may be rejected again, so we release their traces.
                     Promises.Internal.ReleaseTraceTable();
                     // The cached methods of the frames are released too, so that they don't keep their assemblies from being unloaded
                     // (unless frames are printed again while traces are disabled, e.g. by a DEBUG validation exception).
-                    VisibilityCache.s_isVisible.Clear();
+                    VisibilityCache.s_visibility.Clear();
                 }
                 finally
                 {
-                    s_isEnabledLock.Exit();
+                    Promises.Promise.Config.s_lock.Exit();
                 }
             }
         }
@@ -153,6 +151,8 @@ namespace Proto.Diagnostics
         }
 
         private readonly StackTrace _stackTrace;
+        // The index of the first frame of the stack trace that is part of this trace (see CaptureWithoutInnermostVisibleFrame).
+        private readonly int _firstFrame;
         // The cause (see Previous).
         private readonly CausalityTrace _previous;
         // Copies without their histories (see OuterTraces and GetWithoutHistory).
@@ -188,7 +188,8 @@ namespace Proto.Diagnostics
         /// The raw <see cref="System.Diagnostics.StackTrace"/> of where this <see cref="CausalityTrace"/> was captured.
         /// </summary>
         /// <remarks>
-        /// This includes frames that are normally hidden from stack traces, such as ProtoPromise's internal frames. Use <see cref="GetFrames"/> to exclude them.
+        /// This includes frames that are normally hidden from stack traces, such as ProtoPromise's internal frames,
+        /// and, for the trace of an <c>async Promise</c> function, the function's own frame if it was captured where the function first awaited. Use <see cref="GetFrames"/> to exclude them.
         /// </remarks>
         public StackTrace StackTrace => _stackTrace;
 
@@ -312,59 +313,105 @@ namespace Proto.Diagnostics
         /// Gets the frames of <see cref="StackTrace"/>, excluding frames that are hidden from stack traces, such as ProtoPromise's internal frames.
         /// </summary>
         public StackFrame[] GetFrames()
-            => GetVisibleFrames(_stackTrace);
+            => GetVisibleFrames(_stackTrace, _firstFrame);
 
-        internal static StackFrame[] GetVisibleFrames(StackTrace stackTrace)
+        internal static StackFrame[] GetVisibleFrames(StackTrace stackTrace, int firstFrame = 0)
         {
-            var frames = stackTrace.GetFrames();
-            if (frames == null)
+            int frameCount = stackTrace.FrameCount;
+            if (frameCount <= firstFrame)
             {
                 return Array.Empty<StackFrame>();
             }
 
-            var visibleFrames = new List<StackFrame>(frames.Length);
-            foreach (var frame in frames)
+            var visibleFrames = new List<StackFrame>(frameCount - firstFrame);
+            for (int i = firstFrame; i < frameCount; i++)
             {
-                if (IsVisible(frame))
+                if (IsVisible(stackTrace, i))
                 {
-                    visibleFrames.Add(frame);
+                    visibleFrames.Add(stackTrace.GetFrame(i));
                 }
             }
             return visibleFrames.ToArray();
+        }
+
+        private enum FrameVisibility : byte
+        {
+            Hidden,
+            Visible,
+            // ExecutionContext.Run, and the ExecutionContext methods that it calls, which are hidden if ProtoPromise's hidden code called it (see IsRunByHiddenLibraryCode).
+            ExecutionContextRun
+        }
+
+        private static bool IsVisible(StackTrace stackTrace, int index)
+        {
+            var visibility = GetVisibility(stackTrace.GetFrame(index));
+            return visibility == FrameVisibility.Visible
+                || (visibility == FrameVisibility.ExecutionContextRun && !IsRunByHiddenLibraryCode(stackTrace, index));
+        }
+
+        // Whether the ExecutionContext.Run call that the frame is part of was made by ProtoPromise's hidden code (e.g. to continue an async function on its ExecutionContext),
+        // so that it's hidden like the code that called it. The callback that it runs is still visible.
+#if NET6_0_OR_GREATER
+        [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026",
+            Justification = "If the method metadata was trimmed, GetMethod() returns null and the frame is not ProtoPromise's.")]
+#endif
+        private static bool IsRunByHiddenLibraryCode(StackTrace stackTrace, int index)
+        {
+            for (int i = index + 1; i < stackTrace.FrameCount; i++)
+            {
+                var frame = stackTrace.GetFrame(i);
+                var visibility = GetVisibility(frame);
+                if (visibility != FrameVisibility.ExecutionContextRun)
+                {
+                    return visibility == FrameVisibility.Hidden && frame.GetMethod()?.DeclaringType?.Assembly == typeof(CausalityTrace).Assembly;
+                }
+            }
+            return false;
         }
 
 #if NET6_0_OR_GREATER
         [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026",
             Justification = "If the method metadata was trimmed, GetMethod() returns null and the frame is excluded, the same as StackTrace.ToString().")]
 #endif
-        private static bool IsVisible(StackFrame frame)
+        private static FrameVisibility GetVisibility(StackFrame frame)
         {
             var method = frame?.GetMethod();
             if (method == null)
             {
-                return false;
+                return FrameVisibility.Hidden;
             }
             // Reading the attributes is expensive, and every capture compares frames (see IsRepeatOf), so the results are cached.
-            var cache = VisibilityCache.s_isVisible;
-            if (!cache.TryGetValue(method, out bool isVisible))
+            var cache = VisibilityCache.s_visibility;
+            if (!cache.TryGetValue(method, out var visibility))
             {
-                isVisible = IsVisible(method);
-                cache.TryAdd(method, isVisible);
+                visibility = GetVisibility(method);
+                cache.TryAdd(method, visibility);
             }
-            return isVisible;
+            return visibility;
         }
 
-        private static bool IsVisible(System.Reflection.MethodBase method)
+        private static FrameVisibility GetVisibility(System.Reflection.MethodBase method)
         {
             // Match the .Net 6+ runtime's StackTrace.ToString() filtering, so that frames are filtered the same way on all runtimes
             // (except that the runtime never hides the outermost frame, see FormatStackTrace).
             if ((method.MethodImplementationFlags & System.Reflection.MethodImplAttributes.AggressiveInlining) != 0
                 || IsStackTraceHidden(method))
             {
-                return false;
+                return FrameVisibility.Hidden;
             }
             var declaringType = method.DeclaringType;
-            return declaringType == null || !IsStackTraceHidden(declaringType);
+            if (declaringType == null)
+            {
+                return FrameVisibility.Visible;
+            }
+            if (IsStackTraceHidden(declaringType))
+            {
+                return FrameVisibility.Hidden;
+            }
+            // E.g. Run and RunInternal, depending on the runtime.
+            return declaringType == typeof(ExecutionContext) && method.Name.StartsWith("Run", StringComparison.Ordinal)
+                ? FrameVisibility.ExecutionContextRun
+                : FrameVisibility.Visible;
         }
 
         // In its own class, so that CausalityTrace doesn't need a static constructor (see s_isEnabled).
@@ -373,8 +420,8 @@ namespace Proto.Diagnostics
 #endif
         private static class VisibilityCache
         {
-            internal static readonly System.Collections.Concurrent.ConcurrentDictionary<System.Reflection.MethodBase, bool> s_isVisible
-                = new System.Collections.Concurrent.ConcurrentDictionary<System.Reflection.MethodBase, bool>();
+            internal static readonly System.Collections.Concurrent.ConcurrentDictionary<System.Reflection.MethodBase, FrameVisibility> s_visibility
+                = new System.Collections.Concurrent.ConcurrentDictionary<System.Reflection.MethodBase, FrameVisibility>();
         }
 
         // Like the runtime, if the attributes can't be read (e.g. an attribute's assembly is missing), we behave as if they are not present.
@@ -431,9 +478,17 @@ namespace Proto.Diagnostics
         public static CausalityTrace Capture()
             => s_isEnabled ? new CausalityTrace(1) : null;
 
+        // For an async function's trace, which is captured where it first awaits in the optimized async mode (see AsyncPromiseRef.TracedAsyncPromiseRefMachine).
+        // The innermost visible frame (the async function, where it awaits) is dropped, with the frames of the runtime's async method builder that ran it, if any
+        // (see GetFrameAfterAsyncFunction), so that the trace starts at the method that the compiler generated for it, where it was called,
+        // the same as in the non-optimized mode, which captures it before the async function's body runs.
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        internal static CausalityTrace CaptureWithoutInnermostVisibleFrame()
+            => s_isEnabled ? new CausalityTrace(1, true) : null;
+
         // Internal so that it can be captured regardless of IsEnabled.
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal CausalityTrace(int skipFrames)
+        internal CausalityTrace(int skipFrames, bool dropInnermostVisibleFrame = false)
         {
             _timestamp = TimeProvider.System.GetTimestamp();
             var thread = Thread.CurrentThread;
@@ -441,10 +496,14 @@ namespace Proto.Diagnostics
             _threadName = thread.Name;
             _isThreadPoolThread = thread.IsThreadPoolThread;
             _isBackgroundThread = thread.IsBackground;
-#if PROTO_PROMISE_DEVELOPER_MODE // Don't skip frames in developer mode.
+#if PROTO_PROMISE_DEVELOPER_MODE // Don't skip frames in developer mode, which doesn't hide internal frames, so the innermost visible frame isn't dropped either.
             _stackTrace = new StackTrace(1, true);
 #else
             _stackTrace = new StackTrace(skipFrames + 1, true);
+            if (dropInnermostVisibleFrame)
+            {
+                _firstFrame = GetFrameAfterAsyncFunction(_stackTrace);
+            }
 #endif
             _repeats = Array.Empty<RepeatGroup>();
 
@@ -593,7 +652,7 @@ namespace Proto.Diagnostics
             for (int i = 0; i < count; i++)
             {
                 // Compared by stack trace first, because the traces may be different copies of the same trace (see GetWithoutHistory).
-                if (outerTraces[i]._stackTrace == trace._stackTrace || trace.IsRepeatOf(outerTraces[i]))
+                if (outerTraces[i].IsSameCapture(trace) || trace.IsRepeatOf(outerTraces[i]))
                 {
                     return false;
                 }
@@ -646,13 +705,13 @@ namespace Proto.Diagnostics
         {
             for (var current = chain; current != null; current = current._previous)
             {
-                if (current._stackTrace == trace._stackTrace)
+                if (current.IsSameCapture(trace))
                 {
                     return true;
                 }
                 foreach (var outerTrace in current._outerTraces)
                 {
-                    if (outerTrace._stackTrace == trace._stackTrace)
+                    if (outerTrace.IsSameCapture(trace))
                     {
                         return true;
                     }
@@ -666,6 +725,7 @@ namespace Proto.Diagnostics
         internal CausalityTrace(CausalityTrace trace, CausalityTrace previous, bool isTruncated)
         {
             _stackTrace = trace._stackTrace;
+            _firstFrame = trace._firstFrame;
             _threadId = trace._threadId;
             _threadName = trace._threadName;
             _isThreadPoolThread = trace._isThreadPoolThread;
@@ -684,6 +744,7 @@ namespace Proto.Diagnostics
         private CausalityTrace(CausalityTrace trace)
         {
             _stackTrace = trace._stackTrace;
+            _firstFrame = trace._firstFrame;
             _threadId = trace._threadId;
             _threadName = trace._threadName;
             _isThreadPoolThread = trace._isThreadPoolThread;
@@ -693,6 +754,33 @@ namespace Proto.Diagnostics
             _outerTraces = Array.Empty<CausalityTrace>();
             _repeats = Array.Empty<RepeatGroup>();
             _depth = 1;
+        }
+
+        // Whether the traces are copies of the same capture, with the same frames (see GetWithAllFrames).
+        private bool IsSameCapture(CausalityTrace other)
+            => _stackTrace == other._stackTrace && _firstFrame == other._firstFrame;
+
+        // For where an async function first awaited in the optimized async mode, which is where its trace was captured without the async function's frame
+        // (see CaptureWithoutInnermostVisibleFrame), so it shares that capture with all of its frames, instead of capturing the same stack again.
+        internal CausalityTrace GetWithAllFrames()
+            => _firstFrame == 0 ? this : new CausalityTrace(this, 0);
+
+        // A copy with another first frame, which isn't printed the same, so its signature isn't shared.
+        private CausalityTrace(CausalityTrace trace, int firstFrame)
+        {
+            _stackTrace = trace._stackTrace;
+            _firstFrame = firstFrame;
+            _threadId = trace._threadId;
+            _threadName = trace._threadName;
+            _isThreadPoolThread = trace._isThreadPoolThread;
+            _isBackgroundThread = trace._isBackgroundThread;
+            _timestamp = trace._timestamp;
+            _outerTraces = trace._outerTraces;
+            _areOuterTracesTruncated = trace._areOuterTracesTruncated;
+            _repeats = trace._repeats;
+            _previous = trace._previous;
+            _depth = trace._depth;
+            _isTruncated = trace._isTruncated;
         }
 
         private CausalityTrace GetWithoutHistory()
@@ -715,7 +803,7 @@ namespace Proto.Diagnostics
         // on the same thread, or on any thread pool thread (a loop that awaits on the thread pool may continue on a different thread each time).
         private bool IsRepeatOf(CausalityTrace other)
             => (_isThreadPoolThread ? other._isThreadPoolThread : !other._isThreadPoolThread && _threadId == other._threadId)
-            && HasSameVisibleFrames(_stackTrace, other._stackTrace);
+            && HasSameVisibleFrames(this, other);
 
         // Whether this trace's frames are already in the next trace that is captured on the same thread, so it adds nothing to it: its visible frames are
         // the outermost visible frames of that trace, or of one of its outer traces (e.g. the trace of Promise.New, which invokes its callback,
@@ -743,18 +831,18 @@ namespace Proto.Diagnostics
 
         // A call that is still running is only on the stack of the thread that is running it, so the thread must be the same.
         private bool IsOuterPartOf(CausalityTrace other, bool isSameCall)
-            => _threadId == other._threadId && HasOuterVisibleFrames(other._stackTrace, _stackTrace, isSameCall);
+            => _threadId == other._threadId && HasOuterVisibleFrames(other, this, isSameCall);
 
         // Compares the frames from the innermost frame, so that traces captured at different locations usually differ at the first visible frame.
         // Traces without visible frames have nothing to compare, so they're never the same.
-        private static bool HasSameVisibleFrames(StackTrace stackTrace, StackTrace otherStackTrace)
+        private static bool HasSameVisibleFrames(CausalityTrace trace, CausalityTrace other)
         {
-            int index = 0, otherIndex = 0;
+            int index = trace._firstFrame, otherIndex = other._firstFrame;
             bool hasFrames = false;
             while (true)
             {
-                var frame = GetNextVisibleFrame(stackTrace, ref index);
-                var otherFrame = GetNextVisibleFrame(otherStackTrace, ref otherIndex);
+                var frame = GetNextVisibleFrame(trace._stackTrace, ref index);
+                var otherFrame = GetNextVisibleFrame(other._stackTrace, ref otherIndex);
                 if (frame == null || otherFrame == null)
                 {
                     return hasFrames && frame == otherFrame;
@@ -767,32 +855,34 @@ namespace Proto.Diagnostics
             }
         }
 
-        // Whether the visible frames of outerStackTrace are the outermost visible frames of stackTrace, and stackTrace has more visible frames.
+        // Whether the visible frames of outerTrace are the outermost visible frames of trace, and trace has more visible frames.
         // Compares the frames from the outermost frame, where traces captured on the same thread share the frames of the calls that are still running.
         // Traces without visible frames have nothing to compare, so they're never contained.
-        // isSameCall is whether the innermost frame of outerStackTrace is known to still be in the same call.
-        private static bool HasOuterVisibleFrames(StackTrace stackTrace, StackTrace outerStackTrace, bool isSameCall)
+        // isSameCall is whether the innermost frame of outerTrace is known to still be in the same call.
+        private static bool HasOuterVisibleFrames(CausalityTrace trace, CausalityTrace outerTrace, bool isSameCall)
         {
+            var stackTrace = trace._stackTrace;
+            var outerStackTrace = outerTrace._stackTrace;
             int index = stackTrace.FrameCount, outerIndex = outerStackTrace.FrameCount;
-            var outerFrame = GetPreviousVisibleFrame(outerStackTrace, ref outerIndex);
+            var outerFrame = GetPreviousVisibleFrame(outerStackTrace, ref outerIndex, outerTrace._firstFrame);
             if (outerFrame == null)
             {
                 return false;
             }
             while (true)
             {
-                var frame = GetPreviousVisibleFrame(stackTrace, ref index);
+                var frame = GetPreviousVisibleFrame(stackTrace, ref index, trace._firstFrame);
                 if (frame == null)
                 {
                     return false;
                 }
-                var nextOuterFrame = GetPreviousVisibleFrame(outerStackTrace, ref outerIndex);
+                var nextOuterFrame = GetPreviousVisibleFrame(outerStackTrace, ref outerIndex, outerTrace._firstFrame);
                 if (nextOuterFrame == null)
                 {
                     // The innermost frame may have moved on to another call since the outer trace was captured (e.g. an async method that called
                     // its builder's Create and then its Start), so its IL offset is not compared, only what is printed: its method and its line.
                     return (isSameCall ? IsSameFrame(frame, outerFrame) : IsSameMethodAndLine(frame, outerFrame))
-                        && GetPreviousVisibleFrame(stackTrace, ref index) != null;
+                        && GetPreviousVisibleFrame(stackTrace, ref index, trace._firstFrame) != null;
                 }
                 if (!IsSameFrame(frame, outerFrame))
                 {
@@ -817,23 +907,62 @@ namespace Proto.Diagnostics
         {
             while (index < stackTrace.FrameCount)
             {
-                var frame = stackTrace.GetFrame(index++);
-                if (IsVisible(frame))
+                if (IsVisible(stackTrace, index++))
                 {
-                    return frame;
+                    return stackTrace.GetFrame(index - 1);
                 }
             }
             return null;
         }
 
-        private static StackFrame GetPreviousVisibleFrame(StackTrace stackTrace, ref int index)
+        // Gets the index of the frame after the innermost visible frame (the async function, where it first awaits, see CaptureWithoutInnermostVisibleFrame),
+        // and after the frames of the runtime's async method builder that ran it, if any (AsyncPromiseMethodBuilder.Start runs it with AsyncTaskMethodBuilder.Start
+        // while the ExecutionContext flows, so that it runs on it), so that the next visible frame is the method that the compiler generated for the async function.
+        private static int GetFrameAfterAsyncFunction(StackTrace stackTrace)
         {
-            while (index > 0)
+            int index = 0;
+            // GetNextVisibleFrame moves the index past the frame that it returns.
+            GetNextVisibleFrame(stackTrace, ref index);
+            while (true)
             {
-                var frame = stackTrace.GetFrame(--index);
-                if (IsVisible(frame))
+                int nextIndex = index;
+                var frame = GetNextVisibleFrame(stackTrace, ref nextIndex);
+                if (frame == null || !IsRuntimeAsyncMethodBuilderFrame(frame))
                 {
-                    return frame;
+                    return index;
+                }
+                index = nextIndex;
+            }
+        }
+
+#if NET6_0_OR_GREATER
+        [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026",
+            Justification = "The frame is a visible frame, which excludes frames whose method metadata was trimmed.")]
+#endif
+        private static bool IsRuntimeAsyncMethodBuilderFrame(StackFrame frame)
+        {
+            // AsyncTaskMethodBuilder.Start calls AsyncMethodBuilderCore.Start, through AsyncTaskMethodBuilder<VoidTaskResult>.Start on .Net Framework.
+            // Which of them are printed depends on the runtime and on inlining.
+            var method = frame.GetMethod();
+            if (method.Name != nameof(AsyncTaskMethodBuilder.Start))
+            {
+                return false;
+            }
+            var declaringType = method.DeclaringType;
+            return declaringType == typeof(AsyncTaskMethodBuilder)
+                || (declaringType != null && declaringType.IsGenericType && declaringType.GetGenericTypeDefinition() == typeof(AsyncTaskMethodBuilder<>))
+                // It's internal, so it's compared by name.
+                || (declaringType != null && declaringType.Assembly == typeof(AsyncTaskMethodBuilder).Assembly
+                    && declaringType.FullName == "System.Runtime.CompilerServices.AsyncMethodBuilderCore");
+        }
+
+        private static StackFrame GetPreviousVisibleFrame(StackTrace stackTrace, ref int index, int firstFrame)
+        {
+            while (index > firstFrame)
+            {
+                if (IsVisible(stackTrace, --index))
+                {
+                    return stackTrace.GetFrame(index);
                 }
             }
             return null;
@@ -1104,12 +1233,15 @@ namespace Proto.Diagnostics
         internal readonly ref struct ExitedScope
         {
             internal readonly CausalityTrace _trace;
+            // The scope that was exited with it, which was entered just outside of it (see PromiseRefBase.AwaitTrace), or null.
+            private readonly CausalityTrace _outerTrace;
             // The number of traces on the stack after it was exited, to find the scopes that were entered since then and not disposed (see Dispose).
             internal readonly int _depth;
 
-            internal ExitedScope(CausalityTrace trace, int depth)
+            internal ExitedScope(CausalityTrace trace, CausalityTrace outerTrace, int depth)
             {
                 _trace = trace;
+                _outerTrace = outerTrace;
                 _depth = depth;
             }
 
@@ -1123,7 +1255,7 @@ namespace Proto.Diagnostics
                 var traces = ts_traces;
                 if (traces.Count == _depth)
                 {
-                    traces.Push(_trace);
+                    Restore(traces);
                     return;
                 }
                 if (traces.Count < _depth)
@@ -1139,16 +1271,26 @@ namespace Proto.Diagnostics
                 {
                     traces.Pop();
                 }
-                traces.Push(_trace);
+                Restore(traces);
 #if !(PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE)
                 // In DEBUG mode, its Scope reports it when it's disposed (see Scope.Dispose).
                 Scope.ReportNestedScopesNotDisposed(_trace);
 #endif
             }
+
+            private void Restore(Stack<CausalityTrace> traces)
+            {
+                if (_outerTrace != null)
+                {
+                    traces.Push(_outerTrace);
+                }
+                traces.Push(_trace);
+            }
         }
 
         // Exits the scope of the promise's trace if it's the current scope, until the result is disposed, without disposing its Scope
         // (see PromiseRefBase.ScopeExitingWaiter). The result's trace is null if it's not the current scope.
+        // The scope of where an async promise last awaited is exited with it, if it's entered just outside of it (see PromiseRefBase.AwaitTrace).
         internal static ExitedScope ExitScopeIfCurrent(Promises.Internal.PromiseRefBase promise)
         {
             var traces = ts_traces;
@@ -1163,7 +1305,16 @@ namespace Proto.Diagnostics
                 return default;
             }
             traces.Pop();
-            return new ExitedScope(trace, traces.Count);
+            var awaitTrace = promise.AwaitTrace;
+            if (awaitTrace != null && traces.Count > 0 && traces.Peek() == awaitTrace)
+            {
+                traces.Pop();
+            }
+            else
+            {
+                awaitTrace = null;
+            }
+            return new ExitedScope(trace, awaitTrace, traces.Count);
         }
 
         /// <summary>

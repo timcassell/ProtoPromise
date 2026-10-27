@@ -1,4 +1,4 @@
-﻿#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
+#if PROTO_PROMISE_DEBUG_ENABLE || (!PROTO_PROMISE_DEBUG_DISABLE && DEBUG)
 #define PROMISE_DEBUG
 #else
 #undef PROMISE_DEBUG
@@ -28,7 +28,7 @@ namespace Proto.Diagnostics
             var signature = Volatile.Read(ref _signature);
             if (signature == null)
             {
-                signature = new Signature(_stackTrace);
+                signature = new Signature(_stackTrace, _firstFrame);
                 Volatile.Write(ref _signature, signature);
             }
             return signature;
@@ -49,9 +49,9 @@ namespace Proto.Diagnostics
             [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026",
                 Justification = "GetVisibleFrames excludes frames whose method metadata was trimmed.")]
 #endif
-            internal Signature(StackTrace stackTrace)
+            internal Signature(StackTrace stackTrace, int firstFrame)
             {
-                var frames = GetVisibleFrames(stackTrace);
+                var frames = GetVisibleFrames(stackTrace, firstFrame);
                 _methods = new System.Reflection.MethodBase[frames.Length];
                 _offsets = new int[frames.Length];
                 _lineNumbers = new int[frames.Length];
@@ -285,7 +285,7 @@ namespace Proto.Diagnostics
 
             private void AppendStackTrace(CausalityTrace trace, string indent)
             {
-                var frames = GetVisibleFrames(trace._stackTrace);
+                var frames = trace.GetFrames();
                 if (frames.Length == 0)
                 {
                     // Every frame is hidden (e.g. ProtoPromise completed the operation from its own code), so we show that the trace is there.

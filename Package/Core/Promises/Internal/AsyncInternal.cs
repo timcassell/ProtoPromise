@@ -33,35 +33,31 @@ namespace Proto.Promises
 
         partial class PromiseRefBase
         {
-            // The value to restore to an async promise's ContinuationContext field when its continuation context is cleared.
-            internal object NoAsyncContinuationContext
+            // The trace of where a traced async function last awaited, which is entered outside of its own trace when it continues (see MoveNextInScope in the traced async types),
+            // like the trace of where a callback was scheduled (see ScheduleContextCallback). It's null for other promises.
+            internal virtual CausalityTrace AwaitTrace => null;
+
+            // NoInlining wrapper to prevent inlining and expanding GDV (guarded devirtualization) into the caller.
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private void CaptureForAwait(bool isFirstAwait)
+                => CaptureAwaitContextAndOrTrace(isFirstAwait);
+
+            // Captures the ExecutionContext to continue the async function on, if it flows. Traced async promises also capture where it awaits, if await traces are enabled (see AwaitTrace).
+            internal virtual void CaptureAwaitContextAndOrTrace(bool isFirstAwait)
             {
-                [MethodImpl(InlineOption)]
-#if PROMISE_DEBUG
-                // In DEBUG mode, the trace is kept while causality traces are disabled (see GetTrace), so the sentinel is restored if this has a trace,
-                // so that this enters its trace's scope again if causality traces are enabled again before it completes.
-                get => ((ITraceable) this).Trace != null ? GetTracedSentinel() : null;
-#else
-                get => CausalityTrace.IsEnabled ? GetTracedSentinel() : null;
-#endif
+                if (Promise.Config.AsyncFlowExecutionContextEnabled)
+                {
+                    // Capture returns null if the flow is suppressed.
+                    ContinuationContext = ExecutionContext.Capture();
+                }
             }
-
-            // NoInlining for methods that are inlined into async methods, where it's only needed when the ExecutionContext flow is suppressed,
-            // so that they don't grow by NoAsyncContinuationContext's check.
-            [MethodImpl(MethodImplOptions.NoInlining)]
-            internal object GetNoAsyncContinuationContext()
-                => NoAsyncContinuationContext;
-
-            // NoInlining because it would otherwise inline a static class initialization check into async methods.
-            [MethodImpl(MethodImplOptions.NoInlining)]
-            private static object GetTracedSentinel()
-                => TracedSentinel.s_instance;
 
             // Traced async promises add this in place of their waiter (see AsyncPromiseRef.TracedAsyncPromiseRef and AsyncPromiseRef.TracedAsyncPromiseRefMachine),
             // so that when an async function completes inside its own scope (its body completes it), the waiter, and everything that it continues synchronously,
             // runs outside of that scope, as if it was continued from where the async function was called.
             // The async function's trace is where it was called, which is usually already in the waiter's frames (e.g. the code that awaited it called it),
             // and nesting would make the scopes of a chain of async functions that complete synchronously grow with its depth.
+            // The scope of where it last awaited (see AwaitTrace) is exited with it, for the same reason.
             // It's a separate type, so that untraced async promises don't pay for it when they complete.
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -114,7 +110,7 @@ namespace Proto.Promises
                     return;
                 }
 
-                // The field is null, an ExecutionContext, or the TracedSentinel.
+                // The field is null or an ExecutionContext.
                 ContinuationContext = ContinuationContext is ExecutionContext executionContext
                     ? ConfiguredAwaitDualContext.GetOrCreate(synchronizationContext, executionContext)
                     : (object) synchronizationContext;
@@ -122,6 +118,11 @@ namespace Proto.Promises
                 this.SetPrevious(awaiter);
                 awaiter.HookupExistingWaiter(promiseId, this);
             }
+
+            // For an async function that awaits a switch to the context (see PromiseSwitchToContextAwaiter).
+            [MethodImpl(InlineOption)]
+            internal void SwitchToContext(SynchronizationContext synchronizationContext)
+                => ContinueOnContext(synchronizationContext);
 
             protected virtual void ContinueOnContext(SynchronizationContext synchronizationContext) => throw new System.InvalidOperationException();
 
@@ -144,7 +145,7 @@ namespace Proto.Promises
                 {
 #if OPTIMIZED_ASYNC_MODE
                     // Only used for async functions that throw before they await anything, so nothing waits for them while they complete,
-                    // and they never continue in their scope, so they don't store the sentinel.
+                    // and they never continue in their scope, so they don't need the traced type.
                     var promise = GetFromPoolOrCreate();
                     promise.Reset();
                     return promise;
@@ -173,7 +174,7 @@ namespace Proto.Promises
                 {
                     if (exception is OperationCanceledException)
                     {
-                        // The field is shared with RejectContainer, so clear the continuation context or sentinel before completing.
+                        // The field is shared with RejectContainer, so clear the continuation context before completing.
                         ContinuationContext = null;
                         HandleNextInternal(Promise.State.Canceled);
                     }
@@ -188,7 +189,7 @@ namespace Proto.Promises
                 internal void SetAsyncResultVoid()
                 {
                     ThrowIfInPool(this);
-                    // The field is shared with RejectContainer, so clear the continuation context or sentinel before completing.
+                    // The field is shared with RejectContainer, so clear the continuation context before completing.
                     ContinuationContext = null;
                     HandleNextInternal(Promise.State.Resolved);
                 }
@@ -198,7 +199,7 @@ namespace Proto.Promises
                 {
                     ThrowIfInPool(this);
                     _result = result;
-                    // The field is shared with RejectContainer, so clear the continuation context or sentinel before completing.
+                    // The field is shared with RejectContainer, so clear the continuation context before completing.
                     ContinuationContext = null;
                     HandleNextInternal(Promise.State.Resolved);
                 }
@@ -255,12 +256,27 @@ namespace Proto.Promises
 #if !OPTIMIZED_ASYNC_MODE
             partial class AsyncPromiseRef<TResult>
             {
-                // A traced async promise, which exits its scope while its waiter runs (see ScopeExitingWaiter).
+                // A traced async promise, which continues in its scope (see TracedContinuer), and exits it while its waiter runs (see ScopeExitingWaiter).
 #if !PROTO_PROMISE_DEVELOPER_MODE
                 [DebuggerNonUserCode, StackTraceHidden]
 #endif
                 private sealed class TracedAsyncPromiseRef : AsyncPromiseRef<TResult>
                 {
+                    private CausalityTrace _awaitTrace;
+
+                    internal override CausalityTrace AwaitTrace => _awaitTrace;
+
+                    internal override void CaptureAwaitContextAndOrTrace(bool isFirstAwait)
+                    {
+                        // This is also called when only the ExecutionContext flows, so await traces are checked here.
+                        // The first await captures where it awaits too, because its async promise's own trace was captured where it was called, before its body ran.
+                        if (Promise.Config.AwaitTracesEnabled)
+                        {
+                            _awaitTrace = CausalityTrace.Capture();
+                        }
+                        base.CaptureAwaitContextAndOrTrace(isFirstAwait);
+                    }
+
                     [MethodImpl(MethodImplOptions.NoInlining)]
                     internal static AsyncPromiseRef<TResult> Create()
                     {
@@ -273,7 +289,7 @@ namespace Proto.Promises
 #else
                         var promise = new TracedAsyncPromiseRef();
 #endif
-                        promise.ResetWithSentinel();
+                        promise.Reset();
                         return promise;
                     }
 
@@ -286,6 +302,7 @@ namespace Proto.Promises
                         Dispose();
                         _continuer?.Dispose();
                         _continuer = null;
+                        _awaitTrace = null;
                         // Traced promises are never returned to the object pool, even if they complete after causality traces are disabled
                         // (object pooling is disabled while they're enabled), so we discard it.
                         Discard(this);
@@ -313,33 +330,16 @@ namespace Proto.Promises
 
                     internal abstract void Continue();
 
-                    // MoveNext, in the scope of the async promise's trace.
-                    // It's not generic over the state machine, so that AOT compilers (e.g. IL2CPP) don't generate it for every async function.
-                    [MethodImpl(MethodImplOptions.NoInlining)]
-                    protected void MoveNextInScope()
-                    {
-                        // An async promise that wasn't traced doesn't enter a scope, the same as the fast path.
-                        var scope = CausalityTrace.EnterScopeInternal(_owner.Trace);
-                        try
-                        {
-                            MoveNextStateMachine();
-                        }
-                        finally
-                        {
-                            scope.Dispose();
-                        }
-                    }
-
-                    protected abstract void MoveNextStateMachine();
-
                     public abstract void Dispose();
 
                     [MethodImpl(InlineOption)]
                     public static PromiseMethodContinuer GetOrCreate<TStateMachine>(ref TStateMachine stateMachine, AsyncPromiseRef<TResult> owner) where TStateMachine : IAsyncStateMachine
                     {
-                        var continuer = Continuer<TStateMachine>.GetOrCreate(ref stateMachine);
-                        continuer._owner = owner;
-                        return continuer;
+                        if (!CausalityTrace.IsEnabled)
+                        {
+                            return Continuer<TStateMachine>.GetOrCreate(ref stateMachine, owner);
+                        }
+                        return TracedContinuer.GetOrCreate(ref stateMachine, owner);
                     }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -362,10 +362,11 @@ namespace Proto.Promises
                         }
 
                         [MethodImpl(InlineOption)]
-                        public static Continuer<TStateMachine> GetOrCreate(ref TStateMachine stateMachine)
+                        public static Continuer<TStateMachine> GetOrCreate(ref TStateMachine stateMachine, AsyncPromiseRef<TResult> owner)
                         {
                             var continuer = GetOrCreate();
                             continuer._next = null;
+                            continuer._owner = owner;
                             continuer._stateMachine = stateMachine;
                             return continuer;
                         }
@@ -383,7 +384,7 @@ namespace Proto.Promises
                             var continuationContext = _owner.ContinuationContext;
                             if (continuationContext == null)
                             {
-                                // Common case: no continuation context and no causality trace.
+                                // Common case: no continuation context.
                                 _stateMachine.MoveNext();
                             }
                             else
@@ -394,16 +395,6 @@ namespace Proto.Promises
 
                         [MethodImpl(InlineOption)]
                         new private void MoveNext()
-                        {
-                            if (!CausalityTrace.IsEnabled)
-                            {
-                                _stateMachine.MoveNext();
-                                return;
-                            }
-                            MoveNextInScope();
-                        }
-
-                        protected override void MoveNextStateMachine()
                             => _stateMachine.MoveNext();
 
                         // NoInlining to keep the continuation fast path small.
@@ -412,7 +403,7 @@ namespace Proto.Promises
                         {
                             if (continuationContext is SynchronizationContext synchronizationContext)
                             {
-                                _owner.ContinuationContext = _owner.NoAsyncContinuationContext;
+                                _owner.ContinuationContext = null;
                                 ScheduleContextCallback(synchronizationContext, this,
                                     obj => obj.UnsafeAs<Continuer<TStateMachine>>().MoveNext(),
                                     obj => obj.UnsafeAs<Continuer<TStateMachine>>().MoveNext());
@@ -427,16 +418,134 @@ namespace Proto.Promises
                                     obj => obj.UnsafeAs<Continuer<TStateMachine>>().Continue(),
                                     obj => obj.UnsafeAs<Continuer<TStateMachine>>().Continue());
                             }
-                            else if (continuationContext == TracedSentinel.s_instance)
+                            else
+                            {
+                                _owner.ContinuationContext = null;
+                                ExecutionContext.Run(
+                                    continuationContext.UnsafeAs<ExecutionContext>(),
+                                    obj => obj.UnsafeAs<Continuer<TStateMachine>>().MoveNext(),
+                                    this
+                                );
+                            }
+                        }
+                    }
+
+                    // The continuer of a traced async promise, which continues it in its scope (see MoveNextInScope).
+                    // It's separate from Continuer, so that untraced async promises don't check whether they're traced when they continue.
+                    // It holds the state machine boxed, so that its code is only generated once for each TResult instead of for each async method,
+                    // which matters for AOT runtimes like IL2CPP.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+                    [DebuggerNonUserCode, StackTraceHidden]
+#endif
+                    private sealed class TracedContinuer : PromiseMethodContinuer
+                    {
+                        private IAsyncStateMachine _stateMachine;
+
+                        private TracedContinuer()
+                        {
+                            _moveNext = Continue;
+                        }
+
+                        // Separate from PromiseMethodContinuer.GetOrCreate, so that the traced path doesn't make the untraced path slower.
+                        // The state machine is passed by ref, so that it's only boxed if the async promise is traced. Only this small method is generated for each async method.
+                        [MethodImpl(MethodImplOptions.NoInlining)]
+                        new internal static PromiseMethodContinuer GetOrCreate<TStateMachine>(ref TStateMachine stateMachine, AsyncPromiseRef<TResult> owner)
+                            where TStateMachine : IAsyncStateMachine
+                        {
+                            // The async promise isn't traced if causality traces were enabled after it was created.
+                            if (!(owner is TracedAsyncPromiseRef))
+                            {
+                                return Continuer<TStateMachine>.GetOrCreate(ref stateMachine, owner);
+                            }
+                            var continuer = Create();
+                            continuer._owner = owner;
+                            continuer._stateMachine = stateMachine;
+                            return continuer;
+                        }
+
+                        // NoInlining so that it's only generated once for each TResult, not in each GetOrCreate.
+                        [MethodImpl(MethodImplOptions.NoInlining)]
+                        private static TracedContinuer Create()
+                        {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                            // Take from pool for object tracking purposes.
+                            var obj = ObjectPool.TryTakeOrInvalid<TracedContinuer>();
+                            return obj == InvalidAwaitSentinel.s_instance
+                                ? new TracedContinuer()
+                                : obj.UnsafeAs<TracedContinuer>();
+#else
+                            return new TracedContinuer();
+#endif
+                        }
+
+                        public override void Dispose()
+                        {
+                            _owner = null;
+                            _stateMachine = null;
+                            // Traced continuers are never returned to the object pool, like their async promises (see TracedAsyncPromiseRef.MaybeDispose).
+                            Discard(this);
+                        }
+
+                        internal override void Continue()
+                        {
+                            var continuationContext = _owner.ContinuationContext;
+                            if (continuationContext == null)
                             {
                                 MoveNextInScope();
                             }
                             else
                             {
-                                _owner.ContinuationContext = _owner.NoAsyncContinuationContext;
+                                ContinueOnContext(continuationContext);
+                            }
+                        }
+
+                        // MoveNext, in the scope of the async promise's trace, inside the scope of where it last awaited (see AwaitTrace).
+                        private void MoveNextInScope()
+                        {
+                            // The async promise's trace is null if causality traces were disabled after it was created, so it doesn't enter that scope.
+                            var awaitScope = CausalityTrace.EnterScopeInternal(_owner.AwaitTrace);
+                            try
+                            {
+                                var scope = CausalityTrace.EnterScopeInternal(_owner.Trace);
+                                try
+                                {
+                                    _stateMachine.MoveNext();
+                                }
+                                finally
+                                {
+                                    scope.Dispose();
+                                }
+                            }
+                            finally
+                            {
+                                awaitScope.Dispose();
+                            }
+                        }
+
+                        private void ContinueOnContext(object continuationContext)
+                        {
+                            if (continuationContext is SynchronizationContext synchronizationContext)
+                            {
+                                _owner.ContinuationContext = null;
+                                ScheduleContextCallback(synchronizationContext, this,
+                                    obj => obj.UnsafeAs<TracedContinuer>().MoveNextInScope(),
+                                    obj => obj.UnsafeAs<TracedContinuer>().MoveNextInScope());
+                            }
+                            else if (continuationContext is ConfiguredAwaitDualContext dualContext)
+                            {
+                                _owner.ContinuationContext = dualContext._executionContext;
+                                synchronizationContext = dualContext._synchronizationContext;
+                                dualContext.Dispose();
+                                ScheduleContextCallback(synchronizationContext, this,
+                                    obj => obj.UnsafeAs<TracedContinuer>().Continue(),
+                                    obj => obj.UnsafeAs<TracedContinuer>().Continue());
+                            }
+                            else
+                            {
+                                _owner.ContinuationContext = null;
                                 ExecutionContext.Run(
                                     continuationContext.UnsafeAs<ExecutionContext>(),
-                                    obj => obj.UnsafeAs<Continuer<TStateMachine>>().MoveNext(),
+                                    obj => obj.UnsafeAs<TracedContinuer>().MoveNextInScope(),
                                     this
                                 );
                             }
@@ -451,14 +560,14 @@ namespace Proto.Promises
                 private static void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref, ref short id) where TStateMachine : IAsyncStateMachine
 #pragma warning restore IDE0060 // Remove unused parameter
                 {
-                    if (_ref._continuer == null)
+                    bool isFirstAwait = _ref._continuer == null;
+                    if (isFirstAwait)
                     {
                         _ref._continuer = PromiseMethodContinuer.GetOrCreate(ref stateMachine, _ref);
                     }
-                    if (Promise.Config.AsyncFlowExecutionContextEnabled)
+                    if (Promise.Config.s_isAwaitCaptureEnabled)
                     {
-                        // Capture returns null if the flow is suppressed.
-                        _ref.ContinuationContext = ExecutionContext.Capture() ?? _ref.GetNoAsyncContinuationContext();
+                        _ref.CaptureForAwait(isFirstAwait);
                     }
                 }
 
@@ -478,8 +587,9 @@ namespace Proto.Promises
                     _continuer.Continue();
                 }
 
+                // It's scheduled where the async function awaits, so it doesn't capture where it was scheduled, which is where it awaited (see CaptureAwaitContextAndOrTrace).
                 protected override void ContinueOnContext(SynchronizationContext synchronizationContext)
-                    => ScheduleContextCallback(synchronizationContext, _continuer.MoveNext,
+                    => ScheduleContextCallbackDirect(synchronizationContext, _continuer.MoveNext,
                         obj => obj.UnsafeAs<Action>().Invoke(),
                         obj => obj.UnsafeAs<Action>().Invoke());
             } // class AsyncPromiseRef<TResult>
@@ -488,32 +598,12 @@ namespace Proto.Promises
 
             partial class AsyncPromiseRef<TResult>
             {
-                // MoveNext, in the scope of this promise's trace.
-                // It's not generic over the state machine, so that AOT compilers (e.g. IL2CPP) don't generate it for every async function.
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                protected void MoveNextInScope()
-                {
-                    // An async promise that wasn't traced doesn't enter a scope, the same as the fast path.
-                    var scope = CausalityTrace.EnterScopeInternal(Trace);
-                    try
-                    {
-                        MoveNextStateMachine();
-                    }
-                    finally
-                    {
-                        scope.Dispose();
-                    }
-                }
-
-                // Only async promises with a state machine are continued (see AsyncPromiseRefMachine).
-                protected virtual void MoveNextStateMachine() => throw new System.InvalidOperationException();
-
 #if !PROTO_PROMISE_DEVELOPER_MODE
                 [DebuggerNonUserCode, StackTraceHidden]
 #endif
-                private partial class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef<TResult> where TStateMachine : IAsyncStateMachine
+                private sealed partial class AsyncPromiseRefMachine<TStateMachine> : AsyncPromiseRef<TResult> where TStateMachine : IAsyncStateMachine
                 {
-                    protected AsyncPromiseRefMachine()
+                    private AsyncPromiseRefMachine()
                     {
                         _moveNext = Continue;
                     }
@@ -555,7 +645,7 @@ namespace Proto.Promises
                         var continuationContext = ContinuationContext;
                         if (continuationContext == null)
                         {
-                            // Common case: no continuation context and no causality trace.
+                            // Common case: no continuation context.
                             _stateMachine.MoveNext();
                         }
                         else
@@ -566,16 +656,6 @@ namespace Proto.Promises
 
                     [MethodImpl(InlineOption)]
                     new private void MoveNext()
-                    {
-                        if (!CausalityTrace.IsEnabled)
-                        {
-                            _stateMachine.MoveNext();
-                            return;
-                        }
-                        MoveNextInScope();
-                    }
-
-                    protected override void MoveNextStateMachine()
                         => _stateMachine.MoveNext();
 
                     internal override void Handle(PromiseRefBase handler, Promise.State state)
@@ -591,7 +671,7 @@ namespace Proto.Promises
                     {
                         if (continuationContext is SynchronizationContext synchronizationContext)
                         {
-                            ContinuationContext = NoAsyncContinuationContext;
+                            ContinuationContext = null;
                             ScheduleContextCallback(synchronizationContext, this,
                                 obj => obj.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>().MoveNext(),
                                 obj => obj.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>().MoveNext());
@@ -606,25 +686,16 @@ namespace Proto.Promises
                                 obj => obj.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>().ContinueWithExecutionContext(),
                                 obj => obj.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>().ContinueWithExecutionContext());
                         }
-                        else if (continuationContext == TracedSentinel.s_instance)
-                        {
-                            MoveNextInScope();
-                        }
                         else
                         {
-                            ContinuationContext = NoAsyncContinuationContext;
-                            ExecutionContext.Run(
-                                continuationContext.UnsafeAs<ExecutionContext>(),
-                                obj => obj.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>().MoveNext(),
-                                this
-                            );
+                            ContinueWithExecutionContext();
                         }
                     }
 
                     private void ContinueWithExecutionContext()
                     {
                         var continuationContext = ContinuationContext;
-                        ContinuationContext = NoAsyncContinuationContext;
+                        ContinuationContext = null;
                         ExecutionContext.Run(
                             continuationContext.UnsafeAs<ExecutionContext>(),
                             obj => obj.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>().MoveNext(),
@@ -632,21 +703,46 @@ namespace Proto.Promises
                         );
                     }
 
+                    // It's scheduled where the async function awaits, so it doesn't capture where it was scheduled, which is where it awaited (see CaptureAwaitContextAndOrTrace).
                     protected override void ContinueOnContext(SynchronizationContext synchronizationContext)
                         // Continue instead of MoveNext so the ExecutionContext is restored if it was captured.
-                        => ScheduleContextCallback(synchronizationContext, this,
+                        => ScheduleContextCallbackDirect(synchronizationContext, this,
                             obj => obj.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>().Continue(),
                             obj => obj.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>().Continue());
                 }
 
-                // A traced async promise, which exits its scope while its waiter runs (see ScopeExitingWaiter).
+                // A traced async promise, which continues in its scope (see MoveNextInScope), and exits it while its waiter runs (see ScopeExitingWaiter).
+                // It's separate from AsyncPromiseRefMachine, so that untraced async promises don't check whether they're traced when they continue.
                 // It holds the state machine boxed, so that its code is only generated once for each TResult instead of for each async method,
                 // which matters for AOT runtimes like IL2CPP and NativeAOT.
 #if !PROTO_PROMISE_DEVELOPER_MODE
                 [DebuggerNonUserCode, StackTraceHidden]
 #endif
-                private sealed class TracedAsyncPromiseRefMachine : AsyncPromiseRefMachine<IAsyncStateMachine>
+                private sealed class TracedAsyncPromiseRefMachine : AsyncPromiseRef<TResult>
                 {
+                    private IAsyncStateMachine _stateMachine;
+                    private CausalityTrace _awaitTrace;
+
+                    private TracedAsyncPromiseRefMachine()
+                    {
+                        _moveNext = Continue;
+                    }
+
+                    internal override CausalityTrace AwaitTrace => _awaitTrace;
+
+                    internal override void CaptureAwaitContextAndOrTrace(bool isFirstAwait)
+                    {
+                        // This is also called when only the ExecutionContext flows, so await traces are checked here.
+                        if (Promise.Config.AwaitTracesEnabled)
+                        {
+                            // The async promise's own trace was just captured where it first awaits, without the async function's frame (see Create),
+                            // so the first await shares that capture with all of its frames, instead of capturing the same stack again.
+                            // Trace is null if causality traces were disabled since then.
+                            _awaitTrace = isFirstAwait ? Trace?.GetWithAllFrames() : CausalityTrace.Capture();
+                        }
+                        base.CaptureAwaitContextAndOrTrace(isFirstAwait);
+                    }
+
                     // Separate from AsyncPromiseRefMachine.SetStateMachine, so that the traced path doesn't make the untraced path slower.
                     // The state machine is passed by ref, so that it's not boxed until after _ref is set. Only this small method is generated for each async method.
                     [MethodImpl(MethodImplOptions.NoInlining)]
@@ -673,7 +769,14 @@ namespace Proto.Promises
 #else
                         var promise = new TracedAsyncPromiseRefMachine();
 #endif
-                        promise.ResetWithSentinel();
+                        promise.ResetWithoutStacktrace();
+                        // This is created where the async function first awaits, so the async function's frame is dropped from its trace,
+                        // so that it starts where the async function was called, the same as in the non-optimized mode.
+                        var trace = CausalityTrace.CaptureWithoutInnermostVisibleFrame();
+                        if (trace != null)
+                        {
+                            SetTrace(promise, trace);
+                        }
                         return promise;
                     }
 
@@ -685,10 +788,96 @@ namespace Proto.Promises
                     {
                         Dispose();
                         _stateMachine = null;
+                        _awaitTrace = null;
                         // Traced promises are never returned to the object pool, even if they complete after causality traces are disabled
                         // (object pooling is disabled while they're enabled), so we discard it.
                         Discard(this);
                     }
+
+                    internal override void Handle(PromiseRefBase handler, Promise.State state)
+                    {
+                        ThrowIfInPool(this);
+                        handler.SetCompletionState(state);
+                        Continue();
+                    }
+
+                    private void Continue()
+                    {
+                        var continuationContext = ContinuationContext;
+                        if (continuationContext == null)
+                        {
+                            MoveNextInScope();
+                        }
+                        else
+                        {
+                            ContinueOnContext(continuationContext);
+                        }
+                    }
+
+                    // MoveNext, in the scope of this promise's trace, inside the scope of where it last awaited (see AwaitTrace).
+                    private void MoveNextInScope()
+                    {
+                        // Trace is null if causality traces were disabled after this was created, so it doesn't enter that scope.
+                        var awaitScope = CausalityTrace.EnterScopeInternal(_awaitTrace);
+                        try
+                        {
+                            var scope = CausalityTrace.EnterScopeInternal(Trace);
+                            try
+                            {
+                                _stateMachine.MoveNext();
+                            }
+                            finally
+                            {
+                                scope.Dispose();
+                            }
+                        }
+                        finally
+                        {
+                            awaitScope.Dispose();
+                        }
+                    }
+
+                    private void ContinueOnContext(object continuationContext)
+                    {
+                        if (continuationContext is SynchronizationContext synchronizationContext)
+                        {
+                            ContinuationContext = null;
+                            ScheduleContextCallback(synchronizationContext, this,
+                                obj => obj.UnsafeAs<TracedAsyncPromiseRefMachine>().MoveNextInScope(),
+                                obj => obj.UnsafeAs<TracedAsyncPromiseRefMachine>().MoveNextInScope());
+                        }
+                        else if (continuationContext is ConfiguredAwaitDualContext dualContext)
+                        {
+                            ContinuationContext = dualContext._executionContext;
+                            synchronizationContext = dualContext._synchronizationContext;
+                            dualContext.Dispose();
+                            ScheduleContextCallback(synchronizationContext, this,
+                                obj => obj.UnsafeAs<TracedAsyncPromiseRefMachine>().ContinueWithExecutionContext(),
+                                obj => obj.UnsafeAs<TracedAsyncPromiseRefMachine>().ContinueWithExecutionContext());
+                        }
+                        else
+                        {
+                            ContinueWithExecutionContext();
+                        }
+                    }
+
+                    private void ContinueWithExecutionContext()
+                    {
+                        var continuationContext = ContinuationContext;
+                        ContinuationContext = null;
+                        ExecutionContext.Run(
+                            continuationContext.UnsafeAs<ExecutionContext>(),
+                            obj => obj.UnsafeAs<TracedAsyncPromiseRefMachine>().MoveNextInScope(),
+                            this
+                        );
+                    }
+
+                    // It's scheduled where the async function awaits, so it doesn't capture where it was scheduled, which is where it awaited (see CaptureAwaitContextAndOrTrace).
+                    protected override void ContinueOnContext(SynchronizationContext synchronizationContext)
+                        // Continue instead of MoveNextInScope so the ExecutionContext is restored if it was captured.
+                        => ScheduleContextCallbackDirect(synchronizationContext, this,
+                            obj => obj.UnsafeAs<TracedAsyncPromiseRefMachine>().Continue(),
+                            obj => obj.UnsafeAs<TracedAsyncPromiseRefMachine>().Continue());
                 }
 
                 private Action MoveNext
@@ -702,14 +891,14 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 private static void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref, ref short id) where TStateMachine : IAsyncStateMachine
                 {
-                    if (_ref == null)
+                    bool isFirstAwait = _ref == null;
+                    if (isFirstAwait)
                     {
                         AsyncPromiseRefMachine<TStateMachine>.SetStateMachine(ref stateMachine, ref _ref, ref id);
                     }
-                    if (Promise.Config.AsyncFlowExecutionContextEnabled)
+                    if (Promise.Config.s_isAwaitCaptureEnabled)
                     {
-                        // Capture returns null if the flow is suppressed.
-                        _ref.ContinuationContext = ExecutionContext.Capture() ?? _ref.GetNoAsyncContinuationContext();
+                        _ref.CaptureForAwait(isFirstAwait);
                     }
                 }
 

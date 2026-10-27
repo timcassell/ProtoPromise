@@ -147,7 +147,7 @@ namespace Proto.Promises
                 get => GetTrace(this);
             }
 
-            // Used instead of Reset by promise types that store TracedSentinel when they're traced (async promises, Promise.New, and callback promises).
+            // Used instead of Reset by promise types that store TracedSentinel when they're traced (Promise.New and callback promises).
             // Those types must not store anything else in the ContinuationContext field before they enter the trace's scope.
             [MethodImpl(InlineOption)]
             protected void ResetWithSentinel()
