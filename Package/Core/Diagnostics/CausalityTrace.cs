@@ -56,10 +56,8 @@ namespace Proto.Diagnostics
         /// Causality traces are most reliable in DEBUG mode. In RELEASE mode, traces are not always available
         /// (for example, for objects that are reported from finalizers on some runtimes).
         /// <para/>
-        /// Only operations that are started after this is enabled are traced. When this is set to <see langword="false"/>, the traces that ProtoPromise stored
-        /// for operations that are still running are released, so those operations have no trace when they complete (e.g. in an <see cref="Promises.UnhandledException"/>).
-        /// In DEBUG mode, those traces are kept with their operations instead, and are only ignored while this is disabled,
-        /// so an operation that completes after this is enabled again has its trace.
+        /// Only operations that are started after this is enabled are traced. When this is toggled, the traces that ProtoPromise captured for operations that are still running
+        /// are not guaranteed to remain, or to be released, so those operations may or may not have their traces when they complete (e.g. in an <see cref="Promises.UnhandledException"/>).
         /// Traces that you captured with <see cref="Capture()"/> are not affected.
         /// </remarks>
         public static bool IsEnabled
@@ -188,7 +186,7 @@ namespace Proto.Diagnostics
         /// The raw <see cref="System.Diagnostics.StackTrace"/> of where this <see cref="CausalityTrace"/> was captured.
         /// </summary>
         /// <remarks>
-        /// This includes frames that are normally hidden from stack traces, such as ProtoPromise's internal frames,
+        /// This includes frames that are normally hidden from stack traces, such as ProtoPromise's internal frames and the runtime frames that they call,
         /// and, for the trace of an <c>async Promise</c> function, the function's own frame if it was captured where the function first awaited. Use <see cref="GetFrames"/> to exclude them.
         /// </remarks>
         public StackTrace StackTrace => _stackTrace;
@@ -252,8 +250,9 @@ namespace Proto.Diagnostics
         /// so that a chain of causes is only printed once.
         /// <para/>
         /// An outer trace is skipped if it adds nothing: its frames are already in <see cref="StackTrace"/> (e.g. a callback that a context invoked synchronously),
-        /// it's already in the chain of <see cref="Previous"/> traces or their outer traces, or it was captured at the same location as this trace, the <see cref="Previous"/> trace,
-        /// or another outer trace. If IL offsets are not available (e.g. IL2CPP), an outer trace that was captured by an earlier call on the same line of a method that is still running
+        /// it's already in the chain of <see cref="Previous"/> traces or their outer traces, it was captured at the same location as this trace, the <see cref="Previous"/> trace,
+        /// or another outer trace, or its frames are the outer frames of another outer trace that was captured on the same thread, which replaces it
+        /// (their innermost frames are compared by method and line, because the call may have moved on since the outer trace was captured). If IL offsets are not available (e.g. IL2CPP), an outer trace that was captured by an earlier call on the same line of a method that is still running
         /// (or in the same method, if line numbers are not available either) may also be skipped, because it's printed like the outer frames of <see cref="StackTrace"/>.
         /// The outer traces of an operation that was skipped or folded into this trace (see <see cref="Previous"/>) are kept after this trace's own.
         /// At most <see cref="MaxOuterTraces"/> are kept.
@@ -310,7 +309,8 @@ namespace Proto.Diagnostics
         }
 
         /// <summary>
-        /// Gets the frames of <see cref="StackTrace"/>, excluding frames that are hidden from stack traces, such as ProtoPromise's internal frames.
+        /// Gets the frames of <see cref="StackTrace"/>, excluding frames that are hidden from stack traces, such as ProtoPromise's internal frames and the runtime frames that they call,
+        /// and, for the trace of an <c>async Promise</c> function, the function's own frame if it was captured where the function first awaited.
         /// </summary>
         public StackFrame[] GetFrames()
             => GetVisibleFrames(_stackTrace, _firstFrame);
@@ -337,36 +337,68 @@ namespace Proto.Diagnostics
         private enum FrameVisibility : byte
         {
             Hidden,
+            // ProtoPromise's hidden code, including the UnityHelpers assemblies (see IsRunByHiddenLibraryCode).
+            HiddenLibraryCode,
+            // The runtime's async method builder's Start methods that are hidden (e.g. AsyncTaskMethodBuilder.Start, which is AggressiveInlining, but it may not be inlined),
+            // which IsRunByHiddenLibraryCode looks past, like the rest of the call.
+            HiddenAsyncMethodBuilderStart,
             Visible,
-            // ExecutionContext.Run, and the ExecutionContext methods that it calls, which are hidden if ProtoPromise's hidden code called it (see IsRunByHiddenLibraryCode).
-            ExecutionContextRun
+            // The method that the compiler generated for an async Promise function (see IsAsyncPromiseFunction).
+            VisibleAsyncPromiseFunction,
+            // ExecutionContext.Run and the ExecutionContext methods that it calls, or the runtime's async method builder's Start methods (see IsRuntimeAsyncMethodBuilderStart),
+            // which are hidden if ProtoPromise's hidden code called them (see IsRunByHiddenLibraryCode).
+            HiddenIfRunByLibraryCode
         }
 
         private static bool IsVisible(StackTrace stackTrace, int index)
         {
             var visibility = GetVisibility(stackTrace.GetFrame(index));
             return visibility == FrameVisibility.Visible
-                || (visibility == FrameVisibility.ExecutionContextRun && !IsRunByHiddenLibraryCode(stackTrace, index));
+                || visibility == FrameVisibility.VisibleAsyncPromiseFunction
+                || (visibility == FrameVisibility.HiddenIfRunByLibraryCode && !IsRunByHiddenLibraryCode(stackTrace, index));
         }
 
-        // Whether the ExecutionContext.Run call that the frame is part of was made by ProtoPromise's hidden code (e.g. to continue an async function on its ExecutionContext),
-        // so that it's hidden like the code that called it. The callback that it runs is still visible.
-#if NET6_0_OR_GREATER
-        [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026",
-            Justification = "If the method metadata was trimmed, GetMethod() returns null and the frame is not ProtoPromise's.")]
-#endif
+        // Whether the ExecutionContext.Run or async method builder Start call that the frame is part of was made by ProtoPromise's hidden code
+        // (e.g. to continue an async function on its ExecutionContext, or to start it on its ExecutionContext), so that it's hidden like the code that called it.
+        // The code that it runs is still visible.
         private static bool IsRunByHiddenLibraryCode(StackTrace stackTrace, int index)
         {
             for (int i = index + 1; i < stackTrace.FrameCount; i++)
             {
-                var frame = stackTrace.GetFrame(i);
-                var visibility = GetVisibility(frame);
-                if (visibility != FrameVisibility.ExecutionContextRun)
+                switch (GetVisibility(stackTrace.GetFrame(i)))
                 {
-                    return visibility == FrameVisibility.Hidden && frame.GetMethod()?.DeclaringType?.Assembly == typeof(CausalityTrace).Assembly;
+                    case FrameVisibility.HiddenLibraryCode:
+                    // AsyncPromiseMethodBuilder.Start may be inlined into the method that the compiler generated for the async function.
+                    case FrameVisibility.VisibleAsyncPromiseFunction:
+                        return true;
+                    // The rest of the call.
+                    case FrameVisibility.HiddenIfRunByLibraryCode:
+                    case FrameVisibility.HiddenAsyncMethodBuilderStart:
+                        break;
+                    default:
+                        return false;
                 }
             }
             return false;
+        }
+
+        // Whether the method is the one that the compiler generated for an async Promise function, which only runs code through ProtoPromise's async method builder.
+        private static bool IsAsyncPromiseFunction(System.Reflection.MethodInfo method)
+        {
+            var returnType = method.ReturnType;
+            if (returnType != typeof(Promises.Promise) && !(returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(Promises.Promise<>)))
+            {
+                return false;
+            }
+            // Like IsStackTraceHidden, if the attribute can't be read, we behave as if it is not present.
+            try
+            {
+                return method.IsDefined(typeof(AsyncStateMachineAttribute), false);
+            }
+            catch
+            {
+                return false;
+            }
         }
 
 #if NET6_0_OR_GREATER
@@ -394,24 +426,35 @@ namespace Proto.Diagnostics
         {
             // Match the .Net 6+ runtime's StackTrace.ToString() filtering, so that frames are filtered the same way on all runtimes
             // (except that the runtime never hides the outermost frame, see FormatStackTrace).
-            if ((method.MethodImplementationFlags & System.Reflection.MethodImplAttributes.AggressiveInlining) != 0
-                || IsStackTraceHidden(method))
-            {
-                return FrameVisibility.Hidden;
-            }
             var declaringType = method.DeclaringType;
+            if ((method.MethodImplementationFlags & System.Reflection.MethodImplAttributes.AggressiveInlining) != 0
+                || IsStackTraceHidden(method)
+                || (declaringType != null && IsStackTraceHidden(declaringType)))
+            {
+                return declaringType != null && IsRuntimeAsyncMethodBuilderStart(method, declaringType)
+                    ? FrameVisibility.HiddenAsyncMethodBuilderStart
+                    : GetHiddenVisibility(method);
+            }
             if (declaringType == null)
             {
                 return FrameVisibility.Visible;
             }
-            if (IsStackTraceHidden(declaringType))
-            {
-                return FrameVisibility.Hidden;
-            }
             // E.g. Run and RunInternal, depending on the runtime.
-            return declaringType == typeof(ExecutionContext) && method.Name.StartsWith("Run", StringComparison.Ordinal)
-                ? FrameVisibility.ExecutionContextRun
+            if ((declaringType == typeof(ExecutionContext) && method.Name.StartsWith("Run", StringComparison.Ordinal)) || IsRuntimeAsyncMethodBuilderStart(method, declaringType))
+            {
+                return FrameVisibility.HiddenIfRunByLibraryCode;
+            }
+            return method is System.Reflection.MethodInfo methodInfo && IsAsyncPromiseFunction(methodInfo)
+                ? FrameVisibility.VisibleAsyncPromiseFunction
                 : FrameVisibility.Visible;
+        }
+
+        private static FrameVisibility GetHiddenVisibility(System.Reflection.MethodBase method)
+        {
+            var assembly = method.Module.Assembly;
+            return assembly == typeof(CausalityTrace).Assembly || assembly.GetName().Name.StartsWith("ProtoPromise.UnityHelpers.", StringComparison.Ordinal)
+                ? FrameVisibility.HiddenLibraryCode
+                : FrameVisibility.Hidden;
         }
 
         // In its own class, so that CausalityTrace doesn't need a static constructor (see s_isEnabled).
@@ -479,16 +522,17 @@ namespace Proto.Diagnostics
             => s_isEnabled ? new CausalityTrace(1) : null;
 
         // For an async function's trace, which is captured where it first awaits in the optimized async mode (see AsyncPromiseRef.TracedAsyncPromiseRefMachine).
-        // The innermost visible frame (the async function, where it awaits) is dropped, with the frames of the runtime's async method builder that ran it, if any
-        // (see GetFrameAfterAsyncFunction), so that the trace starts at the method that the compiler generated for it, where it was called,
+        // The innermost visible frame (the async function, where it awaits) is dropped (see GetFrameAfterAsyncFunction),
+        // so that the trace starts at the method that the compiler generated for it, where it was called,
         // the same as in the non-optimized mode, which captures it before the async function's body runs.
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static CausalityTrace CaptureWithoutInnermostVisibleFrame()
-            => s_isEnabled ? new CausalityTrace(1, true) : null;
+        internal static CausalityTrace CaptureWithoutInnermostVisibleFrame(Type asyncStateMachineType)
+            => s_isEnabled ? new CausalityTrace(1, asyncStateMachineType) : null;
 
         // Internal so that it can be captured regardless of IsEnabled.
+        // If asyncStateMachineType is not null, the async function's frame is dropped (see CaptureWithoutInnermostVisibleFrame).
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal CausalityTrace(int skipFrames, bool dropInnermostVisibleFrame = false)
+        internal CausalityTrace(int skipFrames, Type asyncStateMachineType = null)
         {
             _timestamp = TimeProvider.System.GetTimestamp();
             var thread = Thread.CurrentThread;
@@ -500,9 +544,9 @@ namespace Proto.Diagnostics
             _stackTrace = new StackTrace(1, true);
 #else
             _stackTrace = new StackTrace(skipFrames + 1, true);
-            if (dropInnermostVisibleFrame)
+            if (asyncStateMachineType != null)
             {
-                _firstFrame = GetFrameAfterAsyncFunction(_stackTrace);
+                _firstFrame = GetFrameAfterAsyncFunction(_stackTrace, asyncStateMachineType);
             }
 #endif
             _repeats = Array.Empty<RepeatGroup>();
@@ -564,7 +608,7 @@ namespace Proto.Diagnostics
             _areOuterTracesTruncated = areOuterTracesTruncated;
         }
 
-        // Gets the outer traces that add anything (see ShouldAddOuterTrace), from the scopes outside of the innermost scope (which is the previous trace).
+        // Gets the outer traces that add anything (see GetOuterTraceIndex), from the scopes outside of the innermost scope (which is the previous trace).
         // They're copies without their histories, so that a trace only keeps the chain of its causes, which is limited by MaxDepth.
         // Without the copies, each trace would keep the outer traces' histories, which may keep each other without bound
         // (e.g. a loop that awaits an operation that was started while the previous one was completing).
@@ -583,7 +627,16 @@ namespace Proto.Diagnostics
                     continue;
                 }
                 // The previous trace may be skipped (see IsContainedBy), but an outer trace that repeats it is still already printed in this trace.
-                if (trace != previous && !trace.IsRepeatOf(previous) && ShouldAddOuterTrace(trace, outerTraces, count))
+                if (trace == previous || trace.IsRepeatOf(previous))
+                {
+                    continue;
+                }
+                int index = GetOuterTraceIndex(trace, outerTraces, ref count);
+                if (index < 0)
+                {
+                    continue;
+                }
+                if (index == count)
                 {
                     if (count == outerTraces.Length)
                     {
@@ -591,8 +644,9 @@ namespace Proto.Diagnostics
                         areOuterTracesTruncated = true;
                         break;
                     }
-                    outerTraces[count++] = trace.GetWithoutHistory();
+                    ++count;
                 }
+                outerTraces[index] = trace.GetWithoutHistory();
             }
             if (count < outerTraces.Length)
             {
@@ -617,19 +671,30 @@ namespace Proto.Diagnostics
             var result = new CausalityTrace[Math.Min(outerTraces.Length + otherOuterTraces.Length, Math.Max(outerTraces.Length, maxOuterTraces))];
             outerTraces.CopyTo(result, 0);
             int count = outerTraces.Length;
+            bool isReplaced = false;
             foreach (var trace in otherOuterTraces)
             {
-                if (ShouldAddOuterTrace(trace, result, count))
+                int index = GetOuterTraceIndex(trace, result, ref count);
+                if (index < 0)
                 {
-                    if (count == result.Length)
-                    {
-                        areOuterTracesTruncated = true;
-                        break;
-                    }
-                    result[count++] = trace;
+                    continue;
                 }
+                if (index < count)
+                {
+                    isReplaced = true;
+                }
+                else if (count == result.Length)
+                {
+                    areOuterTracesTruncated = true;
+                    break;
+                }
+                else
+                {
+                    ++count;
+                }
+                result[index] = trace;
             }
-            if (count == outerTraces.Length)
+            if (count == outerTraces.Length && !isReplaced)
             {
                 return outerTraces;
             }
@@ -640,24 +705,64 @@ namespace Proto.Diagnostics
             return result;
         }
 
-        // An outer trace is only added if it adds anything: its frames are not already in this trace (e.g. Promise.New, which invokes its callback,
+        // Gets the index to put an outer trace at, or -1 if it doesn't add anything: its frames are already in this trace (e.g. Promise.New, which invokes its callback,
         // or a context that ran a scheduled callback synchronously, which are still in the same call, so their innermost frames are compared exactly),
-        // and it was not captured at the same location as this trace or another outer trace (e.g. a callback that schedules itself again).
-        private bool ShouldAddOuterTrace(CausalityTrace trace, CausalityTrace[] outerTraces, int count)
+        // or it was captured at the same location as this trace or another outer trace (e.g. a callback that schedules itself again),
+        // or its frames are already in another outer trace. It replaces the other outer traces whose frames are already in it
+        // (e.g. an async function's own trace, whose frames are in the trace of where it first awaited, whose scope is outside of the async function's scope):
+        // it's put at the first one's index, and the rest of them are removed.
+        // The outer traces are compared with each other by their signatures, which are cached, because the same scopes' traces are compared on every capture in them.
+        private int GetOuterTraceIndex(CausalityTrace trace, CausalityTrace[] outerTraces, ref int count)
         {
             if (trace.IsRepeatOf(this) || trace.IsOuterPartOf(this, true))
             {
-                return false;
+                return -1;
             }
+            int index = -1;
+            int keptCount = 0;
             for (int i = 0; i < count; i++)
             {
-                // Compared by stack trace first, because the traces may be different copies of the same trace (see GetWithoutHistory).
-                if (outerTraces[i].IsSameCapture(trace) || trace.IsRepeatOf(outerTraces[i]))
+                var outerTrace = outerTraces[i];
+                if (index < 0)
                 {
-                    return false;
+                    // Compared by stack trace first, because the traces may be different copies of the same trace (see GetWithoutHistory).
+                    if (trace.IsPrintedBy(outerTrace) || trace.IsRepeatOfBySignature(outerTrace))
+                    {
+                        return -1;
+                    }
+                    if (outerTrace.IsPrintedBy(trace))
+                    {
+                        index = i;
+                    }
+                    else
+                    {
+                        var outerPart = GetOuterPartBySignature(trace, outerTrace);
+                        if (outerPart == trace)
+                        {
+                            return -1;
+                        }
+                        if (outerPart == outerTrace)
+                        {
+                            index = i;
+                        }
+                    }
+                    ++keptCount;
+                }
+                // After it replaces an outer trace, the rest are only compared for whether it replaces them too. One that was captured at the same location
+                // (e.g. on another thread pool thread) has the same frames, so it's replaced too. Any other outer trace that has its frames is on the same thread
+                // or shares its capture, so it would also have the frames of the outer trace that it replaced, and they wouldn't both be outer traces.
+                else if (!outerTrace.IsPrintedBy(trace) && !trace.IsRepeatOfBySignature(outerTrace) && GetOuterPartBySignature(trace, outerTrace) != outerTrace)
+                {
+                    outerTraces[keptCount++] = outerTrace;
                 }
             }
-            return true;
+            if (index < 0)
+            {
+                return count;
+            }
+            // The removed outer traces are left past the count, which are overwritten or dropped when the array is resized.
+            count = keptCount;
+            return index;
         }
 
         // Removes the outer traces that are already printed: the previous trace, or a trace in the chain of previous traces or their outer traces
@@ -705,13 +810,13 @@ namespace Proto.Diagnostics
         {
             for (var current = chain; current != null; current = current._previous)
             {
-                if (current.IsSameCapture(trace))
+                if (trace.IsPrintedBy(current))
                 {
                     return true;
                 }
                 foreach (var outerTrace in current._outerTraces)
                 {
-                    if (outerTrace.IsSameCapture(trace))
+                    if (trace.IsPrintedBy(outerTrace))
                     {
                         return true;
                     }
@@ -756,9 +861,9 @@ namespace Proto.Diagnostics
             _depth = 1;
         }
 
-        // Whether the traces are copies of the same capture, with the same frames (see GetWithAllFrames).
-        private bool IsSameCapture(CausalityTrace other)
-            => _stackTrace == other._stackTrace && _firstFrame == other._firstFrame;
+        // Whether the other trace prints all of this trace's frames, because they're copies of the same capture, and it doesn't drop more of its frames (see GetWithAllFrames).
+        private bool IsPrintedBy(CausalityTrace other)
+            => _stackTrace == other._stackTrace && other._firstFrame <= _firstFrame;
 
         // For where an async function first awaited in the optimized async mode, which is where its trace was captured without the async function's frame
         // (see CaptureWithoutInnermostVisibleFrame), so it shares that capture with all of its frames, instead of capturing the same stack again.
@@ -802,8 +907,14 @@ namespace Proto.Diagnostics
         // Whether this trace was captured at the same location as the other trace: with the same visible frames,
         // on the same thread, or on any thread pool thread (a loop that awaits on the thread pool may continue on a different thread each time).
         private bool IsRepeatOf(CausalityTrace other)
-            => (_isThreadPoolThread ? other._isThreadPoolThread : !other._isThreadPoolThread && _threadId == other._threadId)
-            && HasSameVisibleFrames(this, other);
+            => CanBeRepeatOf(other) && HasSameVisibleFrames(this, other);
+
+        // The same as IsRepeatOf, but compares the traces' signatures, which are cached, for traces that are compared many times (see GetOuterTraceIndex).
+        private bool IsRepeatOfBySignature(CausalityTrace other)
+            => CanBeRepeatOf(other) && GetSignature().Equals(other.GetSignature());
+
+        private bool CanBeRepeatOf(CausalityTrace other)
+            => _isThreadPoolThread ? other._isThreadPoolThread : !other._isThreadPoolThread && _threadId == other._threadId;
 
         // Whether this trace's frames are already in the next trace that is captured on the same thread, so it adds nothing to it: its visible frames are
         // the outermost visible frames of that trace, or of one of its outer traces (e.g. the trace of Promise.New, which invokes its callback,
@@ -829,9 +940,8 @@ namespace Proto.Diagnostics
             return false;
         }
 
-        // A call that is still running is only on the stack of the thread that is running it, so the thread must be the same.
         private bool IsOuterPartOf(CausalityTrace other, bool isSameCall)
-            => _threadId == other._threadId && HasOuterVisibleFrames(other, this, isSameCall);
+            => GetOuterPart(this, other, isSameCall) == this;
 
         // Compares the frames from the innermost frame, so that traces captured at different locations usually differ at the first visible frame.
         // Traces without visible frames have nothing to compare, so they're never the same.
@@ -855,41 +965,69 @@ namespace Proto.Diagnostics
             }
         }
 
-        // Whether the visible frames of outerTrace are the outermost visible frames of trace, and trace has more visible frames.
-        // Compares the frames from the outermost frame, where traces captured on the same thread share the frames of the calls that are still running.
+        // Gets the trace whose visible frames are the outermost visible frames of the other trace, which has more visible frames, or null if neither of them is.
+        // Both are compared in one pass, from the outermost frame, where traces captured on the same thread share the frames of the calls that are still running.
+        // A call that is still running is only on the stack of the thread that is running it, so the thread must be the same.
         // Traces without visible frames have nothing to compare, so they're never contained.
-        // isSameCall is whether the innermost frame of outerTrace is known to still be in the same call.
-        private static bool HasOuterVisibleFrames(CausalityTrace trace, CausalityTrace outerTrace, bool isSameCall)
+        // isSameCall is whether the innermost frame of the outer part is known to still be in the same call.
+        private static CausalityTrace GetOuterPart(CausalityTrace trace, CausalityTrace other, bool isSameCall)
         {
-            var stackTrace = trace._stackTrace;
-            var outerStackTrace = outerTrace._stackTrace;
-            int index = stackTrace.FrameCount, outerIndex = outerStackTrace.FrameCount;
-            var outerFrame = GetPreviousVisibleFrame(outerStackTrace, ref outerIndex, outerTrace._firstFrame);
-            if (outerFrame == null)
+            if (trace._threadId != other._threadId)
             {
-                return false;
+                return null;
+            }
+            var stackTrace = trace._stackTrace;
+            var otherStackTrace = other._stackTrace;
+            int index = stackTrace.FrameCount, otherIndex = otherStackTrace.FrameCount;
+            var frame = GetPreviousVisibleFrame(stackTrace, ref index, trace._firstFrame);
+            var otherFrame = GetPreviousVisibleFrame(otherStackTrace, ref otherIndex, other._firstFrame);
+            if (frame == null || otherFrame == null)
+            {
+                return null;
             }
             while (true)
             {
-                var frame = GetPreviousVisibleFrame(stackTrace, ref index, trace._firstFrame);
-                if (frame == null)
+                var nextFrame = GetPreviousVisibleFrame(stackTrace, ref index, trace._firstFrame);
+                var nextOtherFrame = GetPreviousVisibleFrame(otherStackTrace, ref otherIndex, other._firstFrame);
+                if (nextFrame == null || nextOtherFrame == null)
                 {
-                    return false;
-                }
-                var nextOuterFrame = GetPreviousVisibleFrame(outerStackTrace, ref outerIndex, outerTrace._firstFrame);
-                if (nextOuterFrame == null)
-                {
-                    // The innermost frame may have moved on to another call since the outer trace was captured (e.g. an async method that called
+                    // If they have the same number of visible frames, neither of them has more.
+                    if (nextFrame == nextOtherFrame)
+                    {
+                        return null;
+                    }
+                    // The innermost frame may have moved on to another call since the outer part was captured (e.g. an async method that called
                     // its builder's Create and then its Start), so its IL offset is not compared, only what is printed: its method and its line.
-                    return (isSameCall ? IsSameFrame(frame, outerFrame) : IsSameMethodAndLine(frame, outerFrame))
-                        && GetPreviousVisibleFrame(stackTrace, ref index, trace._firstFrame) != null;
+                    if (!(isSameCall ? IsSameFrame(frame, otherFrame) : IsSameMethodAndLine(frame, otherFrame)))
+                    {
+                        return null;
+                    }
+                    return nextFrame == null ? trace : other;
                 }
-                if (!IsSameFrame(frame, outerFrame))
+                if (!IsSameFrame(frame, otherFrame))
                 {
-                    return false;
+                    return null;
                 }
-                outerFrame = nextOuterFrame;
+                frame = nextFrame;
+                otherFrame = nextOtherFrame;
             }
+        }
+
+        // The same as GetOuterPart (when the innermost frame of the outer part may not be in the same call), but compares the traces' signatures, which are cached,
+        // for traces that are compared many times (see GetOuterTraceIndex).
+        private static CausalityTrace GetOuterPartBySignature(CausalityTrace trace, CausalityTrace other)
+        {
+            if (trace._threadId != other._threadId)
+            {
+                return null;
+            }
+            var signature = trace.GetSignature();
+            var outerPart = Signature.GetOuterPart(signature, other.GetSignature());
+            if (outerPart == null)
+            {
+                return null;
+            }
+            return outerPart == signature ? trace : other;
         }
 
         // Some runtimes (like IL2CPP) don't provide accurate IL offsets, so we also compare the line numbers.
@@ -915,46 +1053,41 @@ namespace Proto.Diagnostics
             return null;
         }
 
-        // Gets the index of the frame after the innermost visible frame (the async function, where it first awaits, see CaptureWithoutInnermostVisibleFrame),
-        // and after the frames of the runtime's async method builder that ran it, if any (AsyncPromiseMethodBuilder.Start runs it with AsyncTaskMethodBuilder.Start
-        // while the ExecutionContext flows, so that it runs on it), so that the next visible frame is the method that the compiler generated for the async function.
-        private static int GetFrameAfterAsyncFunction(StackTrace stackTrace)
+        // Gets the index of the frame after the innermost visible frame, if it's the async function (where it first awaits, see CaptureWithoutInnermostVisibleFrame),
+        // so that the next visible frame is the method that the compiler generated for the async function.
+        // Nothing is dropped if the innermost visible frame isn't the async function (e.g. if it was inlined into the method that called it).
+        // It's identified by its state machine type, because the innermost visible frame may be another async function
+        // (e.g. the async function that called it, if the method that the compiler generated for it was also inlined).
+        // A generic type is compared by its generic type definition, because the frame of its method may be of the code that's shared by its instantiations,
+        // whose type arguments depend on the runtime, so a call of the same async function (e.g. a recursive call) can't be told apart this way.
+        private static int GetFrameAfterAsyncFunction(StackTrace stackTrace, Type asyncStateMachineType)
         {
             int index = 0;
             // GetNextVisibleFrame moves the index past the frame that it returns.
-            GetNextVisibleFrame(stackTrace, ref index);
-            while (true)
-            {
-                int nextIndex = index;
-                var frame = GetNextVisibleFrame(stackTrace, ref nextIndex);
-                if (frame == null || !IsRuntimeAsyncMethodBuilderFrame(frame))
-                {
-                    return index;
-                }
-                index = nextIndex;
-            }
+            var asyncFunctionFrame = GetNextVisibleFrame(stackTrace, ref index);
+            return asyncFunctionFrame == null || !IsDeclaredBy(asyncFunctionFrame, asyncStateMachineType) ? 0 : index;
         }
 
 #if NET6_0_OR_GREATER
         [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026",
             Justification = "The frame is a visible frame, which excludes frames whose method metadata was trimmed.")]
 #endif
-        private static bool IsRuntimeAsyncMethodBuilderFrame(StackFrame frame)
+        private static bool IsDeclaredBy(StackFrame frame, Type type)
         {
-            // AsyncTaskMethodBuilder.Start calls AsyncMethodBuilderCore.Start, through AsyncTaskMethodBuilder<VoidTaskResult>.Start on .Net Framework.
-            // Which of them are printed depends on the runtime and on inlining.
-            var method = frame.GetMethod();
-            if (method.Name != nameof(AsyncTaskMethodBuilder.Start))
-            {
-                return false;
-            }
-            var declaringType = method.DeclaringType;
-            return declaringType == typeof(AsyncTaskMethodBuilder)
-                || (declaringType != null && declaringType.IsGenericType && declaringType.GetGenericTypeDefinition() == typeof(AsyncTaskMethodBuilder<>))
-                // It's internal, so it's compared by name.
-                || (declaringType != null && declaringType.Assembly == typeof(AsyncTaskMethodBuilder).Assembly
-                    && declaringType.FullName == "System.Runtime.CompilerServices.AsyncMethodBuilderCore");
+            var declaringType = frame.GetMethod().DeclaringType;
+            return declaringType == type
+                || (declaringType != null && declaringType.IsGenericType && type.IsGenericType && declaringType.GetGenericTypeDefinition() == type.GetGenericTypeDefinition());
         }
+
+        // AsyncPromiseMethodBuilder.Start runs the async function with AsyncTaskMethodBuilder.Start while the ExecutionContext flows, so that it runs on it.
+        // AsyncTaskMethodBuilder.Start calls AsyncMethodBuilderCore.Start, through AsyncTaskMethodBuilder<VoidTaskResult>.Start on .Net Framework.
+        // Which of them are on the stack depends on the runtime and on inlining.
+        private static bool IsRuntimeAsyncMethodBuilderStart(System.Reflection.MethodBase method, Type declaringType)
+            => method.Name == nameof(AsyncTaskMethodBuilder.Start)
+            && (declaringType == typeof(AsyncTaskMethodBuilder)
+                || (declaringType.IsGenericType && declaringType.GetGenericTypeDefinition() == typeof(AsyncTaskMethodBuilder<>))
+                // It's internal, so it's compared by name.
+                || (declaringType.Assembly == typeof(AsyncTaskMethodBuilder).Assembly && declaringType.FullName == "System.Runtime.CompilerServices.AsyncMethodBuilderCore"));
 
         private static StackFrame GetPreviousVisibleFrame(StackTrace stackTrace, ref int index, int firstFrame)
         {

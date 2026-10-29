@@ -19,7 +19,7 @@ namespace Proto.Diagnostics
     // where parts of the chain that repeat (e.g. a callback that registers itself again from different threads) are printed once.
     partial class CausalityTrace
     {
-        // Lazily created when the trace is printed.
+        // Lazily created when the trace is printed, or compared with outer traces (see GetOuterTraceIndex).
         private Signature _signature;
 
         private Signature GetSignature()
@@ -83,6 +83,34 @@ namespace Proto.Diagnostics
                     }
                 }
                 return true;
+            }
+
+            // Gets the signature whose frames are the outermost frames of the other's, which has more frames, or null if neither of them is (see CausalityTrace.GetOuterPart).
+            // The innermost frame of the outer part is compared by its method and line, because the call may have moved on since it was captured.
+            internal static Signature GetOuterPart(Signature signature, Signature other)
+            {
+                int length = signature._methods.Length, otherLength = other._methods.Length;
+                if (length == otherLength || length == 0 || otherLength == 0)
+                {
+                    return null;
+                }
+                var outerPart = length < otherLength ? signature : other;
+                var longer = length < otherLength ? other : signature;
+                // The frames are from the innermost, so the outer part's frames are the last frames of the longer signature.
+                int offset = longer._methods.Length - outerPart._methods.Length;
+                if (outerPart._lineNumbers[0] != longer._lineNumbers[offset] || !outerPart._methods[0].Equals(longer._methods[offset]))
+                {
+                    return null;
+                }
+                for (int i = 1; i < outerPart._methods.Length; i++)
+                {
+                    if (outerPart._offsets[i] != longer._offsets[i + offset] || outerPart._lineNumbers[i] != longer._lineNumbers[i + offset]
+                        || !outerPart._methods[i].Equals(longer._methods[i + offset]))
+                    {
+                        return null;
+                    }
+                }
+                return outerPart;
             }
 
             public override bool Equals(object obj)

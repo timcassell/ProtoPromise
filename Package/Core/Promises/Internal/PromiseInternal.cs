@@ -274,6 +274,14 @@ namespace Proto.Promises
             [MethodImpl(MethodImplOptions.NoInlining)]
             internal void VerifyAndHandleWaiter(HandleablePromiseBase waiter, PromiseRefBase promiseSingleAwait)
             {
+                VerifyCompletedAwait(promiseSingleAwait);
+                waiter.Handle(this, State);
+            }
+
+            // Verifies the await when the waiter was not added because this already completed (or the await is invalid), and waits until the state is set.
+            [MethodImpl(InlineOption)]
+            internal void VerifyCompletedAwait(PromiseRefBase promiseSingleAwait)
+            {
                 if (!VerifyWaiter(promiseSingleAwait))
                 {
                     throw new InvalidOperationException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace());
@@ -281,7 +289,6 @@ namespace Proto.Promises
                 ThrowIfInPool(this);
 
                 WaitUntilStateIsNotPending();
-                waiter.Handle(this, State);
             }
 
             [MethodImpl(InlineOption)]

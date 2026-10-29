@@ -192,6 +192,8 @@ namespace Proto.Promises
             /// include what continued the function before that await, whatever it awaited (including awaitables that aren't ProtoPromise's, like <see cref="System.Threading.Tasks.Task"/>).
             /// This is disabled by default, because it captures another trace for each await that doesn't complete synchronously,
             /// usually at about the same location as the trace of the operation that it awaits.
+            /// <para/>
+            /// When this is toggled, the traces of where async functions that are still running awaited are not guaranteed to remain, or to be released.
             /// </remarks>
             public static bool AwaitTracesEnabled
             {

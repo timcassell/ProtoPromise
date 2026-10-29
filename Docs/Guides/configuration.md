@@ -16,7 +16,7 @@ You can change whether or not objects will be pooled via `Promise.Config.ObjectP
 
 Set `Proto.Diagnostics.CausalityTrace.IsEnabled = true` to capture causality traces, which help you find where an unhandled rejection came from. They are disabled by default, because capturing them is expensive. See [Causality Traces](causality-traces.md).
 
-`Promise.Config.AwaitTracesEnabled` can be set to true to also trace where `async Promise` functions await, which costs another trace for each await. See [Tracing Awaits](causality-traces.md#tracing-awaits).
+`Promise.Config.AwaitTracesEnabled` can be set to true to also trace where `async Promise` functions await, which costs another trace for each await that doesn't complete synchronously. See [Tracing Awaits](causality-traces.md#tracing-awaits).
 
 ## Manager
 

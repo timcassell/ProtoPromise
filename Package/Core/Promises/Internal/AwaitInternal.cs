@@ -46,9 +46,33 @@ namespace Proto.Promises
             internal void OnCompleted(Action continuation, short promiseId)
                 => HookupNewWaiter(promiseId, AwaiterContinuer.GetOrCreate(continuation));
 
-            [MethodImpl(InlineOption)]
             internal void OnCompleted(Action continuation, SynchronizationContext context, short promiseId)
-                => HookupNewWaiter(promiseId, ConfiguredAsyncGenericContinuer.GetOrCreate(continuation, context));
+            {
+                var continuer = ConfiguredAsyncGenericContinuer.GetOrCreate(continuation, context);
+
+                // The same as HookupNewWaiter, except that if this already completed, the continuation doesn't capture where it was scheduled (see ConfiguredAsyncGenericContinuer.HandleAfterCompleted).
+                try
+                {
+                    PromiseRefBase promiseSingleAwait = AddWaiter(promiseId, continuer, out var previousWaiter);
+                    if (previousWaiter != PendingAwaitSentinel.s_instance)
+                    {
+                        VerifyAndHandleCompletedContinuer(continuer, promiseSingleAwait);
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    // We're already throwing InvalidOperationException here, so we don't want the waiter object to also add exceptions from its finalizer.
+                    Discard(continuer);
+                    throw;
+                }
+            }
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private void VerifyAndHandleCompletedContinuer(ConfiguredAsyncGenericContinuer continuer, PromiseRefBase promiseSingleAwait)
+            {
+                VerifyCompletedAwait(promiseSingleAwait);
+                continuer.HandleAfterCompleted();
+            }
 
             [MethodImpl(InlineOption)]
             internal Promise.ResultContainer GetResultContainerAndMaybeDispose(short promiseId)
@@ -111,7 +135,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed class AwaiterContinuer : HandleablePromiseBase
+            private sealed class AwaiterContinuer : HandleablePromiseBase, IAwaitWaiter
             {
                 private Action _continuation;
 
@@ -172,6 +196,10 @@ namespace Proto.Promises
         {
             void AwaitOnCompletedInternal(PromiseRefBase asyncPromiseRef);
         }
+
+        // A waiter that continues an await (an async Promise function, or the continuation from an awaiter's OnCompleted). If the promise already completed,
+        // it's scheduled where it awaited, which isn't captured (see ConfiguredPromise.ScheduleContinuationOnContextWhenHookedUp).
+        internal interface IAwaitWaiter { }
 
 #if !NETCOREAPP
         // Override AwaitOnCompleted implementation to prevent boxing in Unity.

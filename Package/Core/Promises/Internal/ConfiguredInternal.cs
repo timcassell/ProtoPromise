@@ -101,21 +101,29 @@ namespace Proto.Promises
                         obj => obj.UnsafeAs<ConfiguredPromise<TResult>>().HandleFromContext()
                     );
 
-                // If the waiter was just created (e.g. by Then), its trace already shows where it was scheduled, so we don't capture it again.
-                // Otherwise (e.g. a callback promise adopting this, an async function continuing in its own scope, or a waiter without a trace),
-                // we capture where it was scheduled.
+                private void ScheduleContinuationOnContextDirect()
+                    => ScheduleContextCallbackDirect(_synchronizationContext, this,
+                        obj => obj.UnsafeAs<ConfiguredPromise<TResult>>().HandleFromContext(),
+                        obj => obj.UnsafeAs<ConfiguredPromise<TResult>>().HandleFromContext()
+                    );
+
+                // An await is scheduled where it awaited, which is only captured by await traces (see Promise.Config.AwaitTracesEnabled),
+                // and if the waiter was just created (e.g. by Then), its trace already shows where it was scheduled, so we don't capture it again.
+                // Otherwise (e.g. a callback promise adopting this, or a waiter without a trace), we capture where it was scheduled.
                 private void ScheduleContinuationOnContextWhenHookedUp(HandleablePromiseBase waiter)
                 {
+                    if (!CausalityTrace.IsEnabled || waiter is IAwaitWaiter)
+                    {
+                        ScheduleContinuationOnContextDirect();
+                        return;
+                    }
                     var waiterTrace = GetTrace(waiter);
                     if (waiterTrace == null || CausalityTrace.IsCurrentScope(waiterTrace))
                     {
                         ScheduleContinuationOnContext();
                         return;
                     }
-                    ScheduleContextCallbackDirect(_synchronizationContext, this,
-                        obj => obj.UnsafeAs<ConfiguredPromise<TResult>>().HandleFromContext(),
-                        obj => obj.UnsafeAs<ConfiguredPromise<TResult>>().HandleFromContext()
-                    );
+                    ScheduleContinuationOnContextDirect();
                 }
 
                 [MethodImpl(InlineOption)]
@@ -191,7 +199,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed class ConfiguredAsyncGenericContinuer : HandleablePromiseBase
+            private sealed class ConfiguredAsyncGenericContinuer : HandleablePromiseBase, IAwaitWaiter
             {
                 private Action _continuation;
                 private SynchronizationContext _context;
@@ -241,6 +249,17 @@ namespace Proto.Promises
                     handler.SetCompletionState(state);
 
                     ScheduleContextCallback(_context, this,
+                        obj => obj.UnsafeAs<ConfiguredAsyncGenericContinuer>().HandleFromContext(),
+                        obj => obj.UnsafeAs<ConfiguredAsyncGenericContinuer>().HandleFromContext()
+                    );
+                }
+
+                // The promise completed before this was added as its waiter, so it's scheduled where the awaiting function awaits,
+                // and it doesn't capture where it was scheduled, which is where it awaited.
+                internal void HandleAfterCompleted()
+                {
+                    ThrowIfInPool(this);
+                    ScheduleContextCallbackDirect(_context, this,
                         obj => obj.UnsafeAs<ConfiguredAsyncGenericContinuer>().HandleFromContext(),
                         obj => obj.UnsafeAs<ConfiguredAsyncGenericContinuer>().HandleFromContext()
                     );

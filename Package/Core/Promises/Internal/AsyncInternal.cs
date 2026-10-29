@@ -40,7 +40,16 @@ namespace Proto.Promises
             // NoInlining wrapper to prevent inlining and expanding GDV (guarded devirtualization) into the caller.
             [MethodImpl(MethodImplOptions.NoInlining)]
             private void CaptureForAwait(bool isFirstAwait)
-                => CaptureAwaitContextAndOrTrace(isFirstAwait);
+            {
+                if (!CausalityTrace.IsEnabled)
+                {
+                    // Common case: only the ExecutionContext flows (see Promise.Config.s_isAwaitCaptureEnabled).
+                    // Capture returns null if the flow is suppressed.
+                    ContinuationContext = ExecutionContext.Capture();
+                    return;
+                }
+                CaptureAwaitContextAndOrTrace(isFirstAwait);
+            }
 
             // Captures the ExecutionContext to continue the async function on, if it flows. Traced async promises also capture where it awaits, if await traces are enabled (see AwaitTrace).
             internal virtual void CaptureAwaitContextAndOrTrace(bool isFirstAwait)
@@ -110,26 +119,50 @@ namespace Proto.Promises
                     return;
                 }
 
-                // The field is null or an ExecutionContext.
-                ContinuationContext = ContinuationContext is ExecutionContext executionContext
-                    ? ConfiguredAwaitDualContext.GetOrCreate(synchronizationContext, executionContext)
+                // The field is null or an ExecutionContext (see ContinueOnContextAfterCompleted).
+                var context = ContinuationContext;
+                ContinuationContext = context != null
+                    ? ConfiguredAwaitDualContext.GetOrCreate(synchronizationContext, context.UnsafeAs<ExecutionContext>())
                     : (object) synchronizationContext;
 
                 this.SetPrevious(awaiter);
-                awaiter.HookupExistingWaiter(promiseId, this);
+
+                // The same as HookupExistingWaiter, except that if the awaited promise already completed, this doesn't capture where it was scheduled (see ContinueOnContextAfterCompleted).
+                PromiseRefBase promiseSingleAwait = awaiter.AddWaiter(promiseId, this, out var previousWaiter);
+                if (previousWaiter != PendingAwaitSentinel.s_instance)
+                {
+                    ContinueOnContextAfterCompleted(awaiter, promiseSingleAwait, synchronizationContext, context);
+                }
             }
 
+            // The awaited promise completed before this was added as its waiter (or before it was awaited), so this continues the same as if it was complete without a backing reference.
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private void ContinueOnContextAfterCompleted(PromiseRefBase awaiter, PromiseRefBase promiseSingleAwait, SynchronizationContext synchronizationContext, object previousContext)
+            {
+                // Restore the previous context before the await is verified in case it's invalid and throws.
+                if (previousContext != null)
+                {
+                    ContinuationContext.UnsafeAs<ConfiguredAwaitDualContext>().Dispose();
+                }
+                ContinuationContext = previousContext;
+                awaiter.VerifyCompletedAwait(promiseSingleAwait);
+                this.SetPrevious(null);
+                ContinueOnContext(synchronizationContext);
+            }
+
+#if NETCOREAPP
             // For an async function that awaits a switch to the context (see PromiseSwitchToContextAwaiter).
             [MethodImpl(InlineOption)]
             internal void SwitchToContext(SynchronizationContext synchronizationContext)
                 => ContinueOnContext(synchronizationContext);
+#endif
 
             protected virtual void ContinueOnContext(SynchronizationContext synchronizationContext) => throw new System.InvalidOperationException();
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            internal partial class AsyncPromiseRef<TResult> : SingleAwaitPromise<TResult>
+            internal partial class AsyncPromiseRef<TResult> : SingleAwaitPromise<TResult>, IAwaitWaiter
             {
                 [MethodImpl(InlineOption)]
                 private static AsyncPromiseRef<TResult> GetFromPoolOrCreate()
@@ -749,7 +782,7 @@ namespace Proto.Promises
                     new internal static void SetStateMachine<TStateMachine>(ref TStateMachine stateMachine, ref AsyncPromiseRef<TResult> _ref, ref short id)
                         where TStateMachine : IAsyncStateMachine
                     {
-                        var promise = Create();
+                        var promise = Create(typeof(TStateMachine));
                         id = promise.Id;
                         // ORDER VERY IMPORTANT, ref must be set before boxing stateMachine.
                         _ref = promise;
@@ -758,7 +791,7 @@ namespace Proto.Promises
 
                     // NoInlining so that it's only generated once for each TResult, not in each SetStateMachine.
                     [MethodImpl(MethodImplOptions.NoInlining)]
-                    private static TracedAsyncPromiseRefMachine Create()
+                    private static TracedAsyncPromiseRefMachine Create(Type stateMachineType)
                     {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                         // Take from pool for object tracking purposes.
@@ -772,7 +805,7 @@ namespace Proto.Promises
                         promise.ResetWithoutStacktrace();
                         // This is created where the async function first awaits, so the async function's frame is dropped from its trace,
                         // so that it starts where the async function was called, the same as in the non-optimized mode.
-                        var trace = CausalityTrace.CaptureWithoutInnermostVisibleFrame();
+                        var trace = CausalityTrace.CaptureWithoutInnermostVisibleFrame(stateMachineType);
                         if (trace != null)
                         {
                             SetTrace(promise, trace);

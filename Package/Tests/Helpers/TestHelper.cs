@@ -161,6 +161,8 @@ namespace ProtoPromise.Tests
             Proto.Diagnostics.CausalityTrace.MaxDepth = 128; // The default.
             int causalityMaxOuterTraces = Proto.Diagnostics.CausalityTrace.MaxOuterTraces;
             Proto.Diagnostics.CausalityTrace.MaxOuterTraces = 8; // The default.
+            bool awaitTracesWereEnabled = Promise.Config.AwaitTracesEnabled;
+            Promise.Config.AwaitTracesEnabled = false;
 
             Exception[] exceptions;
             lock (_uncaughtExceptions)
@@ -184,6 +186,7 @@ namespace ProtoPromise.Tests
             Assert.IsFalse(causalityTracesWereEnabled, "CausalityTrace.IsEnabled was not restored.");
             Assert.AreEqual(128, causalityMaxDepth, "CausalityTrace.MaxDepth was not restored.");
             Assert.AreEqual(8, causalityMaxOuterTraces, "CausalityTrace.MaxOuterTraces was not restored.");
+            Assert.IsFalse(awaitTracesWereEnabled, "Promise.Config.AwaitTracesEnabled was not restored.");
 
             s_expectedUncaughtRejectValue = null;
             LogProgress("Success");
