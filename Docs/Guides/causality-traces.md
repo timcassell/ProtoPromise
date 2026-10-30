@@ -53,24 +53,24 @@ Proto.Promises.UnhandledException: An exception was not handled. -- This excepti
    --- End of inner exception stack trace ---
    --- Thread 4 ".NET TP Worker" ---
    at Program.LoadLevelAsync() in Program.cs:line 29
-   at Proto.Promises.Internal.PromiseRefBase.AsyncPromiseRef`1.PromiseMethodContinuer.Continuer`1.<>c.<ContinueOnContext>b__7_1(Object obj) in AsyncInternal.cs:line 396
-   at Proto.Promises.Internal.<>c__DisplayClass71_0.<ScheduleContextCallbackDirect>b__0(Object _) in HelperFunctionsInternal.cs:line 60
+   at Proto.Promises.Internal.PromiseRefBase.AsyncPromiseRef`1.PromiseMethodContinuer.TracedContinuer.<>c.<ContinueOnContext>b__7_1(Object obj) in AsyncInternal.cs:line 579
    at System.Threading.ThreadPoolWorkQueue.Dispatch()
    at System.Threading.PortableThreadPool.WorkerThread.WorkerThreadStart()
-      --- Thread 1 "Main Thread", 4.518 ms earlier ---
+   at System.Threading.Thread.StartCallback()
+      --- Thread 2 "Main Thread", 2.742 ms earlier ---
       at Program.OnDownloadCompleted(String text) in Program.cs:line 41
       at Program.Main() in Program.cs:line 18
 --- End of stack trace from the previous location ---
-   --- Thread 4 ".NET TP Worker", 39.378 ms earlier ---
+   --- Thread 4 ".NET TP Worker", 104.999 ms earlier ---
    at Program.LoadLevelAsync()
    at Program.LoadGameAsync() in Program.cs:line 23
    at Program.LoadGameAsync()
    at Proto.Promises.Internal.PromiseRefBase.RunWaitPromise`1.<>c.<New>b__3_1(Object obj) in RunPromiseInternal.cs:line 95
-   at Proto.Promises.Internal.<>c__DisplayClass71_0.<ScheduleContextCallbackDirect>b__0(Object _) in HelperFunctionsInternal.cs:line 60
    at System.Threading.ThreadPoolWorkQueue.Dispatch()
    at System.Threading.PortableThreadPool.WorkerThread.WorkerThreadStart()
+   at System.Threading.Thread.StartCallback()
 --- End of stack trace from the previous location ---
-   --- Thread 1 "Main Thread", 75.253 ms earlier ---
+   --- Thread 2 "Main Thread", 116.043 ms earlier ---
    at Program.Main() in Program.cs:line 15
 ```
 

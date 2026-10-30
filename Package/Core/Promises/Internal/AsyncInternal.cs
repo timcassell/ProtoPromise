@@ -34,14 +34,17 @@ namespace Proto.Promises
         partial class PromiseRefBase
         {
             // The trace of where a traced async function last awaited, which is entered outside of its own trace when it continues (see MoveNextInScope in the traced async types),
-            // like the trace of where a callback was scheduled (see ScheduleContextCallback). It's null for other promises.
-            internal virtual CausalityTrace AwaitTrace => null;
+            // like the trace of where a callback was scheduled (see ScheduleContextCallback), or null. Its scope is exited with the async promise's scope (see CausalityTrace.ExitScopeIfCurrent).
+            // It's null for other promises.
+            internal virtual CausalityTrace EnteredAwaitTrace => null;
 
             // NoInlining wrapper to prevent inlining and expanding GDV (guarded devirtualization) into the caller.
             [MethodImpl(MethodImplOptions.NoInlining)]
             private void CaptureForAwait(bool isFirstAwait)
             {
-                if (!CausalityTrace.IsEnabled)
+                // AsyncFlowExecutionContextEnabled is checked too, because causality traces may have been disabled since s_isAwaitCaptureEnabled was read.
+                // Otherwise (rare), the virtual call checks each setting.
+                if (!CausalityTrace.IsEnabled & Promise.Config.AsyncFlowExecutionContextEnabled)
                 {
                     // Common case: only the ExecutionContext flows (see Promise.Config.s_isAwaitCaptureEnabled).
                     // Capture returns null if the flow is suppressed.
@@ -51,7 +54,7 @@ namespace Proto.Promises
                 CaptureAwaitContextAndOrTrace(isFirstAwait);
             }
 
-            // Captures the ExecutionContext to continue the async function on, if it flows. Traced async promises also capture where it awaits, if await traces are enabled (see AwaitTrace).
+            // Captures the ExecutionContext to continue the async function on, if it flows. Traced async promises also capture where it awaits, if await traces are enabled (see EnteredAwaitTrace).
             internal virtual void CaptureAwaitContextAndOrTrace(bool isFirstAwait)
             {
                 if (Promise.Config.AsyncFlowExecutionContextEnabled)
@@ -66,7 +69,7 @@ namespace Proto.Promises
             // runs outside of that scope, as if it was continued from where the async function was called.
             // The async function's trace is where it was called, which is usually already in the waiter's frames (e.g. the code that awaited it called it),
             // and nesting would make the scopes of a chain of async functions that complete synchronously grow with its depth.
-            // The scope of where it last awaited (see AwaitTrace) is exited with it, for the same reason.
+            // The scope of where it last awaited (see EnteredAwaitTrace) is exited with it, for the same reason.
             // It's a separate type, so that untraced async promises don't pay for it when they complete.
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -296,8 +299,9 @@ namespace Proto.Promises
                 private sealed class TracedAsyncPromiseRef : AsyncPromiseRef<TResult>
                 {
                     private CausalityTrace _awaitTrace;
+                    private CausalityTrace _enteredAwaitTrace;
 
-                    internal override CausalityTrace AwaitTrace => _awaitTrace;
+                    internal override CausalityTrace EnteredAwaitTrace => _enteredAwaitTrace;
 
                     internal override void CaptureAwaitContextAndOrTrace(bool isFirstAwait)
                     {
@@ -308,6 +312,18 @@ namespace Proto.Promises
                             _awaitTrace = CausalityTrace.Capture();
                         }
                         base.CaptureAwaitContextAndOrTrace(isFirstAwait);
+                    }
+
+                    // Called when it continues (see TracedContinuer.MoveNextInScope).
+                    internal CausalityTrace TakeAwaitTraceToEnter()
+                    {
+                        // Where it last awaited is taken when it continues, so that an await that doesn't capture where it awaits
+                        // (e.g. while await traces or causality traces are disabled) doesn't continue in the scope of an older await.
+                        // It's kept while its scope is entered, so that it's exited with the async promise's scope (see EnteredAwaitTrace).
+                        var awaitTrace = _awaitTrace;
+                        _awaitTrace = null;
+                        _enteredAwaitTrace = awaitTrace;
+                        return awaitTrace;
                     }
 
                     [MethodImpl(MethodImplOptions.NoInlining)]
@@ -336,6 +352,7 @@ namespace Proto.Promises
                         _continuer?.Dispose();
                         _continuer = null;
                         _awaitTrace = null;
+                        _enteredAwaitTrace = null;
                         // Traced promises are never returned to the object pool, even if they complete after causality traces are disabled
                         // (object pooling is disabled while they're enabled), so we discard it.
                         Discard(this);
@@ -532,14 +549,15 @@ namespace Proto.Promises
                             }
                         }
 
-                        // MoveNext, in the scope of the async promise's trace, inside the scope of where it last awaited (see AwaitTrace).
+                        // MoveNext, in the scope of the async promise's trace, inside the scope of where it last awaited (see EnteredAwaitTrace).
                         private void MoveNextInScope()
                         {
-                            // The async promise's trace is null if causality traces were disabled after it was created, so it doesn't enter that scope.
-                            var awaitScope = CausalityTrace.EnterScopeInternal(_owner.AwaitTrace);
+                            var owner = _owner.UnsafeAs<TracedAsyncPromiseRef>();
+                            var awaitScope = CausalityTrace.EnterScopeInternal(owner.TakeAwaitTraceToEnter());
                             try
                             {
-                                var scope = CausalityTrace.EnterScopeInternal(_owner.Trace);
+                                // The async promise's trace is null if causality traces were disabled after it was created, so it doesn't enter that scope.
+                                var scope = CausalityTrace.EnterScopeInternal(owner.Trace);
                                 try
                                 {
                                     _stateMachine.MoveNext();
@@ -755,13 +773,14 @@ namespace Proto.Promises
                 {
                     private IAsyncStateMachine _stateMachine;
                     private CausalityTrace _awaitTrace;
+                    private CausalityTrace _enteredAwaitTrace;
 
                     private TracedAsyncPromiseRefMachine()
                     {
                         _moveNext = Continue;
                     }
 
-                    internal override CausalityTrace AwaitTrace => _awaitTrace;
+                    internal override CausalityTrace EnteredAwaitTrace => _enteredAwaitTrace;
 
                     internal override void CaptureAwaitContextAndOrTrace(bool isFirstAwait)
                     {
@@ -822,6 +841,7 @@ namespace Proto.Promises
                         Dispose();
                         _stateMachine = null;
                         _awaitTrace = null;
+                        _enteredAwaitTrace = null;
                         // Traced promises are never returned to the object pool, even if they complete after causality traces are disabled
                         // (object pooling is disabled while they're enabled), so we discard it.
                         Discard(this);
@@ -847,13 +867,19 @@ namespace Proto.Promises
                         }
                     }
 
-                    // MoveNext, in the scope of this promise's trace, inside the scope of where it last awaited (see AwaitTrace).
+                    // MoveNext, in the scope of this promise's trace, inside the scope of where it last awaited (see EnteredAwaitTrace).
                     private void MoveNextInScope()
                     {
-                        // Trace is null if causality traces were disabled after this was created, so it doesn't enter that scope.
-                        var awaitScope = CausalityTrace.EnterScopeInternal(_awaitTrace);
+                        // Where it last awaited is taken when it continues, so that an await that doesn't capture where it awaits
+                        // (e.g. while await traces or causality traces are disabled) doesn't continue in the scope of an older await.
+                        // It's kept while its scope is entered, so that it's exited with the async promise's scope (see EnteredAwaitTrace).
+                        var awaitTrace = _awaitTrace;
+                        _awaitTrace = null;
+                        _enteredAwaitTrace = awaitTrace;
+                        var awaitScope = CausalityTrace.EnterScopeInternal(awaitTrace);
                         try
                         {
+                            // Trace is null if causality traces were disabled after this was created, so it doesn't enter that scope.
                             var scope = CausalityTrace.EnterScopeInternal(Trace);
                             try
                             {

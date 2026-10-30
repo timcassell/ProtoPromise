@@ -343,7 +343,7 @@ namespace Proto.Diagnostics
             // which IsRunByHiddenLibraryCode looks past, like the rest of the call.
             HiddenAsyncMethodBuilderStart,
             Visible,
-            // The method that the compiler generated for an async Promise function (see IsAsyncPromiseFunction).
+            // The method that the compiler generated for an async Promise function or an async iterator method (see IsAsyncPromiseFunction).
             VisibleAsyncPromiseFunction,
             // ExecutionContext.Run and the ExecutionContext methods that it calls, or the runtime's async method builder's Start methods (see IsRuntimeAsyncMethodBuilderStart),
             // which are hidden if ProtoPromise's hidden code called them (see IsRunByHiddenLibraryCode).
@@ -382,11 +382,14 @@ namespace Proto.Diagnostics
             return false;
         }
 
-        // Whether the method is the one that the compiler generated for an async Promise function, which only runs code through ProtoPromise's async method builder.
+        // Whether the method is the one that the compiler generated for an async Promise function or an async iterator method,
+        // which only runs code through ProtoPromise's async method builder (AsyncIteratorMethodBuilder starts it with AsyncPromiseMethodBuilder).
         private static bool IsAsyncPromiseFunction(System.Reflection.MethodInfo method)
         {
             var returnType = method.ReturnType;
-            if (returnType != typeof(Promises.Promise) && !(returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(Promises.Promise<>)))
+            if (returnType != typeof(Promises.Promise)
+                && returnType != typeof(Promises.Linq.AsyncIteratorMethod)
+                && !(returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(Promises.Promise<>)))
             {
                 return false;
             }
@@ -1366,7 +1369,7 @@ namespace Proto.Diagnostics
         internal readonly ref struct ExitedScope
         {
             internal readonly CausalityTrace _trace;
-            // The scope that was exited with it, which was entered just outside of it (see PromiseRefBase.AwaitTrace), or null.
+            // The scope that was exited with it, which was entered just outside of it (see PromiseRefBase.EnteredAwaitTrace), or null.
             private readonly CausalityTrace _outerTrace;
             // The number of traces on the stack after it was exited, to find the scopes that were entered since then and not disposed (see Dispose).
             internal readonly int _depth;
@@ -1423,7 +1426,7 @@ namespace Proto.Diagnostics
 
         // Exits the scope of the promise's trace if it's the current scope, until the result is disposed, without disposing its Scope
         // (see PromiseRefBase.ScopeExitingWaiter). The result's trace is null if it's not the current scope.
-        // The scope of where an async promise last awaited is exited with it, if it's entered just outside of it (see PromiseRefBase.AwaitTrace).
+        // The scope of where an async promise last awaited is exited with it, if it's entered just outside of it (see PromiseRefBase.EnteredAwaitTrace).
         internal static ExitedScope ExitScopeIfCurrent(Promises.Internal.PromiseRefBase promise)
         {
             var traces = ts_traces;
@@ -1438,7 +1441,7 @@ namespace Proto.Diagnostics
                 return default;
             }
             traces.Pop();
-            var awaitTrace = promise.AwaitTrace;
+            var awaitTrace = promise.EnteredAwaitTrace;
             if (awaitTrace != null && traces.Count > 0 && traces.Peek() == awaitTrace)
             {
                 traces.Pop();
