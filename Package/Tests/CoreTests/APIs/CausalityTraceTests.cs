@@ -3957,7 +3957,7 @@ namespace ProtoPromise.Tests.APIs
             {
                 // The same code ran on thread A twice, then on thread B, then on thread A twice more, each time inside the scope of the previous time,
                 // like a loop that moved between threads. Each second time on thread A replaced the first one, which is its repeat.
-                var last = TurnCapturer.Capture(CaptureAtOther(), 2, 0, 0, 1, 0, 0);
+                var last = TurnCapturer.Capture(CaptureAtOther(), new[] { "Trace Test A", "Trace Test B" }, 0, 0, 1, 0, 0);
                 var root = CaptureInScopeForTraceTest(last);
                 Assert.AreEqual(4, GetCausalityTraceDepth(last));
                 Assert.AreEqual(1, last.Repeats.Count);
@@ -4001,6 +4001,33 @@ namespace ProtoPromise.Tests.APIs
                 Assert.AreEqual(traces[1].ThreadId, trace.Repeats[0].ThreadId);
                 var text = trace.ToString();
                 StringAssert.IsMatch(@"--- Repeated 2 times: thread pool 2 times at \d+\.\d{3} to \d+\.\d{3} ms earlier ---", text);
+                AssertCausalityTraceIsPrintedCorrectly(trace, text);
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
+        [Test]
+        public void CausalityTraceCapture_RepeatsOnThreadsWithTheSameName_AreFoldedAsOneThread()
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                // Like a loop that continues on a custom thread pool, whose threads share a name (like the threads of ThreadHelper).
+                var other = CaptureAtOther();
+                var trace = TurnCapturer.Capture(other, 2, 0, 1, 0);
+
+                Assert.IsNotNull(trace.ThreadName);
+                Assert.AreSame(other, trace.Previous);
+                Assert.AreEqual(1, trace.Repeats.Count);
+                Assert.AreEqual(2, trace.Repeats[0].Count);
+                Assert.AreEqual(trace.ThreadName, trace.Repeats[0].ThreadName);
+                Assert.AreNotEqual(trace.ThreadId, trace.Repeats[0].ThreadId);
+                var text = trace.ToString();
+                var name = System.Text.RegularExpressions.Regex.Escape(trace.ThreadName);
+                StringAssert.IsMatch($@"--- Repeated 2 times: ""{name}"" threads 2 times at \d+\.\d{{3}} to \d+\.\d{{3}} ms earlier ---", text);
                 AssertCausalityTraceIsPrintedCorrectly(trace, text);
             }
             finally
@@ -5776,12 +5803,13 @@ namespace ProtoPromise.Tests.APIs
             return traces;
         }
 
-        // Captures traces on the threads of ThreadHelper in turns, each inside the scope of the previous one, with the same frames on every thread.
+        // Captures traces on different threads in turns, each inside the scope of the previous one, with the same frames on every thread.
         private sealed class TurnCapturer
         {
             private readonly System.Threading.SemaphoreSlim[] _turns;
             private readonly System.Threading.SemaphoreSlim _captured = new System.Threading.SemaphoreSlim(0);
             private CausalityTrace _previous;
+            private System.Runtime.ExceptionServices.ExceptionDispatchInfo _exception;
             private volatile bool _isDone;
 
             private TurnCapturer(int threadCount)
@@ -5793,7 +5821,7 @@ namespace ProtoPromise.Tests.APIs
                 }
             }
 
-            // Captures a trace on the thread of each turn (an index of the threads), and returns the last trace.
+            // Captures a trace on the thread of each turn (an index of the threads of ThreadHelper, which share a name), and returns the last trace.
             internal static CausalityTrace Capture(CausalityTrace previous, int threadCount, params int[] turns)
             {
                 var capturer = new TurnCapturer(threadCount) { _previous = previous };
@@ -5804,33 +5832,74 @@ namespace ProtoPromise.Tests.APIs
                     threadHelper.AddParallelAction(() => capturer.Run(index));
                 }
                 // The turns are given from another thread, because this thread waits for all of the actions.
-                threadHelper.AddParallelAction(() => capturer.GiveTurns(turns));
+                threadHelper.AddParallelAction(() =>
+                {
+                    try
+                    {
+                        capturer.GiveTurns(turns);
+                    }
+                    finally
+                    {
+                        capturer.Finish();
+                    }
+                });
                 threadHelper.ExecutePendingParallelActions();
+                capturer._exception?.Throw();
+                return capturer._previous;
+            }
+
+            // Captures a trace on the thread of each turn (an index of the thread names), and returns the last trace.
+            internal static CausalityTrace Capture(CausalityTrace previous, string[] threadNames, params int[] turns)
+            {
+                var capturer = new TurnCapturer(threadNames.Length) { _previous = previous };
+                // New threads, so that they have these names.
+                var threads = new System.Threading.Thread[threadNames.Length];
+                try
+                {
+                    for (int i = 0; i < threadNames.Length; ++i)
+                    {
+                        int index = i;
+                        threads[i] = new System.Threading.Thread(() => capturer.Run(index)) { IsBackground = true, Name = threadNames[i] };
+                        threads[i].Start();
+                    }
+                    capturer.GiveTurns(turns);
+                }
+                finally
+                {
+                    capturer.Finish();
+                }
+                // A capture's exception is thrown before the join is asserted, so that the test reports the cause.
+                // (After a failure in this thread, the threads are only released, so that the failure isn't replaced.)
+                bool joined = true;
+                foreach (var thread in threads)
+                {
+                    joined &= thread.Join(System.TimeSpan.FromSeconds(10));
+                }
+                capturer._exception?.Throw();
+                Assert.IsTrue(joined, "The thread did not exit in time.");
                 return capturer._previous;
             }
 
             private void GiveTurns(int[] turns)
             {
-                try
+                foreach (int turn in turns)
                 {
-                    foreach (int turn in turns)
+                    _turns[turn].Release();
+                    Assert.IsTrue(_captured.Wait(System.TimeSpan.FromSeconds(10)), "The thread did not capture the trace in time.");
+                    if (_isDone)
                     {
-                        _turns[turn].Release();
-                        _captured.Wait();
-                        if (_isDone)
-                        {
-                            // A capture failed.
-                            break;
-                        }
+                        // A capture failed.
+                        break;
                     }
                 }
-                finally
+            }
+
+            private void Finish()
+            {
+                _isDone = true;
+                foreach (var turn in _turns)
                 {
-                    _isDone = true;
-                    foreach (var turn in _turns)
-                    {
-                        turn.Release();
-                    }
+                    turn.Release();
                 }
             }
 
@@ -5848,10 +5917,10 @@ namespace ProtoPromise.Tests.APIs
                     {
                         _previous = CaptureInScopeForTraceTest(_previous);
                     }
-                    catch
+                    catch (System.Exception e)
                     {
+                        _exception = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(e);
                         _isDone = true;
-                        throw;
                     }
                     finally
                     {

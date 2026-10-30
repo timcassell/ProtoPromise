@@ -342,6 +342,11 @@ namespace Proto.Diagnostics
                         // Repeats on any thread pool thread are grouped.
                         _sb.Append("thread pool");
                     }
+                    else if (repeat.HasMultipleThreads)
+                    {
+                        // Repeats on threads with the same name are grouped, e.g. "IO Worker" threads.
+                        AppendThreadName(_sb, repeat.ThreadName).Append(" threads");
+                    }
                     else
                     {
                         AppendThreadDescription(_sb, repeat.ThreadId, repeat.ThreadName, false, repeat.IsBackgroundThread);
@@ -363,8 +368,7 @@ namespace Proto.Diagnostics
                 sb.Append("Thread ").Append(threadId).Append(' ');
                 if (threadName != null)
                 {
-                    // Line breaks are replaced, so that the name can't break the line.
-                    sb.Append('"').Append(threadName.Replace('\r', ' ').Replace('\n', ' ')).Append('"');
+                    AppendThreadName(sb, threadName);
                 }
                 else if (isThreadPoolThread)
                 {
@@ -375,6 +379,10 @@ namespace Proto.Diagnostics
                     sb.Append(isBackgroundThread ? "(background)" : "(foreground)");
                 }
             }
+
+            // "Name", where line breaks are replaced, so that the name can't break the line.
+            private static StringBuilder AppendThreadName(StringBuilder sb, string threadName)
+                => sb.Append('"').Append(threadName.Replace('\r', ' ').Replace('\n', ' ')).Append('"');
 
             // How long before the printed trace the timestamp is.
             private void AppendMilliseconds(long timestamp)

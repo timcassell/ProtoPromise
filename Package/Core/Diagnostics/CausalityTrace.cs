@@ -108,7 +108,8 @@ namespace Proto.Diagnostics
         /// <remarks>
         /// This prevents causality traces from growing without bound when callbacks are recursively scheduled
         /// (e.g. a callback that registers another callback that registers another callback...).
-        /// A trace that is captured at the same location as its previous trace, on the same thread or on any thread pool thread (e.g. a callback that registers itself again),
+        /// A trace that is captured at the same location as its previous trace, on the same thread, on any thread pool thread, or on another thread with the same name
+        /// (e.g. a callback that registers itself again),
         /// replaces the previous trace instead of growing the chain (see <see cref="Repeats"/>).
         /// </remarks>
         public static int MaxDepth
@@ -281,9 +282,10 @@ namespace Proto.Diagnostics
 
         /// <summary>
         /// Earlier traces that were captured at the same location as this trace (with the same frames, see <see cref="GetFrames"/>),
-        /// on the same thread or on any thread pool thread, each the cause of the next one (e.g. a callback that registers itself again).
+        /// on the same thread, on any thread pool thread, or on another thread with the same name (e.g. the threads of a custom thread pool), each the cause of the next one
+        /// (e.g. a callback that registers itself again).
         /// They were folded into this trace instead of growing the chain of causes (see <see cref="Previous"/>), so this trace's cause is the oldest one's cause (unless it was dropped to stay within <see cref="MaxDepth"/>).
-        /// They are grouped by thread, with all thread pool threads in one group, ordered from the most recent.
+        /// They are grouped by thread, with all thread pool threads in one group, and other named threads grouped by name, ordered from the most recent.
         /// </summary>
         /// <remarks>
         /// Like <see cref="Previous"/>, this is decided on a best-effort basis, and is meant for diagnostics, not for program logic.
@@ -908,7 +910,8 @@ namespace Proto.Diagnostics
         }
 
         // Whether this trace was captured at the same location as the other trace: with the same visible frames,
-        // on the same thread, or on any thread pool thread (a loop that awaits on the thread pool may continue on a different thread each time).
+        // on the same thread, on any thread pool thread, or on another thread with the same name (a loop that awaits on the thread pool,
+        // or a custom thread pool whose threads share a name, may continue on a different thread each time).
         private bool IsRepeatOf(CausalityTrace other)
             => CanBeRepeatOf(other) && HasSameVisibleFrames(this, other);
 
@@ -917,7 +920,14 @@ namespace Proto.Diagnostics
             => CanBeRepeatOf(other) && GetSignature().Equals(other.GetSignature());
 
         private bool CanBeRepeatOf(CausalityTrace other)
-            => _isThreadPoolThread ? other._isThreadPoolThread : !other._isThreadPoolThread && _threadId == other._threadId;
+            // Unlike the repeat groups (see IsSameThreadGroup), this compares a pair of traces, so it also matches the same thread after its name changed.
+            => _isThreadPoolThread ? other._isThreadPoolThread
+                : !other._isThreadPoolThread && (_threadId == other._threadId || (_threadName != null && _threadName == other._threadName));
+
+        // Named threads are grouped by name (e.g. the threads of a custom thread pool), and unnamed threads by id,
+        // so the threads of a group always share a name, or it's one unnamed thread.
+        private static bool IsSameThreadGroup(int threadId, string threadName, int otherThreadId, string otherThreadName)
+            => threadName == null ? otherThreadName == null && threadId == otherThreadId : threadName == otherThreadName;
 
         // Whether this trace's frames are already in the next trace that is captured on the same thread, so it adds nothing to it: its visible frames are
         // the outermost visible frames of that trace, or of one of its outer traces (e.g. the trace of Promise.New, which invokes its callback,
@@ -1150,7 +1160,7 @@ namespace Proto.Diagnostics
 
         /// <summary>
         /// A group of earlier traces that were folded into a <see cref="CausalityTrace"/> (see <see cref="Repeats"/>), which were captured on the same thread,
-        /// or on any thread pool thread.
+        /// on any thread pool thread, or on threads with the same name.
         /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
@@ -1159,6 +1169,7 @@ namespace Proto.Diagnostics
         {
             /// <summary>
             /// The managed thread id (see <see cref="Thread.ManagedThreadId"/>) of the thread that captured the most recent of these traces.
+            /// The others may have been captured on other thread pool threads, or other threads with the same name (see <see cref="ThreadName"/>).
             /// </summary>
             public int ThreadId { get; }
 
@@ -1192,6 +1203,9 @@ namespace Proto.Diagnostics
             /// </summary>
             public long LastTimestamp { get; }
 
+            // Whether these traces were captured on more than one thread, so the printer describes them by the threads' name instead of the most recent thread.
+            internal bool HasMultipleThreads { get; }
+
             private RepeatGroup(CausalityTrace trace, int count, long firstTimestamp)
             {
                 ThreadId = trace._threadId;
@@ -1201,9 +1215,10 @@ namespace Proto.Diagnostics
                 Count = count;
                 FirstTimestamp = firstTimestamp;
                 LastTimestamp = trace._timestamp;
+                HasMultipleThreads = false;
             }
 
-            // Combines repeats on the same thread, where the thread is described by the most recent one.
+            // Combines repeats on the same thread or threads with the same name, where the thread is described by the most recent one.
             private RepeatGroup(RepeatGroup repeat, RepeatGroup other)
             {
                 var latest = repeat.LastTimestamp >= other.LastTimestamp ? repeat : other;
@@ -1214,10 +1229,11 @@ namespace Proto.Diagnostics
                 Count = repeat.Count + other.Count;
                 FirstTimestamp = Math.Min(repeat.FirstTimestamp, other.FirstTimestamp);
                 LastTimestamp = latest.LastTimestamp;
+                HasMultipleThreads = repeat.HasMultipleThreads | other.HasMultipleThreads | repeat.ThreadId != other.ThreadId;
             }
 
             private bool IsSameThread(RepeatGroup other)
-                => IsThreadPoolThread ? other.IsThreadPoolThread : !other.IsThreadPoolThread && ThreadId == other.ThreadId;
+                => IsThreadPoolThread ? other.IsThreadPoolThread : !other.IsThreadPoolThread && IsSameThreadGroup(ThreadId, ThreadName, other.ThreadId, other.ThreadName);
 
             // Returns new repeats with the trace added.
             internal static RepeatGroup[] Add(RepeatGroup[] repeats, CausalityTrace trace)
