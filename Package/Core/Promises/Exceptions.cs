@@ -152,12 +152,12 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public sealed class UnhandledException : Exception, Internal.IRejectContainer, Internal.IRejectionToContainer, Internal.ICantHandleException
+    public class UnhandledException : Exception, Internal.IRejectContainer, Internal.IRejectionToContainer, Internal.ICantHandleException
     {
         private readonly object _value;
         private readonly CausalityTrace _causalityTrace;
 
-        internal UnhandledException(object value, string message, CausalityTrace causalityTrace, Exception innerException)
+        public UnhandledException(object value, string message, CausalityTrace causalityTrace, Exception innerException)
             : base(GetMessage(message, causalityTrace), innerException)
         {
             _value = value;
