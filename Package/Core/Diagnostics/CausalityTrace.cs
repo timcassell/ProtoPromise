@@ -514,8 +514,9 @@ namespace Proto.Diagnostics
             {
                 throw new Promises.ArgumentOutOfRangeException(nameof(skipFrames), $"{nameof(skipFrames)} must be greater than or equal to 0.", Promises.Internal.GetFormattedStacktrace());
             }
-            // Clamped so that adding this frame (here and in the constructor) doesn't overflow. A count that large skips every frame either way.
-            return s_isEnabled ? new CausalityTrace(Math.Min(skipFrames, int.MaxValue - 2) + 1) : null;
+            // Clamped so that adding this frame (here and in the constructor) doesn't overflow, nor do the frames that Mono's StackTrace adds to it (Mono crashes if it overflows).
+            // A count that large skips every frame either way.
+            return s_isEnabled ? new CausalityTrace(Math.Min(skipFrames, int.MaxValue / 2) + 1) : null;
         }
 
         /// <summary>
