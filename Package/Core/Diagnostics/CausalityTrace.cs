@@ -91,7 +91,7 @@ namespace Proto.Diagnostics
                     Promises.Internal.ReleaseTraceTable();
                     // The cached methods of the frames are released too, so that they don't keep their assemblies from being unloaded
                     // (unless frames are printed again while traces are disabled, e.g. by a DEBUG validation exception).
-                    VisibilityCache.s_visibility.Clear();
+                    VisibilityCache.s_isVisible.Clear();
                 }
                 finally
                 {
@@ -187,7 +187,7 @@ namespace Proto.Diagnostics
         /// The raw <see cref="System.Diagnostics.StackTrace"/> of where this <see cref="CausalityTrace"/> was captured.
         /// </summary>
         /// <remarks>
-        /// This includes frames that are normally hidden from stack traces, such as ProtoPromise's internal frames and the runtime frames that they call,
+        /// This includes frames that are normally hidden from stack traces, such as ProtoPromise's internal frames,
         /// and, for the trace of an <c>async Promise</c> function, the function's own frame if it was captured where the function first awaited. Use <see cref="GetFrames"/> to exclude them.
         /// </remarks>
         public StackTrace StackTrace => _stackTrace;
@@ -311,7 +311,7 @@ namespace Proto.Diagnostics
         }
 
         /// <summary>
-        /// Gets the frames of <see cref="StackTrace"/>, excluding frames that are hidden from stack traces, such as ProtoPromise's internal frames and the runtime frames that they call,
+        /// Gets the frames of <see cref="StackTrace"/>, excluding frames that are hidden from stack traces, such as ProtoPromise's internal frames,
         /// and, for the trace of an <c>async Promise</c> function, the function's own frame if it was captured where the function first awaited.
         /// </summary>
         public StackFrame[] GetFrames()
@@ -328,7 +328,7 @@ namespace Proto.Diagnostics
             var visibleFrames = new List<StackFrame>(frameCount - firstFrame);
             for (int i = firstFrame; i < frameCount; i++)
             {
-                if (IsVisible(stackTrace, i))
+                if (IsVisible(stackTrace.GetFrame(i)))
                 {
                     visibleFrames.Add(stackTrace.GetFrame(i));
                 }
@@ -336,130 +336,38 @@ namespace Proto.Diagnostics
             return visibleFrames.ToArray();
         }
 
-        private enum FrameVisibility : byte
-        {
-            Hidden,
-            // ProtoPromise's hidden code, including the UnityHelpers assemblies (see IsRunByHiddenLibraryCode).
-            HiddenLibraryCode,
-            // The runtime's async method builder's Start methods that are hidden (e.g. AsyncTaskMethodBuilder.Start, which is AggressiveInlining, but it may not be inlined),
-            // which IsRunByHiddenLibraryCode looks past, like the rest of the call.
-            HiddenAsyncMethodBuilderStart,
-            Visible,
-            // The method that the compiler generated for an async Promise function or an async iterator method (see IsAsyncPromiseFunction).
-            VisibleAsyncPromiseFunction,
-            // ExecutionContext.Run and the ExecutionContext methods that it calls, or the runtime's async method builder's Start methods (see IsRuntimeAsyncMethodBuilderStart),
-            // which are hidden if ProtoPromise's hidden code called them (see IsRunByHiddenLibraryCode).
-            HiddenIfRunByLibraryCode
-        }
-
-        private static bool IsVisible(StackTrace stackTrace, int index)
-        {
-            var visibility = GetVisibility(stackTrace.GetFrame(index));
-            return visibility == FrameVisibility.Visible
-                || visibility == FrameVisibility.VisibleAsyncPromiseFunction
-                || (visibility == FrameVisibility.HiddenIfRunByLibraryCode && !IsRunByHiddenLibraryCode(stackTrace, index));
-        }
-
-        // Whether the ExecutionContext.Run or async method builder Start call that the frame is part of was made by ProtoPromise's hidden code
-        // (e.g. to continue an async function on its ExecutionContext, or to start it on its ExecutionContext), so that it's hidden like the code that called it.
-        // The code that it runs is still visible.
-        private static bool IsRunByHiddenLibraryCode(StackTrace stackTrace, int index)
-        {
-            for (int i = index + 1; i < stackTrace.FrameCount; i++)
-            {
-                switch (GetVisibility(stackTrace.GetFrame(i)))
-                {
-                    case FrameVisibility.HiddenLibraryCode:
-                    // AsyncPromiseMethodBuilder.Start may be inlined into the method that the compiler generated for the async function.
-                    case FrameVisibility.VisibleAsyncPromiseFunction:
-                        return true;
-                    // The rest of the call.
-                    case FrameVisibility.HiddenIfRunByLibraryCode:
-                    case FrameVisibility.HiddenAsyncMethodBuilderStart:
-                        break;
-                    default:
-                        return false;
-                }
-            }
-            return false;
-        }
-
-        // Whether the method is the one that the compiler generated for an async Promise function or an async iterator method,
-        // which only runs code through ProtoPromise's async method builder (AsyncIteratorMethodBuilder starts it with AsyncPromiseMethodBuilder).
-        private static bool IsAsyncPromiseFunction(System.Reflection.MethodInfo method)
-        {
-            var returnType = method.ReturnType;
-            if (returnType != typeof(Promises.Promise)
-                && returnType != typeof(Promises.Linq.AsyncIteratorMethod)
-                && !(returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(Promises.Promise<>)))
-            {
-                return false;
-            }
-            // Like IsStackTraceHidden, if the attribute can't be read, we behave as if it is not present.
-            try
-            {
-                return method.IsDefined(typeof(AsyncStateMachineAttribute), false);
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
 #if NET6_0_OR_GREATER
         [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026",
             Justification = "If the method metadata was trimmed, GetMethod() returns null and the frame is excluded, the same as StackTrace.ToString().")]
 #endif
-        private static FrameVisibility GetVisibility(StackFrame frame)
+        private static bool IsVisible(StackFrame frame)
         {
             var method = frame?.GetMethod();
             if (method == null)
             {
-                return FrameVisibility.Hidden;
+                return false;
             }
             // Reading the attributes is expensive, and every capture compares frames (see IsRepeatOf), so the results are cached.
-            var cache = VisibilityCache.s_visibility;
-            if (!cache.TryGetValue(method, out var visibility))
+            var cache = VisibilityCache.s_isVisible;
+            if (!cache.TryGetValue(method, out bool isVisible))
             {
-                visibility = GetVisibility(method);
-                cache.TryAdd(method, visibility);
+                isVisible = IsVisible(method);
+                cache.TryAdd(method, isVisible);
             }
-            return visibility;
+            return isVisible;
         }
 
-        private static FrameVisibility GetVisibility(System.Reflection.MethodBase method)
+        private static bool IsVisible(System.Reflection.MethodBase method)
         {
             // Match the .Net 6+ runtime's StackTrace.ToString() filtering, so that frames are filtered the same way on all runtimes
             // (except that the runtime never hides the outermost frame, see FormatStackTrace).
-            var declaringType = method.DeclaringType;
             if ((method.MethodImplementationFlags & System.Reflection.MethodImplAttributes.AggressiveInlining) != 0
-                || IsStackTraceHidden(method)
-                || (declaringType != null && IsStackTraceHidden(declaringType)))
+                || IsStackTraceHidden(method))
             {
-                return declaringType != null && IsRuntimeAsyncMethodBuilderStart(method, declaringType)
-                    ? FrameVisibility.HiddenAsyncMethodBuilderStart
-                    : GetHiddenVisibility(method);
+                return false;
             }
-            if (declaringType == null)
-            {
-                return FrameVisibility.Visible;
-            }
-            // E.g. Run and RunInternal, depending on the runtime.
-            if ((declaringType == typeof(ExecutionContext) && method.Name.StartsWith("Run", StringComparison.Ordinal)) || IsRuntimeAsyncMethodBuilderStart(method, declaringType))
-            {
-                return FrameVisibility.HiddenIfRunByLibraryCode;
-            }
-            return method is System.Reflection.MethodInfo methodInfo && IsAsyncPromiseFunction(methodInfo)
-                ? FrameVisibility.VisibleAsyncPromiseFunction
-                : FrameVisibility.Visible;
-        }
-
-        private static FrameVisibility GetHiddenVisibility(System.Reflection.MethodBase method)
-        {
-            var assembly = method.Module.Assembly;
-            return assembly == typeof(CausalityTrace).Assembly || assembly.GetName().Name.StartsWith("ProtoPromise.UnityHelpers.", StringComparison.Ordinal)
-                ? FrameVisibility.HiddenLibraryCode
-                : FrameVisibility.Hidden;
+            var declaringType = method.DeclaringType;
+            return declaringType == null || !IsStackTraceHidden(declaringType);
         }
 
         // In its own class, so that CausalityTrace doesn't need a static constructor (see s_isEnabled).
@@ -468,8 +376,8 @@ namespace Proto.Diagnostics
 #endif
         private static class VisibilityCache
         {
-            internal static readonly System.Collections.Concurrent.ConcurrentDictionary<System.Reflection.MethodBase, FrameVisibility> s_visibility
-                = new System.Collections.Concurrent.ConcurrentDictionary<System.Reflection.MethodBase, FrameVisibility>();
+            internal static readonly System.Collections.Concurrent.ConcurrentDictionary<System.Reflection.MethodBase, bool> s_isVisible
+                = new System.Collections.Concurrent.ConcurrentDictionary<System.Reflection.MethodBase, bool>();
         }
 
         // Like the runtime, if the attributes can't be read (e.g. an attribute's assembly is missing), we behave as if they are not present.
@@ -1059,7 +967,7 @@ namespace Proto.Diagnostics
         {
             while (index < stackTrace.FrameCount)
             {
-                if (IsVisible(stackTrace, index++))
+                if (IsVisible(stackTrace.GetFrame(index++)))
                 {
                     return stackTrace.GetFrame(index - 1);
                 }
@@ -1067,7 +975,7 @@ namespace Proto.Diagnostics
             return null;
         }
 
-        // Gets the index of the frame after the innermost visible frame, if it's the async function (where it first awaits, see CaptureWithoutInnermostVisibleFrame),
+        // Gets the index of the frame after the innermost visible frame and the runtime code that started it, if it's the async function (where it first awaits, see CaptureWithoutInnermostVisibleFrame),
         // so that the next visible frame is the method that the compiler generated for the async function.
         // Nothing is dropped if the innermost visible frame isn't the async function (e.g. if it was inlined into the method that called it).
         // It's identified by its state machine type, because the innermost visible frame may be another async function
@@ -1079,7 +987,44 @@ namespace Proto.Diagnostics
             int index = 0;
             // GetNextVisibleFrame moves the index past the frame that it returns.
             var asyncFunctionFrame = GetNextVisibleFrame(stackTrace, ref index);
-            return asyncFunctionFrame == null || !IsDeclaredBy(asyncFunctionFrame, asyncStateMachineType) ? 0 : index;
+            if (asyncFunctionFrame == null || !IsDeclaredBy(asyncFunctionFrame, asyncStateMachineType))
+            {
+                return 0;
+            }
+            // The runtime's async method builder's Start methods that started the async function are dropped with it (see IsRuntimeAsyncMethodBuilderStart).
+            // Hidden frames are skipped too, so that it stops at the next visible frame that isn't one of them.
+            for (int frameCount = stackTrace.FrameCount; index < frameCount; index++)
+            {
+                var frame = stackTrace.GetFrame(index);
+                if (IsVisible(frame) && !IsRuntimeAsyncMethodBuilderStart(frame))
+                {
+                    break;
+                }
+            }
+            return index;
+        }
+
+        // On runtimes older than .Net 6, and while the ExecutionContext flow is suppressed, AsyncPromiseMethodBuilder.Start runs the async function
+        // with AsyncTaskMethodBuilder.Start while the ExecutionContext flows, so that it runs on it (see Internal.StartAndRestoreExecutionContext).
+        // AsyncTaskMethodBuilder.Start calls AsyncMethodBuilderCore.Start, through AsyncTaskMethodBuilder<VoidTaskResult>.Start on .Net Framework.
+        // Which of them are on the stack depends on the runtime and on inlining.
+#if NET6_0_OR_GREATER
+        [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026",
+            Justification = "The frame is a visible frame, which excludes frames whose method metadata was trimmed.")]
+#endif
+        private static bool IsRuntimeAsyncMethodBuilderStart(StackFrame frame)
+        {
+            var method = frame.GetMethod();
+            if (method.Name != nameof(AsyncTaskMethodBuilder.Start))
+            {
+                return false;
+            }
+            var declaringType = method.DeclaringType;
+            return declaringType != null
+                && (declaringType == typeof(AsyncTaskMethodBuilder)
+                || (declaringType.IsGenericType && declaringType.GetGenericTypeDefinition() == typeof(AsyncTaskMethodBuilder<>))
+                // It's internal, so it's compared by name.
+                || (declaringType.Assembly == typeof(AsyncTaskMethodBuilder).Assembly && declaringType.FullName == "System.Runtime.CompilerServices.AsyncMethodBuilderCore"));
         }
 
 #if NET6_0_OR_GREATER
@@ -1093,21 +1038,11 @@ namespace Proto.Diagnostics
                 || (declaringType != null && declaringType.IsGenericType && type.IsGenericType && declaringType.GetGenericTypeDefinition() == type.GetGenericTypeDefinition());
         }
 
-        // AsyncPromiseMethodBuilder.Start runs the async function with AsyncTaskMethodBuilder.Start while the ExecutionContext flows, so that it runs on it.
-        // AsyncTaskMethodBuilder.Start calls AsyncMethodBuilderCore.Start, through AsyncTaskMethodBuilder<VoidTaskResult>.Start on .Net Framework.
-        // Which of them are on the stack depends on the runtime and on inlining.
-        private static bool IsRuntimeAsyncMethodBuilderStart(System.Reflection.MethodBase method, Type declaringType)
-            => method.Name == nameof(AsyncTaskMethodBuilder.Start)
-            && (declaringType == typeof(AsyncTaskMethodBuilder)
-                || (declaringType.IsGenericType && declaringType.GetGenericTypeDefinition() == typeof(AsyncTaskMethodBuilder<>))
-                // It's internal, so it's compared by name.
-                || (declaringType.Assembly == typeof(AsyncTaskMethodBuilder).Assembly && declaringType.FullName == "System.Runtime.CompilerServices.AsyncMethodBuilderCore"));
-
         private static StackFrame GetPreviousVisibleFrame(StackTrace stackTrace, ref int index, int firstFrame)
         {
             while (index > firstFrame)
             {
-                if (IsVisible(stackTrace, --index))
+                if (IsVisible(stackTrace.GetFrame(--index)))
                 {
                     return stackTrace.GetFrame(index);
                 }

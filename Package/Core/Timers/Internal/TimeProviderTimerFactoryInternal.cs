@@ -264,6 +264,15 @@ namespace Proto.Timers
                     }
                     else
                     {
+#if NET6_0_OR_GREATER
+                        var previousExecutionContext = SwapExecutionContext(executionContext.UnsafeAs<ExecutionContext>());
+                        if (previousExecutionContext != null)
+                        {
+                            InvokeDirect();
+                            ExecutionContext.Restore(previousExecutionContext);
+                            return;
+                        }
+#endif
                         ExecutionContext.Run(
                             // .Net Framework doesn't allow us to re-use a captured context, so we have to copy it for each invocation.
                             // .Net Core's implementation of CreateCopy returns itself, so this is always as efficient as it can be.

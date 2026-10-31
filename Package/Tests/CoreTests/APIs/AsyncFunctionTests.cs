@@ -965,5 +965,41 @@ namespace ProtoPromise.Tests.APIs
             Assert.AreEqual(2, _asyncLocal.Value);
             return 3;
         }
+
+        [Test]
+        public void AsyncLocal_ContinuesOnTheAsyncFunctionsExecutionContext_ThenRestoresTheResolversExecutionContext([Values] bool suppressFlow)
+        {
+            _asyncLocal = new System.Threading.AsyncLocal<int>();
+            var deferred = Promise.NewDeferred();
+            bool continued = false;
+
+            async Promise Func()
+            {
+                _asyncLocal.Value = 1;
+                await deferred.Promise;
+                Assert.AreEqual(1, _asyncLocal.Value);
+                _asyncLocal.Value = 2;
+                continued = true;
+            }
+
+            Func().Forget();
+            // The async function's change doesn't flow to its caller.
+            Assert.AreEqual(0, _asyncLocal.Value);
+            _asyncLocal.Value = 3;
+            if (suppressFlow)
+            {
+                using (System.Threading.ExecutionContext.SuppressFlow())
+                {
+                    deferred.Resolve();
+                    Assert.IsTrue(System.Threading.ExecutionContext.IsFlowSuppressed());
+                }
+            }
+            else
+            {
+                deferred.Resolve();
+            }
+            Assert.IsTrue(continued);
+            Assert.AreEqual(3, _asyncLocal.Value);
+        }
     }
 }

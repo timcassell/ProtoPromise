@@ -1276,7 +1276,7 @@ namespace ProtoPromise.Tests.APIs
             [Values] bool awaitTraces)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            // Enabled runs the async function with the runtime's async method builder, whose frames are between the async function and where it was called.
+            // Enabled runs the async function with the runtime's async method builder on runtimes older than .Net 6, whose frames are between the async function and where it was called.
             bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
             Promise.Config.SetAsyncFlowExecutionContextEnabled(flowExecutionContext);
             Promise.Config.AwaitTracesEnabled = awaitTraces;
@@ -1298,9 +1298,9 @@ namespace ProtoPromise.Tests.APIs
                 Assert.AreEqual(nameof(AsyncPromiseTrace_StartsAtTheAsyncFunctionWhereItWasCalled), frames[1].GetMethod().Name, asyncTrace.ToString());
                 if (awaitTraces)
                 {
-                    // Where it first awaited starts at the async function's state machine, where it awaited, followed by the method that the compiler generated for it
-                    // (the runtime's async method builder that ProtoPromise ran it with is hidden), and where it was called.
-                    var awaitFrames = awaitTrace.GetFrames();
+                    // Where it first awaited starts at the async function's state machine, where it awaited, followed by the method that the compiler generated for it,
+                    // and where it was called.
+                    var awaitFrames = WithoutRuntimeAsyncMethodBuilderFrames(awaitTrace.GetFrames());
                     Assert.AreEqual("MoveNext", awaitFrames[0].GetMethod().Name, awaitTrace.ToString());
                     StringAssert.Contains(nameof(AwaitForTraceTest), awaitFrames[0].GetMethod().DeclaringType.Name, awaitTrace.ToString());
                     Assert.AreEqual(nameof(AwaitForTraceTest), awaitFrames[1].GetMethod().Name, awaitTrace.ToString());
@@ -1324,9 +1324,7 @@ namespace ProtoPromise.Tests.APIs
             [Values] bool flowExecutionContext)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            // Enabled runs the async iterator with the runtime's async method builder, whose frames are between the async iterator and the code that started it.
-            // Its Start frame is only visible where the JIT inlines the library's Start methods into the async iterator's stub (e.g. Release builds on .NET Framework),
-            // so that's where this catches it not being hidden.
+            // Enabled runs the async iterator with the runtime's async method builder on runtimes older than .Net 6, whose frames are between the async iterator and the code that started it.
             bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
             Promise.Config.SetAsyncFlowExecutionContextEnabled(flowExecutionContext);
             CausalityTrace.IsEnabled = true;
@@ -1342,9 +1340,8 @@ namespace ProtoPromise.Tests.APIs
                 enumerator.MoveNextAsync().Forget();
                 enumerator.DisposeAsync().Forget();
 
-                // It starts at the async iterator's state machine, followed by the method that the compiler generated for it
-                // (the runtime's async method builder that ProtoPromise ran it with is hidden).
-                var frames = trace.GetFrames();
+                // It starts at the async iterator's state machine, followed by the method that the compiler generated for it.
+                var frames = WithoutRuntimeAsyncMethodBuilderFrames(trace.GetFrames());
                 Assert.AreEqual("MoveNext", frames[0].GetMethod().Name, trace.ToString());
                 StringAssert.Contains(nameof(CausalityTraceCapture_InAnAsyncIteratorBeforeItAwaits_StartsAtTheAsyncIterator), frames[0].GetMethod().DeclaringType.Name, trace.ToString());
                 StringAssert.Contains(nameof(CausalityTraceCapture_InAnAsyncIteratorBeforeItAwaits_StartsAtTheAsyncIterator), frames[1].GetMethod().Name, trace.ToString());
@@ -1356,8 +1353,26 @@ namespace ProtoPromise.Tests.APIs
             }
         }
 
+        // On runtimes older than .Net 6, while the ExecutionContext flows, ProtoPromise runs an async function with the runtime's async method builder,
+        // whose Start frames are between the async function and the method that the compiler generated for it, in traces captured before it first awaits.
+        private static System.Diagnostics.StackFrame[] WithoutRuntimeAsyncMethodBuilderFrames(System.Diagnostics.StackFrame[] frames)
+#if NET6_0_OR_GREATER
+            => frames;
+#else
+            => frames.Where(frame =>
+            {
+                var method = frame.GetMethod();
+                var typeName = method.DeclaringType?.FullName;
+                return method.Name != "Start"
+                    || typeName == null
+                    || (typeName != "System.Runtime.CompilerServices.AsyncMethodBuilderCore"
+                        && !typeName.StartsWith("System.Runtime.CompilerServices.AsyncTaskMethodBuilder", System.StringComparison.Ordinal));
+            }).ToArray();
+#endif
+
+#if NET6_0_OR_GREATER
         [Test]
-        public void CausalityTraceCapture_AfterContinuingOnTheExecutionContext_HidesExecutionContextRunOnlyIfProtoPromiseCalledIt()
+        public void CausalityTraceCapture_InAnAsyncFunctionOnItsExecutionContext_DoesNotIncludeTheRuntimeCodeThatRunsItOnIt()
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
             bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
@@ -1366,26 +1381,29 @@ namespace ProtoPromise.Tests.APIs
             try
             {
                 var deferred = Promise.NewDeferred();
-                CausalityTrace asyncTrace = null;
-                CausalityTrace userTrace = null;
+                CausalityTrace startTrace = null;
+                CausalityTrace continuationTrace = null;
                 async Promise Func()
                 {
+                    startTrace = CausalityTrace.Capture();
                     await deferred.Promise;
-                    asyncTrace = CausalityTrace.Capture();
+                    continuationTrace = CausalityTrace.Capture();
                 }
                 Func().Forget();
                 deferred.Resolve();
-                System.Threading.ExecutionContext.Run(System.Threading.ExecutionContext.Capture(), _ => userTrace = CausalityTrace.Capture(), null);
 
                 // Only the frames above this method are checked, because the thread that runs it may have started it with ExecutionContext.Run too.
-                bool HasExecutionContextFrame(System.Diagnostics.StackFrame[] frames) => frames
-                    .TakeWhile(frame => frame.GetMethod().Name != nameof(CausalityTraceCapture_AfterContinuingOnTheExecutionContext_HidesExecutionContextRunOnlyIfProtoPromiseCalledIt))
-                    .Any(frame => frame.GetMethod().DeclaringType == typeof(System.Threading.ExecutionContext));
-                // The async function continued on its ExecutionContext with ExecutionContext.Run, which is hidden like the code that called it.
-                Assert.IsTrue(HasExecutionContextFrame(asyncTrace.StackTrace.GetFrames()), asyncTrace.StackTrace.ToString());
-                Assert.IsFalse(HasExecutionContextFrame(asyncTrace.GetFrames()), asyncTrace.ToString());
-                // It's not hidden when other code calls it.
-                Assert.IsTrue(HasExecutionContextFrame(userTrace.GetFrames()), userTrace.ToString());
+                bool HasRuntimeFrame(System.Diagnostics.StackFrame[] frames) => frames
+                    .TakeWhile(frame => frame.GetMethod().Name != nameof(CausalityTraceCapture_InAnAsyncFunctionOnItsExecutionContext_DoesNotIncludeTheRuntimeCodeThatRunsItOnIt))
+                    .Any(frame =>
+                    {
+                        var declaringType = frame.GetMethod().DeclaringType;
+                        return declaringType == typeof(System.Threading.ExecutionContext)
+                            || declaringType?.FullName == "System.Runtime.CompilerServices.AsyncMethodBuilderCore"
+                            || declaringType?.FullName?.StartsWith("System.Runtime.CompilerServices.AsyncTaskMethodBuilder", System.StringComparison.Ordinal) == true;
+                    });
+                Assert.IsFalse(HasRuntimeFrame(startTrace.GetFrames()), startTrace.ToString());
+                Assert.IsFalse(HasRuntimeFrame(continuationTrace.GetFrames()), continuationTrace.ToString());
             }
             finally
             {
@@ -1393,72 +1411,7 @@ namespace ProtoPromise.Tests.APIs
                 Promise.Config.SetAsyncFlowExecutionContextEnabled(wasFlowExecutionContextEnabled);
             }
         }
-
-        [Test]
-        public void CausalityTraceCapture_InAnAsyncTaskFunction_IncludesTheRuntimeAsyncMethodBuilderThatRanIt()
-        {
-            CausalityTrace.IsEnabled = true;
-            try
-            {
-                var trace = CaptureBeforeAwaitInTaskForTraceTest().Result;
-
-                bool HasAsyncMethodBuilderFrame(System.Diagnostics.StackFrame[] frames) => frames
-                    .TakeWhile(frame => frame.GetMethod().Name != nameof(CausalityTraceCapture_InAnAsyncTaskFunction_IncludesTheRuntimeAsyncMethodBuilderThatRanIt))
-                    .Any(frame => frame.GetMethod().DeclaringType?.FullName == "System.Runtime.CompilerServices.AsyncMethodBuilderCore" && frame.GetMethod().Name == "Start");
-                // The runtime's async method builder is only hidden when ProtoPromise runs an async function with it, not when the method that the compiler generated runs it.
-                // Its frames may be missing from the stack trace, depending on the runtime and on inlining. Its other Start methods may be hidden anyway (e.g. AggressiveInlining).
-                if (HasAsyncMethodBuilderFrame(trace.StackTrace.GetFrames()))
-                {
-                    Assert.IsTrue(HasAsyncMethodBuilderFrame(trace.GetFrames()), trace.ToString());
-                }
-            }
-            finally
-            {
-                CausalityTrace.IsEnabled = false;
-            }
-        }
-
-        private static async System.Threading.Tasks.Task<CausalityTrace> CaptureBeforeAwaitInTaskForTraceTest()
-        {
-            var trace = CausalityTrace.Capture();
-            await Promise.Resolved();
-            return trace;
-        }
-
-        [Test]
-        public void CausalityTraceCapture_InExecutionContextRunCalledByHiddenUserCode_IncludesExecutionContextRun()
-        {
-            CausalityTrace.IsEnabled = true;
-            try
-            {
-                // ProtoPromise calls the hidden method, which calls ExecutionContext.Run.
-                var trace = Promise.Resolved().Then(RunOnExecutionContextInAHiddenMethodForTraceTest).WaitForResult();
-
-                bool HasExecutionContextFrame(System.Diagnostics.StackFrame[] frames) => frames
-                    .TakeWhile(frame => frame.GetMethod().Name != nameof(CausalityTraceCapture_InExecutionContextRunCalledByHiddenUserCode_IncludesExecutionContextRun))
-                    .Any(frame => frame.GetMethod().DeclaringType == typeof(System.Threading.ExecutionContext));
-                // Only ProtoPromise's hidden code hides ExecutionContext.Run, not other hidden code that ProtoPromise called.
-                // The hidden method's frame may be missing from the stack trace, depending on inlining.
-                var stackFrames = trace.StackTrace.GetFrames();
-                if (stackFrames.Any(frame => frame.GetMethod()?.Name == nameof(RunOnExecutionContextInAHiddenMethodForTraceTest)) && HasExecutionContextFrame(stackFrames))
-                {
-                    Assert.IsTrue(HasExecutionContextFrame(trace.GetFrames()), trace.ToString());
-                }
-            }
-            finally
-            {
-                CausalityTrace.IsEnabled = false;
-            }
-        }
-
-        // Not inlined, so that its frame is in the stack trace, but marked for aggressive inlining, which hides it.
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining | System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-        private static CausalityTrace RunOnExecutionContextInAHiddenMethodForTraceTest()
-        {
-            CausalityTrace trace = null;
-            System.Threading.ExecutionContext.Run(System.Threading.ExecutionContext.Capture(), _ => trace = CausalityTrace.Capture(), null);
-            return trace;
-        }
+#endif
 
         [Test]
         public void CausalityTraceCapture_InScopesWhoseTracesContainEachOther_HasOnlyTheOuterTraceThatContainsTheOther(
@@ -6496,6 +6449,9 @@ namespace ProtoPromise.Tests.APIs
             }
         }
 
+        // NoInlining, so that where it was called is not printed like the frames of the test method that is still running when the callback runs
+        // (see KeepsOuterTracesFromTheSameMethod).
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         private static async Promise ResolveAfterAwaitForTraceTest(Promise promise, Promise.Deferred deferred)
         {
             await promise;

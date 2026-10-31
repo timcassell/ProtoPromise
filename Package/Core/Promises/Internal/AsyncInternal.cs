@@ -471,6 +471,15 @@ namespace Proto.Promises
                             else
                             {
                                 _owner.ContinuationContext = null;
+#if NET6_0_OR_GREATER
+                                var previousExecutionContext = SwapExecutionContext(continuationContext.UnsafeAs<ExecutionContext>());
+                                if (previousExecutionContext != null)
+                                {
+                                    MoveNext();
+                                    ExecutionContext.Restore(previousExecutionContext);
+                                    return;
+                                }
+#endif
                                 ExecutionContext.Run(
                                     continuationContext.UnsafeAs<ExecutionContext>(),
                                     obj => obj.UnsafeAs<Continuer<TStateMachine>>().MoveNext(),
@@ -594,6 +603,15 @@ namespace Proto.Promises
                             else
                             {
                                 _owner.ContinuationContext = null;
+#if NET6_0_OR_GREATER
+                                var previousExecutionContext = SwapExecutionContext(continuationContext.UnsafeAs<ExecutionContext>());
+                                if (previousExecutionContext != null)
+                                {
+                                    MoveNextInScope();
+                                    ExecutionContext.Restore(previousExecutionContext);
+                                    return;
+                                }
+#endif
                                 ExecutionContext.Run(
                                     continuationContext.UnsafeAs<ExecutionContext>(),
                                     obj => obj.UnsafeAs<TracedContinuer>().MoveNextInScope(),
@@ -747,6 +765,15 @@ namespace Proto.Promises
                     {
                         var continuationContext = ContinuationContext;
                         ContinuationContext = null;
+#if NET6_0_OR_GREATER
+                        var previousExecutionContext = SwapExecutionContext(continuationContext.UnsafeAs<ExecutionContext>());
+                        if (previousExecutionContext != null)
+                        {
+                            MoveNext();
+                            ExecutionContext.Restore(previousExecutionContext);
+                            return;
+                        }
+#endif
                         ExecutionContext.Run(
                             continuationContext.UnsafeAs<ExecutionContext>(),
                             obj => obj.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>().MoveNext(),
@@ -924,6 +951,15 @@ namespace Proto.Promises
                     {
                         var continuationContext = ContinuationContext;
                         ContinuationContext = null;
+#if NET6_0_OR_GREATER
+                        var previousExecutionContext = SwapExecutionContext(continuationContext.UnsafeAs<ExecutionContext>());
+                        if (previousExecutionContext != null)
+                        {
+                            MoveNextInScope();
+                            ExecutionContext.Restore(previousExecutionContext);
+                            return;
+                        }
+#endif
                         ExecutionContext.Run(
                             continuationContext.UnsafeAs<ExecutionContext>(),
                             obj => obj.UnsafeAs<TracedAsyncPromiseRefMachine>().MoveNextInScope(),
