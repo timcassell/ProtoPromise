@@ -373,7 +373,7 @@ namespace Proto.Promises
             private bool TryRegister<TCancelable>(in TCancelable cancelable, int tokenId, out CancelationRegistration registration)
                 where TCancelable : ICancelable
             {
-                var nodeCreator = new UserNodeCreator<TCancelable>(cancelable);
+                var nodeCreator = new UserNodeCreator<TCancelable>(cancelable, this);
                 bool success = TryRegister(ref nodeCreator, tokenId);
                 registration = nodeCreator._registration;
                 return success;
@@ -396,7 +396,7 @@ namespace Proto.Promises
             private bool TryRegister<TCancelable>(in TCancelable cancelable, int tokenId, out CancelationRegistration registration, out bool alreadyCanceled)
                 where TCancelable : ICancelable
             {
-                var nodeCreator = new UserNodeCreatorNoInvoke<TCancelable>(cancelable);
+                var nodeCreator = new UserNodeCreatorNoInvoke<TCancelable>(cancelable, this);
                 bool success = TryRegister(ref nodeCreator, tokenId);
                 registration = nodeCreator._registration;
                 alreadyCanceled = nodeCreator._isCanceled;
@@ -1012,9 +1012,10 @@ namespace Proto.Promises
             } // class LinkedCancelationNode
 
             // Node creators capture the trace of their node when they're created, so that it's not captured while the lock is held (see TryRegister).
+            // It's not captured if the parent is already canceled or disposed, because no node will be created (a parent never becomes pending again with the same token id).
             [MethodImpl(InlineOption)]
-            private static CausalityTrace CaptureNodeTrace()
-                => CausalityTrace.IsEnabled ? CausalityTrace.Capture() : null;
+            private static CausalityTrace CaptureNodeTrace(CancelationRef parent)
+                => CausalityTrace.IsEnabled & parent.IsPending() ?CausalityTrace.Capture() : null;
 
             private interface INodeCreator
             {
@@ -1033,11 +1034,11 @@ namespace Proto.Promises
                 private readonly CausalityTrace _trace;
 
                 [MethodImpl(InlineOption)]
-                public UserNodeCreator(in TCancelable cancelable)
+                public UserNodeCreator(in TCancelable cancelable, CancelationRef parent)
                 {
                     _registration = default;
                     _cancelable = cancelable;
-                    _trace = CaptureNodeTrace();
+                    _trace = CaptureNodeTrace(parent);
                 }
 
                 [MethodImpl(InlineOption)]
@@ -1065,11 +1066,11 @@ namespace Proto.Promises
                 internal bool _isCanceled;
 
                 [MethodImpl(InlineOption)]
-                public UserNodeCreatorNoInvoke(in TCancelable cancelable)
+                public UserNodeCreatorNoInvoke(in TCancelable cancelable, CancelationRef parent)
                 {
                     _registration = default;
                     _cancelable = cancelable;
-                    _trace = CaptureNodeTrace();
+                    _trace = CaptureNodeTrace(parent);
                     _isCanceled = false;
                 }
 

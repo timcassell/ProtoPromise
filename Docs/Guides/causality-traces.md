@@ -53,7 +53,7 @@ Proto.Promises.UnhandledException: An exception was not handled. -- This excepti
    --- End of inner exception stack trace ---
    --- Thread 4 ".NET TP Worker" ---
    at Program.LoadLevelAsync() in Program.cs:line 29
-   at Proto.Promises.Internal.PromiseRefBase.AsyncPromiseRef`1.PromiseMethodContinuer.TracedContinuer.<>c.<ContinueOnContext>b__7_1(Object obj) in AsyncInternal.cs:line 579
+   at Proto.Promises.Internal.PromiseRefBase.AsyncPromiseRef`1.PromiseMethodContinuer.TracedContinuer.<>c.<ContinueOnContext>b__7_1(Object obj) in AsyncInternal.cs:line 583
    at System.Threading.ThreadPoolWorkQueue.Dispatch()
    at System.Threading.PortableThreadPool.WorkerThread.WorkerThreadStart()
    at System.Threading.Thread.StartCallback()

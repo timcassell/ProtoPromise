@@ -1382,6 +1382,9 @@ namespace Proto.Diagnostics
 
         // A scope that was exited without disposing its Scope, until it's restored by disposing this (see ExitScopeIfCurrent).
         // Disposing a default value does nothing.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
         internal readonly ref struct ExitedScope
         {
             internal readonly CausalityTrace _trace;
