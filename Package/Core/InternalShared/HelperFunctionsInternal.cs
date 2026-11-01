@@ -41,19 +41,17 @@ namespace Proto.Promises
         }
 
         // Starts the async function, and then restores the ExecutionContext, so that changes it made (e.g. setting an AsyncLocal<T>) don't flow to its caller.
-        // It's used instead of AsyncTaskMethodBuilder.Start for the same reasons as SwapExecutionContext, which also explains the null check.
+        // It's used instead of AsyncTaskMethodBuilder.Start for the same reasons as SwapExecutionContext.
+        // While the flow is suppressed, Restore can't restore that, so it's started without restoring it,
+        // the same as its continuations, which don't capture the ExecutionContext while the flow is suppressed.
         internal static void StartAndRestoreExecutionContext<TStateMachine>(ref TStateMachine stateMachine)
             where TStateMachine : IAsyncStateMachine
         {
             var previousExecutionContext = ExecutionContext.Capture();
+            stateMachine.MoveNext();
             if (previousExecutionContext != null)
             {
-                stateMachine.MoveNext();
                 ExecutionContext.Restore(previousExecutionContext);
-            }
-            else
-            {
-                new AsyncTaskMethodBuilder().Start(ref stateMachine);
             }
         }
 #endif

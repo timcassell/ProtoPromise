@@ -851,7 +851,7 @@ namespace Proto.Promises
                         promise.ResetWithoutStacktrace();
                         // This is created where the async function first awaits, so the async function's frame is dropped from its trace,
                         // so that it starts where the async function was called, the same as in the non-optimized mode.
-                        var trace = CausalityTrace.CaptureWithoutInnermostVisibleFrame(stateMachineType);
+                        var trace = CausalityTrace.CaptureWhereAsyncFunctionWasCalled(stateMachineType);
                         if (trace != null)
                         {
                             SetTrace(promise, trace);
