@@ -309,7 +309,7 @@ namespace Proto.Promises
                         // The first await captures where it awaits too, because its async promise's own trace was captured where it was called, before its body ran.
                         if (Promise.Config.AwaitTracesEnabled)
                         {
-                            _awaitTrace = CausalityTrace.Capture();
+                            _awaitTrace = CausalityTrace.CaptureWhereAsyncFunctionAwaited(_continuer.UnsafeAs<PromiseMethodContinuer.TracedContinuer>().StateMachineType);
                         }
                         base.CaptureAwaitContextAndOrTrace(isFirstAwait);
                     }
@@ -496,7 +496,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
                     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-                    private sealed class TracedContinuer : PromiseMethodContinuer
+                    internal sealed class TracedContinuer : PromiseMethodContinuer
                     {
                         private IAsyncStateMachine _stateMachine;
 
@@ -504,6 +504,9 @@ namespace Proto.Promises
                         {
                             _moveNext = Continue;
                         }
+
+                        // For where the async function awaits (see TracedAsyncPromiseRef.CaptureAwaitContextAndOrTrace).
+                        internal Type StateMachineType => _stateMachine.GetType();
 
                         // Separate from PromiseMethodContinuer.GetOrCreate, so that the traced path doesn't make the untraced path slower.
                         // The state machine is passed by ref, so that it's only boxed if the async promise is traced. Only this small method is generated for each async method.
@@ -815,9 +818,12 @@ namespace Proto.Promises
                         if (Promise.Config.AwaitTracesEnabled)
                         {
                             // The async promise's own trace was just captured where it first awaits, without the async function's frame (see Create),
-                            // so the first await shares that capture with all of its frames, instead of capturing the same stack again.
+                            // so the first await shares that capture, starting at the async function's frame, instead of capturing the same stack again.
                             // Trace is null if causality traces were disabled since then.
-                            _awaitTrace = isFirstAwait ? Trace?.GetWithAllFrames() : CausalityTrace.Capture();
+                            var stateMachineType = _stateMachine.GetType();
+                            _awaitTrace = isFirstAwait
+                                ? Trace?.GetWhereAsyncFunctionFirstAwaited(stateMachineType)
+                                : CausalityTrace.CaptureWhereAsyncFunctionAwaited(stateMachineType);
                         }
                         base.CaptureAwaitContextAndOrTrace(isFirstAwait);
                     }

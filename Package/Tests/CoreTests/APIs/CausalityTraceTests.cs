@@ -856,7 +856,7 @@ namespace ProtoPromise.Tests.APIs
                 }
                 else if (KeepsOuterTracesFromTheSameMethod)
                 {
-                    // In developer mode, the optimized async mode's first await trace is the async promise's trace (see CausalityTrace.GetWithAllFrames), which is already the previous trace.
+                    // In developer mode, the optimized async mode's first await trace is the async promise's trace (see CausalityTrace.GetWhereAsyncFunctionFirstAwaited), which is already the previous trace.
                     bool hasFirstAwaitTrace = firstAwaitTrace != null && firstAwaitTrace != asyncTrace;
                     Assert.AreEqual((configureFirstAwaitToForeground ? 1 : 0) + (hasFirstAwaitTrace ? 1 : 0), traceAfterFirstAwait.OuterTraces.Count, traceAfterFirstAwait.ToString());
                 }
@@ -2702,7 +2702,7 @@ namespace ProtoPromise.Tests.APIs
                 var pending = new Queue<Promise.Deferred>();
                 var promise = AwaitRecursivelyForTraceTest(deferred.Promise, 16, traces, awaitBefore ? pending : null);
 #if PROTO_PROMISE_DEVELOPER_MODE
-                // In developer mode, the optimized async mode's first await trace is the async promise's trace (see CausalityTrace.GetWithAllFrames),
+                // In developer mode, the optimized async mode's first await trace is the async promise's trace (see CausalityTrace.GetWhereAsyncFunctionFirstAwaited),
                 // so without an await before, where it awaited isn't an outer trace.
                 bool hasAwaitTrace = awaitTraces & (awaitBefore | !IsInOptimizedAsyncMode(promise));
 #else
