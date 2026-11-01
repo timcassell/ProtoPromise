@@ -338,7 +338,14 @@ namespace Proto.Promises
 #else
                         var promise = new TracedAsyncPromiseRef();
 #endif
-                        promise.Reset();
+                        promise.ResetWithoutStacktrace();
+                        // This is created before the async function's body runs, so its trace starts at the method that the compiler generated for it,
+                        // where it was called, without the hidden frames that it called. Its state machine type isn't known until it's started.
+                        var trace = CausalityTrace.CaptureWhereAsyncFunctionWasCalled(null);
+                        if (trace != null)
+                        {
+                            SetTrace(promise, trace);
+                        }
                         return promise;
                     }
 
