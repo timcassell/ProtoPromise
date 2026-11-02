@@ -1006,7 +1006,7 @@ namespace Proto.Diagnostics
             return index;
         }
 
-        // On runtimes older than .Net 6, AsyncPromiseMethodBuilder.Start runs the async function
+        // On runtimes older than .Net 8, AsyncPromiseMethodBuilder.Start runs the async function
         // with AsyncTaskMethodBuilder.Start while the ExecutionContext flows, so that it runs on it.
         // AsyncTaskMethodBuilder.Start calls AsyncMethodBuilderCore.Start, through AsyncTaskMethodBuilder<VoidTaskResult>.Start on .Net Framework.
         // Which of them are on the stack depends on the runtime and on inlining.

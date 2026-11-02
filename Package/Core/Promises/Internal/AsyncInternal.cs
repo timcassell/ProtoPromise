@@ -471,20 +471,17 @@ namespace Proto.Promises
                             else
                             {
                                 _owner.ContinuationContext = null;
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
                                 var previousExecutionContext = SwapExecutionContext(continuationContext.UnsafeAs<ExecutionContext>());
-                                if (previousExecutionContext != null)
-                                {
-                                    MoveNext();
-                                    ExecutionContext.Restore(previousExecutionContext);
-                                    return;
-                                }
-#endif
+                                MoveNext();
+                                RestoreExecutionContext(previousExecutionContext);
+#else
                                 ExecutionContext.Run(
                                     continuationContext.UnsafeAs<ExecutionContext>(),
                                     obj => obj.UnsafeAs<Continuer<TStateMachine>>().MoveNext(),
                                     this
                                 );
+#endif
                             }
                         }
                     }
@@ -603,20 +600,17 @@ namespace Proto.Promises
                             else
                             {
                                 _owner.ContinuationContext = null;
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
                                 var previousExecutionContext = SwapExecutionContext(continuationContext.UnsafeAs<ExecutionContext>());
-                                if (previousExecutionContext != null)
-                                {
-                                    MoveNextInScope();
-                                    ExecutionContext.Restore(previousExecutionContext);
-                                    return;
-                                }
-#endif
+                                MoveNextInScope();
+                                RestoreExecutionContext(previousExecutionContext);
+#else
                                 ExecutionContext.Run(
                                     continuationContext.UnsafeAs<ExecutionContext>(),
                                     obj => obj.UnsafeAs<TracedContinuer>().MoveNextInScope(),
                                     this
                                 );
+#endif
                             }
                         }
                     }
@@ -765,20 +759,17 @@ namespace Proto.Promises
                     {
                         var continuationContext = ContinuationContext;
                         ContinuationContext = null;
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
                         var previousExecutionContext = SwapExecutionContext(continuationContext.UnsafeAs<ExecutionContext>());
-                        if (previousExecutionContext != null)
-                        {
-                            MoveNext();
-                            ExecutionContext.Restore(previousExecutionContext);
-                            return;
-                        }
-#endif
+                        MoveNext();
+                        RestoreExecutionContext(previousExecutionContext);
+#else
                         ExecutionContext.Run(
                             continuationContext.UnsafeAs<ExecutionContext>(),
                             obj => obj.UnsafeAs<AsyncPromiseRefMachine<TStateMachine>>().MoveNext(),
                             this
                         );
+#endif
                     }
 
                     // It's scheduled where the async function awaits, so it doesn't capture where it was scheduled, which is where it awaited (see CaptureAwaitContextAndOrTrace).
@@ -951,20 +942,17 @@ namespace Proto.Promises
                     {
                         var continuationContext = ContinuationContext;
                         ContinuationContext = null;
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
                         var previousExecutionContext = SwapExecutionContext(continuationContext.UnsafeAs<ExecutionContext>());
-                        if (previousExecutionContext != null)
-                        {
-                            MoveNextInScope();
-                            ExecutionContext.Restore(previousExecutionContext);
-                            return;
-                        }
-#endif
+                        MoveNextInScope();
+                        RestoreExecutionContext(previousExecutionContext);
+#else
                         ExecutionContext.Run(
                             continuationContext.UnsafeAs<ExecutionContext>(),
                             obj => obj.UnsafeAs<TracedAsyncPromiseRefMachine>().MoveNextInScope(),
                             this
                         );
+#endif
                     }
 
                     // It's scheduled where the async function awaits, so it doesn't capture where it was scheduled, which is where it awaited (see CaptureAwaitContextAndOrTrace).

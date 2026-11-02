@@ -1001,5 +1001,31 @@ namespace ProtoPromise.Tests.APIs
             Assert.IsTrue(continued);
             Assert.AreEqual(3, _asyncLocal.Value);
         }
+
+        [Test]
+        public void AsyncLocal_ChangedByAnAsyncFunctionThatWasCalledWhileTheFlowIsSuppressed_DoesNotFlowToItsCaller()
+        {
+            _asyncLocal = new System.Threading.AsyncLocal<int>();
+            var deferred = Promise.NewDeferred();
+            bool continued = false;
+
+            async Promise Func()
+            {
+                _asyncLocal.Value = 1;
+                await deferred.Promise;
+                continued = true;
+            }
+
+            _asyncLocal.Value = 3;
+            using (System.Threading.ExecutionContext.SuppressFlow())
+            {
+                Func().Forget();
+                Assert.AreEqual(3, _asyncLocal.Value);
+                Assert.IsTrue(System.Threading.ExecutionContext.IsFlowSuppressed());
+            }
+            deferred.Resolve();
+            Assert.IsTrue(continued);
+            Assert.AreEqual(3, _asyncLocal.Value);
+        }
     }
 }

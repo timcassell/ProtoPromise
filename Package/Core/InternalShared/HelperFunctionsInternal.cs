@@ -22,37 +22,41 @@ namespace Proto.Promises
 #endif
     internal static partial class Internal
     {
-#if NET6_0_OR_GREATER
-        // Sets the ExecutionContext on the thread, and returns the previous one for the caller to restore after it runs its code.
+#if NET8_0_OR_GREATER
+        // ExecutionContext's internal methods, which capture and restore the thread's ExecutionContext even while its flow is suppressed,
+        // like the runtime's AsyncTaskMethodBuilder.Start does (but unlike it, we don't restore the SynchronizationContext, see SwapExecutionContext).
+        // The default ExecutionContext is null.
+        [UnsafeAccessor(UnsafeAccessorKind.StaticMethod, Name = "CaptureForRestore")]
+        private static extern ExecutionContext CaptureForRestore(ExecutionContext _);
+
+        [UnsafeAccessor(UnsafeAccessorKind.StaticMethod, Name = "RestoreInternal")]
+        private static extern void RestoreInternal(ExecutionContext _, ExecutionContext executionContext);
+
+        // Sets the ExecutionContext on the thread, and returns the previous one for the caller to restore after it runs its code (see RestoreExecutionContext).
         // It's used instead of ExecutionContext.Run, so that the code is called directly instead of through a delegate,
         // and so that ExecutionContext.Run's frames aren't in causality traces that are captured in it.
         // The code catches its exceptions, so the previous ExecutionContext is restored without a finally. Unlike ExecutionContext.Run,
         // the SynchronizationContext isn't restored, the same as when the code runs without an ExecutionContext.
-        // Returns null without setting it while the flow is suppressed, because Restore can't restore that, so the caller uses ExecutionContext.Run instead.
         [MethodImpl(InlineOption)]
         internal static ExecutionContext SwapExecutionContext(ExecutionContext executionContext)
         {
-            var previousExecutionContext = ExecutionContext.Capture();
-            if (previousExecutionContext != null)
-            {
-                ExecutionContext.Restore(executionContext);
-            }
+            var previousExecutionContext = CaptureForRestore(null);
+            RestoreInternal(null, executionContext);
             return previousExecutionContext;
         }
 
+        [MethodImpl(InlineOption)]
+        internal static void RestoreExecutionContext(ExecutionContext previousExecutionContext)
+            => RestoreInternal(null, previousExecutionContext);
+
         // Starts the async function, and then restores the ExecutionContext, so that changes it made (e.g. setting an AsyncLocal<T>) don't flow to its caller.
         // It's used instead of AsyncTaskMethodBuilder.Start for the same reasons as SwapExecutionContext.
-        // While the flow is suppressed, Restore can't restore that, so it's started without restoring it,
-        // the same as its continuations, which don't capture the ExecutionContext while the flow is suppressed.
         internal static void StartAndRestoreExecutionContext<TStateMachine>(ref TStateMachine stateMachine)
             where TStateMachine : IAsyncStateMachine
         {
-            var previousExecutionContext = ExecutionContext.Capture();
+            var previousExecutionContext = CaptureForRestore(null);
             stateMachine.MoveNext();
-            if (previousExecutionContext != null)
-            {
-                ExecutionContext.Restore(previousExecutionContext);
-            }
+            RestoreInternal(null, previousExecutionContext);
         }
 #endif
 

@@ -305,15 +305,11 @@ namespace Proto.Promises
                     }
                     else
                     {
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
                         var previousExecutionContext = SwapExecutionContext(_executionContext);
-                        if (previousExecutionContext != null)
-                        {
-                            ExecuteWorker(true);
-                            ExecutionContext.Restore(previousExecutionContext);
-                            return;
-                        }
-#endif
+                        ExecuteWorker(true);
+                        RestoreExecutionContext(previousExecutionContext);
+#else
                         ExecutionContext.Run(
                             // .Net Framework doesn't allow us to re-use a captured context, so we have to copy it for each invocation.
                             // .Net Core's implementation of CreateCopy returns itself, so this is always as efficient as it can be.
@@ -321,6 +317,7 @@ namespace Proto.Promises
                             obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorker(true),
                             this
                         );
+#endif
                     }
                 }
 
@@ -332,15 +329,11 @@ namespace Proto.Promises
                     }
                     else
                     {
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
                         var previousExecutionContext = SwapExecutionContext(_executionContext);
-                        if (previousExecutionContext != null)
-                        {
-                            ExecuteWorker(false);
-                            ExecutionContext.Restore(previousExecutionContext);
-                            return;
-                        }
-#endif
+                        ExecuteWorker(false);
+                        RestoreExecutionContext(previousExecutionContext);
+#else
                         ExecutionContext.Run(
                             // .Net Framework doesn't allow us to re-use a captured context, so we have to copy it for each invocation.
                             // .Net Core's implementation of CreateCopy returns itself, so this is always as efficient as it can be.
@@ -348,6 +341,7 @@ namespace Proto.Promises
                             obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorker(false),
                             this
                         );
+#endif
                     }
                 }
 

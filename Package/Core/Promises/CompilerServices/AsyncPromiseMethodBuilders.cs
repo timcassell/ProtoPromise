@@ -109,7 +109,7 @@ namespace Proto.Promises
                 if (Promise.Config.AsyncFlowExecutionContextEnabled)
                 {
                     // To support ExecutionContext for AsyncLocal<T>.
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
                     Internal.StartAndRestoreExecutionContext(ref stateMachine);
 #else
                     // We can use AsyncTaskMethodBuilder to run the state machine on the execution context without creating an object. https://github.com/dotnet/runtime/discussions/56202#discussioncomment-1042195

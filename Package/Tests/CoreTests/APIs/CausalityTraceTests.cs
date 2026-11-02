@@ -1325,7 +1325,7 @@ namespace ProtoPromise.Tests.APIs
             [Values] bool awaitTraces)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            // Enabled runs the async function with the runtime's async method builder on runtimes older than .Net 6, whose frames are between the async function and where it was called.
+            // Enabled runs the async function with the runtime's async method builder on runtimes older than .Net 8, whose frames are between the async function and where it was called.
             bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
             Promise.Config.SetAsyncFlowExecutionContextEnabled(flowExecutionContext);
             Promise.Config.AwaitTracesEnabled = awaitTraces;
@@ -1377,7 +1377,7 @@ namespace ProtoPromise.Tests.APIs
             [Values] bool flowExecutionContext)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            // Enabled runs the async iterator with the runtime's async method builder on runtimes older than .Net 6, whose frames are between the async iterator and the code that started it.
+            // Enabled runs the async iterator with the runtime's async method builder on runtimes older than .Net 8, whose frames are between the async iterator and the code that started it.
             bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
             Promise.Config.SetAsyncFlowExecutionContextEnabled(flowExecutionContext);
             CausalityTrace.IsEnabled = true;
@@ -1406,10 +1406,10 @@ namespace ProtoPromise.Tests.APIs
             }
         }
 
-        // On runtimes older than .Net 6, while the ExecutionContext flows, ProtoPromise runs an async function with the runtime's async method builder,
+        // On runtimes older than .Net 8, while the ExecutionContext flows, ProtoPromise runs an async function with the runtime's async method builder,
         // whose Start frames are between the async function and the method that the compiler generated for it, in traces captured before it first awaits.
         private static System.Diagnostics.StackFrame[] WithoutRuntimeAsyncMethodBuilderFrames(System.Diagnostics.StackFrame[] frames)
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
             => frames;
 #else
             => frames.Where(frame =>
@@ -1423,7 +1423,7 @@ namespace ProtoPromise.Tests.APIs
             }).ToArray();
 #endif
 
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
         [Test]
         public void CausalityTraceCapture_InAnAsyncFunctionOnItsExecutionContext_DoesNotIncludeTheRuntimeCodeThatRunsItOnIt()
         {
