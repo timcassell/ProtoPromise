@@ -60,7 +60,7 @@ jobs:
             }
           - {
               major: 6000,
-              version: 6000.0.48f1,
+              version: 6000.6.7f1,
             }
 
         exclude:
