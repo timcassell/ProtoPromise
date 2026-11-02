@@ -91,8 +91,7 @@ namespace Proto.Diagnostics
                     Promises.Internal.ReleaseTraceTable();
                     // The cached methods of the frames are released too, so that they don't keep their assemblies from being unloaded
                     // (unless frames are printed again while traces are disabled, e.g. by a DEBUG validation exception).
-                    MethodCache.s_isVisible.Clear();
-                    MethodCache.s_asyncStateMachineTypes.Clear();
+                    VisibilityCache.s_isVisible.Clear();
                 }
                 finally
                 {
@@ -151,7 +150,7 @@ namespace Proto.Diagnostics
         }
 
         private readonly StackTrace _stackTrace;
-        // The index of the first frame of the stack trace that is part of this trace (see CaptureWhereAsyncFunctionAwaited and CaptureWhereAsyncFunctionWasCalled).
+        // The index of the first frame of the stack trace that is part of this trace (see CaptureWithoutInnermostVisibleFrame).
         private readonly int _firstFrame;
         // The cause (see Previous).
         private readonly CausalityTrace _previous;
@@ -350,7 +349,7 @@ namespace Proto.Diagnostics
                 return false;
             }
             // Reading the attributes is expensive, and every capture compares frames (see IsRepeatOf), so the results are cached.
-            var cache = MethodCache.s_isVisible;
+            var cache = VisibilityCache.s_isVisible;
             if (!cache.TryGetValue(method, out bool isVisible))
             {
                 isVisible = IsVisible(method);
@@ -376,12 +375,10 @@ namespace Proto.Diagnostics
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        private static class MethodCache
+        private static class VisibilityCache
         {
             internal static readonly System.Collections.Concurrent.ConcurrentDictionary<System.Reflection.MethodBase, bool> s_isVisible
                 = new System.Collections.Concurrent.ConcurrentDictionary<System.Reflection.MethodBase, bool>();
-            internal static readonly System.Collections.Concurrent.ConcurrentDictionary<System.Reflection.MethodBase, Type> s_asyncStateMachineTypes
-                = new System.Collections.Concurrent.ConcurrentDictionary<System.Reflection.MethodBase, Type>();
         }
 
         // Like the runtime, if the attributes can't be read (e.g. an attribute's assembly is missing), we behave as if they are not present.
@@ -439,36 +436,18 @@ namespace Proto.Diagnostics
         public static CausalityTrace Capture()
             => s_isEnabled ? new CausalityTrace(1) : null;
 
-        // For an async function's trace, which is captured before its body runs in the non-optimized async mode (see AsyncPromiseRef.TracedAsyncPromiseRef),
-        // or where it first awaits in the optimized async mode (see AsyncPromiseRef.TracedAsyncPromiseRefMachine).
-        // The frames before the method that the compiler generated for it are dropped (see GetFrameAfterAsyncFunction),
-        // so that the trace starts at that method, where it was called.
-        // asyncStateMachineType is null if it's not known (the non-optimized async mode creates the async promise before the async function is started),
-        // in which case it's the innermost method that the compiler generated for any async function.
+        // For an async function's trace, which is captured where it first awaits in the optimized async mode (see AsyncPromiseRef.TracedAsyncPromiseRefMachine).
+        // The innermost visible frame (the async function, where it awaits) is dropped (see GetFrameAfterAsyncFunction),
+        // so that the trace starts at the method that the compiler generated for it, where it was called,
+        // the same as in the non-optimized mode, which captures it before the async function's body runs.
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static CausalityTrace CaptureWhereAsyncFunctionWasCalled(Type asyncStateMachineType)
-            => s_isEnabled ? new CausalityTrace(1, TraceStart.WhereAsyncFunctionWasCalled, asyncStateMachineType) : null;
-
-        // For where an async function awaits (see AsyncPromiseRef.TracedAsyncPromiseRef and AsyncPromiseRef.TracedAsyncPromiseRefMachine).
-        // The frames before the async function's frame are dropped (see GetAsyncFunctionFrame), so that it starts where it awaited.
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static CausalityTrace CaptureWhereAsyncFunctionAwaited(Type asyncStateMachineType)
-            => s_isEnabled ? new CausalityTrace(1, TraceStart.WhereAsyncFunctionAwaited, asyncStateMachineType) : null;
-
-        // Where a trace starts in its stack trace (see the constructor).
-        internal enum TraceStart : byte
-        {
-            // The innermost frame.
-            Innermost,
-            // Where the async function awaited (see CaptureWhereAsyncFunctionAwaited).
-            WhereAsyncFunctionAwaited,
-            // Where the async function was called (see CaptureWhereAsyncFunctionWasCalled).
-            WhereAsyncFunctionWasCalled
-        }
+        internal static CausalityTrace CaptureWithoutInnermostVisibleFrame(Type asyncStateMachineType)
+            => s_isEnabled ? new CausalityTrace(1, asyncStateMachineType) : null;
 
         // Internal so that it can be captured regardless of IsEnabled.
+        // If asyncStateMachineType is not null, the async function's frame is dropped (see CaptureWithoutInnermostVisibleFrame).
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal CausalityTrace(int skipFrames, TraceStart start = TraceStart.Innermost, Type asyncStateMachineType = null)
+        internal CausalityTrace(int skipFrames, Type asyncStateMachineType = null)
         {
             _timestamp = TimeProvider.System.GetTimestamp();
             var thread = Thread.CurrentThread;
@@ -480,11 +459,9 @@ namespace Proto.Diagnostics
             _stackTrace = new StackTrace(1, true);
 #else
             _stackTrace = new StackTrace(skipFrames + 1, true);
-            if (start != TraceStart.Innermost)
+            if (asyncStateMachineType != null)
             {
-                _firstFrame = start == TraceStart.WhereAsyncFunctionAwaited
-                    ? GetAsyncFunctionFrame(_stackTrace, asyncStateMachineType)
-                    : GetFrameAfterAsyncFunction(_stackTrace, asyncStateMachineType);
+                _firstFrame = GetFrameAfterAsyncFunction(_stackTrace, asyncStateMachineType);
             }
 #endif
             _repeats = Array.Empty<RepeatGroup>();
@@ -799,23 +776,14 @@ namespace Proto.Diagnostics
             _depth = 1;
         }
 
-        // Whether the other trace prints all of this trace's frames, because they're copies of the same capture, and it doesn't drop more of its frames
-        // (see GetWhereAsyncFunctionFirstAwaited).
+        // Whether the other trace prints all of this trace's frames, because they're copies of the same capture, and it doesn't drop more of its frames (see GetWithAllFrames).
         private bool IsPrintedBy(CausalityTrace other)
             => _stackTrace == other._stackTrace && other._firstFrame <= _firstFrame;
 
         // For where an async function first awaited in the optimized async mode, which is where its trace was captured without the async function's frame
-        // (see CaptureWhereAsyncFunctionWasCalled), so it shares that capture, starting at the async function's frame (see CaptureWhereAsyncFunctionAwaited),
-        // instead of capturing the same stack again.
-        internal CausalityTrace GetWhereAsyncFunctionFirstAwaited(Type asyncStateMachineType)
-        {
-#if PROTO_PROMISE_DEVELOPER_MODE // Developer mode doesn't drop frames (see the constructor).
-            return this;
-#else
-            int firstFrame = GetAsyncFunctionFrame(_stackTrace, asyncStateMachineType);
-            return firstFrame == _firstFrame ? this : new CausalityTrace(this, firstFrame);
-#endif
-        }
+        // (see CaptureWithoutInnermostVisibleFrame), so it shares that capture with all of its frames, instead of capturing the same stack again.
+        internal CausalityTrace GetWithAllFrames()
+            => _firstFrame == 0 ? this : new CausalityTrace(this, 0);
 
         // A copy with another first frame, which isn't printed the same, so its signature isn't shared.
         private CausalityTrace(CausalityTrace trace, int firstFrame)
@@ -1009,90 +977,68 @@ namespace Proto.Diagnostics
             return null;
         }
 
-        // Gets the index of the async function's frame, which is its state machine's MoveNext, where it awaited (see CaptureWhereAsyncFunctionAwaited).
-        // The frames before it are dropped: the code that captured where it awaited, which is hidden, even if it's printed with another method's name
-        // (e.g. in IL2CPP release builds). Its state machine type is compared by its generic type definition,
-        // because the frame's method may not be declared by the same instantiation (e.g. if its code is shared with other instantiations).
-        // It's the innermost frame of that type, which is where it awaited, even if the async function called itself.
-        // Nothing is dropped if it's not found.
-#if NET6_0_OR_GREATER
-        [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026",
-            Justification = "If the method metadata was trimmed, GetMethod() returns null and the frame is not the async function's frame.")]
-#endif
-        private static int GetAsyncFunctionFrame(StackTrace stackTrace, Type asyncStateMachineType)
-        {
-            var stateMachineType = GetTypeDefinition(asyncStateMachineType);
-            for (int i = 0, frameCount = stackTrace.FrameCount; i < frameCount; i++)
-            {
-                if (GetTypeDefinition(stackTrace.GetFrame(i)?.GetMethod()?.DeclaringType) == stateMachineType)
-                {
-                    return i;
-                }
-            }
-            return 0;
-        }
-
-        // Gets the index of the frame of the method that the compiler generated for the async function, where it was called (see CaptureWhereAsyncFunctionWasCalled).
-        // The frames before it are dropped: the async function's frame where it first awaits, the runtime code that started it
-        // (e.g. AsyncTaskMethodBuilder.Start, which runs it on its ExecutionContext on runtimes older than .Net 6, see Internal.StartAndRestoreExecutionContext),
-        // and hidden frames, even if they're printed with another method's name (e.g. in IL2CPP release builds).
-        // The method is identified by its AsyncStateMachineAttribute, whose state machine type is compared by its generic type definition,
-        // because the attribute has the generic type definition, so a call of the same async function (e.g. a recursive call) can't be told apart this way.
-        // If asyncStateMachineType is null, it's the innermost method with an AsyncStateMachineAttribute, which is the async function's
-        // when it's captured before the async function's body runs, because only hidden frames were called from it.
-        // Nothing is dropped if it's not found (e.g. if it was inlined into the method that called it).
+        // Gets the index of the frame after the innermost visible frame and the runtime code that started it, if it's the async function (where it first awaits, see CaptureWithoutInnermostVisibleFrame),
+        // so that the next visible frame is the method that the compiler generated for the async function.
+        // Nothing is dropped if the innermost visible frame isn't the async function (e.g. if it was inlined into the method that called it).
+        // It's identified by its state machine type, because the innermost visible frame may be another async function
+        // (e.g. the async function that called it, if the method that the compiler generated for it was also inlined).
+        // A generic type is compared by its generic type definition, because the frame of its method may be of the code that's shared by its instantiations,
+        // whose type arguments depend on the runtime, so a call of the same async function (e.g. a recursive call) can't be told apart this way.
         private static int GetFrameAfterAsyncFunction(StackTrace stackTrace, Type asyncStateMachineType)
         {
-            var stateMachineType = GetTypeDefinition(asyncStateMachineType);
-            for (int i = 0, frameCount = stackTrace.FrameCount; i < frameCount; i++)
+            int index = 0;
+            // GetNextVisibleFrame moves the index past the frame that it returns.
+            var asyncFunctionFrame = GetNextVisibleFrame(stackTrace, ref index);
+            if (asyncFunctionFrame == null || !IsDeclaredBy(asyncFunctionFrame, asyncStateMachineType))
             {
-                var frameStateMachineType = GetAsyncStateMachineType(stackTrace.GetFrame(i));
-                if (frameStateMachineType != null && (stateMachineType == null || frameStateMachineType == stateMachineType))
+                return 0;
+            }
+            // The runtime's async method builder's Start methods that started the async function are dropped with it (see IsRuntimeAsyncMethodBuilderStart).
+            // Hidden frames are skipped too, so that it stops at the next visible frame that isn't one of them.
+            for (int frameCount = stackTrace.FrameCount; index < frameCount; index++)
+            {
+                var frame = stackTrace.GetFrame(index);
+                if (IsVisible(frame) && !IsRuntimeAsyncMethodBuilderStart(frame))
                 {
-                    return i;
+                    break;
                 }
             }
-            return 0;
+            return index;
         }
 
-        // Gets the generic type definition of the state machine type of the frame's method's AsyncStateMachineAttribute, or null if it has none.
+        // On runtimes older than .Net 6, AsyncPromiseMethodBuilder.Start runs the async function
+        // with AsyncTaskMethodBuilder.Start while the ExecutionContext flows, so that it runs on it.
+        // AsyncTaskMethodBuilder.Start calls AsyncMethodBuilderCore.Start, through AsyncTaskMethodBuilder<VoidTaskResult>.Start on .Net Framework.
+        // Which of them are on the stack depends on the runtime and on inlining.
 #if NET6_0_OR_GREATER
         [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026",
-            Justification = "If the method metadata was trimmed, GetMethod() returns null and the frame has no state machine type.")]
+            Justification = "The frame is a visible frame, which excludes frames whose method metadata was trimmed.")]
 #endif
-        private static Type GetAsyncStateMachineType(StackFrame frame)
+        private static bool IsRuntimeAsyncMethodBuilderStart(StackFrame frame)
         {
-            var method = frame?.GetMethod();
-            if (method == null)
+            var method = frame.GetMethod();
+            if (method.Name != nameof(AsyncTaskMethodBuilder.Start))
             {
-                return null;
+                return false;
             }
-            // Reading the attributes is expensive, and every async function's trace reads them, so the results are cached.
-            var cache = MethodCache.s_asyncStateMachineTypes;
-            if (!cache.TryGetValue(method, out var stateMachineType))
-            {
-                stateMachineType = GetAsyncStateMachineType(method);
-                cache.TryAdd(method, stateMachineType);
-            }
-            return stateMachineType;
+            var declaringType = method.DeclaringType;
+            return declaringType != null
+                && (declaringType == typeof(AsyncTaskMethodBuilder)
+                || (declaringType.IsGenericType && declaringType.GetGenericTypeDefinition() == typeof(AsyncTaskMethodBuilder<>))
+                // It's internal, so it's compared by name.
+                || (declaringType.Assembly == typeof(AsyncTaskMethodBuilder).Assembly && declaringType.FullName == "System.Runtime.CompilerServices.AsyncMethodBuilderCore"));
         }
 
-        // Like IsStackTraceHidden, if the attributes can't be read, we behave as if it's not present.
-        private static Type GetAsyncStateMachineType(System.Reflection.MethodBase method)
+#if NET6_0_OR_GREATER
+        [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026",
+            Justification = "The frame is a visible frame, which excludes frames whose method metadata was trimmed.")]
+#endif
+        private static bool IsDeclaredBy(StackFrame frame, Type type)
         {
-            try
-            {
-                var attribute = (AsyncStateMachineAttribute) Attribute.GetCustomAttribute(method, typeof(AsyncStateMachineAttribute), false);
-                return GetTypeDefinition(attribute?.StateMachineType);
-            }
-            catch
-            {
-                return null;
-            }
+            var declaringType = frame.GetMethod().DeclaringType;
+            return declaringType == type
+                || (declaringType != null && declaringType.IsGenericType && type.IsGenericType && declaringType.GetGenericTypeDefinition() == type.GetGenericTypeDefinition());
         }
-
-        private static Type GetTypeDefinition(Type type)
-            => type != null && type.IsGenericType ? type.GetGenericTypeDefinition() : type;
 
         private static StackFrame GetPreviousVisibleFrame(StackTrace stackTrace, ref int index, int firstFrame)
         {

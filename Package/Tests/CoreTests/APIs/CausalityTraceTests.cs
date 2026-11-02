@@ -837,9 +837,13 @@ namespace ProtoPromise.Tests.APIs
                 }
                 else
                 {
-                    // Where it first awaited contains where it was called, so the async promise's trace is skipped, and its cause is kept.
+                    // Where it first awaited contains where it was called, so the async promise's trace is skipped, and its cause is kept,
+                    // unless one of its hidden frames is printed with another function's name (see MayPrintHiddenFramesWithOtherNames).
                     // Where it first awaited is printed in its place, unless it's dropped like the frames of this method (see KeepsOuterTracesFromTheSameMethod).
-                    Assert.AreSame(asyncTrace.Previous, traceAfterFirstAwait.Previous, traceAfterFirstAwait.ToString());
+                    if (!MayPrintHiddenFramesWithOtherNames || traceAfterFirstAwait.Previous != asyncTrace)
+                    {
+                        Assert.AreSame(asyncTrace.Previous, traceAfterFirstAwait.Previous, traceAfterFirstAwait.ToString());
+                    }
                     if (KeepsOuterTracesFromTheSameMethod)
                     {
                         CollectionAssert.Contains(traceAfterFirstAwait.OuterTraces, firstAwaitTrace, traceAfterFirstAwait.ToString());
@@ -856,12 +860,12 @@ namespace ProtoPromise.Tests.APIs
                 }
                 else if (KeepsOuterTracesFromTheSameMethod)
                 {
-                    // In developer mode, the optimized async mode's first await trace is the async promise's trace (see CausalityTrace.GetWhereAsyncFunctionFirstAwaited), which is already the previous trace.
+                    // In developer mode, the optimized async mode's first await trace is the async promise's trace (see CausalityTrace.GetWithAllFrames), which is already the previous trace.
                     bool hasFirstAwaitTrace = firstAwaitTrace != null && firstAwaitTrace != asyncTrace;
                     Assert.AreEqual((configureFirstAwaitToForeground ? 1 : 0) + (hasFirstAwaitTrace ? 1 : 0), traceAfterFirstAwait.OuterTraces.Count, traceAfterFirstAwait.ToString());
                 }
-                // Otherwise it's dropped, unless IL2CPP's C++ linker folded Deferred.Resolve with an identical function,
-                // whose name is printed in its place, so its frame is visible and it's not printed like the outer frames of the trace.
+                // Otherwise it's dropped, unless Deferred.Resolve's frame is printed with another function's name (see MayPrintHiddenFramesWithOtherNames),
+                // so its frame is visible and it's not printed like the outer frames of the trace.
                 // With await traces, the second await continues inside the scope of where it awaited, which has what continued the first await on its stack (in this method).
                 if (!awaitTraces)
                 {
@@ -1014,6 +1018,51 @@ namespace ProtoPromise.Tests.APIs
             finally
             {
                 CausalityTrace.IsEnabled = false;
+                Promise.Config.SetAsyncFlowExecutionContextEnabled(wasFlowExecutionContextEnabled);
+            }
+        }
+
+        [Test]
+        public void AsyncPromise_FirstAwaitedWhileTracingIsDisabled_CompletesAfterItAwaitsWhileTracingIsEnabledAgain(
+            [Values] bool flowExecutionContext,
+            [Values] bool awaitTraces)
+        {
+            // The async promise was traced when it was created, then first awaits while causality traces are disabled, and awaits again after they're enabled again.
+            // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
+            bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(flowExecutionContext);
+            Promise.Config.AwaitTracesEnabled = awaitTraces;
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var deferred1 = Promise.NewDeferred();
+                var deferred2 = Promise.NewDeferred();
+                CausalityTrace traceAfterSecondAwait = null;
+                bool completed = false;
+
+                async Promise Func()
+                {
+                    CausalityTrace.IsEnabled = false;
+                    await deferred1.Promise;
+                    CausalityTrace.IsEnabled = true;
+                    await deferred2.Promise;
+                    traceAfterSecondAwait = CausalityTrace.Capture();
+                }
+
+                Func()
+                    .Finally(() => completed = true)
+                    .Forget();
+
+                deferred1.Resolve();
+                deferred2.Resolve();
+
+                Assert.IsNotNull(traceAfterSecondAwait);
+                Assert.IsTrue(completed);
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+                Promise.Config.AwaitTracesEnabled = false;
                 Promise.Config.SetAsyncFlowExecutionContextEnabled(wasFlowExecutionContextEnabled);
             }
         }
@@ -1293,9 +1342,13 @@ namespace ProtoPromise.Tests.APIs
 
                 // Whether it's captured before the async function's body runs (non-optimized mode) or where it first awaits (optimized mode),
                 // it starts at the method that the compiler generated for the async function, followed by where it was called.
+                // In the non-optimized mode, the hidden frames that it called are before it, which may be printed with other functions' names (see MayPrintHiddenFramesWithOtherNames).
                 var frames = asyncTrace.GetFrames();
-                Assert.AreEqual(nameof(AwaitForTraceTest), frames[0].GetMethod().Name, asyncTrace.ToString());
-                Assert.AreEqual(nameof(AsyncPromiseTrace_StartsAtTheAsyncFunctionWhereItWasCalled), frames[1].GetMethod().Name, asyncTrace.ToString());
+                int firstFrame = MayPrintHiddenFramesWithOtherNames
+                    ? System.Math.Max(0, System.Array.FindIndex(frames, frame => frame.GetMethod()?.Name == nameof(AwaitForTraceTest)))
+                    : 0;
+                Assert.AreEqual(nameof(AwaitForTraceTest), frames[firstFrame].GetMethod().Name, asyncTrace.ToString());
+                Assert.AreEqual(nameof(AsyncPromiseTrace_StartsAtTheAsyncFunctionWhereItWasCalled), frames[firstFrame + 1].GetMethod().Name, asyncTrace.ToString());
                 if (awaitTraces)
                 {
                     // Where it first awaited starts at the async function's state machine, where it awaited, followed by the method that the compiler generated for it,
@@ -2702,7 +2755,7 @@ namespace ProtoPromise.Tests.APIs
                 var pending = new Queue<Promise.Deferred>();
                 var promise = AwaitRecursivelyForTraceTest(deferred.Promise, 16, traces, awaitBefore ? pending : null);
 #if PROTO_PROMISE_DEVELOPER_MODE
-                // In developer mode, the optimized async mode's first await trace is the async promise's trace (see CausalityTrace.GetWhereAsyncFunctionFirstAwaited),
+                // In developer mode, the optimized async mode's first await trace is the async promise's trace (see CausalityTrace.GetWithAllFrames),
                 // so without an await before, where it awaited isn't an outer trace.
                 bool hasAwaitTrace = awaitTraces & (awaitBefore | !IsInOptimizedAsyncMode(promise));
 #else
@@ -6430,15 +6483,19 @@ namespace ProtoPromise.Tests.APIs
                 ResolveForTraceTest(deferred);
 
                 var text = trace.ToString();
-                // The async function's own trace is in the trace of where it awaited, if it's captured, so where it was called is only printed once.
+                // The async function's own trace is in the trace of where it awaited, if it's captured, so where it was called is only printed once,
+                // unless one of the hidden frames of the async function's own trace is printed with another function's name (see MayPrintHiddenFramesWithOtherNames).
                 var outerTraces = trace.OuterTraces
                     .Where(outer => ContainsMethod(outer, nameof(CausalityTraceCapture_InACallbackThatAnAsyncFunctionInvokedAfterItAwaited_IncludesWhereTheAsyncFunctionWasCalledOnce)))
                     .ToArray();
-                Assert.AreEqual(expectedCount, outerTraces.Length, text);
+                if (!MayPrintHiddenFramesWithOtherNames || outerTraces.Length != expectedCount + 1)
+                {
+                    Assert.AreEqual(expectedCount, outerTraces.Length, text);
+                }
 #if !PROTO_PROMISE_DEVELOPER_MODE // Developer mode doesn't drop the async function's frame from its own trace.
                 // The trace of where it awaited includes the async function's frame.
-                Assert.AreEqual(awaitTraces, outerTraces[0].GetFrames().Any(frame => frame.GetMethod().Name == "MoveNext"
-                    && frame.GetMethod().DeclaringType.Name.Contains(nameof(ResolveAfterAwaitForTraceTest))), text);
+                Assert.AreEqual(awaitTraces, outerTraces.Any(outer => outer.GetFrames().Any(frame => frame.GetMethod().Name == "MoveNext"
+                    && frame.GetMethod().DeclaringType.Name.Contains(nameof(ResolveAfterAwaitForTraceTest)))), text);
 #endif
                 AssertCausalityTraceIsPrintedCorrectly(trace, text);
             }
@@ -7241,8 +7298,8 @@ namespace ProtoPromise.Tests.APIs
 #endif
 
         // Whether a hidden frame may be printed with the name of another function, so that a trace that's printed like the outer frames of another trace is not skipped.
-        // IL2CPP's C++ linker in Unity versions before 2021.2 folds some library functions with identical functions, whose names are printed in their place
-        // (e.g. UnityEngine.ImageConversion.LoadImage in Unity 2019.4 on Windows).
+        // IL2CPP release builds in Unity versions before 2021.2 may print a frame with another function's name
+        // (e.g. UnityEngine.ImageConversion.LoadImage in Unity 2019.4 on Windows), and they can't print line numbers, which newer versions name frames with.
 #if ENABLE_IL2CPP && !UNITY_2021_2_OR_NEWER && !PROTO_PROMISE_DEVELOPER_MODE
         private static bool MayPrintHiddenFramesWithOtherNames => true;
 #else

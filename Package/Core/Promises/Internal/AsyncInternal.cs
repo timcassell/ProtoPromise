@@ -309,7 +309,7 @@ namespace Proto.Promises
                         // The first await captures where it awaits too, because its async promise's own trace was captured where it was called, before its body ran.
                         if (Promise.Config.AwaitTracesEnabled)
                         {
-                            _awaitTrace = CausalityTrace.CaptureWhereAsyncFunctionAwaited(_continuer.UnsafeAs<PromiseMethodContinuer.TracedContinuer>().StateMachineType);
+                            _awaitTrace = CausalityTrace.Capture();
                         }
                         base.CaptureAwaitContextAndOrTrace(isFirstAwait);
                     }
@@ -338,14 +338,7 @@ namespace Proto.Promises
 #else
                         var promise = new TracedAsyncPromiseRef();
 #endif
-                        promise.ResetWithoutStacktrace();
-                        // This is created before the async function's body runs, so its trace starts at the method that the compiler generated for it,
-                        // where it was called, without the hidden frames that it called. Its state machine type isn't known until it's started.
-                        var trace = CausalityTrace.CaptureWhereAsyncFunctionWasCalled(null);
-                        if (trace != null)
-                        {
-                            SetTrace(promise, trace);
-                        }
+                        promise.Reset();
                         return promise;
                     }
 
@@ -503,7 +496,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
                     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-                    internal sealed class TracedContinuer : PromiseMethodContinuer
+                    private sealed class TracedContinuer : PromiseMethodContinuer
                     {
                         private IAsyncStateMachine _stateMachine;
 
@@ -511,9 +504,6 @@ namespace Proto.Promises
                         {
                             _moveNext = Continue;
                         }
-
-                        // For where the async function awaits (see TracedAsyncPromiseRef.CaptureAwaitContextAndOrTrace).
-                        internal Type StateMachineType => _stateMachine.GetType();
 
                         // Separate from PromiseMethodContinuer.GetOrCreate, so that the traced path doesn't make the untraced path slower.
                         // The state machine is passed by ref, so that it's only boxed if the async promise is traced. Only this small method is generated for each async method.
@@ -825,12 +815,9 @@ namespace Proto.Promises
                         if (Promise.Config.AwaitTracesEnabled)
                         {
                             // The async promise's own trace was just captured where it first awaits, without the async function's frame (see Create),
-                            // so the first await shares that capture, starting at the async function's frame, instead of capturing the same stack again.
+                            // so the first await shares that capture with all of its frames, instead of capturing the same stack again.
                             // Trace is null if causality traces were disabled since then.
-                            var stateMachineType = _stateMachine.GetType();
-                            _awaitTrace = isFirstAwait
-                                ? Trace?.GetWhereAsyncFunctionFirstAwaited(stateMachineType)
-                                : CausalityTrace.CaptureWhereAsyncFunctionAwaited(stateMachineType);
+                            _awaitTrace = isFirstAwait ? Trace?.GetWithAllFrames() : CausalityTrace.Capture();
                         }
                         base.CaptureAwaitContextAndOrTrace(isFirstAwait);
                     }
@@ -864,7 +851,7 @@ namespace Proto.Promises
                         promise.ResetWithoutStacktrace();
                         // This is created where the async function first awaits, so the async function's frame is dropped from its trace,
                         // so that it starts where the async function was called, the same as in the non-optimized mode.
-                        var trace = CausalityTrace.CaptureWhereAsyncFunctionWasCalled(stateMachineType);
+                        var trace = CausalityTrace.CaptureWithoutInnermostVisibleFrame(stateMachineType);
                         if (trace != null)
                         {
                             SetTrace(promise, trace);
