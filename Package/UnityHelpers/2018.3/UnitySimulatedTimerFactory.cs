@@ -126,14 +126,8 @@ namespace Proto.Timers
                     return false;
                 }
 
-                try
-                {
-                    Invoke();
-                }
-                catch (Exception e)
-                {
-                    ReportRejection(e, this);
-                }
+                // The callback's exception is reported where it's invoked (see InvokeTimerCallback).
+                Invoke();
 
                 if (_period <= 0)
                 {

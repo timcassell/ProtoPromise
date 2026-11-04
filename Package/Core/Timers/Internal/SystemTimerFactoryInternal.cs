@@ -269,45 +269,9 @@ namespace Proto.Timers
                 [MethodImpl(InlineOption)]
                 private void InvokeDirect()
                 {
-                    if (!Diagnostics.CausalityTrace.IsEnabled)
-                    {
-                        // Common case: no causality trace.
-                        try
-                        {
-                            _callback.Invoke(_state);
-                        }
-                        catch (Exception e)
-                        {
-                            ReportRejection(e, this);
-                        }
-                    }
-                    else
-                    {
-                        InvokeInScope();
-                    }
-                    // Released even if the callback threw, so that DisposeAsync still completes.
+                    InvokeTimerCallback(_callback, _state, this);
+                    // Released even if the callback threw (InvokeTimerCallback reports it), so that DisposeAsync still completes.
                     Release();
-                }
-
-                // NoInlining to keep the common case small.
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                private void InvokeInScope()
-                {
-                    // A timer that wasn't traced doesn't enter a scope, the same as the common case.
-                    var scope = Diagnostics.CausalityTrace.EnterScopeInternal(GetTrace(this));
-                    try
-                    {
-                        _callback.Invoke(_state);
-                    }
-                    catch (Exception e)
-                    {
-                        // Reported inside the scope, the same as other callbacks (see ReportCaughtException).
-                        ReportCaughtException(e, this);
-                    }
-                    finally
-                    {
-                        scope.Dispose();
-                    }
                 }
 
                 [MethodImpl(InlineOption)]

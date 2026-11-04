@@ -257,6 +257,47 @@ namespace Proto.Promises
             ReportUnhandledValue(exception, trace);
         }
 
+        // Invokes a timer's callback, in the scope of the timer's trace if causality traces are enabled, and reports an exception that it throws.
+        [MethodImpl(InlineOption)]
+        internal static void InvokeTimerCallback(TimerCallback callback, object state, object timer)
+        {
+            if (!CausalityTrace.IsEnabled)
+            {
+                // Common case: no causality trace.
+                try
+                {
+                    callback.Invoke(state);
+                }
+                catch (Exception e)
+                {
+                    ReportRejection(e, timer);
+                }
+                return;
+            }
+            InvokeTimerCallbackInScope(callback, state, timer);
+        }
+
+        // NoInlining to keep the common case small.
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void InvokeTimerCallbackInScope(TimerCallback callback, object state, object timer)
+        {
+            // A timer that wasn't traced doesn't enter a scope, the same as the common case.
+            var scope = CausalityTrace.EnterScopeInternal(GetTrace(timer));
+            try
+            {
+                callback.Invoke(state);
+            }
+            catch (Exception e)
+            {
+                // Reported inside the scope, the same as other callbacks (see ReportCaughtException).
+                ReportCaughtException(e, timer);
+            }
+            finally
+            {
+                scope.Dispose();
+            }
+        }
+
         internal static void ReportRejection(object unhandledValue, object traceable)
         {
             if (unhandledValue is ICantHandleException ex)
