@@ -1343,7 +1343,7 @@ namespace ProtoPromise.Tests.APIs
                 // Whether it's captured before the async function's body runs (non-optimized mode) or where it first awaits (optimized mode),
                 // it starts at the method that the compiler generated for the async function, followed by where it was called.
                 // In the non-optimized mode, the hidden frames that it called are before it, which may be printed with other functions' names (see MayPrintHiddenFramesWithOtherNames).
-                var frames = asyncTrace.GetFrames();
+                var frames = WithoutRuntimeAsyncMethodBuilderFrames(asyncTrace.GetFrames());
                 int firstFrame = MayPrintHiddenFramesWithOtherNames
                     ? System.Math.Max(0, System.Array.FindIndex(frames, frame => frame.GetMethod()?.Name == nameof(AwaitForTraceTest)))
                     : 0;
@@ -1407,7 +1407,8 @@ namespace ProtoPromise.Tests.APIs
         }
 
         // On runtimes older than .Net 8, while the ExecutionContext flows, ProtoPromise runs an async function with the runtime's async method builder,
-        // whose Start frames are between the async function and the method that the compiler generated for it, in traces captured before it first awaits.
+        // whose Start frames are between the async function and the method that the compiler generated for it, in traces captured before it first awaits
+        // (including its trace of where it was called, which is captured where it first awaits in the optimized mode).
         private static System.Diagnostics.StackFrame[] WithoutRuntimeAsyncMethodBuilderFrames(System.Diagnostics.StackFrame[] frames)
 #if NET8_0_OR_GREATER
             => frames;
