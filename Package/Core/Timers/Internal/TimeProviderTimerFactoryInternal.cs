@@ -265,9 +265,9 @@ namespace Proto.Timers
                     else
                     {
 #if NET8_0_OR_GREATER
-                        var previousExecutionContext = SwapExecutionContext(executionContext.UnsafeAs<ExecutionContext>());
+                        var executionContextScope = new ExecutionContextScope(executionContext.UnsafeAs<ExecutionContext>());
                         InvokeDirect();
-                        RestoreExecutionContext(previousExecutionContext);
+                        executionContextScope.Dispose();
 #else
                         ExecutionContext.Run(
                             // .Net Framework doesn't allow us to re-use a captured context, so we have to copy it for each invocation.

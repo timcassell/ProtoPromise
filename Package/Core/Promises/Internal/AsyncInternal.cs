@@ -472,9 +472,9 @@ namespace Proto.Promises
                             {
                                 _owner.ContinuationContext = null;
 #if NET8_0_OR_GREATER
-                                var previousExecutionContext = SwapExecutionContext(continuationContext.UnsafeAs<ExecutionContext>());
+                                var executionContextScope = new ExecutionContextScope(continuationContext.UnsafeAs<ExecutionContext>());
                                 MoveNext();
-                                RestoreExecutionContext(previousExecutionContext);
+                                executionContextScope.Dispose();
 #else
                                 ExecutionContext.Run(
                                     continuationContext.UnsafeAs<ExecutionContext>(),
@@ -601,9 +601,9 @@ namespace Proto.Promises
                             {
                                 _owner.ContinuationContext = null;
 #if NET8_0_OR_GREATER
-                                var previousExecutionContext = SwapExecutionContext(continuationContext.UnsafeAs<ExecutionContext>());
+                                var executionContextScope = new ExecutionContextScope(continuationContext.UnsafeAs<ExecutionContext>());
                                 MoveNextInScope();
-                                RestoreExecutionContext(previousExecutionContext);
+                                executionContextScope.Dispose();
 #else
                                 ExecutionContext.Run(
                                     continuationContext.UnsafeAs<ExecutionContext>(),
@@ -760,9 +760,9 @@ namespace Proto.Promises
                         var continuationContext = ContinuationContext;
                         ContinuationContext = null;
 #if NET8_0_OR_GREATER
-                        var previousExecutionContext = SwapExecutionContext(continuationContext.UnsafeAs<ExecutionContext>());
+                        var executionContextScope = new ExecutionContextScope(continuationContext.UnsafeAs<ExecutionContext>());
                         MoveNext();
-                        RestoreExecutionContext(previousExecutionContext);
+                        executionContextScope.Dispose();
 #else
                         ExecutionContext.Run(
                             continuationContext.UnsafeAs<ExecutionContext>(),
@@ -943,9 +943,9 @@ namespace Proto.Promises
                         var continuationContext = ContinuationContext;
                         ContinuationContext = null;
 #if NET8_0_OR_GREATER
-                        var previousExecutionContext = SwapExecutionContext(continuationContext.UnsafeAs<ExecutionContext>());
+                        var executionContextScope = new ExecutionContextScope(continuationContext.UnsafeAs<ExecutionContext>());
                         MoveNextInScope();
-                        RestoreExecutionContext(previousExecutionContext);
+                        executionContextScope.Dispose();
 #else
                         ExecutionContext.Run(
                             continuationContext.UnsafeAs<ExecutionContext>(),

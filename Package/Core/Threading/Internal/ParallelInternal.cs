@@ -306,9 +306,9 @@ namespace Proto.Promises
                     else
                     {
 #if NET8_0_OR_GREATER
-                        var previousExecutionContext = SwapExecutionContext(_executionContext);
+                        var executionContextScope = new ExecutionContextScope(_executionContext);
                         ExecuteWorker(true);
-                        RestoreExecutionContext(previousExecutionContext);
+                        executionContextScope.Dispose();
 #else
                         ExecutionContext.Run(
                             // .Net Framework doesn't allow us to re-use a captured context, so we have to copy it for each invocation.
@@ -330,9 +330,9 @@ namespace Proto.Promises
                     else
                     {
 #if NET8_0_OR_GREATER
-                        var previousExecutionContext = SwapExecutionContext(_executionContext);
+                        var executionContextScope = new ExecutionContextScope(_executionContext);
                         ExecuteWorker(false);
-                        RestoreExecutionContext(previousExecutionContext);
+                        executionContextScope.Dispose();
 #else
                         ExecutionContext.Run(
                             // .Net Framework doesn't allow us to re-use a captured context, so we have to copy it for each invocation.

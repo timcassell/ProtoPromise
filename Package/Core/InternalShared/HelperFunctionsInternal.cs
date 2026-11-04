@@ -23,40 +23,77 @@ namespace Proto.Promises
     internal static partial class Internal
     {
 #if NET8_0_OR_GREATER
-        // ExecutionContext's internal methods, which capture and restore the thread's ExecutionContext even while its flow is suppressed,
-        // like the runtime's AsyncTaskMethodBuilder.Start does (but unlike it, we don't restore the SynchronizationContext, see SwapExecutionContext).
-        // The default ExecutionContext is null.
-        [UnsafeAccessor(UnsafeAccessorKind.StaticMethod, Name = "CaptureForRestore")]
-        private static extern ExecutionContext CaptureForRestore(ExecutionContext _);
+        // The thread's ExecutionContext field and the internals of ExecutionContext that its internal CaptureForRestore and RestoreInternal use,
+        // which capture and restore it even while its flow is suppressed, like the runtime's AsyncTaskMethodBuilder.Start does
+        // (but unlike it, we don't restore the SynchronizationContext, see ExecutionContextScope).
+        // They're used directly, like AsyncTaskMethodBuilder.Start does, so that the thread is only looked up once,
+        // and because Mono on .Net 8 crashes calling an accessor of a static method that has no arguments and returns a reference type (CaptureForRestore).
+        // The default ExecutionContext is null on the thread.
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_executionContext")]
+        private static extern ref ExecutionContext ThreadExecutionContext(Thread thread);
 
-        [UnsafeAccessor(UnsafeAccessorKind.StaticMethod, Name = "RestoreInternal")]
-        private static extern void RestoreInternal(ExecutionContext _, ExecutionContext executionContext);
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "m_isDefault")]
+        private static extern ref bool IsDefault(ExecutionContext executionContext);
 
-        // Sets the ExecutionContext on the thread, and returns the previous one for the caller to restore after it runs its code (see RestoreExecutionContext).
+        [UnsafeAccessor(UnsafeAccessorKind.StaticMethod, Name = "RestoreChangedContextToThread")]
+        private static extern void RestoreChangedContextToThread(ExecutionContext _, Thread currentThread, ExecutionContext contextToRestore, ExecutionContext currentContext);
+
+        // Sets the ExecutionContext on the thread, and restores the previous one when it's disposed, after the caller runs its code.
         // It's used instead of ExecutionContext.Run, so that the code is called directly instead of through a delegate,
         // and so that ExecutionContext.Run's frames aren't in causality traces that are captured in it.
         // The code catches its exceptions, so the previous ExecutionContext is restored without a finally. Unlike ExecutionContext.Run,
         // the SynchronizationContext isn't restored, the same as when the code runs without an ExecutionContext.
-        [MethodImpl(InlineOption)]
-        internal static ExecutionContext SwapExecutionContext(ExecutionContext executionContext)
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal readonly ref struct ExecutionContextScope
         {
-            var previousExecutionContext = CaptureForRestore(null);
-            RestoreInternal(null, executionContext);
-            return previousExecutionContext;
+            private readonly Thread _thread;
+            private readonly ExecutionContext _previousExecutionContext;
+
+            [MethodImpl(InlineOption)]
+            internal ExecutionContextScope(ExecutionContext executionContext)
+            {
+                Debug.Assert(executionContext != null);
+                var thread = Thread.CurrentThread;
+                var currentExecutionContext = ThreadExecutionContext(thread);
+                _thread = thread;
+                _previousExecutionContext = currentExecutionContext;
+                // ExecutionContext.Capture() returns the default ExecutionContext instead of null.
+                if (IsDefault(executionContext))
+                {
+                    executionContext = null;
+                }
+                if (executionContext != currentExecutionContext)
+                {
+                    RestoreChangedContextToThread(null, thread, executionContext, currentExecutionContext);
+                }
+            }
+
+            [MethodImpl(InlineOption)]
+            internal void Dispose()
+                => RestoreExecutionContext(_thread, _previousExecutionContext);
         }
 
         [MethodImpl(InlineOption)]
-        internal static void RestoreExecutionContext(ExecutionContext previousExecutionContext)
-            => RestoreInternal(null, previousExecutionContext);
+        private static void RestoreExecutionContext(Thread thread, ExecutionContext previousExecutionContext)
+        {
+            var currentExecutionContext = ThreadExecutionContext(thread);
+            if (previousExecutionContext != currentExecutionContext)
+            {
+                RestoreChangedContextToThread(null, thread, previousExecutionContext, currentExecutionContext);
+            }
+        }
 
         // Starts the async function, and then restores the ExecutionContext, so that changes it made (e.g. setting an AsyncLocal<T>) don't flow to its caller.
-        // It's used instead of AsyncTaskMethodBuilder.Start for the same reasons as SwapExecutionContext.
+        // It's used instead of AsyncTaskMethodBuilder.Start for the same reasons as ExecutionContextScope.
         internal static void StartAndRestoreExecutionContext<TStateMachine>(ref TStateMachine stateMachine)
             where TStateMachine : IAsyncStateMachine
         {
-            var previousExecutionContext = CaptureForRestore(null);
+            var thread = Thread.CurrentThread;
+            var previousExecutionContext = ThreadExecutionContext(thread);
             stateMachine.MoveNext();
-            RestoreInternal(null, previousExecutionContext);
+            RestoreExecutionContext(thread, previousExecutionContext);
         }
 #endif
 
