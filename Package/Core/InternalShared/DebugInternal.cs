@@ -16,6 +16,12 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+#if PROMISE_DEBUG
+// So that a traced type that is missing the ITraceable implementation fails to compile in DEBUG mode.
+using TraceableObject = Proto.Promises.Internal.ITraceable;
+#else
+using TraceableObject = System.Object;
+#endif
 
 namespace Proto.Promises
 {
@@ -118,9 +124,20 @@ namespace Proto.Promises
         internal static CausalityTrace GetTrace(object obj)
             => CausalityTrace.IsEnabled ? (obj as ITraceable)?.Trace : null;
 
-        internal static void SetTrace(object obj, CausalityTrace trace)
-            // This throws if a traced type is missing the ITraceable implementation.
-            => ((ITraceable) obj).Trace = trace;
+        internal static void SetTrace(ITraceable obj, CausalityTrace trace)
+            => obj.Trace = trace;
+
+        // Gives target the same trace as source (e.g. a lock key's disposed checker uses the trace of the promise that acquired the lock).
+        [MethodImpl(InlineOption)]
+        internal static void CopyTrace(object source, ITraceable target)
+        {
+            var trace = GetTrace(source);
+            if (trace == null)
+            {
+                return;
+            }
+            SetTrace(target, trace);
+        }
 #else
         // In RELEASE mode, causality traces of objects are stored in the table instead of fields to keep objects small, since they are rarely enabled.
         // Object pooling is disabled while causality traces are enabled, so entries are collected with their objects.
@@ -157,22 +174,10 @@ namespace Proto.Promises
         }
 #endif // PROMISE_DEBUG
 
-        // Gives target the same trace as source (e.g. a lock key uses the trace of the promise that acquired the lock).
-        [MethodImpl(InlineOption)]
-        internal static void CopyTrace(object source, object target)
-        {
-            var trace = GetTrace(source);
-            if (trace == null)
-            {
-                return;
-            }
-            SetTrace(target, trace);
-        }
-
         // We don't skip frames, because our own frames are hidden when the trace is formatted, and counting frames is unreliable when methods are inlined.
         // We don't clear the trace when it's disabled, because GetTrace returns null when it's disabled.
         [MethodImpl(InlineOption)]
-        internal static void SetCreatedStacktrace(object obj)
+        internal static void SetCreatedStacktrace(TraceableObject obj)
         {
             if (!CausalityTrace.IsEnabled)
             {
