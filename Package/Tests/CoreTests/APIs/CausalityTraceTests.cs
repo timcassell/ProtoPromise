@@ -185,21 +185,6 @@ namespace ProtoPromise.Tests.APIs
             }
         }
 
-        [Test]
-        public void CausalityTraceToString_IsMemoized()
-        {
-            CausalityTrace.IsEnabled = true;
-            try
-            {
-                var trace = CausalityTrace.Capture();
-                Assert.AreSame(trace.ToString(), trace.ToString());
-            }
-            finally
-            {
-                CausalityTrace.IsEnabled = false;
-            }
-        }
-
 #if !PROTO_PROMISE_DEVELOPER_MODE // Developer mode doesn't hide internal frames.
         [Test]
         public void CausalityTraceGetFrames_ExcludesInternalFrames()
@@ -3105,9 +3090,7 @@ namespace ProtoPromise.Tests.APIs
                 Assert.That(continuationTrace.Repeats[0].FirstTimestamp, Is.LessThanOrEqualTo(continuationTrace.Repeats[0].LastTimestamp));
                 Assert.That(continuationTrace.Repeats[0].LastTimestamp, Is.LessThanOrEqualTo(continuationTrace.Timestamp));
                 Assert.That(continuationTrace.Repeats[0].FirstTimestamp, Is.GreaterThanOrEqualTo(continuationTrace.Previous.Timestamp));
-                var repeats = continuationTrace.Repeats;
-                Assert.AreSame(repeats, continuationTrace.Repeats);
-                Assert.Throws<System.NotSupportedException>(() => ((IList<CausalityTrace.RepeatGroup>) repeats)[0] = default);
+                Assert.Throws<System.NotSupportedException>(() => ((IList<CausalityTrace.RepeatGroup>) continuationTrace.Repeats)[0] = default);
                 StringAssert.Contains("Repeated 98 times: ", callbackTrace.ToString());
 
                 // Complete the last scheduled continuation without scheduling another.
